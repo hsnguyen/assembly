@@ -8,9 +8,9 @@ import japsa.seq.Sequence;
 
 public class GraphExplore {
 
-	public static String spadesFolder="/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/"; //imb desktop
+//	public static String spadesFolder="/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/"; //imb desktop
 //	public static String spadesFolder="/home/hoangnguyen/workspace/data/spades/"; //sony
-//	public static String spadesFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/"; //dell
+	public static String spadesFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/"; //dell
 	
 
 	public static void main(String args[]) {
@@ -27,9 +27,9 @@ public class GraphExplore {
     public GraphExplore() throws IOException{
     	//System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer"); 
 //    	String sample="EcK12S-careful";
-//    	String sample="Kp2146-careful";
+    	String sample="Kp2146-careful";
 //    	String sample="meta-careful";
-    	String sample="cp_S5";
+//    	String sample="cp_S5";
 
         HybridAssembler ass = new HybridAssembler(spadesFolder+sample+"/assembly_graph.fastg");
     	BidirectedGraph graph= ass.simGraph;
