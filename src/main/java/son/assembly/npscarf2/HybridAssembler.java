@@ -245,7 +245,7 @@ public class HybridAssembler {
     	boolean firstDir=((BidirectedEdge)p.getEdgePath().get(0)).getDir(firstNode),
     			lastDir=((BidirectedEdge)p.peekEdge()).getDir(lastNode);
 
-    	//search for an unique node as the marker. 
+    	//search for a unique node as the marker. 
     	ArrayList<BidirectedEdge> 	tobeRemoved = new ArrayList<BidirectedEdge>();
     	BidirectedNode curNode = firstNode;
     	boolean curDir;

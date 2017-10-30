@@ -1,5 +1,6 @@
 package son.assembly.npscarf2;
 
+import java.awt.Color;
 import java.io.IOException;
 import java.util.Iterator;
 import org.graphstream.graph.*;
@@ -33,26 +34,13 @@ public class GraphExplore {
 
         HybridAssembler ass = new HybridAssembler(spadesFolder+sample+"/assembly_graph.fastg");
     	BidirectedGraph graph= ass.simGraph;
-//        graph.addAttribute("ui.quality");
-//        graph.addAttribute("ui.antialias");
-        graph.addAttribute("ui.stylesheet", styleSheet);
-        graph.addAttribute("ui.default.title", "New real-time hybrid assembler");
-       
+
+    	initGraphStyle(graph);
 
         graph.display();
         
         System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
-
-        
-        for (Node node : graph) {
-//            node.addAttribute("ui.label", node.getId());
-//            node.setAttribute("ui.style", "text-offset: -10;"); 
-            if(BidirectedGraph.isUnique(node))
-            	node.setAttribute("ui.class", "marked");
-        }
-        
-        //explore(graph.getNode("A"));
-        
+                
         /*
          * Testing reduce function
          */
@@ -98,7 +86,44 @@ public class GraphExplore {
 //        } else
 //        	System.out.println("Fuck");
     }
+    
+    public void initGraphStyle(Graph graph) {
+//      graph.addAttribute("ui.quality");
+//      graph.addAttribute("ui.antialias");
+    	graph.addAttribute("ui.default.title", "New real-time hybrid assembler");
+//    	graph.addAttribute("ui.style", dynamicStyle);
 
+    	for (Node node : graph) {
+
+          Sequence seq = node.getAttribute("seq");
+          double lengthScale = 1+(Math.log10(seq.length())-2)/3.5; //100->330,000
+          
+          if(lengthScale<1) lengthScale=1;
+          else if(lengthScale>2) lengthScale=2;
+          
+          int covScale = (int) Math.round(node.getNumber("cov")/BidirectedGraph.aveCov);
+//          Color[] palette= {Color.GRAY,Color.BLUE,Color.YELLOW,Color.ORANGE,Color.GREEN,Color.PINK,Color.MAGENTA,Color.RED};
+//          Color color=null;
+          
+          String[] palette= {"grey","blue","yellow","orange","green","pink","magenta","red"};
+          String color=null;
+          if(covScale>=palette.length)
+        	  color=palette[palette.length-1];
+          else
+        	  color=palette[covScale];
+          
+//          node.addAttribute("ui.color", color);
+//          node.addAttribute("ui.size", lengthScale+"gu");
+          node.addAttribute("ui.label", covScale);
+          node.setAttribute("ui.style", "	size: " + lengthScale + "gu;" +
+        		  						"	fill-color: "+color+";" +
+        		  			            " 	stroke-mode: plain;" +
+        		  			            "	stroke-color: black;" +
+        		  			            "	stroke-width: 2px;");
+      }
+    }
+    
+    //TODO: traverse the graph and print FASTA/GFA out
     public void explore(Node source) {
         Iterator<? extends Node> k = source.getBreadthFirstIterator();
 
@@ -124,4 +149,12 @@ public class GraphExplore {
         "	fill-color: red;" +
         "}";
     	
+    protected String dynamicStyle =
+            "node {" +
+    		"	fill-mode: dyn-plain;" +
+            "	size-mode: dyn-size;" +
+            " 	stroke-mode: plain;" +
+            "	stroke-color: black;" +
+            "	stroke-width: 2px;" +
+            "}";
 }

@@ -130,7 +130,7 @@ public class BidirectedGraph extends AdjacencyListGraph{
 	 * ****************************Algorithms go from here*****************************
 	 */
     //TODO: read from ABySS assembly graph (graph of final contigs, not like SPAdes)
-    private static double aveCov; //TODO: replaced with more accurate method
+    static double aveCov; //TODO: replaced with more accurate method
     
     public void loadFromFile(String graphFile) throws IOException{
         setAutoCreate(true);
