@@ -311,7 +311,7 @@ public class BidirectedGraph extends AdjacencyListGraph{
 //    		removeNode(nLabel);
 //    	}
 //    		
-//    	//TODO: remove bubbles...
+//    	//todo: remove bubbles...
 //    	return comp;
 //    }
 //    
@@ -388,14 +388,60 @@ public class BidirectedGraph extends AdjacencyListGraph{
     	traverse(tmp, dstNode, possiblePaths, distance, from.strand, to.strand, 0);
     	//only get the best ones
     	if(possiblePaths.isEmpty()){
-    		//if a path couldn't be found between 2 dead-ends but alignments quality are insane high
+    		//try to find an overlap < kmer size (dead-end)
+    		if(distance < 0) {
+    			Sequence seq1, seq2;
+    			BidirectedNode node1, node2;
+    			if(Math.max(from.readStart, from.readEnd) < Math.max(to.readStart, to.readEnd)) {
+    				node1=srcNode;
+    				node2=dstNode;
+        			seq1=(Sequence)(node1.getAttribute("seq"));
+        			seq2=(Sequence)(node2.getAttribute("seq"));
+        			if(from.strand)
+        				seq1=Alphabet.DNA.complement(seq1);
+        			if(to.strand)
+        				seq2=Alphabet.DNA.complement(seq2);
+    			}else {
+    				node1=dstNode;
+    				node2=srcNode;
+        			seq1=(Sequence)(node1.getAttribute("seq"));
+        			seq2=(Sequence)(node2.getAttribute("seq"));
+        			if(from.strand)
+        				seq2=Alphabet.DNA.complement(seq1);
+        			if(to.strand)
+        				seq1=Alphabet.DNA.complement(seq2);
+        			
+    			}
+    			
+    			String prev=seq1.toString(), next=seq2.toString();
+    			int index=-1;
+    			for(int i=BidirectedGraph.getKmerSize()-1; i >30; i--) {
+    				if(prev.substring(prev.length()-i, prev.length()).compareTo(next.substring(0,i-1))==0) {
+    					index=i;
+    					break;
+    				}
+    			}
+    			if(index>0) {
+        			BidirectedEdge overlapEdge = new BidirectedEdge(srcNode, dstNode, from.strand, to.strand);
+        			//TODO: save the corresponding content of long reads to this edge
+        			overlapEdge.setAttribute("dist", index);
+        			tmp.add(overlapEdge);
+        			retval.add(tmp);
+        			System.out.println("pseudo path from " + srcNode.getId() + " to " + dstNode.getId());
+//        			HybridAssembler.promptEnterKey();
+        			return retval;
+    			}else
+    				return null;
+
+    		}
+    		//if a path couldn't be found between 2 dead-ends but alignments quality are insanely high
     		//FIXME: return a pseudo path having an nanopore edge
-    		if(isUnique(srcNode) && isUnique(dstNode) && srcNode.getDegree() == 1 && dstNode.getDegree()==1 &&
+    		else if(isUnique(srcNode) && isUnique(dstNode) && srcNode.getDegree() == 1 && dstNode.getDegree()==1 &&
 				Math.min(from.quality, to.quality) >= Alignment.GOOD_QUAL)
     		{
     			BidirectedEdge pseudoEdge = new BidirectedEdge(srcNode, dstNode, from.strand, to.strand);
     			//TODO: save the corresponding content of long reads to this edge
-    			pseudoEdge.setAttribute("pseudo", distance);
+    			pseudoEdge.setAttribute("dist", distance);
     			tmp.add(pseudoEdge);
     			retval.add(tmp);
     			System.out.println("pseudo path from " + srcNode.getId() + " to " + dstNode.getId());
@@ -494,7 +540,9 @@ public class BidirectedGraph extends AdjacencyListGraph{
 		
 		System.out.println("Binning ranges: ");
 	    for(List<Range> group : rangeGroups){
-	        System.out.println(group);
+	    	for(Range range:group)
+	    		System.out.print(allAlignments.get(range).node.getId() + ": " + range + "; ");
+	    	System.out.println();
 	    }
 
 		//iterate all alignments in adjacent bins to find correct path
@@ -526,7 +574,7 @@ public class BidirectedGraph extends AdjacencyListGraph{
 			}
 			//join all paths from previous to the new ones
 			//TODO:optimize it
-			if(joinPaths.isEmpty())
+			if(joinPaths.isEmpty() || joinPaths.size()==0)
 				joinPaths=allPaths;
 			else{
 				System.out.println("=====Current list of paths: " + joinPaths);
@@ -534,7 +582,7 @@ public class BidirectedGraph extends AdjacencyListGraph{
 
 				for(BidirectedPath p:joinPaths)
 					for(BidirectedPath e:allPaths)
-						p.join(e);			
+						p.join(e);					
 				
 			}
 			curGroup=nextGroup;
@@ -544,8 +592,16 @@ public class BidirectedGraph extends AdjacencyListGraph{
 			System.out.println("A member Path: " + path.toString() + " deviation: " + path.getDeviation());
 		if(joinPaths.isEmpty())
 			return null;
-		else
-			return joinPaths.get(0);
+		else {
+			int numOfMarkers=0, index=0;
+			BidirectedPath path = null;
+			for(int i=0; i < joinPaths.size(); i++) {
+				path=joinPaths.get(i);
+				if(path.getNumOfMarkers() > numOfMarkers)
+					index=i;
+			}
+			return joinPaths.get(index);
+		}
 	}
 	
     /*
@@ -560,6 +616,7 @@ public class BidirectedGraph extends AdjacencyListGraph{
     	if(node.getDegree()<=2){ // not always true, e.g. unique node in a repetitive component
     		Sequence seq = node.getAttribute("seq");
     		if(seq.length() > 10000 || node.getNumber("cov")/aveCov < 1.3)
+//    		if(node.getNumber("cov")/aveCov < 1.3)
     			res=true;
     	}
     	

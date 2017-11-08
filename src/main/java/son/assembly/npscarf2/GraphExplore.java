@@ -1,6 +1,5 @@
 package son.assembly.npscarf2;
 
-import java.awt.Color;
 import java.io.IOException;
 import java.util.Iterator;
 import org.graphstream.graph.*;
@@ -27,8 +26,8 @@ public class GraphExplore {
 
     public GraphExplore() throws IOException{
     	//System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer"); 
-//    	String sample="EcK12S-careful";
-    	String sample="Kp2146-careful";
+    	String sample="EcK12S-careful";
+//    	String sample="Kp2146-careful";
 //    	String sample="meta-careful";
 //    	String sample="cp_S5";
 
@@ -45,8 +44,8 @@ public class GraphExplore {
          * Testing reduce function
          */
         try {
-        	HybridAssembler.promptEnterKey();
-			ass.reduceFromSPAdesPaths(spadesFolder+sample+"/contigs.paths");
+//        	HybridAssembler.promptEnterKey();
+//			ass.reduceFromSPAdesPaths(spadesFolder+sample+"/contigs.paths");
 			HybridAssembler.promptEnterKey();
 			ass.assembly(spadesFolder+sample+"/assembly_graph.sam");
 			
@@ -91,7 +90,8 @@ public class GraphExplore {
 //      graph.addAttribute("ui.quality");
 //      graph.addAttribute("ui.antialias");
     	graph.addAttribute("ui.default.title", "New real-time hybrid assembler");
-//    	graph.addAttribute("ui.style", dynamicStyle);
+    	
+    	graph.setAttribute("ui.style", dynamicStyle);
 
     	for (Node node : graph) {
 
@@ -114,7 +114,11 @@ public class GraphExplore {
           
 //          node.addAttribute("ui.color", color);
 //          node.addAttribute("ui.size", lengthScale+"gu");
-          node.addAttribute("ui.label", covScale);
+          
+//          node.addAttribute("ui.label", covScale);
+          
+          node.addAttribute("ui.label", node.getId());
+
           node.setAttribute("ui.style", "	size: " + lengthScale + "gu;" +
         		  						"	fill-color: "+color+";" +
         		  			            " 	stroke-mode: plain;" +

@@ -109,9 +109,9 @@ public class Alignment implements Comparable<Alignment> {
 			goodMargin=true;
 		
 	if	(		goodMargin
-				//prime && //TODO: should be separated as another attribute for further consideration??
+//				&& prime //TODO: there are useful secondary alignment!!!
 				&& alignLength > BidirectedGraph.getKmerSize() //FIXME: 
-				&& quality >= MIN_QUAL
+//				&& quality >= MIN_QUAL
 			)
 			useful = true;
 

@@ -124,10 +124,10 @@ public class HybridAssembler {
      * @param p Path to simplify the graph (from origGraph)
      * @param target Subjected graph for the simplification
      */
-    private void reduce(BidirectedPath p){
+    private boolean reduce(BidirectedPath p){
     	//do nothing if the path has only one node
     	if(p==null || p.getEdgeCount()<1)
-    		return;
+    		return false;
     	
     	//loop over the edges of path (like spelling())
     	BidirectedNode 	markerNode = null,
@@ -177,7 +177,8 @@ public class HybridAssembler {
 						if(!BidirectedGraph.isUnique(n0) == BidirectedGraph.isUnique(n1)){
 			    			tobeRemoved.add((BidirectedEdge)ep);
 						}
-
+						//TODO: remove also edges with same direction to ep from the unique node
+						
 //			    		if(!BidirectedGraph.isUnique(n1)){			    			
 //			    			n1.setAttribute("cov", n1.getNumber("cov")-markerNode.getNumber("cov"));   		
 //			    			LOG.info("...coverage of " + n1.getAttribute("name") + " now is " + n1.getNumber("cov"));
@@ -202,6 +203,7 @@ public class HybridAssembler {
     		
 		}
     	
+    	boolean retval = tobeRemoved.size()>0?true:false;
     	//remove appropriate edges
     	for(BidirectedEdge e:tobeRemoved){
     		LOG.info("REMOVING EDGE " + e.getId() + " from " + e.getNode0().getGraph().getId() + "-" + e.getNode1().getGraph().getId());
@@ -226,6 +228,8 @@ public class HybridAssembler {
     		LOG.info("after: \n\t" + simGraph.printEdgesOfNode(e.getNode0()) + "\n\t" + simGraph.printEdgesOfNode(e.getNode1()));
 
     	}
+    	
+    	return retval;
 
     }
     /**

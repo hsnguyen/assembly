@@ -128,19 +128,19 @@ public class BidirectedPath extends Path{
 	}
 	 /*
 	  * Add a path to the current path. The path to be added must start with the last node
-	  * of the current path.
+	  * of the current path. Return TRUE if the joining valid and succeed.
 	  */
-	public void join(BidirectedPath bridge) {
+	public boolean join(BidirectedPath bridge) {
 		if(bridge==null || bridge.size() <=1)
-			return;
+			return false;
 		if(bridge.getRoot() != peekNode()){
 			LOG.error("Cannot join path with disagreed first node " + bridge.getRoot().getId());
-			return;
+			return false;
 		}
 		if(((BidirectedEdge) bridge.getEdgePath().get(0)).getDir((AbstractNode) bridge.getRoot())
 			== ((BidirectedEdge) peekEdge()).getDir((AbstractNode) peekNode())){
 			LOG.error("Conflict direction from the first node " + bridge.getRoot().getId());
-			return;
+			return false;
 		}
 		//TODO: need a way to check coverage consistent
 
@@ -150,6 +150,7 @@ public class BidirectedPath extends Path{
 		}
 		
 		coverage=Math.min(coverage, bridge.coverage);
+		return true;
 	}
 	
 	public int getDeviation(){
@@ -187,5 +188,14 @@ public class BidirectedPath extends Path{
 			retval+=(n==getRoot())?seq.length():seq.length()-BidirectedGraph.getKmerSize();		
 		}
 		return retval;
+	}
+	
+	public int getNumOfMarkers() {
+		int retval = 0;
+		for(Node n:getNodePath()){
+			if(BidirectedGraph.isUnique(n))
+				retval++;
+		}
+		return retval;	
 	}
 }
