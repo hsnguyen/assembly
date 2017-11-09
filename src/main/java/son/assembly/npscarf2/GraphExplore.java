@@ -26,8 +26,8 @@ public class GraphExplore {
 
     public GraphExplore() throws IOException{
     	//System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer"); 
-    	String sample="EcK12S-careful";
-//    	String sample="Kp2146-careful";
+//    	String sample="EcK12S-careful";
+    	String sample="Kp2146-careful";
 //    	String sample="meta-careful";
 //    	String sample="cp_S5";
 
@@ -46,7 +46,7 @@ public class GraphExplore {
         try {
 //        	HybridAssembler.promptEnterKey();
 //			ass.reduceFromSPAdesPaths(spadesFolder+sample+"/contigs.paths");
-			HybridAssembler.promptEnterKey();
+//			HybridAssembler.promptEnterKey();
 			ass.assembly(spadesFolder+sample+"/assembly_graph.sam");
 			
 		} catch (IOException e) {
@@ -86,7 +86,7 @@ public class GraphExplore {
 //        	System.out.println("Fuck");
     }
     
-    public void initGraphStyle(Graph graph) {
+    public static void initGraphStyle(Graph graph) {
 //      graph.addAttribute("ui.quality");
 //      graph.addAttribute("ui.antialias");
     	graph.addAttribute("ui.default.title", "New real-time hybrid assembler");
@@ -153,7 +153,7 @@ public class GraphExplore {
         "	fill-color: red;" +
         "}";
     	
-    protected String dynamicStyle =
+    protected static String dynamicStyle =
             "node {" +
     		"	fill-mode: dyn-plain;" +
             "	size-mode: dyn-size;" +

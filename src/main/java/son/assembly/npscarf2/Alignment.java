@@ -111,7 +111,7 @@ public class Alignment implements Comparable<Alignment> {
 	if	(		goodMargin
 //				&& prime //TODO: there are useful secondary alignment!!!
 				&& alignLength > BidirectedGraph.getKmerSize() //FIXME: 
-//				&& quality >= MIN_QUAL
+				&& quality >= MIN_QUAL
 			)
 			useful = true;
 
@@ -139,13 +139,20 @@ public class Alignment implements Comparable<Alignment> {
 				+ " / " + readLength				
 				+ ", strand: " + (strand?"+":"-")
 				+ ", prime: " + (prime?"yes":"no")
-				+ ", margin: " + (goodMargin?"good":"bad");
+				+ ", margin: " + (goodMargin?"good":"bad")
+				+ ", qual=: " + quality;
 	}
-	public static boolean isOverlap(Alignment alg1, Alignment alg2){
-		boolean retval=false;
-		
-		
-		return retval;
+	
+	//scan a group of homo-alignments and return marker if available
+	public static ArrayList<Alignment> scanGroup(ArrayList<Alignment> list){
+		ArrayList<Alignment> retval=new ArrayList<Alignment>();
+		for (Alignment alg:list) {
+			if(alg.quality>=MIN_QUAL) {
+				retval.add(alg);
+			}
+		}
+
+		return (retval.size() > 0)?retval:list;
 	}
 	/* (non-Javadoc)
 	 * @see java.lang.Comparable#compareTo(java.lang.Object)

@@ -397,18 +397,18 @@ public class BidirectedGraph extends AdjacencyListGraph{
     				node2=dstNode;
         			seq1=(Sequence)(node1.getAttribute("seq"));
         			seq2=(Sequence)(node2.getAttribute("seq"));
-        			if(from.strand)
+        			if(!from.strand)
         				seq1=Alphabet.DNA.complement(seq1);
-        			if(to.strand)
+        			if(!to.strand)
         				seq2=Alphabet.DNA.complement(seq2);
     			}else {
     				node1=dstNode;
     				node2=srcNode;
         			seq1=(Sequence)(node1.getAttribute("seq"));
         			seq2=(Sequence)(node2.getAttribute("seq"));
-        			if(from.strand)
+        			if(!from.strand)
         				seq2=Alphabet.DNA.complement(seq1);
-        			if(to.strand)
+        			if(!to.strand)
         				seq1=Alphabet.DNA.complement(seq2);
         			
     			}
@@ -427,8 +427,8 @@ public class BidirectedGraph extends AdjacencyListGraph{
         			overlapEdge.setAttribute("dist", index);
         			tmp.add(overlapEdge);
         			retval.add(tmp);
-        			System.out.println("pseudo path from " + srcNode.getId() + " to " + dstNode.getId());
-//        			HybridAssembler.promptEnterKey();
+        			System.out.println("Overlap path from " + srcNode.getId() + " to " + dstNode.getId() + " d=-" + index);
+        			HybridAssembler.promptEnterKey();
         			return retval;
     			}else
     				return null;
@@ -551,6 +551,7 @@ public class BidirectedGraph extends AdjacencyListGraph{
 		List<Range> curRanges = rangeGroups.get(0);
 		for(Range r:curRanges)
 			curGroup.add(allAlignments.get(r));
+//		curGroup = Alignment.scanGroup(curGroup);
 		
 		for(int i=1; i<rangeGroups.size();i++){
 			List<Range> nextRanges = rangeGroups.get(i);
@@ -558,6 +559,7 @@ public class BidirectedGraph extends AdjacencyListGraph{
 			
 			for(Range r:nextRanges)
 				nextGroup.add(allAlignments.get(r));
+//			nextGroup=Alignment.scanGroup(nextGroup);
 			
 			ArrayList<BidirectedPath> allPaths = new ArrayList<BidirectedPath>();
 			
@@ -615,8 +617,8 @@ public class BidirectedGraph extends AdjacencyListGraph{
     	
     	if(node.getDegree()<=2){ // not always true, e.g. unique node in a repetitive component
     		Sequence seq = node.getAttribute("seq");
-    		if(seq.length() > 10000 || node.getNumber("cov")/aveCov < 1.3)
-//    		if(node.getNumber("cov")/aveCov < 1.3)
+//    		if(seq.length() > 10000 || node.getNumber("cov")/aveCov < 1.3)
+    		if(seq.length() > 10000 || Math.round(node.getNumber("cov")/aveCov) == 1)
     			res=true;
     	}
     	

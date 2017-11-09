@@ -74,14 +74,17 @@ public class HybridAssembler {
 
 				if(p!=null)
 					System.out.println("Final path found: " + p.getId());
-				reduce(p);
+		    	if(reduce(p)) {
+		    		GraphExplore.initGraphStyle(simGraph);
+//		    		promptEnterKey();
+		    	}
+		    	
 //				reduce2(p);
 				samList = new ArrayList<Alignment>();
 				//readID = myRec.readID;	
 			}	
 			readID = myRec.readID;
-			samList.add(myRec); // FIXME: (optimize) insert sort here
-
+			samList.add(myRec); 
 		}// while
 		iter.close();
 
@@ -103,7 +106,8 @@ public class HybridAssembler {
 			if(s.contains("NODE")){
 				if(flag){
 					BidirectedPath path=new BidirectedPath(simGraph, curpath);
-			    	reduce(path);
+			    	if(reduce(path))
+			    		GraphExplore.initGraphStyle(simGraph);
 //			    	reduce2(path);
 				}
 				flag=s.contains("'")?false:true;
@@ -176,12 +180,17 @@ public class HybridAssembler {
 						n1 = ep.getOpposite(n0);
 						if(!BidirectedGraph.isUnique(n0) == BidirectedGraph.isUnique(n1)){
 			    			tobeRemoved.add((BidirectedEdge)ep);
+			    			if(BidirectedGraph.isUnique(n0))
+			    				n1.setAttribute("cov", Math.max(n1.getNumber("cov")-n0.getNumber("cov"),n0.getNumber("cov")));   
+			    			if(BidirectedGraph.isUnique(n1))
+			    				n0.setAttribute("cov", Math.max(n0.getNumber("cov")-n1.getNumber("cov"),n1.getNumber("cov")));   
+
 						}
 						//TODO: remove also edges with same direction to ep from the unique node
 						
 //			    		if(!BidirectedGraph.isUnique(n1)){			    			
-//			    			n1.setAttribute("cov", n1.getNumber("cov")-markerNode.getNumber("cov"));   		
-//			    			LOG.info("...coverage of " + n1.getAttribute("name") + " now is " + n1.getNumber("cov"));
+//			    			n1.setAttribute("cov", Math.max(n1.getNumber("cov")-markerNode.getNumber("cov"),markerNode.getNumber("cov")));   		
+////			    			LOG.info("...coverage of " + n1.getAttribute("name") + " now is " + n1.getNumber("cov"));
 //			    		}
 						
 			    		n0=n1;
