@@ -46,7 +46,7 @@ public class GraphExplore {
         try {
 //        	HybridAssembler.promptEnterKey();
 //			ass.reduceFromSPAdesPaths(spadesFolder+sample+"/contigs.paths");
-//			HybridAssembler.promptEnterKey();
+			HybridAssembler.promptEnterKey();
 			ass.assembly(spadesFolder+sample+"/assembly_graph.sam");
 			
 		} catch (IOException e) {
