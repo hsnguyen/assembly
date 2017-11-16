@@ -648,70 +648,88 @@ public class BidirectedGraph extends AdjacencyListGraph{
      * Traverse the graph and assign weight to every edge based on coverage of ending nodes
      * and update a node's coverage if possible (later)
      */
-    private void balancing() {
-    	Collection<BidirectedEdge> unknownEdges=this.getEdgeSet();
+    public void balancing() {
+    	ArrayList<BidirectedEdge> unknownEdges= new ArrayList<BidirectedEdge>(this.getEdgeSet());
     	
-    	for(BidirectedEdge e:unknownEdges) {
-    		
-//    		if(!Double.isNaN(e.getNumber("cov"))) 
-//    			continue;		
-    			
-    		BidirectedNode n0 = e.getNode0(), n1=e.getNode1();
-    		boolean dir0 = e.getDir0(), dir1 = e.getDir1();
-    		Iterator<Edge> 	in0 = n0.getEnteringEdgeIterator(), out0 = n0.getLeavingEdgeIterator(),
-    						in1 = n1.getEnteringEdgeIterator(), out1 = n1.getLeavingEdgeIterator();
-    		int unknwIn0 = 0, unknwOut0 = 0, unknwIn1  = 0, unknwOut1 = 0;
-    		double inWeight0 = 0, outWeight0 = 0, inWeight1 = 0, outWeight1 = 0;
-    		while(in0.hasNext()) {
-    			BidirectedEdge tmp = (BidirectedEdge) in0.next();
-    			double tmpW = tmp.getNumber("cov");
-    			if(!Double.isNaN(tmpW))
-    				inWeight0+=tmpW;
-    			else
-    				unknwIn0++;
-    		}
-    		while(out0.hasNext()) {
-    			BidirectedEdge tmp = (BidirectedEdge) out0.next();
-    			double tmpW = tmp.getNumber("cov");
-    			if(!Double.isNaN(tmpW))
-    				outWeight0+=tmpW;
-    			else
-    				unknwOut0++;
-    		}
-    		
-    		while(in1.hasNext()) {
-    			BidirectedEdge tmp = (BidirectedEdge) in1.next();
-    			double tmpW = tmp.getNumber("cov");
-    			if(!Double.isNaN(tmpW))
-    				inWeight1+=tmpW;
-    			else
-    				unknwIn1++;
-    		}
-    		while(out0.hasNext()) {
-    			BidirectedEdge tmp = (BidirectedEdge) out1.next();
-    			double tmpW = tmp.getNumber("cov");
-    			if(!Double.isNaN(tmpW))
-    				outWeight1+=tmpW;
-    			else
-    				unknwOut1++;
-    		}
-    		
-    		//do smt here...
-    		if(dir0) {
-    			if(unknwOut0 == 1)
-    				e.setAttribute("cov", n0.getNumber("cov")-outWeight0);
-    		}else {
-    			if(unknwIn1 == 1)
-    				e.setAttribute("cov", n0.getNumber("cov")-inWeight0);
-    		}
-    		
-    		if(dir1) {
-    			if(unknwOut1 == 1)
-    				e.setAttribute("cov", n1.getNumber("cov")-outWeight1);
-    		}else {
-    			if(unknwIn1 == 1)
-    				e.setAttribute("cov", n1.getNumber("cov")-inWeight1);
-    		}
+    	
+    	ArrayList<BidirectedEdge> newUnknownEdges = new ArrayList<BidirectedEdge>();
+    	while(true) {
+	    	for(BidirectedEdge e:unknownEdges) {
+	    			
+	    			
+	    		BidirectedNode n0 = e.getNode0(), n1=e.getNode1();
+	    		boolean dir0 = e.getDir0(), dir1 = e.getDir1();
+	    		Iterator<Edge> 	in0 = n0.getEnteringEdgeIterator(), out0 = n0.getLeavingEdgeIterator(),
+	    						in1 = n1.getEnteringEdgeIterator(), out1 = n1.getLeavingEdgeIterator();
+	    		int unknwIn0 = 0, unknwOut0 = 0, unknwIn1  = 0, unknwOut1 = 0;
+	    		double inWeight0 = 0, outWeight0 = 0, inWeight1 = 0, outWeight1 = 0;
+	    		while(in0.hasNext()) {
+	    			BidirectedEdge tmp = (BidirectedEdge) in0.next();
+	    			double tmpW = tmp.getNumber("cov");
+	    			if(!Double.isNaN(tmpW))
+	    				inWeight0+=tmpW;
+	    			else
+	    				unknwIn0++;
+	    		}
+	    		while(out0.hasNext()) {
+	    			BidirectedEdge tmp = (BidirectedEdge) out0.next();
+	    			double tmpW = tmp.getNumber("cov");
+	    			if(!Double.isNaN(tmpW))
+	    				outWeight0+=tmpW;
+	    			else
+	    				unknwOut0++;
+	    		}
+	    		
+	    		while(in1.hasNext()) {
+	    			BidirectedEdge tmp = (BidirectedEdge) in1.next();
+	    			double tmpW = tmp.getNumber("cov");
+	    			if(!Double.isNaN(tmpW))
+	    				inWeight1+=tmpW;
+	    			else
+	    				unknwIn1++;
+	    		}
+	    		while(out1.hasNext()) {
+	    			BidirectedEdge tmp = (BidirectedEdge) out1.next();
+	    			double tmpW = tmp.getNumber("cov");
+	    			if(!Double.isNaN(tmpW))
+	    				outWeight1+=tmpW;
+	    			else
+	    				unknwOut1++;
+	    		}
+	    		
+	    		//do smt here...
+	    		if(dir0) {
+	    			if(unknwOut0 == 1)
+	    				e.setAttribute("cov", n0.getNumber("cov")-outWeight0);
+	    		}else {
+	    			if(unknwIn0 == 1)
+	    				e.setAttribute("cov", n0.getNumber("cov")-inWeight0);
+	    		}
+	    		
+	    		if(dir1) {
+	    			if(unknwOut1 == 1)
+	    				e.setAttribute("cov", n1.getNumber("cov")-outWeight1);
+	    		}else {
+	    			if(unknwIn1 == 1)
+	    				e.setAttribute("cov", n1.getNumber("cov")-inWeight1);
+	    		}
+	    		
+	    		if(Double.isNaN(e.getNumber("cov"))) {
+	    			newUnknownEdges.add(e);
+	    			System.out.println("unable to resolve: " + e.getId() + " : " + (dir0?unknwOut0:unknwIn0) + "(" + n0.getId()+ ") --- " + (dir1?unknwOut1:unknwIn1) + "(" + n1.getId() + ")");
+	    		}
+					
+	    	}
+
+	    	unknownEdges = newUnknownEdges;
+	    	newUnknownEdges = new ArrayList<BidirectedEdge>();
+	    	if(unknownEdges.isEmpty())
+	    		break;
+	    	else {
+	    		
+	    		System.out.println("Next traversal round on "+unknownEdges.size() + " edges");
+	    		continue;
+	    	}
     	}
     	
     }

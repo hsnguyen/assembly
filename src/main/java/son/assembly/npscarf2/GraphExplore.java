@@ -86,7 +86,7 @@ public class GraphExplore {
 //        	System.out.println("Fuck");
     }
     
-    public static void initGraphStyle(Graph graph) {
+    public static void initGraphStyle(BidirectedGraph graph) {
 //      graph.addAttribute("ui.quality");
 //      graph.addAttribute("ui.antialias");
     	graph.addAttribute("ui.default.title", "New real-time hybrid assembler");
@@ -95,36 +95,45 @@ public class GraphExplore {
 
     	for (Node node : graph) {
 
-          Sequence seq = node.getAttribute("seq");
-          double lengthScale = 1+(Math.log10(seq.length())-2)/3.5; //100->330,000
+    		Sequence seq = node.getAttribute("seq");
+    		double lengthScale = 1+(Math.log10(seq.length())-2)/3.5; //100->330,000
           
-          if(lengthScale<1) lengthScale=1;
-          else if(lengthScale>2) lengthScale=2;
-          
-          int covScale = (int) Math.round(node.getNumber("cov")/BidirectedGraph.aveCov);
+			if(lengthScale<1) lengthScale=1;
+			else if(lengthScale>2) lengthScale=2;
+	          
+			int covScale = (int) Math.round(node.getNumber("cov")/BidirectedGraph.aveCov);
 //          Color[] palette= {Color.GRAY,Color.BLUE,Color.YELLOW,Color.ORANGE,Color.GREEN,Color.PINK,Color.MAGENTA,Color.RED};
 //          Color color=null;
-          
-          String[] palette= {"grey","blue","yellow","orange","green","pink","magenta","red"};
-          String color=null;
-          if(covScale>=palette.length)
-        	  color=palette[palette.length-1];
-          else
-        	  color=palette[covScale];
+	          
+			String[] palette= {"grey","blue","yellow","orange","green","pink","magenta","red"};
+			String color=null;
+			if(covScale>=palette.length)
+				color=palette[palette.length-1];
+			else
+				color=palette[covScale];
           
 //          node.addAttribute("ui.color", color);
 //          node.addAttribute("ui.size", lengthScale+"gu");
           
 //          node.addAttribute("ui.label", covScale);
           
-          node.addAttribute("ui.label", node.getId());
+//			node.addAttribute("ui.label", node.getId());
+			node.addAttribute("ui.label", node.getNumber("cov"));
 
-          node.setAttribute("ui.style", "	size: " + lengthScale + "gu;" +
+
+			node.setAttribute("ui.style", "	size: " + lengthScale + "gu;" +
         		  						"	fill-color: "+color+";" +
         		  			            " 	stroke-mode: plain;" +
         		  			            "	stroke-color: black;" +
         		  			            "	stroke-width: 2px;");
-      }
+    	}
+    	
+    	graph.balancing();
+    	for(Edge e : graph.getEdgeSet()) {
+    		e.addAttribute("ui.label", e.getNumber("cov"));
+    	}
+    	
+    
     }
     
     //TODO: traverse the graph and print FASTA/GFA out

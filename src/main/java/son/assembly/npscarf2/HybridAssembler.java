@@ -177,23 +177,22 @@ public class HybridAssembler {
 					Node  	n0 = curPath.getRoot(),
 							n1 = null;
 					for(Edge ep:curPath.getEdgePath()){
-						n1 = ep.getOpposite(n0);
-						if(!BidirectedGraph.isUnique(n0) == BidirectedGraph.isUnique(n1)){
-			    			tobeRemoved.add((BidirectedEdge)ep);
-			    			if(BidirectedGraph.isUnique(n0))
-			    				n1.setAttribute("cov", Math.max(n1.getNumber("cov")-n0.getNumber("cov"),n0.getNumber("cov")));   
-			    			if(BidirectedGraph.isUnique(n1))
-			    				n0.setAttribute("cov", Math.max(n0.getNumber("cov")-n1.getNumber("cov"),n1.getNumber("cov")));   
-
-						}
-						//TODO: remove also edges with same direction to ep from the unique node
+						ep.setAttribute("cov", ep.getNumber("cov") - n0.getNumber("cov"));
+						if(ep.getNumber("cov")/BidirectedGraph.aveCov < .5)
+							tobeRemoved.add((BidirectedEdge) ep);
 						
-//			    		if(!BidirectedGraph.isUnique(n1)){			    			
-//			    			n1.setAttribute("cov", Math.max(n1.getNumber("cov")-markerNode.getNumber("cov"),markerNode.getNumber("cov")));   		
-////			    			LOG.info("...coverage of " + n1.getAttribute("name") + " now is " + n1.getNumber("cov"));
-//			    		}
-						
-			    		n0=n1;
+//						n1 = ep.getOpposite(n0);
+//						if(!BidirectedGraph.isUnique(n0) == BidirectedGraph.isUnique(n1)){
+//			    			tobeRemoved.add((BidirectedEdge)ep);
+////			    			if(BidirectedGraph.isUnique(n0))
+////			    				n1.setAttribute("cov", Math.max(n1.getNumber("cov")-n0.getNumber("cov"),n0.getNumber("cov")));   
+////			    			if(BidirectedGraph.isUnique(n1))
+////			    				n0.setAttribute("cov", Math.max(n0.getNumber("cov")-n1.getNumber("cov"),n1.getNumber("cov")));   
+//
+//						}
+//						
+//						
+//			    		n0=n1;
 					}
 
 				}
