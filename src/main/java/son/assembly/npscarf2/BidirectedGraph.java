@@ -655,7 +655,8 @@ public class BidirectedGraph extends AdjacencyListGraph{
     	ArrayList<BidirectedEdge> newUnknownEdges = new ArrayList<BidirectedEdge>();
     	while(true) {
 	    	for(BidirectedEdge e:unknownEdges) {
-	    			
+	    		if(!Double.isNaN(e.getNumber("cov")))
+	    			continue;
 	    			
 	    		BidirectedNode n0 = e.getNode0(), n1=e.getNode1();
 	    		boolean dir0 = e.getDir0(), dir1 = e.getDir1();
@@ -697,27 +698,73 @@ public class BidirectedGraph extends AdjacencyListGraph{
 	    				unknwOut1++;
 	    		}
 	    		
-	    		//do smt here...
+	    		//calculate sumOfCovToN0, sumOfCovFromN0; sumOfCovToN1, sumOfCovFromN1;
+	    		//should be: sumOfCovToN0==sumOfCovFromN0==covOfN0; sumOfCovToN1==sumOfCovFromN1==covOfN1 ??? 
+	    		double covInferredFromN0 = Double.NaN, covInferredFromN1=Double.NaN, estimatedCov=Double.NaN;
+	    		//int confidence = 0; //maximum=sum of length of 2 end nodes
+	    		double aveCov0=n0.getNumber("cov"), aveCov1=n1.getNumber("cov");
 	    		if(dir0) {
-	    			if(unknwOut0 == 1)
-	    				e.setAttribute("cov", n0.getNumber("cov")-outWeight0);
+	    			if(unknwOut0 == 1) {
+	    				if(unknwIn0==0) {
+	    					if(approxCompare(inWeight0, aveCov0)!=0)
+	    						System.out.println("Node " + n0.getAttribute("name") + ": sum of entering edges = " + inWeight0);
+	    					aveCov0=calibrate(aveCov0,inWeight0);
+	    				}
+	    				covInferredFromN0 = aveCov0-outWeight0;
+	    			}
 	    		}else {
-	    			if(unknwIn0 == 1)
-	    				e.setAttribute("cov", n0.getNumber("cov")-inWeight0);
+	    			if(unknwIn0 == 1) {
+	    				if(unknwOut0==0) {
+	    					if(approxCompare(outWeight0, aveCov0)!=0)
+	    						System.out.println("Node " + n0.getAttribute("name") + ": sum of out-going edges = " + outWeight0);
+	    					aveCov0=calibrate(aveCov0,outWeight0);
+	    				}
+	    				covInferredFromN0 = aveCov0-inWeight0;
+	    			}
 	    		}
 	    		
 	    		if(dir1) {
-	    			if(unknwOut1 == 1)
-	    				e.setAttribute("cov", n1.getNumber("cov")-outWeight1);
+	    			if(unknwOut1 == 1) {
+	    				if(unknwIn1==0) {
+	    					if(approxCompare(inWeight1, aveCov1)!=0)
+	    						System.out.println("Node " + n1.getAttribute("name") + ": sum of entering edges = " + inWeight1);
+	    					aveCov1=calibrate(aveCov1,inWeight1);
+	    				}
+	    				covInferredFromN1 = aveCov1-outWeight1;
+	    			}
 	    		}else {
-	    			if(unknwIn1 == 1)
-	    				e.setAttribute("cov", n1.getNumber("cov")-inWeight1);
+	    			if(unknwIn1 == 1) {
+	    				if(unknwOut1==0) {
+	    					if(approxCompare(outWeight1, aveCov1)!=0)
+	    						System.out.println("Node " + n1.getAttribute("name") + ": sum of out-going edges = " + outWeight1);
+	    					aveCov1=calibrate(aveCov1,outWeight1);
+	    				}
+	    				covInferredFromN1 = aveCov1-inWeight1;
+	    				
+	    			}
 	    		}
 	    		
-	    		if(Double.isNaN(e.getNumber("cov"))) {
-	    			newUnknownEdges.add(e);
-	    			System.out.println("unable to resolve: " + e.getId() + " : " + (dir0?unknwOut0:unknwIn0) + "(" + n0.getId()+ ") --- " + (dir1?unknwOut1:unknwIn1) + "(" + n1.getId() + ")");
+	    		
+	    		if(Double.isNaN(covInferredFromN0) && Double.isNaN(covInferredFromN1)) { //both are unknown
+	    			System.out.println("==> Unable to resolve: " + e.getId() + " : " + (dir0?unknwOut0:unknwIn0) + "(" + n0.getId()+ ") --- " + (dir1?unknwOut1:unknwIn1) + "(" + n1.getId() + ")");
+	    		}else if (!Double.isNaN(covInferredFromN0) && !Double.isNaN(covInferredFromN1)){
+					if(approxCompare(covInferredFromN0, covInferredFromN1)!=0) {
+						System.out.println("==> Infer from node " + n0.getAttribute("name") + ": " + covInferredFromN0 + " and from node " + n1.getAttribute("name") + ": " + covInferredFromN1);
+						printEdgesCov(n0);
+						printEdgesCov(n1);
+					}
+	    			
+					//estimatedCov=calibrate(covInferredFromN0,covInferredFromN1);
+					estimatedCov=calibrateWithWeight(	covInferredFromN0, ((Sequence)(n0.getAttribute("seq"))).length(), 
+														covInferredFromN1, ((Sequence)(n1.getAttribute("seq"))).length());
+	    		}else {
+	    			estimatedCov=Double.isNaN(covInferredFromN0)?covInferredFromN1:covInferredFromN0;
 	    		}
+	    		
+	    		if(Double.isNaN(estimatedCov))
+	    			newUnknownEdges.add(e);
+	    		else
+	    			e.setAttribute("cov", estimatedCov);
 					
 	    	}
 
@@ -732,5 +779,46 @@ public class BidirectedGraph extends AdjacencyListGraph{
 	    	}
     	}
     	
+    }
+    /*
+     * Compare 2 double values x,y
+     * Return 0 if x~=y, 1 if x>>y, -1 if x<<y
+     */
+    public static int approxCompare(double x, double y) {
+    	int retval=0;
+    	double ratio=Math.abs(x-y)/(Math.max(Math.abs(x), Math.abs(y)));
+    	if(ratio > .3)
+    		retval=x>y?1:-1;
+    	
+    	return retval;
+    }
+    
+    /*
+     * Print adjacent edges' coverage of a node
+     */
+    public void printEdgesCov(Node node) {
+    	Iterator<BidirectedEdge> in = node.getEnteringEdgeIterator(), out = node.getLeavingEdgeIterator();
+    	System.out.print("+++Node " + node.getAttribute("name") + "\tIN: ");
+    	while(in.hasNext()) {
+    		BidirectedEdge e = in.next();
+    		System.out.printf("[%s]=%.2f; ", e.getId(), e.getNumber("cov"));
+    	}
+    	System.out.print("\n\tOUT: ");
+    	while(out.hasNext()) {
+    		BidirectedEdge e = out.next();
+    		System.out.printf("[%s]=%.2f; ", e.getId(), e.getNumber("cov"));
+    	}
+    	System.out.println();
+    }
+    
+    /*
+     * Balance function
+     */
+    private double calibrate(double x, double y) {
+    	return Math.max(x, y);
+//    	return (a+b)/2;
+    }
+    private double calibrateWithWeight(double x, int xw, double y, int yw){
+    	return (x*xw+y*yw)/(xw+yw);
     }
 }
