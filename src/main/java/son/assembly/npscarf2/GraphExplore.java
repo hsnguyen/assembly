@@ -118,7 +118,7 @@ public class GraphExplore {
 //          node.addAttribute("ui.label", covScale);
           
 //			node.addAttribute("ui.label", node.getId());
-			node.addAttribute("ui.label", node.getNumber("cov"));
+			node.addAttribute("ui.label", (int)(node.getNumber("cov")));
 
 
 			node.setAttribute("ui.style", "	size: " + lengthScale + "gu;" +
@@ -130,7 +130,7 @@ public class GraphExplore {
     	
     	graph.balancing();
     	for(Edge e : graph.getEdgeSet()) {
-    		e.addAttribute("ui.label", e.getNumber("cov"));
+    		e.addAttribute("ui.label", (int)(e.getNumber("cov")));
     	}
     	
     

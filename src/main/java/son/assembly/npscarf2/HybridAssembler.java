@@ -178,7 +178,8 @@ public class HybridAssembler {
 							n1 = null;
 					for(Edge ep:curPath.getEdgePath()){
 						ep.setAttribute("cov", ep.getNumber("cov") - n0.getNumber("cov"));
-						if(ep.getNumber("cov")/BidirectedGraph.aveCov < .5)
+//						if(ep.getNumber("cov")/BidirectedGraph.aveCov < .5)
+						if(ep.getNumber("cov")/n0.getNumber("cov") < .5) //plasmid coverage is different!!!
 							tobeRemoved.add((BidirectedEdge) ep);
 						
 //						n1 = ep.getOpposite(n0);

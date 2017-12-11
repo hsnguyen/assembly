@@ -763,8 +763,11 @@ public class BidirectedGraph extends AdjacencyListGraph{
 	    		
 	    		if(Double.isNaN(estimatedCov))
 	    			newUnknownEdges.add(e);
-	    		else
+	    		else {
+	    			System.out.println("Final estimated coverage for " + e.getId() + " is " + estimatedCov);
+
 	    			e.setAttribute("cov", estimatedCov);
+	    		}
 					
 	    	}
 
