@@ -16,19 +16,29 @@ import org.slf4j.LoggerFactory;
 
 public class BidirectedPath extends Path{
 	int deviation; //how this path differ to long read data (todo: by multiple-alignment??)
-	private double coverage=-1; //representative coverage of this path (basically the lowest cov from its nodes)
-    private static final Logger LOG = LoggerFactory.getLogger(BidirectedPath.class);
+	private double coverage=-1; //representative coverage of this path (basically the coverage of unique nodes weighted by length)
+    private int len=0;
+	private static final Logger LOG = LoggerFactory.getLogger(BidirectedPath.class);
     
     @Override
     public void add(Edge edge) {
     	super.add(edge);
+    	Node lastNode = peekNode();
     	
-    	double newCoverage = peekNode().getNumber("cov");
+    	len+=((Sequence)lastNode.getAttribute("seq")).length()-BidirectedGraph.getKmerSize();
+    	
+    	double newCoverage = lastNode.getNumber("cov");
+    	//now just take the minimum
     	if(coverage<=0)
     		coverage=newCoverage;
     	else
     		coverage=Math.min(coverage, newCoverage);
     	
+    }
+    @Override
+    public void setRoot(Node root) {
+    	super.setRoot(root);
+    	len=((Sequence) root.getAttribute("seq")).length();
     }
     
 	public BidirectedPath(){
@@ -163,31 +173,25 @@ public class BidirectedPath extends Path{
 	public double getCoverage(){
 		return coverage;
 	}
+	public int getLength() {
+		return len;
+	}
 	/**
 	 * 
 	 * @return average depth of this path
 	 */
-//	public double averageCov(){
-//		int len=0;
-//		double res=0;
-//		for(Node n:getNodePath()){
-//			if(BidirectedGraph.isUnique(n)){
-//				Sequence seq = (Sequence) n.getAttribute("seq");
-//				double cov = Double.parseDouble(seq.getName().split("_")[5]);
-//				len+=(n==getRoot())?seq.length():seq.length()-BidirectedGraph.getKmerSize();
-//				res+=seq.length()*cov;
-//			}
-//		}
-//		return res/len;
-//	}
-
-	public int length() {
-		int retval = 0;
+	public double averageCov(){
+		int len=0;
+		double res=0;
 		for(Node n:getNodePath()){
-			Sequence seq = (Sequence) n.getAttribute("seq");
-			retval+=(n==getRoot())?seq.length():seq.length()-BidirectedGraph.getKmerSize();		
+			if(BidirectedGraph.isUnique(n)){
+				Sequence seq = (Sequence) n.getAttribute("seq");
+				double cov = Double.parseDouble(seq.getName().split("_")[5]);
+				len+=(n==getRoot())?seq.length():seq.length()-BidirectedGraph.getKmerSize();
+				res+=seq.length()*cov;
+			}
 		}
-		return retval;
+		return res/len;
 	}
 	
 	public int getNumOfMarkers() {

@@ -120,14 +120,17 @@ public class BidirectedEdge extends AbstractEdge{
 		this.path = path;
 		//here set the new length due to that path
 		Node 	curNode = path.getRoot();
-		for(Edge e:path.getEdgePath()){
-			curNode = e.getOpposite(curNode);
-			if(curNode == path.peekNode())
-				break;
-			else{
-				length+=((Sequence)curNode.getAttribute("seq")).length()-BidirectedGraph.getKmerSize();
-			}
-		}
+		length=path.getLength();
+		
+		//TODO: remove if worked!
+//		for(Edge e:path.getEdgePath()){
+//			curNode = e.getOpposite(curNode);
+//			if(curNode == path.peekNode())
+//				break;
+//			else{
+//				length+=((Sequence)curNode.getAttribute("seq")).length()-BidirectedGraph.getKmerSize();
+//			}
+//		}
 	}
 	public BidirectedPath getPath(){
 		return path;

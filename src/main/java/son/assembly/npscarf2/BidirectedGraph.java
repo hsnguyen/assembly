@@ -141,6 +141,7 @@ public class BidirectedGraph extends AdjacencyListGraph{
 		Sequence seq;
 		int shortestLen = 10000;
 		int totReadLen=0, totGenomeLen=0;
+		ArrayList<EdgeComponents> potentialEdgeSet = new ArrayList<EdgeComponents>();
 		while ((seq = reader.nextSequence(Alphabet.DNA())) != null){
 			if(seq.length()<shortestLen)
 				shortestLen=seq.length();
@@ -176,13 +177,17 @@ public class BidirectedGraph extends AdjacencyListGraph{
 					AbstractNode nbr = addNode(neighborID);
 					nbr.setAttribute("cov", Double.parseDouble(neighbor.split("_")[5]));
 					
-					addEdge(node, nbr, dir0, dir1);
+					potentialEdgeSet.add(new EdgeComponents(node,nbr,dir0,dir1));
+					//addEdge(node, nbr, dir0, dir1);
 					//e.addAttribute("ui.label", e.getId());
 				}
 			}
 			
 		}
 
+		for(EdgeComponents ec:potentialEdgeSet) {
+			addEdge(ec.n1, ec.n2, ec.dir1, ec.dir2);
+		}
 		//rough estimation of kmer used
 		if((shortestLen-1) != getKmerSize()){
 			setKmerSize(shortestLen-1);
@@ -823,5 +828,17 @@ public class BidirectedGraph extends AdjacencyListGraph{
     }
     private double calibrateWithWeight(double x, int xw, double y, int yw){
     	return (x*xw+y*yw)/(xw+yw);
+    }
+    
+    class EdgeComponents{
+    	AbstractNode n1,n2;
+    	boolean dir1,dir2;
+
+    	EdgeComponents(AbstractNode n1, AbstractNode n2, boolean dir1, boolean dir2){
+    		this.n1=n1;
+    		this.n2=n2;
+    		this.dir1=dir1;
+    		this.dir2=dir2;
+    	}
     }
 }

@@ -151,6 +151,7 @@ public class HybridAssembler {
     	//search for an unique node as the marker. 
     	ArrayList<BidirectedEdge> 	tobeRemoved = new ArrayList<BidirectedEdge>(),
     								tobeAdded = new ArrayList<BidirectedEdge>();
+    	double aveCov=p.averageCov();
     	for(Edge e:p.getEdgePath()){
     			
     		curNodeFromSimGraph=e.getOpposite(curNodeFromSimGraph);
@@ -174,12 +175,12 @@ public class HybridAssembler {
 					tobeAdded.add(reducedEdge);
 					
 					//loop over curPath to find out edges needed to be removed
-					Node  	n0 = curPath.getRoot(),
-							n1 = null;
+//					Node  	n0 = curPath.getRoot(),
+//							n1 = null;
 					for(Edge ep:curPath.getEdgePath()){
-						ep.setAttribute("cov", ep.getNumber("cov") - n0.getNumber("cov"));
+						ep.setAttribute("cov", ep.getNumber("cov") - aveCov);
 //						if(ep.getNumber("cov")/BidirectedGraph.aveCov < .5)
-						if(ep.getNumber("cov")/n0.getNumber("cov") < .5) //plasmid coverage is different!!!
+						if(ep.getNumber("cov")/aveCov < .3) //plasmid coverage is different!!!
 							tobeRemoved.add((BidirectedEdge) ep);
 						
 //						n1 = ep.getOpposite(n0);
