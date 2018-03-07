@@ -11,7 +11,7 @@ public class Alignment implements Comparable<Alignment> {
 	public final static int OVERHANG_THRES=1000; 
 	public final static int GOOD_QUAL=60; 
 
-	public static int MIN_QUAL=30; //TODO: reduce this by doing self-correction 
+	public static int MIN_QUAL=1; //TODO: reduce this by doing self-correction 
 
 	int alignLength, quality;
 
@@ -109,7 +109,7 @@ public class Alignment implements Comparable<Alignment> {
 			goodMargin=true;
 		
 	if	(		goodMargin
-//				&& prime //TODO: there are useful secondary alignment!!!
+				&& prime //TODO: there are useful secondary alignment!!!
 				&& alignLength > BidirectedGraph.getKmerSize() //FIXME: 
 				&& quality >= MIN_QUAL
 			)

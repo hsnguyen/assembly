@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 
 import org.graphstream.graph.Edge;
@@ -52,7 +53,6 @@ public class HybridAssembler {
 		String readID = "";
 		//ReadFilling readFilling = null;
 		ArrayList<Alignment> samList =  new ArrayList<Alignment>();;// alignment record of the same read;	
-		BidirectedPath p = new BidirectedPath();
 		while (iter.hasNext()) {
 			SAMRecord rec = iter.next();
 			if (rec.getReadUnmappedFlag())
@@ -67,18 +67,22 @@ public class HybridAssembler {
 			// make list of alignments of the same (Nanopore) read. 
 
 			//not the first occurrance				
-			if (!readID.equals("") && !readID.equals(myRec.readID)) {		
-				//Collections.sort(samList);
-				//p=origGraph.pathFinding(samList);
-				p=simGraph.pathFinding(samList); // the graph MUST be the same as from new Alignment(...)
-
-				if(p!=null)
-					System.out.println("Final path found: " + p.getId());
-		    	if(reduce(p)) {
-		    		GraphExplore.initGraphStyle(simGraph);
-//		    		promptEnterKey();
-		    	}
-		    	
+			if (!readID.equals("") && !readID.equals(myRec.readID)) {	
+				synchronized(simGraph) {
+					//Collections.sort(samList);
+					//p=origGraph.pathFinding(samList);
+					List<BidirectedPath> paths=simGraph.pathFinding(samList);// the graph MUST be the same as from new Alignment(...)
+					if(paths!=null)						
+						for(BidirectedPath p:paths) 
+						{
+							if(p!=null)
+								System.out.println("Reducing path: " + p.getId());
+					    	if(reduce(p)) {
+					    		GraphExplore.initGraphStyle(simGraph);
+			//		    		promptEnterKey();
+					    	}
+						}
+				}
 //				reduce2(p);
 				samList = new ArrayList<Alignment>();
 				//readID = myRec.readID;	
@@ -178,9 +182,10 @@ public class HybridAssembler {
 //					Node  	n0 = curPath.getRoot(),
 //							n1 = null;
 					for(Edge ep:curPath.getEdgePath()){
-						ep.setAttribute("cov", ep.getNumber("cov") - aveCov);
-//						if(ep.getNumber("cov")/BidirectedGraph.aveCov < .5)
-						if(ep.getNumber("cov")/aveCov < .3) //plasmid coverage is different!!!
+//						LOG.info("--edge {} coverage:{} to {}",ep.getId(),ep.getNumber("cov"),ep.getNumber("cov") - aveCov);
+						ep.setAttribute("cov", ep.getNumber("cov") - aveCov);	
+						
+						if(ep.getNumber("cov")/aveCov < .5) //plasmid coverage is different!!!
 							tobeRemoved.add((BidirectedEdge) ep);
 						
 //						n1 = ep.getOpposite(n0);

@@ -26,8 +26,8 @@ public class GraphExplore {
 
     public GraphExplore() throws IOException{
     	//System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer"); 
-//    	String sample="EcK12S-careful";
-    	String sample="Kp2146-careful";
+    	String sample="EcK12S-careful";
+//    	String sample="Kp2146-careful";
 //    	String sample="meta-careful";
 //    	String sample="cp_S5";
 
@@ -117,8 +117,8 @@ public class GraphExplore {
           
 //          node.addAttribute("ui.label", covScale);
           
-//			node.addAttribute("ui.label", node.getId());
-			node.addAttribute("ui.label", (int)(node.getNumber("cov")));
+			node.addAttribute("ui.label", node.getId());
+//			node.addAttribute("ui.label", (int)(node.getNumber("cov")));
 
 
 			node.setAttribute("ui.style", "	size: " + lengthScale + "gu;" +
@@ -129,9 +129,9 @@ public class GraphExplore {
     	}
     	
     	graph.balancing();
-    	for(Edge e : graph.getEdgeSet()) {
-    		e.addAttribute("ui.label", (int)(e.getNumber("cov")));
-    	}
+//    	for(Edge e : graph.getEdgeSet()) {
+//    		e.addAttribute("ui.label", (int)(e.getNumber("cov")));
+//    	}
     	
     
     }

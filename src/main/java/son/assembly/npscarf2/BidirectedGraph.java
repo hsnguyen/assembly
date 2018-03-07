@@ -178,8 +178,6 @@ public class BidirectedGraph extends AdjacencyListGraph{
 					nbr.setAttribute("cov", Double.parseDouble(neighbor.split("_")[5]));
 					
 					potentialEdgeSet.add(new EdgeComponents(node,nbr,dir0,dir1));
-					//addEdge(node, nbr, dir0, dir1);
-					//e.addAttribute("ui.label", e.getId());
 				}
 			}
 			
@@ -515,10 +513,107 @@ public class BidirectedGraph extends AdjacencyListGraph{
     	}
     }
     
+//    /*
+//     * Find a path based on list of Alignments
+//     */
+//	public BidirectedPath pathFinding(ArrayList<Alignment> alignments) {
+//		if(alignments.size()<=1)
+//			return null;
+//		
+//		System.out.println("=================================================");
+//		for(Alignment alg:alignments)
+//			System.out.println("\t"+alg.toString());
+//		System.out.println("=================================================");
+//		//First bin the alignments into different overlap regions			
+//		//only considering useful alignments
+//		HashMap<Range,Alignment> allAlignments = new HashMap<Range,Alignment>();
+//		ArrayList<BidirectedPath> joinPaths = new ArrayList<BidirectedPath>();
+//		
+//		for(Alignment alg:alignments){
+//			if(alg.useful){
+//				Range range = new Range(alg.readAlignmentStart(),alg.readAlignmentEnd());
+//				allAlignments.put(range, alg);
+//			}
+//		}
+//		//now get all the bin in order
+//		List<Range> baseRanges=new ArrayList<Range>(allAlignments.keySet());
+//		List<List<Range>> rangeGroups = MetaRange.getOverlappingGroups(baseRanges);
+//		
+//		if(rangeGroups.size() < 2)
+//			return null;
+//		
+//		System.out.println("Binning ranges: ");
+//	    for(List<Range> group : rangeGroups){
+//	    	for(Range range:group)
+//	    		System.out.print(allAlignments.get(range).node.getId() + ": " + range + "; ");
+//	    	System.out.println();
+//	    }
+//
+//		//iterate all alignments in adjacent bins to find correct path
+//		ArrayList<Alignment> curGroup = new ArrayList<Alignment>(), 
+//							nextGroup = new ArrayList<Alignment>();
+//		List<Range> curRanges = rangeGroups.get(0);
+//		for(Range r:curRanges)
+//			curGroup.add(allAlignments.get(r));
+////		curGroup = Alignment.scanGroup(curGroup);
+//		
+//		for(int i=1; i<rangeGroups.size();i++){
+//			List<Range> nextRanges = rangeGroups.get(i);
+//			nextGroup = new ArrayList<Alignment>();
+//			
+//			for(Range r:nextRanges)
+//				nextGroup.add(allAlignments.get(r));
+////			nextGroup=Alignment.scanGroup(nextGroup);
+//			
+//			ArrayList<BidirectedPath> allPaths = new ArrayList<BidirectedPath>();
+//			
+//			
+//			for(Alignment curAlg:curGroup){
+//				for(Alignment nextAlg:nextGroup){
+//					int distance = nextAlg.readAlignmentStart()-curAlg.readAlignmentEnd();
+//					if(distance<D_LIMIT){
+//						ArrayList<BidirectedPath> bridges = getClosestPath(curAlg, nextAlg, distance);
+//						if(bridges!=null)
+//							allPaths.addAll(bridges);
+//					}
+//				}
+//			}
+//			//join all paths from previous to the new ones
+//			//TODO:optimize it
+//			if(joinPaths.isEmpty() || joinPaths.size()==0)
+//				joinPaths=allPaths;
+//			else{
+//				System.out.println("=====Current list of paths: " + joinPaths);
+//				System.out.println("=====Join to list of paths: " + allPaths);
+//
+//				for(BidirectedPath p:joinPaths)
+//					for(BidirectedPath e:allPaths)
+//						p.join(e);					
+//				
+//			}
+//			curGroup=nextGroup;
+//		}
+//		
+//		for(BidirectedPath path:joinPaths)
+//			System.out.println("A member Path: " + path.toString() + " deviation: " + path.getDeviation());
+//		if(joinPaths.isEmpty())
+//			return null;
+//		else {
+//			int numOfMarkers=0, index=0;
+//			BidirectedPath path = null;
+//			for(int i=0; i < joinPaths.size(); i++) {
+//				path=joinPaths.get(i);
+//				if(path.getNumOfMarkers() > numOfMarkers)
+//					index=i;
+//			}
+//			return joinPaths.get(index);
+//		}
+//	}
     /*
      * Find a path based on list of Alignments
+     * Only best alignment in each group are chosen to find the path to
      */
-	public BidirectedPath pathFinding(ArrayList<Alignment> alignments) {
+	public List<BidirectedPath> pathFinding(ArrayList<Alignment> alignments) {
 		if(alignments.size()<=1)
 			return null;
 		
@@ -529,7 +624,7 @@ public class BidirectedGraph extends AdjacencyListGraph{
 		//First bin the alignments into different overlap regions			
 		//only considering useful alignments
 		HashMap<Range,Alignment> allAlignments = new HashMap<Range,Alignment>();
-		ArrayList<BidirectedPath> joinPaths = new ArrayList<BidirectedPath>();
+		ArrayList<BidirectedPath> joinPaths = new ArrayList<>();;
 		
 		for(Alignment alg:alignments){
 			if(alg.useful){
@@ -544,71 +639,71 @@ public class BidirectedGraph extends AdjacencyListGraph{
 		if(rangeGroups.size() < 2)
 			return null;
 		
+		List<Range> stepRanges=new ArrayList<>(rangeGroups.size());
+		
 		System.out.println("Binning ranges: ");
 	    for(List<Range> group : rangeGroups){
-	    	for(Range range:group)
-	    		System.out.print(allAlignments.get(range).node.getId() + ": " + range + "; ");
+	    	int maxscore=0;
+	    	Range rangeOfBest=null;
+	    	for(Range range:group) { 
+	    		System.out.print(allAlignments.get(range).node.getId() + ": " + range + "; ");	    
+	    		if(allAlignments.get(range).quality > maxscore)
+	    			rangeOfBest=range;
+	    	}
+	  	
+	    	stepRanges.add(rangeOfBest);
 	    	System.out.println();
 	    }
 
-		//iterate all alignments in adjacent bins to find correct path
-		ArrayList<Alignment> curGroup = new ArrayList<Alignment>(), 
-							nextGroup = new ArrayList<Alignment>();
-		List<Range> curRanges = rangeGroups.get(0);
-		for(Range r:curRanges)
-			curGroup.add(allAlignments.get(r));
-//		curGroup = Alignment.scanGroup(curGroup);
-		
-		for(int i=1; i<rangeGroups.size();i++){
-			List<Range> nextRanges = rangeGroups.get(i);
-			nextGroup = new ArrayList<Alignment>();
+		Range curRange = stepRanges.get(0);
+
+		Alignment 	curAlignment =allAlignments.get(curRange),
+					nextAlignment;
+
+		BidirectedPath curPath=null;
+		for(int i=1; i<stepRanges.size();i++){
+			Range nextRanges = stepRanges.get(i);
+			nextAlignment = allAlignments.get(nextRanges);
 			
-			for(Range r:nextRanges)
-				nextGroup.add(allAlignments.get(r));
-//			nextGroup=Alignment.scanGroup(nextGroup);
-			
-			ArrayList<BidirectedPath> allPaths = new ArrayList<BidirectedPath>();
+			BidirectedPath curBridge=null;
 			
 			
-			for(Alignment curAlg:curGroup){
-				for(Alignment nextAlg:nextGroup){
-					int distance = nextAlg.readAlignmentStart()-curAlg.readAlignmentEnd();
-					if(distance<D_LIMIT){
-						ArrayList<BidirectedPath> bridges = getClosestPath(curAlg, nextAlg, distance);
-						if(bridges!=null)
-							allPaths.addAll(bridges);
-					}
-				}
-			}
+
+			int distance = nextAlignment.readAlignmentStart()-curAlignment.readAlignmentEnd();
+			if(distance<D_LIMIT){
+				ArrayList<BidirectedPath> bridges = getClosestPath(curAlignment, nextAlignment, distance);
+				if(bridges!=null)
+					curBridge = bridges.get(0);
+			}else 
+				continue;
+
 			//join all paths from previous to the new ones
 			//TODO:optimize it
-			if(joinPaths.isEmpty() || joinPaths.size()==0)
-				joinPaths=allPaths;
-			else{
-				System.out.println("=====Current list of paths: " + joinPaths);
-				System.out.println("=====Join to list of paths: " + allPaths);
+			System.out.println("====Before curPath: " + curPath + "; curBridge:" + curBridge);
 
-				for(BidirectedPath p:joinPaths)
-					for(BidirectedPath e:allPaths)
-						p.join(e);					
-				
+			if(curPath==null)
+				curPath=curBridge;
+			else{
+				if(!curPath.join(curBridge)) {
+					joinPaths.add(curPath);		
+					curPath=curBridge;
+				}
 			}
-			curGroup=nextGroup;
+			curAlignment=nextAlignment;
+			
+			System.out.println("====After curPath: " + curPath + "; curBridge:" + curBridge);
 		}
+		if(curPath!=null)
+			joinPaths.add(curPath);
 		
-		for(BidirectedPath path:joinPaths)
-			System.out.println("A member Path: " + path.toString() + " deviation: " + path.getDeviation());
+
 		if(joinPaths.isEmpty())
 			return null;
 		else {
-			int numOfMarkers=0, index=0;
-			BidirectedPath path = null;
-			for(int i=0; i < joinPaths.size(); i++) {
-				path=joinPaths.get(i);
-				if(path.getNumOfMarkers() > numOfMarkers)
-					index=i;
-			}
-			return joinPaths.get(index);
+			for(BidirectedPath path:joinPaths)
+				System.out.println("A member Path: " + path.toString() + " deviation: " + path.getDeviation());
+			
+			return joinPaths;
 		}
 	}
 	
@@ -650,7 +745,7 @@ public class BidirectedGraph extends AdjacencyListGraph{
 //    }
     	
     /*
-     * Traverse the graph and assign weight to every edge based on coverage of ending nodes
+     * Traverse the graph and assign weights to every edges based on coverage of ending nodes
      * and update a node's coverage if possible (later)
      */
     public void balancing() {

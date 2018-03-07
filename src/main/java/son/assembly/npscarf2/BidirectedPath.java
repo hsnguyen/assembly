@@ -140,26 +140,27 @@ public class BidirectedPath extends Path{
 	  * Add a path to the current path. The path to be added must start with the last node
 	  * of the current path. Return TRUE if the joining valid and succeed.
 	  */
-	public boolean join(BidirectedPath bridge) {
-		if(bridge==null || bridge.size() <=1)
-			return false;
-		if(bridge.getRoot() != peekNode()){
-			LOG.error("Cannot join path with disagreed first node " + bridge.getRoot().getId());
+	public boolean join(BidirectedPath newPath) {
+		if(newPath==null || newPath.size() <=1)
+			return true;//old:false
+		
+		if(newPath.getRoot() != peekNode()){
+			LOG.error("Cannot join path with disagreed first node: " + newPath.getRoot().getId() + " != " + peekNode().getId());
 			return false;
 		}
-		if(((BidirectedEdge) bridge.getEdgePath().get(0)).getDir((AbstractNode) bridge.getRoot())
+		if(((BidirectedEdge) newPath.getEdgePath().get(0)).getDir((AbstractNode) newPath.getRoot())
 			== ((BidirectedEdge) peekEdge()).getDir((AbstractNode) peekNode())){
-			LOG.error("Conflict direction from the first node " + bridge.getRoot().getId());
+			LOG.error("Conflict direction from the first node " + newPath.getRoot().getId());
 			return false;
 		}
 		//TODO: need a way to check coverage consistent
 
 			
-		for(Edge e:bridge.getEdgePath()){
+		for(Edge e:newPath.getEdgePath()){
 			add(e);
 		}
 		
-		coverage=Math.min(coverage, bridge.coverage);
+		coverage=Math.min(coverage, newPath.coverage);
 		return true;
 	}
 	
