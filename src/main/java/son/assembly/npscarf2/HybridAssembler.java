@@ -69,14 +69,11 @@ public class HybridAssembler {
 			//not the first occurrance				
 			if (!readID.equals("") && !readID.equals(myRec.readID)) {	
 				synchronized(simGraph) {
-					//Collections.sort(samList);
 					//p=origGraph.pathFinding(samList);
 					List<BidirectedPath> paths=simGraph.pathFinding(samList);// the graph MUST be the same as from new Alignment(...)
 					if(paths!=null)						
 						for(BidirectedPath p:paths) 
 						{
-							if(p!=null)
-								System.out.println("Reducing path: " + p.getId());
 					    	if(reduce(p)) {
 					    		GraphExplore.initGraphStyle(simGraph);
 			//		    		promptEnterKey();
@@ -104,7 +101,7 @@ public class HybridAssembler {
 		BufferedReader pathReader = new BufferedReader(new FileReader(paths));
 		
 		String s="", curpath="";
-		//Read contigs from contigs.paths and refer themselves to contigs.fasta
+		//Read contigs from contigs.paths
 		boolean flag=false;
 		while((s=pathReader.readLine()) != null){
 			if(s.contains("NODE")){
@@ -136,7 +133,8 @@ public class HybridAssembler {
     	//do nothing if the path has only one node
     	if(p==null || p.getEdgeCount()<1)
     		return false;
-    	
+    	else
+    		System.out.println("Reducing path: " + p.getId());
     	//loop over the edges of path (like spelling())
     	BidirectedNode 	markerNode = null,
     			curNodeFromSimGraph = (BidirectedNode) p.getRoot();
@@ -182,10 +180,10 @@ public class HybridAssembler {
 //					Node  	n0 = curPath.getRoot(),
 //							n1 = null;
 					for(Edge ep:curPath.getEdgePath()){
-//						LOG.info("--edge {} coverage:{} to {}",ep.getId(),ep.getNumber("cov"),ep.getNumber("cov") - aveCov);
+						LOG.info("--edge {} coverage:{} to {}",ep.getId(),ep.getNumber("cov"),ep.getNumber("cov") - aveCov);
 						ep.setAttribute("cov", ep.getNumber("cov") - aveCov);	
 						
-						if(ep.getNumber("cov")/aveCov < .5) //plasmid coverage is different!!!
+						if(ep.getNumber("cov")/aveCov < .5 && (BidirectedGraph.isUnique(ep.getSourceNode()) || BidirectedGraph.isUnique(ep.getTargetNode())) ) //plasmid coverage is different!!!
 							tobeRemoved.add((BidirectedEdge) ep);
 						
 //						n1 = ep.getOpposite(n0);
@@ -224,6 +222,7 @@ public class HybridAssembler {
     		LOG.info("REMOVING EDGE " + e.getId() + " from " + e.getNode0().getGraph().getId() + "-" + e.getNode1().getGraph().getId());
     		LOG.info("before: \n\t" + simGraph.printEdgesOfNode(e.getNode0()) + "\n\t" + simGraph.printEdgesOfNode(e.getNode1()));
     		simGraph.removeEdge(e.getId());
+    		simGraph.updateGraphInfo(e, (byte)-1);
     		LOG.info("after: \n\t" + simGraph.printEdgesOfNode(e.getNode0()) + "\n\t" + simGraph.printEdgesOfNode(e.getNode1()));
     	}
     	
@@ -232,7 +231,9 @@ public class HybridAssembler {
     		LOG.info("ADDING EDGE " + e.getId()+ " from " + e.getNode0().getGraph().getId() + "-" + e.getNode1().getGraph().getId());
     		LOG.info("before: \n\t" + simGraph.printEdgesOfNode(e.getNode0()) + "\n\t" + simGraph.printEdgesOfNode(e.getNode1()));
     		
-    		Edge reducedEdge = simGraph.addEdge(e.getSourceNode(),e.getTargetNode(),e.getDir0(),e.getDir1());
+    		BidirectedEdge reducedEdge = simGraph.addEdge(e.getSourceNode(),e.getTargetNode(),e.getDir0(),e.getDir1());
+    		simGraph.updateGraphInfo(reducedEdge, (byte)1);
+    		
 			if(reducedEdge!=null){
 //				reducedEdge.addAttribute("ui.label", reducedEdge.getId());
 //				reducedEdge.setAttribute("ui.style", "text-offset: -10; text-alignment: along;"); 

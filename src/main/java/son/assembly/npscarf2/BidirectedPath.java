@@ -72,7 +72,13 @@ public class BidirectedPath extends Path{
 			nextID = comps[i];
 			nextDir = nextID.contains("+")?true:false;
 			nextNode = graph.getNode(nextID.substring(0,nextID.length()-1));		
-			BidirectedEdge curEdge=new BidirectedEdge(curNode, nextNode, curDir, !nextDir);
+			//this is new edge,  not the edge itself in graph
+//			BidirectedEdge curEdge=new BidirectedEdge(curNode, nextNode, curDir, !nextDir);
+			//FIXME: need to do this, but didn't work!
+			BidirectedEdge curEdge=graph.getEdge(BidirectedEdge.createID(curNode, nextNode, curDir, !nextDir));
+			
+			if(curEdge==null)
+				System.out.println("Fuck: "+BidirectedEdge.createID(curNode, nextNode, curDir, !nextDir));
 			add(curEdge);
 			curDir=nextDir;
 			curNode=nextNode;

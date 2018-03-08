@@ -24,6 +24,10 @@ public class BidirectedGraph extends AdjacencyListGraph{
     static final int D_LIMIT=10000; //distance bigger than this will be ignored
     static final int S_LIMIT=50;
     
+    //provide dynamic state of particular pair of nodes with directions (e.g. A+B- : state)
+    //state of edge: -1=removed, 0=connect, 1=new connect(reduce edge)
+    private HashMap<String, Byte> graphInfo; 
+    
     private static final Logger LOG = LoggerFactory.getLogger(BidirectedGraph.class);
 
     // *** Constructors ***
@@ -52,6 +56,8 @@ public class BidirectedGraph extends AdjacencyListGraph{
 	public BidirectedGraph(String id, boolean strictChecking, boolean autoCreate,
 			int initialNodeCapacity, int initialEdgeCapacity) {
 		super(id, strictChecking, autoCreate);
+		graphInfo=new HashMap<String, Byte>(initialNodeCapacity*(initialNodeCapacity+1)/2);
+		
 		// All we need to do is to change the node & edge factory
 		setNodeFactory(new NodeFactory<BidirectedNode>() {
 			public BidirectedNode newInstance(String id, Graph graph) {
@@ -91,11 +97,11 @@ public class BidirectedGraph extends AdjacencyListGraph{
 	 *            Unique identifier of the graph.
 	 */
 	public BidirectedGraph(String id) {
-		this(id, true, false, 10000, 100000);
+		this(id, true, false, 1000, 10000);
 	}
 	
     public BidirectedGraph(){
-    	this("Assembly graph",true,false, 10000, 100000);
+    	this("Assembly graph",true,false, 1000, 10000);
         setKmerSize(127);//default kmer size used by SPAdes to assembly MiSeq data
     }
     
@@ -178,13 +184,14 @@ public class BidirectedGraph extends AdjacencyListGraph{
 					nbr.setAttribute("cov", Double.parseDouble(neighbor.split("_")[5]));
 					
 					potentialEdgeSet.add(new EdgeComponents(node,nbr,dir0,dir1));
+					
 				}
 			}
 			
 		}
 
 		for(EdgeComponents ec:potentialEdgeSet) {
-			addEdge(ec.n1, ec.n2, ec.dir1, ec.dir2);
+			updateGraphInfo(addEdge(ec.n1, ec.n2, ec.dir1, ec.dir2), (byte)0);
 		}
 		//rough estimation of kmer used
 		if((shortestLen-1) != getKmerSize()){
@@ -207,6 +214,18 @@ public class BidirectedGraph extends AdjacencyListGraph{
     	BidirectedGraph.kmer=kmer;
     }
     
+    /**************************************************************************************************
+     ********************** utility functions to serve the assembly algo ****************************** 
+     * ***********************************************************************************************/
+     
+    synchronized protected  Byte updateGraphInfo(BidirectedEdge e, Byte state) {
+    	//Get the ending 21-mer of each nodes to find hidden potential edges? 
+    	//NOPE, only do this if a suspicious alignment appeared!
+    	if(e==null || state < -1 || state >1)
+    		return null;
+    	else
+    		return graphInfo.put(e.getId(), state);
+    }
     
     /*
      * Read paths from contigs.path and reduce the graph
@@ -379,7 +398,7 @@ public class BidirectedGraph extends AdjacencyListGraph{
     /*
      * This function deduces a full path in this graph between 2 nodes aligned with a long read
      */
-    protected ArrayList<BidirectedPath> getClosestPath(Alignment from, Alignment to, int distance){
+    synchronized protected ArrayList<BidirectedPath> getClosestPath(Alignment from, Alignment to, int distance){
     	BidirectedNode srcNode = from.node,
     					dstNode = to.node;
     	System.out.println("Looking for path between " + srcNode.getId() + " to " + dstNode.getId() + " with distance " + distance);
@@ -465,7 +484,8 @@ public class BidirectedGraph extends AdjacencyListGraph{
     	return retval;
     	
     }
-    private void traverse(	BidirectedPath path, BidirectedNode dst, ArrayList<BidirectedPath> curResult, 
+    
+    synchronized private void traverse(	BidirectedPath path, BidirectedNode dst, ArrayList<BidirectedPath> curResult, 
     						int distance, boolean srcDir, boolean dstDir, int stepCount)
     {
     	//stop if it's going too far!
@@ -613,7 +633,7 @@ public class BidirectedGraph extends AdjacencyListGraph{
      * Find a path based on list of Alignments
      * Only best alignment in each group are chosen to find the path to
      */
-	public List<BidirectedPath> pathFinding(ArrayList<Alignment> alignments) {
+    synchronized public List<BidirectedPath> pathFinding(ArrayList<Alignment> alignments) {
 		if(alignments.size()<=1)
 			return null;
 		
@@ -713,7 +733,7 @@ public class BidirectedGraph extends AdjacencyListGraph{
      * 1. pick the least coverage ones among a path as the base
      * 2. global base
      */
-    public static boolean isUnique(Node node){
+    synchronized public static boolean isUnique(Node node){
     	boolean res = false;
     	
     	if(node.getDegree()<=2){ // not always true, e.g. unique node in a repetitive component
@@ -748,7 +768,7 @@ public class BidirectedGraph extends AdjacencyListGraph{
      * Traverse the graph and assign weights to every edges based on coverage of ending nodes
      * and update a node's coverage if possible (later)
      */
-    public void balancing() {
+    synchronized public void balancing() {
     	ArrayList<BidirectedEdge> unknownEdges= new ArrayList<BidirectedEdge>(this.getEdgeSet());
     	
     	
