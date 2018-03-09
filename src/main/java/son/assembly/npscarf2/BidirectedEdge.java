@@ -1,5 +1,8 @@
 package son.assembly.npscarf2;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Node;
 import org.graphstream.graph.implementations.AbstractEdge;
@@ -72,28 +75,62 @@ public class BidirectedEdge extends AbstractEdge{
 	 * To adapt Graph class from GraphStream library (called by newInstance())
 	 */
 	protected BidirectedEdge(String id, AbstractNode source, AbstractNode dest){
-		super(id, source, dest, false);
-		
-		assert (source.getGraph() == dest.getGraph()):"Nodes come from different graph " + source.getGraph().getId() + " and " + dest.getGraph().getId();
-		BidirectedGraph g = (BidirectedGraph) source.getGraph();	
-		path = new BidirectedPath(g,id);
-		BidirectedNode 	n0 = (BidirectedNode) path.getRoot(),
-						n1 = (BidirectedNode) path.peekNode();
-		
-		BidirectedEdge 	firstEdge = (BidirectedEdge) path.getEdgePath().get(0),
-						lastEdge = (BidirectedEdge) path.peekEdge();
-		if(n0.getId().equals(source.getId())){
-			dir0 = firstEdge.getDir(n0);
-			dir1 = lastEdge.getDir(n1);
-		}else if(n0.getId().equals(dest.getId())){
-			dir1 = firstEdge.getDir(n0);
-			dir0 = lastEdge.getDir(n1);
-			path = path.getReversedComplemented();
-		}else{
-			LOG.error("Path {} conflicts with src={} dst={}!", id, source.getId(), dest.getId());
-			System.exit(1);
-		}
-	}
+	super(id, source, dest, false);
+	path = new BidirectedPath();
+	path.setRoot(source);
+	path.add(this);
+	
+	String pattern = "^([0-9]*)([+-]),([0-9]*)([+-])$";
+    // Create a Pattern object
+    Pattern r = Pattern.compile(pattern);
+    // Now create matcher object.
+    Matcher m = r.matcher(id);
+    String 	leftID, rightID, 
+    		leftDir, rightDir;
+    if(m.find()){
+    	leftID=m.group(1);
+    	leftDir=m.group(2);
+    	rightID=m.group(3);
+    	rightDir=m.group(4);
+    	if(source.getId().equals(leftID)){
+    		dir0=(leftDir.equals("+")?true:false);
+    		dir1=(rightDir.equals("-")?true:false);
+    	}else if(source.getId().equals(rightID)){
+    		dir0=(rightDir.equals("-")?true:false);
+    		dir1=(leftDir.equals("+")?true:false);
+    	}else{
+        	System.err.println("ID does not match");
+        	System.exit(1);
+        }
+    } else{
+    	System.err.println("Illegal ID for a bidirected edge (id must have the form node_id[+/-],node_id[+/-])");
+    	System.exit(1);
+    }
+
+}
+//	protected BidirectedEdge(String id, AbstractNode source, AbstractNode dest){
+//		super(id, source, dest, false);
+//		
+//		assert (source.getGraph() == dest.getGraph()):"Nodes come from different graph " + source.getGraph().getId() + " and " + dest.getGraph().getId();
+//		BidirectedGraph g = (BidirectedGraph) source.getGraph();	
+//		path = new BidirectedPath(g,id);
+//		BidirectedNode 	n0 = (BidirectedNode) path.getRoot(),
+//						n1 = (BidirectedNode) path.peekNode();
+//		
+//		BidirectedEdge 	firstEdge = (BidirectedEdge) path.getEdgePath().get(0),
+//						lastEdge = (BidirectedEdge) path.peekEdge();
+//		if(n0.getId().equals(source.getId())){
+//			dir0 = firstEdge.getDir(n0);
+//			dir1 = lastEdge.getDir(n1);
+//		}else if(n0.getId().equals(dest.getId())){
+//			dir1 = firstEdge.getDir(n0);
+//			dir0 = lastEdge.getDir(n1);
+//			path = path.getReversedComplemented();
+//		}else{
+//			LOG.error("Path {} conflicts with src={} dst={}!", id, source.getId(), dest.getId());
+//			System.exit(1);
+//		}
+//	}
 		
 //	public static String createID(AbstractNode source, AbstractNode dst, boolean dir0, boolean dir1){
 //		String 	srcDes = "["+source.getId()+"]"+(dir0 ? "o":"i"),

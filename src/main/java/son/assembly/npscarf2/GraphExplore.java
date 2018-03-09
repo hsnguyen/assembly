@@ -44,8 +44,8 @@ public class GraphExplore {
          * Testing reduce function
          */
         try {
-        	HybridAssembler.promptEnterKey();
-			ass.reduceFromSPAdesPaths(spadesFolder+sample+"/contigs.paths");
+//        	HybridAssembler.promptEnterKey();
+//			ass.reduceFromSPAdesPaths(spadesFolder+sample+"/contigs.paths");
 			HybridAssembler.promptEnterKey();
 			ass.assembly(spadesFolder+sample+"/assembly_graph.sam");
 			

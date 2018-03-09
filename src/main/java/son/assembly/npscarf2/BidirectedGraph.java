@@ -2,6 +2,7 @@ package son.assembly.npscarf2;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -111,6 +112,7 @@ public class BidirectedGraph extends AdjacencyListGraph{
 		this.removeEdge(edge, graphCallback, sourceCallback, targetCallback);
 	
 	}
+	
 	protected BidirectedEdge addEdge(AbstractNode src, AbstractNode dst, boolean dir0, boolean dir1){
 		BidirectedEdge tmp = addEdge(BidirectedEdge.createID(src, dst, dir0, dir1), src, dst);
 //		String s1=tmp.toString();
@@ -120,6 +122,7 @@ public class BidirectedGraph extends AdjacencyListGraph{
 //			System.out.println(s1 + " ---> " + tmp);
 		return tmp;
 	}
+	
 	
 	public String printEdgesOfNode(BidirectedNode node){
 		Iterator<BidirectedEdge> 	ins = getNode(node.getId()).getEnteringEdgeIterator(),
@@ -133,6 +136,8 @@ public class BidirectedGraph extends AdjacencyListGraph{
 		retval+="}";
 		return retval;		
 	}
+	
+
 	/**********************************************************************************
 	 * ****************************Algorithms go from here*****************************
 	 */
