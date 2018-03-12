@@ -142,7 +142,7 @@ public class HybridAssembler {
     	BidirectedPath curPath= null;
     	boolean markerDir=true, curDir;
     	
-    	if(BidirectedGraph.isUnique(curNodeFromSimGraph)){
+    	if(BidirectedGraph.isMarker(curNodeFromSimGraph)){
     		markerNode=curNodeFromSimGraph;
     		markerDir=((BidirectedEdge) p.getEdgePath().get(0)).getDir(markerNode);
     		curPath = new BidirectedPath();
@@ -161,7 +161,7 @@ public class HybridAssembler {
 //    		curNodeFromSimGraph = simGraph.getNode(curNodeFromOrigGraph.getId()); //change back to Node belong to simGraph (instead of origGraph)
     		curDir=((BidirectedEdge) e).getDir(curNodeFromSimGraph);
     		
-    		if(BidirectedGraph.isUnique(curNodeFromSimGraph)){
+    		if(BidirectedGraph.isMarker(curNodeFromSimGraph)){
         		
 				if(markerNode!=null){
 					//this is when we have 1 jumping path (both ends are markers)
@@ -183,7 +183,7 @@ public class HybridAssembler {
 						LOG.info("--edge {} coverage:{} to {}",ep.getId(),ep.getNumber("cov"),ep.getNumber("cov") - aveCov);
 						ep.setAttribute("cov", ep.getNumber("cov") - aveCov);	
 						
-						if(ep.getNumber("cov")/aveCov < .5 && (BidirectedGraph.isUnique(ep.getSourceNode()) || BidirectedGraph.isUnique(ep.getTargetNode())) ) //plasmid coverage is different!!!
+						if(ep.getNumber("cov")/aveCov < .5 && (BidirectedGraph.isMarker(ep.getSourceNode()) || BidirectedGraph.isMarker(ep.getTargetNode())) ) //plasmid coverage is different!!!
 							tobeRemoved.add((BidirectedEdge) ep);
 						
 //						n1 = ep.getOpposite(n0);

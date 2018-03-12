@@ -70,7 +70,7 @@ public class NewScarfCmd extends CommandLine{
             node.setAttribute("ui.style", "text-offset: -10;"); 
             node.addAttribute("layout.weight", 10); 
 
-            if(BidirectedGraph.isUnique(node))
+            if(BidirectedGraph.isMarker(node))
             	node.setAttribute("ui.class", "marked");
         }
 

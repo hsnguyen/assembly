@@ -464,7 +464,7 @@ public class BidirectedGraph extends AdjacencyListGraph{
     		}
     		//if a path couldn't be found between 2 dead-ends but alignments quality are insanely high
     		//FIXME: return a pseudo path having an nanopore edge
-    		else if(isUnique(srcNode) && isUnique(dstNode) && srcNode.getDegree() == 1 && dstNode.getDegree()==1 &&
+    		else if(isMarker(srcNode) && isMarker(dstNode) && srcNode.getDegree() == 1 && dstNode.getDegree()==1 &&
 				Math.min(from.quality, to.quality) >= Alignment.GOOD_QUAL)
     		{
     			BidirectedEdge pseudoEdge = new BidirectedEdge(srcNode, dstNode, from.strand, to.strand);
@@ -738,13 +738,13 @@ public class BidirectedGraph extends AdjacencyListGraph{
      * 1. pick the least coverage ones among a path as the base
      * 2. global base
      */
-    synchronized public static boolean isUnique(Node node){
+    synchronized public static boolean isMarker(Node node){
     	boolean res = false;
     	
     	if(node.getDegree()<=2){ // not always true, e.g. unique node in a repetitive component
     		Sequence seq = node.getAttribute("seq");
-//    		if(seq.length() > 10000 || node.getNumber("cov")/aveCov < 1.3)
-    		if(seq.length() > 10000 || Math.round(node.getNumber("cov")/aveCov) == 1)
+    		if(seq.length() > 10000 || node.getNumber("cov")/aveCov < 1.3)
+//    		if(seq.length() > 1000 && Math.round(node.getNumber("cov")/aveCov) == 1)
     			res=true;
     	}
     	

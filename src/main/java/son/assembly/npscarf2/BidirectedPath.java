@@ -187,7 +187,7 @@ public class BidirectedPath extends Path{
 		int len=0;
 		double res=0;
 		for(Node n:getNodePath()){
-			if(BidirectedGraph.isUnique(n)){
+			if(BidirectedGraph.isMarker(n)){
 				Sequence seq = (Sequence) n.getAttribute("seq");
 				double cov = Double.parseDouble(seq.getName().split("_")[5]);
 				len+=(n==getRoot())?seq.length():seq.length()-BidirectedGraph.getKmerSize();
@@ -200,7 +200,7 @@ public class BidirectedPath extends Path{
 	public int getNumOfMarkers() {
 		int retval = 0;
 		for(Node n:getNodePath()){
-			if(BidirectedGraph.isUnique(n))
+			if(BidirectedGraph.isMarker(n))
 				retval++;
 		}
 		return retval;	
