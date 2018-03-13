@@ -70,7 +70,8 @@ public class HybridAssembler {
 			if (!readID.equals("") && !readID.equals(myRec.readID)) {	
 				synchronized(simGraph) {
 					//p=origGraph.pathFinding(samList);
-					List<BidirectedPath> paths=simGraph.pathFinding(samList);// the graph MUST be the same as from new Alignment(...)
+//					List<BidirectedPath> paths=simGraph.pathFinding(samList);// the graph MUST be the same as from new Alignment(...)
+					List<BidirectedPath> paths=simGraph.uniqueBridgesFinding(samList);
 					if(paths!=null)						
 						for(BidirectedPath p:paths) 
 						{
@@ -222,7 +223,7 @@ public class HybridAssembler {
     		LOG.info("REMOVING EDGE " + e.getId() + " from " + e.getNode0().getGraph().getId() + "-" + e.getNode1().getGraph().getId());
     		LOG.info("before: \n\t" + simGraph.printEdgesOfNode(e.getNode0()) + "\n\t" + simGraph.printEdgesOfNode(e.getNode1()));
     		simGraph.removeEdge(e.getId());
-    		simGraph.updateGraphInfo(e, (byte)-1);
+//    		simGraph.updateGraphState(e, (byte)-1);
     		LOG.info("after: \n\t" + simGraph.printEdgesOfNode(e.getNode0()) + "\n\t" + simGraph.printEdgesOfNode(e.getNode1()));
     	}
     	
@@ -232,7 +233,7 @@ public class HybridAssembler {
     		LOG.info("before: \n\t" + simGraph.printEdgesOfNode(e.getNode0()) + "\n\t" + simGraph.printEdgesOfNode(e.getNode1()));
     		
     		BidirectedEdge reducedEdge = simGraph.addEdge(e.getSourceNode(),e.getTargetNode(),e.getDir0(),e.getDir1());
-    		simGraph.updateGraphInfo(reducedEdge, (byte)1);
+//    		simGraph.updateGraphInfo(reducedEdge, (byte)1);
     		
 			if(reducedEdge!=null){
 //				reducedEdge.addAttribute("ui.label", reducedEdge.getId());
