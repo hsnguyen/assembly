@@ -15,7 +15,7 @@ import japsa.seq.Sequence;
 public class BidirectedEdge extends AbstractEdge{
 	protected boolean dir0, dir1;//true: outward, false: inward
 	private int length=-BidirectedGraph.getKmerSize();//length of the edge (distance between tips of seqs represented by 2 nodes)
-	private BidirectedPath path; //path that represents this edge. Should be a list if metagenome/multiploidy
+	private BidirectedPath path; //path that represents this edge. Should be a list if metagenome/multiploidy. FIXME: graphMap
 	
 	
     private static final Logger LOG = LoggerFactory.getLogger(BidirectedEdge.class);

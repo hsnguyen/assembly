@@ -44,6 +44,11 @@ public class BidirectedPath extends Path{
 	public BidirectedPath(){
 		super();
 	}
+	public BidirectedPath(BidirectedEdge e) {
+		super();
+		setRoot(e.getNode0());
+		add(e);
+	}
 	public BidirectedPath(BidirectedPath p){
 		super();
 		if(p!=null && !p.empty()){

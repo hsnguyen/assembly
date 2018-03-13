@@ -176,7 +176,7 @@ public class HybridAssembler {
 //						reducedEdge.addAttribute("path", new BidirectedPath(curPath));
 				
 					tobeAdded.add(reducedEdge);
-					
+					simGraph.updateGraphMap(reducedEdge, curPath);
 					//loop over curPath to find out edges needed to be removed
 //					Node  	n0 = curPath.getRoot(),
 //							n1 = null;
@@ -223,7 +223,6 @@ public class HybridAssembler {
     		LOG.info("REMOVING EDGE " + e.getId() + " from " + e.getNode0().getGraph().getId() + "-" + e.getNode1().getGraph().getId());
     		LOG.info("before: \n\t" + simGraph.printEdgesOfNode(e.getNode0()) + "\n\t" + simGraph.printEdgesOfNode(e.getNode1()));
     		simGraph.removeEdge(e.getId());
-//    		simGraph.updateGraphState(e, (byte)-1);
     		LOG.info("after: \n\t" + simGraph.printEdgesOfNode(e.getNode0()) + "\n\t" + simGraph.printEdgesOfNode(e.getNode1()));
     	}
     	
@@ -233,7 +232,6 @@ public class HybridAssembler {
     		LOG.info("before: \n\t" + simGraph.printEdgesOfNode(e.getNode0()) + "\n\t" + simGraph.printEdgesOfNode(e.getNode1()));
     		
     		BidirectedEdge reducedEdge = simGraph.addEdge(e.getSourceNode(),e.getTargetNode(),e.getDir0(),e.getDir1());
-//    		simGraph.updateGraphInfo(reducedEdge, (byte)1);
     		
 			if(reducedEdge!=null){
 //				reducedEdge.addAttribute("ui.label", reducedEdge.getId());

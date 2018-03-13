@@ -27,7 +27,7 @@ public class BidirectedGraph extends AdjacencyListGraph{
     
     //provide dynamic state of particular pair of nodes with directions (e.g. A+B- : state)
     //state of edge: -1=removed, 0=connect, 1=new connect(reduce edge)
-    private HashMap<String, BidirectedBridge> graphMap; 
+    private HashMap<String, BidirectedPath> graphMap; 
     
     private static final Logger LOG = LoggerFactory.getLogger(BidirectedGraph.class);
 
@@ -57,7 +57,7 @@ public class BidirectedGraph extends AdjacencyListGraph{
 	public BidirectedGraph(String id, boolean strictChecking, boolean autoCreate,
 			int initialNodeCapacity, int initialEdgeCapacity) {
 		super(id, strictChecking, autoCreate);
-		graphMap=new HashMap<String, BidirectedBridge>(initialNodeCapacity*(initialNodeCapacity+1)/2);
+		graphMap=new HashMap<String, BidirectedPath>(initialNodeCapacity*(initialNodeCapacity+1)/2);
 		
 		// All we need to do is to change the node & edge factory
 		setNodeFactory(new NodeFactory<BidirectedNode>() {
@@ -196,8 +196,8 @@ public class BidirectedGraph extends AdjacencyListGraph{
 		}
 
 		for(EdgeComponents ec:potentialEdgeSet) {
-			addEdge(ec.n1, ec.n2, ec.dir1, ec.dir2);
-//			updateGraphMap(addEdge(ec.n1, ec.n2, ec.dir1, ec.dir2), (byte)0);
+			BidirectedEdge e = addEdge(ec.n1, ec.n2, ec.dir1, ec.dir2);
+			updateGraphMap(e, new BidirectedPath(e));
 		}
 		//rough estimation of kmer used
 		if((shortestLen-1) != getKmerSize()){
@@ -223,14 +223,21 @@ public class BidirectedGraph extends AdjacencyListGraph{
     /**************************************************************************************************
      ********************** utility functions to serve the assembly algo ****************************** 
      * ***********************************************************************************************/
-     
-    synchronized protected  BidirectedBridge updateGraphMap(BidirectedEdge e, BidirectedBridge brg) {
+    synchronized protected  BidirectedPath updateGraphMap(String id, BidirectedPath path) {
     	//Get the ending 21-mer of each nodes to find hidden potential edges? 
     	//NOPE, only do this if a suspicious alignment appeared!
-    	if(e==null || brg==null)
+    	if(id==null || path==null)
     		return null;
     	else
-    		return graphMap.put(e.getId(), brg);
+    		return graphMap.put(id, path);
+    } 
+    synchronized protected  BidirectedPath updateGraphMap(BidirectedEdge e, BidirectedPath path) {
+    	//Get the ending 21-mer of each nodes to find hidden potential edges? 
+    	//NOPE, only do this if a suspicious alignment appeared!
+    	if(e==null || path==null)
+    		return null;
+    	else
+    		return graphMap.put(e.getId(), path);
     }
     
     /*
@@ -614,6 +621,9 @@ public class BidirectedGraph extends AdjacencyListGraph{
 		ArrayList<BidirectedPath> retrievedPaths = new ArrayList<>();
 		// Now we got all possible unique bridges from the alignments, do smt with them:
 		for(BidirectedBridge brg:bridges) {
+			//TODO: check already-found path here! (increase score, conflict resolve???)
+			if(graphMap.get(brg.getEndingsID())!=null)
+				continue;
 			brg.bridging(this);
 			retrievedPaths.add(brg.getPath());
 		}
@@ -729,7 +739,7 @@ public class BidirectedGraph extends AdjacencyListGraph{
     	
     	if(node.getDegree()<=2){ // not always true, e.g. unique node in a repetitive component
     		Sequence seq = node.getAttribute("seq");
-    		if(seq.length() > 10000 || node.getNumber("cov")/aveCov < 1.3)
+    		if(seq.length() > 10000 || node.getNumber("cov")/aveCov < 1.5) //TODO: move to A-stat
 //    		if(seq.length() > 1000 && Math.round(node.getNumber("cov")/aveCov) == 1)
     			res=true;
     	}
