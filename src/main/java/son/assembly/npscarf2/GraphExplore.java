@@ -34,7 +34,7 @@ public class GraphExplore {
         HybridAssembler ass = new HybridAssembler(spadesFolder+sample+"/assembly_graph.fastg");
     	BidirectedGraph graph= ass.simGraph;
 
-    	initGraphStyle(graph);
+    	redrawGraphComponents(graph);
 
         graph.display();
         
@@ -86,7 +86,7 @@ public class GraphExplore {
 //        	System.out.println("Fuck");
     }
     
-    public static void initGraphStyle(BidirectedGraph graph) {
+    public static void redrawGraphComponents(BidirectedGraph graph) {
 //      graph.addAttribute("ui.quality");
 //      graph.addAttribute("ui.antialias");
     	graph.addAttribute("ui.default.title", "New real-time hybrid assembler");
@@ -101,7 +101,7 @@ public class GraphExplore {
 			if(lengthScale<1) lengthScale=1;
 			else if(lengthScale>2) lengthScale=2;
 	          
-			int covScale = (int) Math.round(node.getNumber("cov")/BidirectedGraph.aveCov);
+			int covScale = (int) Math.round(node.getNumber("cov")/BidirectedGraph.RCOV);
 //          Color[] palette= {Color.GRAY,Color.BLUE,Color.YELLOW,Color.ORANGE,Color.GREEN,Color.PINK,Color.MAGENTA,Color.RED};
 //          Color color=null;
 	          

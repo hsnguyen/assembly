@@ -15,7 +15,6 @@ import japsa.seq.Sequence;
 public class BidirectedEdge extends AbstractEdge{
 	protected boolean dir0, dir1;//true: outward, false: inward
 	private int length=-BidirectedGraph.getKmerSize();//length of the edge (distance between tips of seqs represented by 2 nodes)
-	private BidirectedPath path; //path that represents this edge. Should be a list if metagenome/multiploidy. FIXME: graphMap
 	
 	
     private static final Logger LOG = LoggerFactory.getLogger(BidirectedEdge.class);
@@ -30,10 +29,7 @@ public class BidirectedEdge extends AbstractEdge{
 		super(createID(src,dst,dir0,dir1),src,dst,false);
 		this.dir0=dir0;
 		this.dir1=dir1;
-		
-		path = new BidirectedPath();
-		path.setRoot(src);
-		path.add(this);
+
 	}
 	
 	/* param id must have the form %s[o/i]%s[o/i], e.g. [1+2-]o[3]i
@@ -76,9 +72,6 @@ public class BidirectedEdge extends AbstractEdge{
 	 */
 	protected BidirectedEdge(String id, AbstractNode source, AbstractNode dest){
 	super(id, source, dest, false);
-	path = new BidirectedPath();
-	path.setRoot(source);
-	path.add(this);
 	
 	String pattern = "^([0-9]*)([+-]),([0-9]*)([+-])$";
     // Create a Pattern object
@@ -153,25 +146,6 @@ public class BidirectedEdge extends AbstractEdge{
 //		return retval;
 //	}
 	
-	public void setPath(BidirectedPath path){
-		this.path = path;
-		//here set the new length due to that path
-		Node 	curNode = path.getRoot();
-		length=path.getLength();
-		
-		//TODO: remove if worked!
-//		for(Edge e:path.getEdgePath()){
-//			curNode = e.getOpposite(curNode);
-//			if(curNode == path.peekNode())
-//				break;
-//			else{
-//				length+=((Sequence)curNode.getAttribute("seq")).length()-BidirectedGraph.getKmerSize();
-//			}
-//		}
-	}
-	public BidirectedPath getPath(){
-		return path;
-	}
 	
 	@Override
 	public String toString() {

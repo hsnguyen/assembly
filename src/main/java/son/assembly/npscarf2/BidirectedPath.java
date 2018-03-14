@@ -130,16 +130,15 @@ public class BidirectedPath extends Path{
 		curSeq = curDir?curSeq:Alphabet.DNA.complement(curSeq);
 	
 		seq.append(curSeq.subSequence(0, curSeq.length()-BidirectedGraph.getKmerSize()));
-		for(Edge edge:getEdgePath()){
-			for(Edge e:((BidirectedEdge) edge).getPath().getEdgePath()){			
-				curNode=e.getOpposite(curNode);
-				curSeq= curNode.getAttribute("seq");
-				curDir=!((BidirectedEdge) e).getDir(curNode);
-				curSeq = curDir?curSeq:Alphabet.DNA.complement(curSeq);
-		
-				seq.append(curSeq.subSequence(0, curSeq.length()-(curNode==peekNode()?
-						0:BidirectedGraph.getKmerSize())));
-			}
+		for(Edge e:getEdgePath()){
+			curNode=e.getOpposite(curNode);
+			curSeq= curNode.getAttribute("seq");
+			curDir=!((BidirectedEdge) e).getDir(curNode);
+			curSeq = curDir?curSeq:Alphabet.DNA.complement(curSeq);
+	
+			seq.append(curSeq.subSequence(0, curSeq.length()-(curNode==peekNode()?
+					0:BidirectedGraph.getKmerSize()))); //TODO: consider cases of overlap != kmer
+			
 		}
 	 return seq.toSequence();
 	}
@@ -185,7 +184,7 @@ public class BidirectedPath extends Path{
 		return len;
 	}
 	/**
-	 * 
+	 * Get the length-weighted coverage of all marker as an approximation for this path's coverage
 	 * @return average depth of this path
 	 */
 	public double averageCov(){
@@ -194,9 +193,8 @@ public class BidirectedPath extends Path{
 		for(Node n:getNodePath()){
 			if(BidirectedGraph.isMarker(n)){
 				Sequence seq = (Sequence) n.getAttribute("seq");
-				double cov = Double.parseDouble(seq.getName().split("_")[5]);
 				len+=(n==getRoot())?seq.length():seq.length()-BidirectedGraph.getKmerSize();
-				res+=seq.length()*cov;
+				res+=seq.length()*n.getNumber("cov");
 			}
 		}
 		return res/len;

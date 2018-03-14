@@ -20,7 +20,11 @@ import japsa.seq.SequenceReader;
 
 
 public class BidirectedGraph extends AdjacencyListGraph{
-    static int kmer=127;
+    static int KMER=127;
+    static double RCOV=0.0;
+    
+    volatile static double ILLUMINA_READ_LENGTH=300; //Illumina MiSeq
+    
     static final int TOLERATE=500;
     static final int D_LIMIT=10000; //distance bigger than this will be ignored
     static final int S_LIMIT=50;
@@ -142,7 +146,6 @@ public class BidirectedGraph extends AdjacencyListGraph{
 	 * ****************************Algorithms go from here*****************************
 	 */
     //TODO: read from ABySS assembly graph (graph of final contigs, not like SPAdes)
-    static double aveCov; //TODO: replaced with more accurate method
     
     public void loadFromFile(String graphFile) throws IOException{
         setAutoCreate(true);
@@ -151,7 +154,7 @@ public class BidirectedGraph extends AdjacencyListGraph{
 		SequenceReader reader = new FastaReader(graphFile);
 		Sequence seq;
 		int shortestLen = 10000;
-		int totReadLen=0, totGenomeLen=0;
+		int totReadsLen=0, totContigsLen=0;
 		ArrayList<EdgeComponents> potentialEdgeSet = new ArrayList<EdgeComponents>();
 		while ((seq = reader.nextSequence(Alphabet.DNA())) != null){
 			if(seq.length()<shortestLen)
@@ -171,10 +174,16 @@ public class BidirectedGraph extends AdjacencyListGraph{
 				seq.setName(name);
 				node.setAttribute("seq", seq);
 				double cov = Double.parseDouble(name.split("_")[5]);
-				node.setAttribute("cov", cov);
+
+				//Convert from kmer coverage (read kmer per contig kmer)
+				//to read coverage (read bp per contig bp)
+				//Cx=Ck*L/(L-k+1)
+				cov=cov*ILLUMINA_READ_LENGTH/(ILLUMINA_READ_LENGTH-KMER+1);
 				
-				totReadLen += cov*seq.length();
-				totGenomeLen += seq.length();
+				node.setAttribute("cov", cov);
+
+				totReadsLen += cov*seq.length();
+				totContigsLen += seq.length();
 			}
 			if (adjList.length > 1){
 				String[] nbList = adjList[1].split(",");
@@ -186,8 +195,16 @@ public class BidirectedGraph extends AdjacencyListGraph{
 					
 					String neighborID = neighbor.split("_")[1];
 					AbstractNode nbr = addNode(neighborID);
-					nbr.setAttribute("cov", Double.parseDouble(neighbor.split("_")[5]));
 					
+					double cov = Double.parseDouble(neighbor.split("_")[5]);
+
+					//Convert from kmer coverage (read kmer per contig kmer)
+					//to read coverage (read bp per contig bp)
+					//Cx=Ck*L/(L-k+1)
+					cov=cov*ILLUMINA_READ_LENGTH/(ILLUMINA_READ_LENGTH-KMER+1);
+					
+					nbr.setAttribute("cov", cov);
+
 					potentialEdgeSet.add(new EdgeComponents(node,nbr,dir0,dir1));
 					
 				}
@@ -203,21 +220,38 @@ public class BidirectedGraph extends AdjacencyListGraph{
 		if((shortestLen-1) != getKmerSize()){
 			setKmerSize(shortestLen-1);
 			for(Edge e:getEdgeSet()){
-				((BidirectedEdge)e).changeKmerSize(kmer);
+				((BidirectedEdge)e).changeKmerSize(KMER);
 			}
 		}
-		
-		aveCov = totReadLen/totGenomeLen;
+		RCOV = totReadsLen/totContigsLen;
 		reader.close();
+		
+		/**
+		 * A-statistics: A(delta,r)=log(e)*delta*n/G -r*log(2)
+		 * delta: contig length, r: number of reads comprise this contig
+		 * n: total number of reads, G: genome size
+		 * Recalculated by Cx, contig_len, read_len, RCOV (average read coverage over the genome)
+		 */
+		for (Node n:this) {
+			Sequence nseq = n.getAttribute("seq");
+			double astats = nseq.length()*RCOV/ILLUMINA_READ_LENGTH-Math.log(2)*n.getNumber("cov")*nseq.length()/ILLUMINA_READ_LENGTH;
+			astats*=Math.log10(Math.E);
+			n.setAttribute("astats", astats);
+			
+			LOG.info("Node {} Read coverage = {} A-stats = {}", n.getAttribute("name"), n.getNumber("cov"), astats );
+
+		}
+
+		LOG.info("Estimated read coverage = {} Total contigs length = {}", RCOV,totContigsLen );
 
     }
     
 	
     public static int getKmerSize(){
-    	return BidirectedGraph.kmer;
+    	return BidirectedGraph.KMER;
     }
     public static void setKmerSize(int kmer){
-    	BidirectedGraph.kmer=kmer;
+    	BidirectedGraph.KMER=kmer;
     }
     
     /**************************************************************************************************
@@ -538,7 +572,7 @@ public class BidirectedGraph extends AdjacencyListGraph{
 				int newDistance = distance - ((Sequence) e.getOpposite(currentNode).getAttribute("seq")).length() - e.getLength();
 //				System.out.println("adding edge: " + e.getId() + " length=" + e.getLength() +" -> distance=" + newDistance);
 				if (newDistance - e.getLength() < -TOLERATE){
-					System.out.println("Stop go to edge " + e.getPath() + " from path with distance "+newDistance+" already! : "+path.getId());
+					System.out.println("Stop go to edge " + e.getId() + " from path with distance "+newDistance+" already! : "+path.getId());
 				}else
 					traverse(path, dst, curResult, newDistance, srcDir, dstDir, stepCount++);
 			}
@@ -739,8 +773,9 @@ public class BidirectedGraph extends AdjacencyListGraph{
     	
     	if(node.getDegree()<=2){ // not always true, e.g. unique node in a repetitive component
     		Sequence seq = node.getAttribute("seq");
-    		if(seq.length() > 10000 || node.getNumber("cov")/aveCov < 1.5) //TODO: move to A-stat
-//    		if(seq.length() > 1000 && Math.round(node.getNumber("cov")/aveCov) == 1)
+//    		if(seq.length() > 10000 || node.getNumber("cov")/RCOV < 1.5) //TODO: move to A-stat
+//    		if(seq.length() > 1000 && Math.round(node.getNumber("cov")/RCOV= 1)
+    		if(node.getNumber("astats") > 10)
     			res=true;
     	}
     	
@@ -870,7 +905,8 @@ public class BidirectedGraph extends AdjacencyListGraph{
 	    			System.out.println("==> Unable to resolve: " + e.getId() + " : " + (dir0?unknwOut0:unknwIn0) + "(" + n0.getId()+ ") --- " + (dir1?unknwOut1:unknwIn1) + "(" + n1.getId() + ")");
 	    		}else if (!Double.isNaN(covInferredFromN0) && !Double.isNaN(covInferredFromN1)){
 					if(approxCompare(covInferredFromN0, covInferredFromN1)!=0) {
-						System.out.println("==> Infer from node " + n0.getAttribute("name") + ": " + covInferredFromN0 + " and from node " + n1.getAttribute("name") + ": " + covInferredFromN1);
+						System.out.println("==> Infer from node " + n0.getAttribute("name") + " cov="+ n0.getNumber("cov") + ": " + covInferredFromN0 
+								+ " and from node " + n1.getAttribute("name") + " cov="+ n1.getNumber("cov") + ": " + covInferredFromN1);
 						printEdgesCov(n0);
 						printEdgesCov(n1);
 					}

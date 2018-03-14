@@ -76,7 +76,7 @@ public class HybridAssembler {
 						for(BidirectedPath p:paths) 
 						{
 					    	if(reduce(p)) {
-					    		GraphExplore.initGraphStyle(simGraph);
+					    		GraphExplore.redrawGraphComponents(simGraph);
 			//		    		promptEnterKey();
 					    	}
 						}
@@ -109,7 +109,7 @@ public class HybridAssembler {
 				if(flag){
 					BidirectedPath path=new BidirectedPath(simGraph, curpath);
 			    	if(reduce(path))
-			    		GraphExplore.initGraphStyle(simGraph);
+			    		GraphExplore.redrawGraphComponents(simGraph);
 //			    	reduce2(path);
 				}
 				flag=s.contains("'")?false:true;
