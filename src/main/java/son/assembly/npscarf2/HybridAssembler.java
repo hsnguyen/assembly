@@ -5,9 +5,11 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Scanner;
 
+import org.graphstream.algorithm.ConnectedComponents;
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Node;
 import org.slf4j.Logger;
@@ -25,10 +27,11 @@ public class HybridAssembler {
 	
 //	final BidirectedGraph origGraph;
 	public BidirectedGraph simGraph; //original and simplified graph should be separated, no???
-	
+	public ConnectedComponents rtComponents;
 	public HybridAssembler(){
 //		origGraph=new BidirectedGraph("batch");
 		simGraph=new BidirectedGraph("real");
+		rtComponents = new ConnectedComponents();
 	}
 	
 	
@@ -36,6 +39,8 @@ public class HybridAssembler {
 		this();
 //		origGraph.loadFromFile(graphFile);
 		simGraph.loadFromFile(graphFile);
+		rtComponents.init(simGraph);
+
 	}
 	
 	
@@ -61,6 +66,8 @@ public class HybridAssembler {
 //				continue;
 			
 			String refID = rec.getReferenceName().split("_")[1];
+			if (simGraph.getNode(refID)==null)
+				continue;
 			Alignment myRec = new Alignment(rec, simGraph.getNode(refID)); //FIXME: optimize
 
 			//////////////////////////////////////////////////////////////////
@@ -76,11 +83,43 @@ public class HybridAssembler {
 						for(BidirectedPath p:paths) 
 						{
 					    	if(reduce(p)) {
+
 					    		GraphExplore.redrawGraphComponents(simGraph);
-			//		    		promptEnterKey();
+
+//					    		LOG.info("==========================================================================");
+//					    		LOG.info("\nTotal number of components: {} \ncomponents containing more than 1: {} \nsize of biggest component: {}", 
+//					    					rtComponents.getConnectedComponentsCount(),rtComponents.getConnectedComponentsCount(2),rtComponents.getGiantComponent().size());
+//					    		
+//					    		LOG.info("==========================================================================");    		
+					    		
+					    		//Remove components with no markers!
+					    		ArrayList<Node> cleanup = new ArrayList<>();
+					    		for (Iterator<ConnectedComponents.ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
+					    			ConnectedComponents.ConnectedComponent comp = compIter.next();
+
+					    			int numOfMarker=0;
+					    			ArrayList<Node> tmp = new ArrayList<>();
+					    			for(Node n:comp.getEachNode()) {
+					    				if(BidirectedGraph.isMarker(n)) 
+					    					numOfMarker++;
+					    				tmp.add(n);
+					    			}
+					    			if(numOfMarker==0)
+					    				cleanup.addAll(tmp);
+					    		}
+					    		for(Node n:cleanup) {
+				    				n.addAttribute("ui.hide");
+					    			for(Edge e:n.getEachEdge())
+					    				e.addAttribute("ui.hide");
+//					    			simGraph.removeNode(n); //this faster but careful here!!!
+					    		}
+
+//					    		promptEnterKey();
 					    	}
 						}
 				}
+
+
 //				reduce2(p);
 				samList = new ArrayList<Alignment>();
 				//readID = myRec.readID;	

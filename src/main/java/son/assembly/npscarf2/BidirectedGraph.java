@@ -775,7 +775,7 @@ public class BidirectedGraph extends AdjacencyListGraph{
     		Sequence seq = node.getAttribute("seq");
 //    		if(seq.length() > 10000 || node.getNumber("cov")/RCOV < 1.5) //TODO: move to A-stat
 //    		if(seq.length() > 1000 && Math.round(node.getNumber("cov")/RCOV= 1)
-    		if(node.getNumber("astats") > 10)
+    		if(seq.length() > 1000 && node.getNumber("astats") > 10 && node.getNumber("cov")/RCOV > .3)
     			res=true;
     	}
     	
