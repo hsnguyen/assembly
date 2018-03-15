@@ -56,6 +56,7 @@ public class HybridAssembler {
 		SAMRecordIterator iter = reader.iterator();
 
 		String readID = "";
+		int currentNumOfComponents=rtComponents.getConnectedComponentsCount();
 		//ReadFilling readFilling = null;
 		ArrayList<Alignment> samList =  new ArrayList<Alignment>();;// alignment record of the same read;	
 		while (iter.hasNext()) {
@@ -91,29 +92,31 @@ public class HybridAssembler {
 //					    					rtComponents.getConnectedComponentsCount(),rtComponents.getConnectedComponentsCount(2),rtComponents.getGiantComponent().size());
 //					    		
 //					    		LOG.info("==========================================================================");    		
-					    		
-					    		//Remove components with no markers!
-					    		ArrayList<Node> cleanup = new ArrayList<>();
-					    		for (Iterator<ConnectedComponents.ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
-					    			ConnectedComponents.ConnectedComponent comp = compIter.next();
+					    		if(currentNumOfComponents != rtComponents.getConnectedComponentsCount()) {
+						    		currentNumOfComponents = rtComponents.getConnectedComponentsCount();
 
-					    			int numOfMarker=0;
-					    			ArrayList<Node> tmp = new ArrayList<>();
-					    			for(Node n:comp.getEachNode()) {
-					    				if(BidirectedGraph.isMarker(n)) 
-					    					numOfMarker++;
-					    				tmp.add(n);
-					    			}
-					    			if(numOfMarker==0)
-					    				cleanup.addAll(tmp);
+						    		//Hide components with no markers! Optimize it to work dynamically
+						    		ArrayList<Node> cleanup = new ArrayList<>();
+						    		for (Iterator<ConnectedComponents.ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
+						    			ConnectedComponents.ConnectedComponent comp = compIter.next();
+	
+						    			int numOfMarker=0;
+						    			ArrayList<Node> tmp = new ArrayList<>();
+						    			for(Node n:comp.getEachNode()) {
+						    				if(BidirectedGraph.isMarker(n)) 
+						    					numOfMarker++;
+						    				tmp.add(n);
+						    			}
+						    			if(numOfMarker==0)
+						    				cleanup.addAll(tmp);
+						    		}
+						    		for(Node n:cleanup) {
+					    				n.addAttribute("ui.hide");
+						    			for(Edge e:n.getEachEdge())
+						    				e.addAttribute("ui.hide");
+	//					    			simGraph.removeNode(n); //this faster but careful here!!!
+						    		}
 					    		}
-					    		for(Node n:cleanup) {
-				    				n.addAttribute("ui.hide");
-					    			for(Edge e:n.getEachEdge())
-					    				e.addAttribute("ui.hide");
-//					    			simGraph.removeNode(n); //this faster but careful here!!!
-					    		}
-
 //					    		promptEnterKey();
 					    	}
 						}

@@ -26,8 +26,8 @@ public class GraphExplore {
 
     public GraphExplore() throws IOException{
     	//System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer"); 
-//    	String sample="EcK12S-careful";
-    	String sample="Kp2146-careful";
+    	String sample="EcK12S-careful";
+//    	String sample="Kp2146-careful";
 //    	String sample="meta-careful";
 //    	String sample="cp_S5";
 
