@@ -26,8 +26,12 @@ public class GraphExplore {
 
     public GraphExplore() throws IOException{
     	//System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer"); 
-    	String sample="EcK12S-careful";
+//    	String sample="EcK12S-careful";
 //    	String sample="Kp2146-careful";
+    	String sample="Kp13883-careful";
+    	
+    	//memory!!!
+//    	String sample="W303-careful";
 //    	String sample="meta-careful";
 //    	String sample="cp_S5";
 
@@ -102,6 +106,7 @@ public class GraphExplore {
 			else if(lengthScale>2) lengthScale=2;
 	          
 			int covScale = (int) Math.round(node.getNumber("cov")/BidirectedGraph.RCOV);
+
 //          Color[] palette= {Color.GRAY,Color.BLUE,Color.YELLOW,Color.ORANGE,Color.GREEN,Color.PINK,Color.MAGENTA,Color.RED};
 //          Color color=null;
 	          

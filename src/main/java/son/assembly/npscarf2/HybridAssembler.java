@@ -87,37 +87,37 @@ public class HybridAssembler {
 
 					    		GraphExplore.redrawGraphComponents(simGraph);
 
-//					    		LOG.info("==========================================================================");
-//					    		LOG.info("\nTotal number of components: {} \ncomponents containing more than 1: {} \nsize of biggest component: {}", 
-//					    					rtComponents.getConnectedComponentsCount(),rtComponents.getConnectedComponentsCount(2),rtComponents.getGiantComponent().size());
-//					    		
-//					    		LOG.info("==========================================================================");    		
-					    		if(currentNumOfComponents != rtComponents.getConnectedComponentsCount()) {
-						    		currentNumOfComponents = rtComponents.getConnectedComponentsCount();
-
-						    		//Hide components with no markers! Optimize it to work dynamically
-						    		ArrayList<Node> cleanup = new ArrayList<>();
-						    		for (Iterator<ConnectedComponents.ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
-						    			ConnectedComponents.ConnectedComponent comp = compIter.next();
-	
-						    			int numOfMarker=0;
-						    			ArrayList<Node> tmp = new ArrayList<>();
-						    			for(Node n:comp.getEachNode()) {
-						    				if(BidirectedGraph.isMarker(n)) 
-						    					numOfMarker++;
-						    				tmp.add(n);
-						    			}
-						    			if(numOfMarker==0)
-						    				cleanup.addAll(tmp);
-						    		}
-						    		for(Node n:cleanup) {
-					    				n.addAttribute("ui.hide");
-						    			for(Edge e:n.getEachEdge())
-						    				e.addAttribute("ui.hide");
-	//					    			simGraph.removeNode(n); //this faster but careful here!!!
-						    		}
-					    		}
-//					    		promptEnterKey();
+////					    		LOG.info("==========================================================================");
+////					    		LOG.info("\nTotal number of components: {} \ncomponents containing more than 1: {} \nsize of biggest component: {}", 
+////					    					rtComponents.getConnectedComponentsCount(),rtComponents.getConnectedComponentsCount(2),rtComponents.getGiantComponent().size());
+////					    		
+////					    		LOG.info("==========================================================================");    		
+//					    		if(currentNumOfComponents != rtComponents.getConnectedComponentsCount()) {
+//						    		currentNumOfComponents = rtComponents.getConnectedComponentsCount();
+//
+//						    		//Hide components with no markers! Optimize it to work dynamically
+//						    		ArrayList<Node> cleanup = new ArrayList<>();
+//						    		for (Iterator<ConnectedComponents.ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
+//						    			ConnectedComponents.ConnectedComponent comp = compIter.next();
+//	
+//						    			int numOfMarker=0;
+//						    			ArrayList<Node> tmp = new ArrayList<>();
+//						    			for(Node n:comp.getEachNode()) {
+//						    				if(BidirectedGraph.isMarker(n)) 
+//						    					numOfMarker++;
+//						    				tmp.add(n);
+//						    			}
+//						    			if(numOfMarker==0)
+//						    				cleanup.addAll(tmp);
+//						    		}
+//						    		for(Node n:cleanup) {
+//					    				n.addAttribute("ui.hide");
+//						    			for(Edge e:n.getEachEdge())
+//						    				e.addAttribute("ui.hide");
+//	//					    			simGraph.removeNode(n); //this faster but careful here!!!
+//						    		}
+//					    		}
+////					    		promptEnterKey();
 					    	}
 						}
 				}
@@ -196,7 +196,7 @@ public class HybridAssembler {
     	//search for an unique node as the marker. 
     	ArrayList<BidirectedEdge> 	tobeRemoved = new ArrayList<BidirectedEdge>(),
     								tobeAdded = new ArrayList<BidirectedEdge>();
-    	double aveCov=p.averageCov();
+    	double aveCov=0;
     	for(Edge e:p.getEdgePath()){
     			
     		curNodeFromSimGraph=e.getOpposite(curNodeFromSimGraph);
@@ -222,13 +222,19 @@ public class HybridAssembler {
 					//loop over curPath to find out edges needed to be removed
 //					Node  	n0 = curPath.getRoot(),
 //							n1 = null;
+					
+					Node  	curNode = curPath.getRoot();
+					aveCov=curPath.averageCov();
 					for(Edge ep:curPath.getEdgePath()){
 						LOG.info("--edge {} coverage:{} to {}",ep.getId(),ep.getNumber("cov"),ep.getNumber("cov") - aveCov);
 						ep.setAttribute("cov", ep.getNumber("cov") - aveCov);	
-						
+
 						if(ep.getNumber("cov")/aveCov < .5 && (BidirectedGraph.isMarker(ep.getSourceNode()) || BidirectedGraph.isMarker(ep.getTargetNode())) ) //plasmid coverage is different!!!
 							tobeRemoved.add((BidirectedEdge) ep);
 						
+						if(!BidirectedGraph.isMarker(curNode))
+							curNode.setAttribute("cov", curNode.getNumber("cov")>aveCov?curNode.getNumber("cov")-aveCov:0);
+						curNode=ep.getOpposite(curNode);
 //						n1 = ep.getOpposite(n0);
 //						if(!BidirectedGraph.isUnique(n0) == BidirectedGraph.isUnique(n1)){
 //			    			tobeRemoved.add((BidirectedEdge)ep);

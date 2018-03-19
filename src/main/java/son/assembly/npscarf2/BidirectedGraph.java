@@ -773,9 +773,8 @@ public class BidirectedGraph extends AdjacencyListGraph{
     	
     	if(node.getDegree()<=2){ // not always true, e.g. unique node in a repetitive component
     		Sequence seq = node.getAttribute("seq");
-//    		if(seq.length() > 10000 || node.getNumber("cov")/RCOV < 1.5) //TODO: move to A-stat
-//    		if(seq.length() > 1000 && Math.round(node.getNumber("cov")/RCOV= 1)
-    		if(seq.length() > 1000 && node.getNumber("astats") > 10 && node.getNumber("cov")/RCOV > .3)
+//    		if(seq.length() > 1000 && node.getNumber("astats") > 10 && node.getNumber("cov")/RCOV > .3)
+    		if(seq.length() > 300 && node.getNumber("astats") > 10 && node.getNumber("cov")/RCOV > .3)
     			res=true;
     	}
     	
