@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -167,12 +168,14 @@ public class BidirectedGraph extends AdjacencyListGraph{
 			name=name.replaceAll("[^a-zA-Z0-9_.]", "").trim(); //EDGE_X_length_Y_cov_Z
 			
 			String nodeID = name.split("_")[1];
-			AbstractNode node = addNode(nodeID);
+			AbstractNode node = addNode(nodeID); //or get the existing node prototype created below (to set the attributes)
 			node.setAttribute("name", name);
 			
 			if(dir0){
 				seq.setName(name);
 				node.setAttribute("seq", seq);
+				node.setAttribute("len", seq.length());
+
 				double cov = Double.parseDouble(name.split("_")[5]);
 
 				//Convert from kmer coverage (read kmer per contig kmer)
@@ -194,18 +197,9 @@ public class BidirectedGraph extends AdjacencyListGraph{
 					neighbor=neighbor.replaceAll("[^a-zA-Z0-9_.]", "").trim();
 					
 					String neighborID = neighbor.split("_")[1];
-					AbstractNode nbr = addNode(neighborID);
-					
-					double cov = Double.parseDouble(neighbor.split("_")[5]);
+					AbstractNode nbr = addNode(neighborID); //just need a prototype, attributes can be set later...
 
-					//Convert from kmer coverage (read kmer per contig kmer)
-					//to read coverage (read bp per contig bp)
-					//Cx=Ck*L/(L-k+1)
-					cov=cov*ILLUMINA_READ_LENGTH/(ILLUMINA_READ_LENGTH-KMER+1);
-					
-					nbr.setAttribute("cov", cov);
-
-					potentialEdgeSet.add(new EdgeComponents(node,nbr,dir0,dir1));
+					potentialEdgeSet.add(new EdgeComponents(node,nbr,dir0,dir1)); //edges' prototype
 					
 				}
 			}
@@ -237,13 +231,10 @@ public class BidirectedGraph extends AdjacencyListGraph{
 			double astats = nseq.length()*RCOV/ILLUMINA_READ_LENGTH-Math.log(2)*n.getNumber("cov")*nseq.length()/ILLUMINA_READ_LENGTH;
 			astats*=Math.log10(Math.E);
 			n.setAttribute("astats", astats);
-			
-			LOG.info("Node {} Read coverage = {} A-stats = {}", n.getAttribute("name"), n.getNumber("cov"), astats );
-
+//			LOG.info("Node {} Read coverage = {} A-stats = {}", n.getAttribute("name"), n.getNumber("cov"), astats );
 		}
-
 		LOG.info("Estimated read coverage = {} Total contigs length = {}", RCOV,totContigsLen );
-
+		
     }
     
 	
