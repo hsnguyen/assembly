@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import japsa.seq.Alphabet;
 import japsa.seq.FastaReader;
 import japsa.seq.Sequence;
+import japsa.seq.SequenceOutputStream;
 import japsa.seq.SequenceReader;
 
 
@@ -142,7 +143,16 @@ public class BidirectedGraph extends AdjacencyListGraph{
 		return retval;		
 	}
 	
-
+	public void printNodeSequencesToFile(String fileName) throws IOException {
+		SequenceOutputStream out = SequenceOutputStream.makeOutputStream(fileName);
+		
+		for(Node node:this) {
+			Sequence seq=node.getAttribute("seq");
+			seq.writeFasta(out);
+		}
+		
+		out.close();
+	}
 
     
 	

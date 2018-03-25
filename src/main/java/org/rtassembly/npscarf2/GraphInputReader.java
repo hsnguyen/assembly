@@ -124,7 +124,7 @@ public class GraphInputReader {
 							-Math.log(2)*n.getNumber("cov")*nseq.length()/BidirectedGraph.ILLUMINA_READ_LENGTH;
 			astats*=Math.log10(Math.E);
 			n.setAttribute("astats", astats);
-//			LOG.info("Node {} Read coverage = {} A-stats = {}", n.getAttribute("name"), n.getNumber("cov"), astats );
+			LOG.info("{} Read coverage = {} Length = {} A-stats = {}", n.getAttribute("name"), n.getNumber("cov"), n.getNumber("len"), astats );
 		}
 		LOG.info("Estimated read coverage = {} Total contigs length = {}", BidirectedGraph.RCOV,totContigsLen );
 		
@@ -165,7 +165,7 @@ public class GraphInputReader {
 				//node.setAttribute("kc", Integer.parseInt(toks[2]));
 				//TODO: replace read cov with kc calculation?
 				//1.kmer count to kmer cov
-				double cov=seq.length()/(Double.parseDouble(toks[2])-BidirectedGraph.getKmerSize()); 
+				double cov=Double.parseDouble(toks[2])/(seq.length()-BidirectedGraph.getKmerSize()); 
 				//2.kmer cov to read cov
 				cov*=BidirectedGraph.ILLUMINA_READ_LENGTH/(BidirectedGraph.ILLUMINA_READ_LENGTH-BidirectedGraph.getKmerSize());
 				node.setAttribute("cov", cov);		
@@ -195,11 +195,11 @@ public class GraphInputReader {
 									
 				break;
 			case "P"://path
-				if(gfaFields.length>3 && gfaFields[2].contains(",")) {
-					BidirectedPath path=new BidirectedPath(graph, gfaFields[2]);
-			    	if(graph.reduce(path))
-			    		GraphExplore.redrawGraphComponents(graph);
-				}
+//				if(gfaFields.length>3 && gfaFields[2].contains(",")) {
+//					BidirectedPath path=new BidirectedPath(graph, gfaFields[2]);
+//			    	if(graph.reduce(path))
+//			    		GraphExplore.redrawGraphComponents(graph);
+//				}
 				break;
 
 				default:throw new IllegalStateException("Unrecognized GFA field: " + type.toUpperCase().trim());
@@ -244,7 +244,7 @@ public class GraphInputReader {
 							-Math.log(2)*n.getNumber("cov")*nseq.length()/BidirectedGraph.ILLUMINA_READ_LENGTH;
 			astats*=Math.log10(Math.E);
 			n.setAttribute("astats", astats);
-//			LOG.info("Node {} Read coverage = {} A-stats = {}", n.getAttribute("name"), n.getNumber("cov"), astats );
+			LOG.info("{} Read coverage = {} Length = {} A-stats = {}", n.getAttribute("name"), n.getNumber("cov"), n.getNumber("len"), astats );
 		}
 		LOG.info("Estimated read coverage = {} Total contigs length = {}", BidirectedGraph.RCOV,totContigsLen );
 		

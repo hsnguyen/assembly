@@ -164,7 +164,7 @@
 		    <artifactId>gs-algo</artifactId>
 		    <version>0cf198c</version>
 		</dependency>
-   		<!-- This version had compiling problem (need to find solution)
+   		<!-- This setting had compiling problem (need to find solution)
    		<dependency>
 	    	<groupId>com.github.graphstream</groupId>
 		    <artifactId>gs-ui-javafx</artifactId>
