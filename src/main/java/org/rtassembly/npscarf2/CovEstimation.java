@@ -1,9 +1,14 @@
 package org.rtassembly.npscarf2;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
+import org.apache.commons.math3.distribution.ChiSquaredDistribution;
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Node;
 
@@ -68,7 +73,7 @@ public class CovEstimation {
 
 	public static void main(String[] args) throws IOException {
 		// TODO Auto-generated method stub
-		HybridAssembler hbAss = new HybridAssembler(GraphExplore.spadesFolder+"W303-careful/assembly_graph.fastg");
+		HybridAssembler hbAss = new HybridAssembler(GraphExplore.spadesFolder+"Kp13883-careful/assembly_graph.fastg");
 		BidirectedGraph graph = hbAss.simGraph;
 		CovEstimation est = new CovEstimation();
 		
@@ -99,9 +104,71 @@ public class CovEstimation {
 			while(outIte.hasNext()) 
 				outCov+=outIte.next().getNumber("cov");	
 			
-			System.out.println(node.getAttribute("name") + " cov= " + node.getNumber("cov") + " inCov=" + inCov + " outCov=" + outCov);
+			System.out.println(node.getAttribute("name") + " len=" + node.getNumber("len") + " cov=" + node.getNumber("cov") + " inCov=" + inCov + " outCov=" + outCov);
 
 		}
+		System.out.println("=============================================================");
+		
+		HashMap<Double,Double> lengthWeightedCoverageDistribution = new HashMap<>();
+		for(Node n:graph) {
+			if(n.getNumber("len") > 10000)
+				lengthWeightedCoverageDistribution.put(n.getNumber("cov"), n.getNumber("cov")*n.getNumber("len"));
+		}
+		
+		List<Map.Entry<Double, Double>> covDistribution = new ArrayList<>(lengthWeightedCoverageDistribution.entrySet());
+		Collections.sort(covDistribution, (o1,o2)->o2.getValue().compareTo(o1.getValue()));
+		
+//		System.out.println(covDistribution);
+		ArrayList<Ranger> confidentIntervals=new ArrayList<>();
+		double alpha=.1;
+		for(Map.Entry<Double,Double> entry:covDistribution) {
+//			System.out.println(entry.getKey() + ":" + entry.getValue());
+			int k = entry.getKey().intValue();
+			ChiSquaredDistribution 	x1dist=new ChiSquaredDistribution(2*k),
+									x2dist=new ChiSquaredDistribution(2*k+2);
+			
+			double  lower=.5*x1dist.inverseCumulativeProbability(alpha/2),
+					upper=.5*x2dist.inverseCumulativeProbability(1-.5*alpha);
+			Ranger tmp=new Ranger(lower,upper);
+			if(confidentIntervals.size()==0)
+				confidentIntervals.add(tmp);
+			else {
+				boolean flag=false;
+				for(Ranger r:confidentIntervals) {
+					if(r.intersect(tmp)!=null) {
+						r=tmp;
+						flag=true;
+						break;
+					}
+						
+				}
+				if(!flag)
+					confidentIntervals.add(tmp);
+			}
+			System.out.println(entry + " :" + lower + " to " + upper);
+		}
+		
+		System.out.println("Clustering result: ");
+		System.out.println(confidentIntervals);
 	}
 
+}
+class Ranger{
+	double left, right;
+	Ranger(){
+		left=right=0.0;
+	}
+	Ranger(double x, double y){
+		left=x; right=y;
+	}
+	Ranger intersect(Ranger r) {
+		Ranger retval=null;
+		if(left < r.right && right > r.left) 
+			return new Ranger(Math.min(left, r.left), Math.max(right, r.right));
+		
+		return retval;
+	}
+	public String toString() {
+		return left+"->"+right;
+	}
 }

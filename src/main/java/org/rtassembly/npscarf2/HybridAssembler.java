@@ -65,7 +65,7 @@ public class HybridAssembler {
 	 * @throws IOException
 	 * @throws InterruptedException
 	 */
-	public void assembly(String inFile, String inFormat, int qual, String mm2Path, String mm2Preset, int mm2Threads, String mm2Index) 
+	public void assembly(String inFile, String inFormat, String mm2Path, String mm2Preset, int mm2Threads, String mm2Index) 
 			throws IOException, InterruptedException{
 
 		LOG.info("Scaffolding ready at {}", new Date());
@@ -131,7 +131,8 @@ public class HybridAssembler {
 			SAMRecord rec = iter.next();
 			if (rec.getReadUnmappedFlag())
 				continue;
-			if (rec.getMappingQuality() < qual)
+			
+			if (rec.getMappingQuality() < Alignment.MIN_QUAL)
 				continue;
 			
 			String refName = rec.getReferenceName();

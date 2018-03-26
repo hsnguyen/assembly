@@ -15,6 +15,7 @@ import org.rtassembly.npscarf2.HybridAssembler;
 
 import japsa.seq.SequenceReader;
 import japsa.util.CommandLine;
+import javafx.application.Application;
 
 
 
@@ -52,8 +53,9 @@ public class NPGraphCmd extends CommandLine{
 				mm2Setting = cmdLine.getStringVal("mm2Preset");
 		boolean overwrite = cmdLine.getBooleanVal("overwrite"),
 				gui = cmdLine.getBooleanVal("gui");
-		int 	mm2Threads = cmdLine.getIntVal("mm2Threads"),
-				minQual = cmdLine.getIntVal("qual");
+		int 	mm2Threads = cmdLine.getIntVal("mm2Threads");
+				
+		Alignment.MIN_QUAL = cmdLine.getIntVal("qual");
 		
 		//Default output dir 
 		if(outputDir == null) {
@@ -127,14 +129,19 @@ public class NPGraphCmd extends CommandLine{
 			}
         }
 		//4. Call the assembly function or invoke GUI to do so
-		try {
-			hbAss.assembly(dataInputFileName,inputFormat, minQual, mm2Path, mm2Setting, mm2Threads, outputDir+"/assembly_graph.mmi");
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			System.err.println("Issue when assembly: \n" + e.getMessage());
-			System.exit(1);
-		}
-		
+        if(gui) {
+//			NPGraphFX.setAssembler(hbAss);
+//			Application.launch(NPGraphFX.class,args);
+        }else {
+	        
+			try {
+				hbAss.assembly(dataInputFileName,inputFormat, mm2Path, mm2Setting, mm2Threads, outputDir+"/assembly_graph.mmi");
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				System.err.println("Issue when assembly: \n" + e.getMessage());
+				System.exit(1);
+			}
+        }
 		
 	}
 	
