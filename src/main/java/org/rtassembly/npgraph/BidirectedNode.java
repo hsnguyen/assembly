@@ -1,4 +1,4 @@
-package org.rtassembly.npscarf2;
+package org.rtassembly.npgraph;
 
 import java.security.AccessControlException;
 import java.util.Arrays;

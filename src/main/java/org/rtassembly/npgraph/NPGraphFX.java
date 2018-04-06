@@ -31,7 +31,7 @@
  * 03/25/2018 - Son Hoang Nguyen: Created                                        
  *  
  ****************************************************************************/
-package org.rtassembly.npscarf2;
+package org.rtassembly.npgraph;
 
 import japsa.util.DynamicHistogram;
 import japsa.util.FxDialogs;
@@ -107,6 +107,7 @@ public class NPGraphFX extends Application{
     private static final Logger LOG = LoggerFactory.getLogger(NPGraphFX.class);
 
 
+    
     TimeTableXYDataset 	allReadsCount = new TimeTableXYDataset(),
 						demultiplexedStackReadsCount = new TimeTableXYDataset();
 	DefaultCategoryDataset demultiplexedBarReadsCount = new DefaultCategoryDataset();

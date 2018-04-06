@@ -1,4 +1,4 @@
-package org.rtassembly.npscarf2;
+package org.rtassembly.npgraph;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;

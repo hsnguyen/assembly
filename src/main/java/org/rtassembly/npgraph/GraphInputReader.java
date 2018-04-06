@@ -1,4 +1,4 @@
-package org.rtassembly.npscarf2;
+package org.rtassembly.npgraph;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -59,7 +59,7 @@ public class GraphInputReader {
 				//Convert from kmer coverage (read kmer per contig kmer)
 				//to read coverage (read bp per contig bp)
 				//Cx=Ck*L/(L-k+1)
-				cov=cov*BidirectedGraph.ILLUMINA_READ_LENGTH/(BidirectedGraph.ILLUMINA_READ_LENGTH-BidirectedGraph.KMER+1);
+//				cov=cov*BidirectedGraph.ILLUMINA_READ_LENGTH/(BidirectedGraph.ILLUMINA_READ_LENGTH-BidirectedGraph.KMER+1);
 				
 				node.setAttribute("cov", cov);
 

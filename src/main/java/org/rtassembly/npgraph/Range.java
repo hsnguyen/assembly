@@ -1,4 +1,4 @@
-package org.rtassembly.npscarf2;
+package org.rtassembly.npgraph;
 
 public class Range implements Comparable<Range>{
     static final double ER_UPPERBOUND=2;

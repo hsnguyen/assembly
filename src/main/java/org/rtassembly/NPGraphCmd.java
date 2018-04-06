@@ -8,10 +8,10 @@ import java.util.regex.Pattern;
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Node;
 import org.graphstream.ui.view.Viewer;
-import org.rtassembly.npscarf2.Alignment;
-import org.rtassembly.npscarf2.BidirectedGraph;
-import org.rtassembly.npscarf2.GraphExplore;
-import org.rtassembly.npscarf2.HybridAssembler;
+import org.rtassembly.npgraph.Alignment;
+import org.rtassembly.npgraph.BidirectedGraph;
+import org.rtassembly.npgraph.GraphExplore;
+import org.rtassembly.npgraph.HybridAssembler;
 
 import japsa.seq.SequenceReader;
 import japsa.util.CommandLine;

@@ -1,4 +1,4 @@
-package org.rtassembly.npscarf2;
+package org.rtassembly.npgraph;
 
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
