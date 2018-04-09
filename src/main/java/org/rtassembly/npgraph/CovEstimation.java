@@ -36,8 +36,8 @@ public class CovEstimation {
     		
 		}
 	}
-	void newton(BidirectedGraph graph) {
-		
+	void gradientDescent(BidirectedGraph graph) {
+		//function: \sum{i}{len_i*((\sum{edges_in} - cov_i)^2 + (\sum{edges_out} - cov_i)^2)/2}
 		int maxIterations=500;
 		double epsilon=.01;
 		for(int i=0;i<maxIterations;i++) {
@@ -57,8 +57,9 @@ public class CovEstimation {
 	    			tmp=ite1.next().getNumber("cov");
 	    			sum1+=Double.isNaN(tmp)?1.0:tmp;
 	    		}	    		
-	    		double value=.5*(n0.getNumber("len")*(sum0-n0.getNumber("cov"))+n1.getNumber("len")*(sum1-n1.getNumber("cov")))/(n0.getNumber("len")+n1.getNumber("len"));
-	    			
+	    		//gamma_ij=1/(len_i+len_j) -> small enough!
+	    		double value=(n0.getNumber("len")*(sum0-n0.getNumber("cov"))+n1.getNumber("len")*(sum1-n1.getNumber("cov")))/(n0.getNumber("len")+n1.getNumber("len"));
+
 	    		stepMap.put(e.getId(), value);
 			}
 			boolean isConverged=true;
@@ -101,9 +102,9 @@ public class CovEstimation {
 //		}
 		
 		/*
-		 * Estimate edge coverage by using Newton method
+		 * Estimate edge coverage by using gradient descent method
 		 */
-		est.newton(graph);
+		est.gradientDescent(graph);
 		
 		System.out.println("=========================AFTER============================");
 		for(Node node:graph) {
@@ -185,189 +186,192 @@ public class CovEstimation {
 			
 			if(m*n==0)
 				continue;
-//			ArrayList<Double> 	inComponents = new ArrayList<>(),
-//								outComponents = new ArrayList<>();
-//			while(inIte.hasNext()) {
-//				Edge in = inIte.next();
-//				
-//				if(in.getAttribute("covdis")==null) {
-//					in.setAttribute("covdis", new CoverageDistribution(in.getNumber("cov")));
-//				}
-//				CoverageDistribution inCovDist = in.getAttribute("covdis");
-//				inComponents.addAll(inCovDist.getAllComponents());
-//				
-//			}
-//			while(outIte.hasNext()) {
-//				Edge out = outIte.next();
-//				CoverageDistribution outCovDist = out.getAttribute("covdis");
-//				if(outCovDist!=null)
-//					outComponents.addAll(outCovDist.getAllComponents());
-//			}
-//			
-//			
-//			System.out.println("Node " + node.getAttribute("name"));
-//			System.out.println("IN components: " + inComponents);
-//			System.out.println("OUT components: " + outComponents);
-			
-			/******************************************************
-			 * Another Newton
-			 * Aij-=(\sum{k}{Akj} + \sum{k}{Aik} - Ii - Oj)
-			 ******************************************************/
-			ArrayList<Edge> 	inComponents = new ArrayList<>(),
+			ArrayList<Double> 	inComponents = new ArrayList<>(),
 								outComponents = new ArrayList<>();
-			int maxIterations=500, count=0;
-			double epsilon=.01;
-//			double[][] 	comps = new double[m][n];
-//			
 			while(inIte.hasNext()) {
 				Edge in = inIte.next();
-				inComponents.add(in);			
+				
+				if(in.getAttribute("covdis")==null) {
+					in.setAttribute("covdis", new CoverageDistribution(in.getNumber("cov")));
+				}
+				CoverageDistribution inCovDist = in.getAttribute("covdis");
+				inComponents.addAll(inCovDist.getAllComponents());
+				
 			}
 			while(outIte.hasNext()) {
 				Edge out = outIte.next();
-				outComponents.add(out);	
+				CoverageDistribution outCovDist = out.getAttribute("covdis");
+				if(outCovDist!=null)
+					outComponents.addAll(outCovDist.getAllComponents());
 			}
-			boolean isContinue=true;
-//			while(isContinue) {
-//				double[][] delta = new double[m][n];
-//				count++;
-//				if(count>maxIterations){
-//					break;
+			
+			
+			System.out.println("Node " + node.getAttribute("name"));
+			System.out.println("IN components: " + inComponents);
+			System.out.println("OUT components: " + outComponents);
+
+			
+			
+			
+//			/******************************************************
+//			 * Another Newton
+//			 * Aij-=(\sum{k}{Akj} + \sum{k}{Aik} - Ii - Oj)
+//			 ******************************************************/
+//			ArrayList<Edge> 	inComponents = new ArrayList<>(),
+//								outComponents = new ArrayList<>();
+//			int maxIterations=500, count=0;
+//			double epsilon=1;
+////			double[][] 	comps = new double[m][n];
+////			
+//			while(inIte.hasNext()) {
+//				Edge in = inIte.next();
+//				inComponents.add(in);			
+//			}
+//			while(outIte.hasNext()) {
+//				Edge out = outIte.next();
+//				outComponents.add(out);	
+//			}
+//			boolean isContinue=true;
+////			while(isContinue) {
+////				double[][] delta = new double[m][n];
+////				count++;
+////				if(count>maxIterations){
+////					break;
+////				}
+////				System.out.println("Iteration " + count + "th:");
+////				for(int i=0;i<m;i++) {
+////					for(int j=0;j<n;j++)
+////						System.out.printf("%.2f ",comps[i][j]);
+////					System.out.println();
+////				}
+////				
+////				isContinue=false;
+////				for(int i=0;i<m;i++) {
+////					for(int j=0;j<n;j++) {
+////						for(int k=0;k<m;k++)
+////							delta[i][j]+=comps[k][j];
+////						for(int k=0;k<n;k++)
+////							delta[i][j]+=comps[i][k];
+////						delta[i][j]-=inComponents.get(i).getNumber("cov")+outComponents.get(j).getNumber("cov");
+////						delta[i][j]/=2;
+////						if(Math.abs(delta[i][j])>epsilon)
+////							isContinue=true;
+////					}
+////				}
+////				
+////				for(int i=0;i<m;i++) 
+////					for(int j=0;j<n;j++)
+////						comps[i][j]-=delta[i][j];
+////				
+////			}
+////			
+////			System.out.println("Node " + node.getAttribute("name") + " comps estimate after " + count + " iterations!");
+////			for(int i=0;i<m;i++) {
+////				Edge e = inComponents.get(i);
+////				System.out.print("...edge " + e.getId() + " cov=" + e.getNumber("cov") + " components: ");
+////				for(int j=0;j<n;j++)
+////					System.out.print(comps[i][j] + "; ");
+////				System.out.println();
+////			}
+////			for(int j=0;j<n;j++) {
+////				Edge e = outComponents.get(j);
+////				System.out.print("...edge " + e.getId() + " cov=" + e.getNumber("cov") + " components: ");
+////				for(int i=0;i<m;i++)
+////					System.out.print(comps[i][j] + "; ");
+////				System.out.println();
+////			}
+//			
+//			/******************************************************************************
+//			 * Real Newton from wiki: doesn't work with this function!!!
+//			 ******************************************************************************/
+//			
+//			//First build Hessian matrix from submatrices A and B
+//			//		A 	B ... B
+//			//		B	A ... B
+//			// H = 	...
+//			//		B 	B ... A
+//			
+//			double[][] 	A=new double[n][n],
+//						B=new double[n][n];
+//			for(int i=0;i<n;i++) {
+//				for(int j=0;j<n;j++) {
+//					if(i==j) {
+//						A[i][j]=4;
+//						B[i][j]=1;
+//					}else {
+//						A[i][j]=1;
+//						B[i][j]=0;
+//					}
 //				}
-//				System.out.println("Iteration " + count + "th:");
+//			}
+//			
+//			RealMatrix H = MatrixUtils.createRealMatrix(m*n,m*n);
+//			for(int i=0;i<m;i++) {
+//				for(int j=0;j<m;j++) {
+//					if(i==j) {
+//						H.setSubMatrix(A, i*n, j*n);
+//					}else {
+//						H.setSubMatrix(B, i*n, j*n);
+//					}
+//				}
+//			}
+//			// Now the gradient
+//			double[] 	grad = new double[m*n],
+//						xn = new double[m*n];
+//
+//			while(isContinue) {
+//				count++;
+//				if(count > maxIterations)
+//					break;
+//				//set the gradient at xn
+//				for(int k=0;k<m*n;k++) {
+//					int i=Math.floorDiv(k, n), 	//i=0...m-1
+//						j=k%n;					//j=0...n-1
+//					for(int p=0;p<n;p++) {
+//						grad[k]+=xn[i*n+p];
+//					}
+//					grad[k]-=inComponents.get(i).getNumber("cov");
+//					
+//					for(int q=0;q<m;q++) {
+//						grad[k]+=xn[j+q*n];
+//					}
+//					grad[k]-=outComponents.get(j).getNumber("cov");
+//					
+//					grad[k]*=2;
+//				}
+//				
+//				//calculate the step
+//				RealMatrix 	Grad = MatrixUtils.createRealMatrix(m*n,1),
+//							step = MatrixUtils.createRealMatrix(m*n,1);
+//				Grad.setColumn(0, grad);
+//				
+//				step=new LUDecomposition(H).getSolver().getInverse().multiply(Grad);
+//				
+//				isContinue=false;
+//				for(int index=0;index<m*n;index++) {
+//					xn[index]-=step.getEntry(index,0);
+//					if(Math.abs(step.getEntry(index,0))>epsilon)
+//						isContinue=true;
+//				}
+//				
+//				System.out.println("Node " + node.getAttribute("name") + " comps estimate after " + count + " iterations!");
 //				for(int i=0;i<m;i++) {
+//					Edge e = inComponents.get(i);
+//					System.out.print("...edge " + e.getId() + " cov=" + e.getNumber("cov") + " components: ");
 //					for(int j=0;j<n;j++)
-//						System.out.printf("%.2f ",comps[i][j]);
+//						System.out.print(xn[i*n+j] + "; ");
+//					System.out.println();
+//				}
+//				for(int j=0;j<n;j++) {
+//					Edge e = outComponents.get(j);
+//					System.out.print("...edge " + e.getId() + " cov=" + e.getNumber("cov") + " components: ");
+//					for(int i=0;i<m;i++)
+//						System.out.print(xn[i*n+j] + "; ");
 //					System.out.println();
 //				}
 //				
-//				isContinue=false;
-//				for(int i=0;i<m;i++) {
-//					for(int j=0;j<n;j++) {
-//						for(int k=0;k<m;k++)
-//							delta[i][j]+=comps[k][j];
-//						for(int k=0;k<n;k++)
-//							delta[i][j]+=comps[i][k];
-//						delta[i][j]-=inComponents.get(i).getNumber("cov")+outComponents.get(j).getNumber("cov");
-//						delta[i][j]/=2;
-//						if(Math.abs(delta[i][j])>epsilon)
-//							isContinue=true;
-//					}
-//				}
-//				
-//				for(int i=0;i<m;i++) 
-//					for(int j=0;j<n;j++)
-//						comps[i][j]-=delta[i][j];
-//				
 //			}
-//			
-//			System.out.println("Node " + node.getAttribute("name") + " comps estimate after " + count + " iterations!");
-//			for(int i=0;i<m;i++) {
-//				Edge e = inComponents.get(i);
-//				System.out.print("...edge " + e.getId() + " cov=" + e.getNumber("cov") + " components: ");
-//				for(int j=0;j<n;j++)
-//					System.out.print(comps[i][j] + "; ");
-//				System.out.println();
-//			}
-//			for(int j=0;j<n;j++) {
-//				Edge e = outComponents.get(j);
-//				System.out.print("...edge " + e.getId() + " cov=" + e.getNumber("cov") + " components: ");
-//				for(int i=0;i<m;i++)
-//					System.out.print(comps[i][j] + "; ");
-//				System.out.println();
-//			}
-			
-			/******************************************************************************
-			 * Real Newton from wiki
-			 ******************************************************************************/
-			
-			//First build Hessian matrix from submatrices A and B
-			//		A 	B ... B
-			//		B	A ... B
-			// H = 	...
-			//		B 	B ... A
-			
-			double[][] 	A=new double[n][n],
-						B=new double[n][n];
-			for(int i=0;i<n;i++) {
-				for(int j=0;j<n;j++) {
-					if(i==j) {
-						A[i][j]=4;
-						B[i][j]=1;
-					}else {
-						A[i][j]=1;
-						B[i][j]=0;
-					}
-				}
-			}
-			
-			RealMatrix H = MatrixUtils.createRealMatrix(m*n,m*n);
-			for(int i=0;i<m;i++) {
-				for(int j=0;j<m;j++) {
-					if(i==j) {
-						H.setSubMatrix(A, i*n, j*n);
-					}else {
-						H.setSubMatrix(B, i*n, j*n);
-					}
-				}
-			}
-			// Now the gradient
-			double[] 	grad = new double[m*n],
-						xn = new double[m*n];
-
-			while(isContinue) {
-				count++;
-				if(count > maxIterations)
-					break;
-				//set the gradient at xn
-				for(int k=0;k<m*n;k++) {
-					int i=Math.floorDiv(k, n), 	//i=0...m-1
-						j=k%n;					//j=0...n-1
-					for(int p=0;p<n;p++) {
-						grad[k]+=xn[i*n+p];
-					}
-					grad[k]-=inComponents.get(i).getNumber("cov");
-					
-					for(int q=0;q<m;q++) {
-						grad[k]+=xn[j+q*n];
-					}
-					grad[k]-=outComponents.get(j).getNumber("cov");
-					
-					grad[k]*=2;
-				}
-				
-				//calculate the step
-				RealMatrix 	Grad = MatrixUtils.createRealMatrix(m*n,1),
-							step = MatrixUtils.createRealMatrix(m*n,1);
-				Grad.setColumn(0, grad);
-				
-				step=new LUDecomposition(H).getSolver().getInverse().multiply(Grad);
-				
-				isContinue=false;
-				for(int index=0;index<m*n;index++) {
-					xn[index]-=step.getEntry(index,0);
-					if(step.getEntry(index,0)>epsilon)
-						isContinue=true;
-				}
-				
-				System.out.println("Node " + node.getAttribute("name") + " comps estimate after " + count + " iterations!");
-				for(int i=0;i<m;i++) {
-					Edge e = inComponents.get(i);
-					System.out.print("...edge " + e.getId() + " cov=" + e.getNumber("cov") + " components: ");
-					for(int j=0;j<n;j++)
-						System.out.print(xn[i*n+j] + "; ");
-					System.out.println();
-				}
-				for(int j=0;j<n;j++) {
-					Edge e = outComponents.get(j);
-					System.out.print("...edge " + e.getId() + " cov=" + e.getNumber("cov") + " components: ");
-					for(int i=0;i<m;i++)
-						System.out.print(xn[i*n+j] + "; ");
-					System.out.println();
-				}
-				
-			}
-
+//
 		}
 	}
 
