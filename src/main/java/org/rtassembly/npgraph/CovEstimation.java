@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.math3.linear.MatrixUtils;
+import org.apache.commons.math3.ml.clustering.*;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.distribution.ChiSquaredDistribution;
 import org.apache.commons.math3.linear.BlockRealMatrix;
@@ -22,6 +22,8 @@ import org.jfree.util.Log;
 
 
 public class CovEstimation {
+	static double alpha=.05; //confident level ~95%
+	
 	void initialGuess(BidirectedGraph graph) {
 		for(Edge e:graph.getEdgeSet()) {
     		BidirectedNode n0 = e.getNode0(), n1=e.getNode1();
@@ -36,6 +38,15 @@ public class CovEstimation {
     		
 		}
 	}
+	Ranger getConfidentInterval(double k) {
+		ChiSquaredDistribution 	x1dist=new ChiSquaredDistribution(2*k),
+				x2dist=new ChiSquaredDistribution(2*k+2);
+
+		double  lower=.5*x1dist.inverseCumulativeProbability(alpha/2),
+		upper=.5*x2dist.inverseCumulativeProbability(1-.5*alpha);
+		return new Ranger(lower,upper);
+	}
+	
 	void gradientDescent(BidirectedGraph graph) {
 		//function: \sum{i}{len_i*((\sum{edges_in} - cov_i)^2 + (\sum{edges_out} - cov_i)^2)/2}
 		int maxIterations=500;
@@ -81,7 +92,6 @@ public class CovEstimation {
 	
 
 	public static void main(String[] args) throws IOException {
-		// TODO Auto-generated method stub
 		HybridAssembler hbAss = new HybridAssembler(GraphExplore.spadesFolder+"EcK12S-careful/assembly_graph.fastg");
 		BidirectedGraph graph = hbAss.simGraph;
 		CovEstimation est = new CovEstimation();
@@ -122,53 +132,48 @@ public class CovEstimation {
 		
 		/*
 		 * Estimate dominant peaks by searching for union of confident intervals of Poisson distributions
+		 * TODO: consensus range = sum of length-weighted involved ranges
 		 */
 		System.out.println("=============================================================");
 		
 		HashMap<Double,Double> lengthWeightedCoverageDistribution = new HashMap<>();
+		int minLen=10000;
+		List<DoublePoint> points = new ArrayList<DoublePoint>();
+		
 		for(Node n:graph) {
-			if(n.getNumber("len") > 10000)
-				lengthWeightedCoverageDistribution.put(n.getNumber("cov"), n.getNumber("cov")*n.getNumber("len"));
-		}
-		
-		List<Map.Entry<Double, Double>> covDistribution = new ArrayList<>(lengthWeightedCoverageDistribution.entrySet());
-		Collections.sort(covDistribution, (o1,o2)->o2.getValue().compareTo(o1.getValue()));
-		
-//		System.out.println(covDistribution);
-		ArrayList<Ranger> confidentIntervals=new ArrayList<>();
-		double alpha=.05;
-		for(Map.Entry<Double,Double> entry:covDistribution) {
-//			System.out.println(entry.getKey() + ":" + entry.getValue());
-			int k = entry.getKey().intValue();
-			ChiSquaredDistribution 	x1dist=new ChiSquaredDistribution(2*k),
-									x2dist=new ChiSquaredDistribution(2*k+2);
-			
-			double  lower=.5*x1dist.inverseCumulativeProbability(alpha/2),
-					upper=.5*x2dist.inverseCumulativeProbability(1-.5*alpha);
-			Ranger tmp=new Ranger(lower,upper);
-			if(confidentIntervals.size()==0)
-				confidentIntervals.add(tmp);
-			else {
-				boolean flag=false;
-				for(Ranger r:confidentIntervals) {
-					Ranger intersect=r.intersect(tmp);
-					if(intersect!=null) {
-						r.setCooridnates(intersect.left,intersect.right);
-						flag=true;
-						break;
-					}
-						
-				}
-				if(!flag)
-					confidentIntervals.add(tmp);
+			if(n.getNumber("len") > minLen) {
+				System.out.printf("\t%.2f", n.getNumber("cov"));
+				points.add(new DoublePoint(new double[]{n.getNumber("cov"), new Double(n.getId())}));
 			}
-			System.out.println(entry + " :" + lower + " to " + upper);
-			System.out.println(confidentIntervals);
-
 		}
 		
-		System.out.println("Clustering result: ");
-		System.out.println(confidentIntervals);
+		System.out.println();
+		for(Node n1:graph) {
+			if(n1.getNumber("len") > minLen) {
+				lengthWeightedCoverageDistribution.put(n1.getNumber("cov"), n1.getNumber("cov")*n1.getNumber("len"));
+				double cov1=n1.getNumber("cov");
+				System.out.printf("%.2f\t", cov1);
+				for(Node n2:graph) {
+					double cov2=n2.getNumber("cov");
+					if(n2.getNumber("len") > minLen)
+						System.out.printf("%.2f\t", .5*(cov1*Math.log(cov1/cov2) + cov2*Math.log(cov2/cov1)));
+				}
+				System.out.println();
+				
+			}
+		}
+		// FIXME: tricky epsilon. need to loop to find best value??? 
+		DBSCANClusterer dbscan = new DBSCANClusterer(1.0, 0, (a,b)->(.5*(a[0]*Math.log(a[0]/b[0]) + b[0]*Math.log(b[0]/a[0]))));
+
+		List<Cluster<DoublePoint>> cluster = dbscan.cluster(points);
+		int count=0;
+		for(Cluster<DoublePoint> c:cluster) {
+			System.out.println("Cluster " + count++ + ":");
+			for(DoublePoint p:c.getPoints())
+				System.out.printf(" Node %d:%.2f,", (int)p.getPoint()[1], p.getPoint()[0]);
+			System.out.println();
+		}
+		
 		
 		/*
 		 * Trying to work out coverage components for edges for their fuking multiplicities
@@ -402,6 +407,9 @@ class Ranger{
 		this.left=left;
 		this.right=right;
 	}
+	public double getLength() {
+		return right-left;
+	}
 	public String toString() {
 		return left+"->"+right;
 	}
@@ -412,7 +420,6 @@ class CoverageDistribution{
 	ArrayList<CoverageDistribution> components;
 	
 	public CoverageDistribution(double sum) {
-		// TODO Auto-generated constructor stub
 		this.sum=sum;
 		components=null;
 	}
@@ -440,4 +447,19 @@ class CoverageDistribution{
 		return retval;
 	}
 
+}
+
+class PopGroup{
+	int id;
+	Ranger popRange; 
+	ArrayList<Edge> edgesList;
+	PopGroup(){}
+	
+	void addEdge(Edge e) {
+		//...
+	}
+	
+	void removeEdge(Edge e) {
+		//...
+	}
 }
