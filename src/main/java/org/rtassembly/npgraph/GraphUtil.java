@@ -4,6 +4,8 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Node;
@@ -17,9 +19,9 @@ import japsa.seq.FastaReader;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceReader;
 
-public class GraphInputReader {
+public class GraphUtil {
 
-	private static final Logger LOG = LoggerFactory.getLogger(GraphInputReader.class);
+	private static final Logger LOG = LoggerFactory.getLogger(GraphUtil.class);
 	/**********************************************************************************
 	 * ****************************Algorithms go from here*****************************
 	 */
@@ -249,6 +251,46 @@ public class GraphInputReader {
 		LOG.info("Estimated read coverage = {} Total contigs length = {}", BidirectedGraph.RCOV,totContigsLen );
 		
     }
+    
+	public static void gradientDescent(BidirectedGraph graph) {
+		int maxIterations=500;
+		double epsilon=.01;
+		for(int i=0;i<maxIterations;i++) {
+			HashMap<String,Double> stepMap = new HashMap<>();
+			for(Edge e:graph.getEdgeSet()) {
+	    		BidirectedNode n0 = e.getNode0(), n1=e.getNode1();
+	    		boolean dir0 = ((BidirectedEdge) e).getDir0(), dir1 = ((BidirectedEdge) e).getDir1();
+	    		Iterator<Edge> 	ite0 = dir0?n0.getLeavingEdgeIterator():n0.getEnteringEdgeIterator(),
+	    						ite1 = dir1?n1.getLeavingEdgeIterator():n1.getEnteringEdgeIterator();
+	    		double sum0=0, sum1=0, tmp;
+	    		while(ite0.hasNext()) {
+	    			tmp=ite0.next().getNumber("cov");
+	    			sum0+=Double.isNaN(tmp)?1.0:tmp;
+	    		}
+	    		while(ite1.hasNext())	    		 {
+	    			tmp=ite1.next().getNumber("cov");
+	    			sum1+=Double.isNaN(tmp)?1.0:tmp;
+	    		}	    		
+	    		//gamma_ij=1/(len_i+len_j) -> small enough!
+	    		double value=(n0.getNumber("len")*(sum0-n0.getNumber("cov"))+n1.getNumber("len")*(sum1-n1.getNumber("cov")))/(n0.getNumber("len")+n1.getNumber("len"));
+
+	    		stepMap.put(e.getId(), value);
+			}
+			boolean isConverged=true;
+			for(Edge e:graph.getEdgeSet()) {
+				double delta=stepMap.get(e.getId()),
+						curCov=Double.isNaN(e.getNumber("cov"))?1.0:e.getNumber("cov");
+				if(Math.abs(delta/curCov) > epsilon) {
+					isConverged=false;
+				}
+				e.setAttribute("cov", curCov-delta);
+			}
+			if(isConverged) {
+				LOG.info("Estimation CONVERGED at iteration " + i + "th");
+				break;
+			}
+		}
+	}
     
 }
 class EdgeComponents{

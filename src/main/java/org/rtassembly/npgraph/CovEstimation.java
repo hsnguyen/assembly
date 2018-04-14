@@ -132,7 +132,6 @@ public class CovEstimation {
 		
 		/*
 		 * Estimate dominant peaks by searching for union of confident intervals of Poisson distributions
-		 * TODO: consensus range = sum of length-weighted involved ranges
 		 */
 		System.out.println("=============================================================");
 		
@@ -142,28 +141,28 @@ public class CovEstimation {
 		
 		for(Node n:graph) {
 			if(n.getNumber("len") > minLen) {
-				System.out.printf("\t%.2f", n.getNumber("cov"));
+//				System.out.printf("\t%.2f", n.getNumber("cov"));
 				points.add(new DoublePoint(new double[]{n.getNumber("cov"), new Double(n.getId())}));
 			}
 		}
 		
-		System.out.println();
-		for(Node n1:graph) {
-			if(n1.getNumber("len") > minLen) {
-				lengthWeightedCoverageDistribution.put(n1.getNumber("cov"), n1.getNumber("cov")*n1.getNumber("len"));
-				double cov1=n1.getNumber("cov");
-				System.out.printf("%.2f\t", cov1);
-				for(Node n2:graph) {
-					double cov2=n2.getNumber("cov");
-					if(n2.getNumber("len") > minLen)
-						System.out.printf("%.2f\t", .5*(cov1*Math.log(cov1/cov2) + cov2*Math.log(cov2/cov1)));
-				}
-				System.out.println();
-				
-			}
-		}
+//		System.out.println();
+//		for(Node n1:graph) {
+//			if(n1.getNumber("len") > minLen) {
+//				lengthWeightedCoverageDistribution.put(n1.getNumber("cov"), n1.getNumber("cov")*n1.getNumber("len"));
+//				double cov1=n1.getNumber("cov");
+//				System.out.printf("%.2f\t", cov1);
+//				for(Node n2:graph) {
+//					double cov2=n2.getNumber("cov");
+//					if(n2.getNumber("len") > minLen)
+//						System.out.printf("%.2f\t", .5*(cov1*Math.log(cov1/cov2) + cov2*Math.log(cov2/cov1)));
+//				}
+//				System.out.println();
+//				
+//			}
+//		}
 		// FIXME: tricky epsilon. need to loop to find best value??? 
-		DBSCANClusterer dbscan = new DBSCANClusterer(1.0, 0, (a,b)->(.5*(a[0]*Math.log(a[0]/b[0]) + b[0]*Math.log(b[0]/a[0]))));
+		DBSCANClusterer dbscan = new DBSCANClusterer(1.0, 0, (a,b)->(.5*(a[0]-b[0])*(Math.log(a[0]) -Math.log(b[0]))));
 
 		List<Cluster<DoublePoint>> cluster = dbscan.cluster(points);
 		int count=0;

@@ -44,9 +44,9 @@ public class HybridAssembler {
 		this();
 
 		if(graphInputFile.toLowerCase().endsWith(".gfa")) 
-			GraphInputReader.loadFromGFA(graphInputFile, simGraph);
+			GraphUtil.loadFromGFA(graphInputFile, simGraph);
 		else if(graphInputFile.toLowerCase().endsWith(".fastg"))
-			GraphInputReader.loadFromFASTG(graphInputFile, simGraph);
+			GraphUtil.loadFromFASTG(graphInputFile, simGraph);
 		else {
 			System.err.println("Assembly graph file must have .gfa or .fastg extension!");
 			System.exit(1);
