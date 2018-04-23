@@ -13,6 +13,13 @@ import org.graphstream.graph.implementations.AbstractNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.joptimizer.functions.ConvexMultivariateRealFunction;
+import com.joptimizer.functions.LinearMultivariateRealFunction;
+import com.joptimizer.functions.PDQuadraticMultivariateRealFunction;
+import com.joptimizer.optimizers.JOptimizer;
+import com.joptimizer.optimizers.NewtonUnconstrained;
+import com.joptimizer.optimizers.OptimizationRequest;
+
 import htsjdk.samtools.util.CigarUtil;
 import japsa.seq.Alphabet;
 import japsa.seq.FastaReader;
@@ -26,6 +33,7 @@ public class GraphUtil {
 	 * ****************************Algorithms go from here*****************************
 	 */
     //TODO: read from ABySS assembly graph (graph of final contigs, not like SPAdes)
+	public static volatile double DISTANCE_THRES=1.0;
     
     public static void loadFromFASTG(String graphFile, BidirectedGraph graph) throws IOException{
         graph.setAutoCreate(true);
@@ -253,43 +261,225 @@ public class GraphUtil {
     }
     
 	public static void gradientDescent(BidirectedGraph graph) {
-		int maxIterations=500;
+		int 	maxIterations=100, 
+				eIteCount=0, nIteCount=0;
 		double epsilon=.01;
-		for(int i=0;i<maxIterations;i++) {
-			HashMap<String,Double> stepMap = new HashMap<>();
-			for(Edge e:graph.getEdgeSet()) {
-	    		BidirectedNode n0 = e.getNode0(), n1=e.getNode1();
-	    		boolean dir0 = ((BidirectedEdge) e).getDir0(), dir1 = ((BidirectedEdge) e).getDir1();
-	    		Iterator<Edge> 	ite0 = dir0?n0.getLeavingEdgeIterator():n0.getEnteringEdgeIterator(),
-	    						ite1 = dir1?n1.getLeavingEdgeIterator():n1.getEnteringEdgeIterator();
-	    		double sum0=0, sum1=0, tmp;
-	    		while(ite0.hasNext()) {
-	    			tmp=ite0.next().getNumber("cov");
-	    			sum0+=Double.isNaN(tmp)?1.0:tmp;
-	    		}
-	    		while(ite1.hasNext())	    		 {
-	    			tmp=ite1.next().getNumber("cov");
-	    			sum1+=Double.isNaN(tmp)?1.0:tmp;
-	    		}	    		
-	    		//gamma_ij=1/(len_i+len_j) -> small enough!
-	    		double value=(n0.getNumber("len")*(sum0-n0.getNumber("cov"))+n1.getNumber("len")*(sum1-n1.getNumber("cov")))/(n0.getNumber("len")+n1.getNumber("len"));
-
-	    		stepMap.put(e.getId(), value);
-			}
-			boolean isConverged=true;
-			for(Edge e:graph.getEdgeSet()) {
-				double delta=stepMap.get(e.getId()),
-						curCov=Double.isNaN(e.getNumber("cov"))?1.0:e.getNumber("cov");
-				if(Math.abs(delta/curCov) > epsilon) {
-					isConverged=false;
+		while(true) {
+			nIteCount++;
+			eIteCount=0;
+			//1. Updating edges' coverage			
+			while(true) {
+				eIteCount++;
+				HashMap<String,Double> stepMap = new HashMap<>();
+				for(Edge e:graph.getEdgeSet()) {
+		    		BidirectedNode n0 = e.getNode0(), n1=e.getNode1();
+		    		boolean dir0 = ((BidirectedEdge) e).getDir0(), dir1 = ((BidirectedEdge) e).getDir1();
+		    		Iterator<Edge> 	ite0 = dir0?n0.getLeavingEdgeIterator():n0.getEnteringEdgeIterator(),
+		    						ite1 = dir1?n1.getLeavingEdgeIterator():n1.getEnteringEdgeIterator();
+		    		double sum0=0, sum1=0, tmp;
+		    		while(ite0.hasNext()) {
+		    			tmp=ite0.next().getNumber("cov");
+		    			sum0+=Double.isNaN(tmp)?1.0:tmp;
+		    		}
+		    		while(ite1.hasNext())	    		 {
+		    			tmp=ite1.next().getNumber("cov");
+		    			sum1+=Double.isNaN(tmp)?1.0:tmp;
+		    		}	    		
+		    		//gamma_ij=1/*(len_i+len_j) -> failed!
+		    		//gamma_ij=1/2*(len_i+len_j) -> small enough! (explaination???)
+		    		double value=.5*(n0.getNumber("len")*(sum0-n0.getNumber("cov"))+n1.getNumber("len")*(sum1-n1.getNumber("cov")))/(n0.getNumber("len")+n1.getNumber("len"));
+	
+		    		stepMap.put(e.getId(), value);
 				}
-				e.setAttribute("cov", curCov-delta);
+				boolean isConverged=true, isZero=false;
+				for(Edge e:graph.getEdgeSet()) {
+					double delta=stepMap.get(e.getId()),
+							curCov=Double.isNaN(e.getNumber("cov"))?1.0:e.getNumber("cov");
+					if(Math.abs(delta/curCov) > epsilon) {
+						isConverged=false;
+					}
+					
+					if(curCov<=delta) {
+						LOG.warn("Edge " + e.getId() + " coverage is not positive!!!");
+//						isZero=true;
+					}else
+						e.setAttribute("cov", curCov-delta);
+				}
+//				if(isZero)
+//					return;
+				if(isConverged || eIteCount >= maxIterations) {
+//					System.out.println("...edges coverage CONVERGED at iteration " + eIteCount + "th");
+					break;
+				}
 			}
-			if(isConverged) {
-				LOG.info("Estimation CONVERGED at iteration " + i + "th");
+			//2. Updating nodes' coverage
+			boolean isConverged=true;
+			for(Node n:graph) {
+				Iterator<Edge> 	in=n.getEnteringEdgeIterator(),
+								out=n.getLeavingEdgeIterator();
+				long inWeight=0, outWeight=0;
+				double inCov=0, outCov=0;
+				while(in.hasNext()) {
+					Edge tmp=in.next();
+					inWeight+=tmp.getOpposite(n).getNumber("len");
+					inCov+=tmp.getNumber("cov");
+				}
+				while(out.hasNext()) {
+					Edge tmp=out.next();
+					outWeight+=tmp.getOpposite(n).getNumber("len");
+					outCov+=tmp.getNumber("cov");
+				}
+				double newCovEst=(inCov*inWeight+outCov*outWeight)/(inWeight+outWeight);
+				if(Math.abs(newCovEst-n.getNumber("cov"))/n.getNumber("cov") > epsilon)
+					isConverged=false;
+				n.setAttribute("cov", newCovEst);
+			}
+			if(isConverged || nIteCount >= maxIterations) {
+//				System.out.println("Node coverage CONVERGED at iteration " + nIteCount + "th");
+//				System.out.println("======================================================");
 				break;
 			}
+			
 		}
+	}
+	
+	public static void coverageOptimizer(BidirectedGraph graph) {
+		org.apache.log4j.BasicConfigurator.configure();
+		int nIteCount=0;
+		while(true) {
+			nIteCount++;
+			//1. Updating edges' coverage
+			ArrayList<Edge> edges = new ArrayList<Edge>(graph.getEdgeSet());
+			int edgesNumber=edges.size();
+			HashMap<Edge,Integer> idToIndex = new HashMap<Edge,Integer>();
+			double[] init = new double[edgesNumber];
+			for(int i=0;i<edgesNumber;i++) {
+				idToIndex.put(edges.get(i), i);
+				init[i]=Double.isNaN(edges.get(i).getNumber("cov"))?0:edges.get(i).getNumber("cov");
+			}
+			
+			
+			/**	A minimization problem in the form of:
+			***	  minimize_{x} (1/2)x^{T}Px+q^{T}x+r  s.t. 
+			***	    Gx ≤ h 
+			***	    Ax = b,  
+			***	where P ∈ S+^{n} (symmetric nxn), G ∈ R^{mxn} and A ∈ R^{pxn}
+			***
+			***	is called a quadratic program (QP). In a quadratic program we minimize a (convex) quadratic objective function with affine constraint functions. Quadratic programs include linear program as a special case by taking P=0.
+			***/
+			//Objective function
+			double[][] PMatrix = new double[edgesNumber][edgesNumber];
+			double[] qVector = new double[edgesNumber];
+			double r = 0;
+			
+			//equalities
+			double[][] A = new double[graph.getNodeCount()][edgesNumber];
+			double[]  b = new double[graph.getNodeCount()];
+			int p=0;
+			
+		
+			for(Node node:graph) {
+				if(node.getDegree()==0)
+					continue;
+				double cov=node.getNumber("cov");
+				int len=(int)node.getNumber("len");
+				Iterator<Edge> 	in=node.getEnteringEdgeIterator(),
+								out=node.getLeavingEdgeIterator();
+				ArrayList<Integer> 	inIndices = new ArrayList<Integer>(), 
+									outIndices = new ArrayList<Integer>();
+				while(in.hasNext()) {
+					inIndices.add(idToIndex.get(in.next()));
+				}
+				while(out.hasNext()) {
+					outIndices.add(idToIndex.get(out.next()));
+				}
+				for(int i:inIndices) {
+					qVector[i]-=cov*len;
+					A[p][i]=1; 
+					for(int j:inIndices)
+						PMatrix[i][j]+=len;
+				}
+				for(int i:outIndices) {
+					qVector[i]-=cov*len;
+					A[p][i]=-1;
+					for(int j:outIndices)
+						PMatrix[i][j]+=len;
+				}
+				b[p]=0;
+				p++;
+				r+=len*cov*cov;
+			}
+			
+			PDQuadraticMultivariateRealFunction objectiveFunction = new PDQuadraticMultivariateRealFunction(PMatrix, qVector, r);
+			
+//			ConvexMultivariateRealFunction[] inequalities = new ConvexMultivariateRealFunction[p];
+//			for(int i=0;i<p;i++) {
+//				double[] tmp=new double[edgesNumber];
+//				tmp[i]=-1;
+//				inequalities[i] = new LinearMultivariateRealFunction(tmp, 0);
+//			}
+			
+			OptimizationRequest or = new OptimizationRequest();
+			or.setF0(objectiveFunction);
+			or.setInitialPoint(init);
+//			or.setFi(inequalities);
+//			or.setA(A);
+//			or.setB(b);
+//			or.setToleranceFeas(1.E-8);
+			or.setTolerance(1.E-8);
+			
+//			JOptimizer opt = new JOptimizer();
+			NewtonUnconstrained opt = new NewtonUnconstrained();
+			opt.setOptimizationRequest(or);
+			try {
+				opt.optimize();
+				double[] sol = opt.getOptimizationResponse().getSolution();
+				for(int i=0;i<edgesNumber;i++) {
+					edges.get(i).setAttribute("cov", sol[i]);
+				}
+				
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+			
+			//2. Updating nodes' coverage
+			boolean isConverged=true;
+			for(Node n:graph) {
+				Iterator<Edge> 	in=n.getEnteringEdgeIterator(),
+								out=n.getLeavingEdgeIterator();
+				long inWeight=0, outWeight=0;
+				double inCov=0, outCov=0;
+				while(in.hasNext()) {
+					Edge tmp=in.next();
+					inWeight+=tmp.getOpposite(n).getNumber("len");
+					inCov+=tmp.getNumber("cov");
+				}
+				while(out.hasNext()) {
+					Edge tmp=out.next();
+					outWeight+=tmp.getOpposite(n).getNumber("len");
+					outCov+=tmp.getNumber("cov");
+				}
+				double newCovEst=(inCov*inWeight+outCov*outWeight)/(inWeight+outWeight);
+				if(Math.abs(newCovEst/n.getNumber("cov")) > 1.E-2)
+					isConverged=false;
+				n.setAttribute("cov", newCovEst);
+			}
+			if(isConverged || nIteCount >= 10) {
+				System.out.println("STOP at iteration " + nIteCount + "th");
+				System.out.println("======================================================");
+				break;
+			}
+			
+		}
+	}
+	
+	//The distance between 2 Poisson distribution based on Kullback-Leibner divergence
+	//distance=0.5*(KL(a,b) + KL(b,a))
+	//TODO: take density, not just mean of distribution into consideration
+	public static double metric(double a, double b) {
+		return (.5*(a-b)*(Math.log(a) -Math.log(b)));
 	}
     
 }

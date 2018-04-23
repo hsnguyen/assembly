@@ -24,7 +24,7 @@ import org.jfree.util.Log;
 public class CovEstimation {
 	static double alpha=.05; //confident level ~95%
 	
-	void initialGuess(BidirectedGraph graph) {
+	public static void initialGuess(BidirectedGraph graph) {
 		for(Edge e:graph.getEdgeSet()) {
     		BidirectedNode n0 = e.getNode0(), n1=e.getNode1();
     		boolean dir0 = ((BidirectedEdge) e).getDir0(), dir1 = ((BidirectedEdge) e).getDir1();
@@ -49,41 +49,83 @@ public class CovEstimation {
 	
 	void gradientDescent(BidirectedGraph graph) {
 		//function: \sum{i}{len_i*((\sum{edges_in} - cov_i)^2 + (\sum{edges_out} - cov_i)^2)/2}
-		int maxIterations=500;
-		double epsilon=.01;
-		for(int i=0;i<maxIterations;i++) {
+		int 	maxIterations=500, 
+				eIteCount=0, nIteCount=0;
+		double epsilon=.1;
+		while(true) {
+			nIteCount++;
+			eIteCount=0;
 //			System.out.println("======================= Iteration " + i + " ==========================");
-			HashMap<String,Double> stepMap = new HashMap<>();
-			for(Edge e:graph.getEdgeSet()) {
-	    		BidirectedNode n0 = e.getNode0(), n1=e.getNode1();
-	    		boolean dir0 = ((BidirectedEdge) e).getDir0(), dir1 = ((BidirectedEdge) e).getDir1();
-	    		Iterator<Edge> 	ite0 = dir0?n0.getLeavingEdgeIterator():n0.getEnteringEdgeIterator(),
-	    						ite1 = dir1?n1.getLeavingEdgeIterator():n1.getEnteringEdgeIterator();
-	    		double sum0=0, sum1=0, tmp;
-	    		while(ite0.hasNext()) {
-	    			tmp=ite0.next().getNumber("cov");
-	    			sum0+=Double.isNaN(tmp)?1.0:tmp;
-	    		}
-	    		while(ite1.hasNext())	    		 {
-	    			tmp=ite1.next().getNumber("cov");
-	    			sum1+=Double.isNaN(tmp)?1.0:tmp;
-	    		}	    		
-	    		//gamma_ij=1/(len_i+len_j) -> small enough!
-	    		double value=(n0.getNumber("len")*(sum0-n0.getNumber("cov"))+n1.getNumber("len")*(sum1-n1.getNumber("cov")))/(n0.getNumber("len")+n1.getNumber("len"));
-
-	    		stepMap.put(e.getId(), value);
-			}
-			boolean isConverged=true;
-			for(Edge e:graph.getEdgeSet()) {
-				double delta=stepMap.get(e.getId()),
-						curCov=Double.isNaN(e.getNumber("cov"))?1.0:e.getNumber("cov");
-				if(Math.abs(delta/curCov) > epsilon) {
-					isConverged=false;
+			//1. Updating edges' coverage			
+			while(true) {
+				eIteCount++;
+				HashMap<String,Double> stepMap = new HashMap<>();
+				for(Edge e:graph.getEdgeSet()) {
+		    		BidirectedNode n0 = e.getNode0(), n1=e.getNode1();
+		    		boolean dir0 = ((BidirectedEdge) e).getDir0(), dir1 = ((BidirectedEdge) e).getDir1();
+		    		Iterator<Edge> 	ite0 = dir0?n0.getLeavingEdgeIterator():n0.getEnteringEdgeIterator(),
+		    						ite1 = dir1?n1.getLeavingEdgeIterator():n1.getEnteringEdgeIterator();
+		    		double sum0=0, sum1=0, tmp;
+		    		while(ite0.hasNext()) {
+		    			tmp=ite0.next().getNumber("cov");
+		    			sum0+=Double.isNaN(tmp)?1.0:tmp;
+		    		}
+		    		while(ite1.hasNext())	    		 {
+		    			tmp=ite1.next().getNumber("cov");
+		    			sum1+=Double.isNaN(tmp)?1.0:tmp;
+		    		}	    		
+		    		//gamma_ij=1/(len_i+len_j) -> small enough!
+		    		double value=.5*(n0.getNumber("len")*(sum0-n0.getNumber("cov"))+n1.getNumber("len")*(sum1-n1.getNumber("cov")))/(n0.getNumber("len")+n1.getNumber("len"));
+	
+		    		stepMap.put(e.getId(), value);
 				}
-				e.setAttribute("cov", curCov-delta);
+				boolean isConverged=true;
+				ArrayList<Edge> negative = new ArrayList<Edge>();
+				for(Edge e:graph.getEdgeSet()) {
+					double delta=stepMap.get(e.getId()),
+							curCov=Double.isNaN(e.getNumber("cov"))?1.0:e.getNumber("cov");
+					if(Math.abs(delta/curCov) > epsilon) {
+						isConverged=false;
+					}
+					e.setAttribute("cov", curCov-delta);
+					if(curCov<=delta)
+						negative.add(e);
+//					e.setAttribute("cov", curCov>delta? curCov-delta:0);
+				}
+				if(isConverged || eIteCount >= maxIterations) {
+					System.out.println("======== edges coverage CONVERGED at iteration " + eIteCount + "th =========");
+					for(Edge e:negative) {
+						System.out.println("-negative edge " + e.getId() + " cov=" + e.getNumber("cov"));
+					}
+					break;
+				}
 			}
-			if(isConverged) {
-				System.out.println("Estimation CONVERGED at iteration " + i + "th");
+			//2. Updating nodes' coverage
+			boolean isConverged=true;
+			for(Node n:graph) {
+				Iterator<Edge> 	in=n.getEnteringEdgeIterator(),
+								out=n.getLeavingEdgeIterator();
+				long inWeight=0, outWeight=0;
+				double inCov=0, outCov=0;
+				while(in.hasNext()) {
+					Edge tmp=in.next();
+					inWeight+=tmp.getOpposite(n).getNumber("len");
+					inCov+=tmp.getNumber("cov");
+				}
+				while(out.hasNext()) {
+					Edge tmp=out.next();
+					outWeight+=tmp.getOpposite(n).getNumber("len");
+					outCov+=tmp.getNumber("cov");
+				}
+				double newCovEst=(inCov*inWeight+outCov*outWeight)/(inWeight+outWeight);
+				if(Math.abs(newCovEst/n.getNumber("cov")) > epsilon)
+					isConverged=false;
+				n.setAttribute("cov", newCovEst);
+			}
+			if(isConverged || nIteCount >= maxIterations) {
+//			if(isConverged) {
+				System.out.println("Node coverage CONVERGED at iteration " + nIteCount + "th");
+				System.out.println("======================================================");
 				break;
 			}
 		}
@@ -92,7 +134,7 @@ public class CovEstimation {
 	
 
 	public static void main(String[] args) throws IOException {
-		HybridAssembler hbAss = new HybridAssembler(GraphExplore.spadesFolder+"EcK12S-careful/assembly_graph.fastg");
+		HybridAssembler hbAss = new HybridAssembler(GraphExplore.spadesFolder+"W303-careful/assembly_graph.fastg");
 		BidirectedGraph graph = hbAss.simGraph;
 		CovEstimation est = new CovEstimation();
 		
@@ -117,6 +159,7 @@ public class CovEstimation {
 		est.gradientDescent(graph);
 		
 		System.out.println("=========================AFTER============================");
+		int nc=0, ec=0;
 		for(Node node:graph) {
 			Iterator<Edge> 	inIte = node.getEnteringEdgeIterator(),
 							outIte = node.getLeavingEdgeIterator();
@@ -125,11 +168,12 @@ public class CovEstimation {
 				inCov+=inIte.next().getNumber("cov");			
 			while(outIte.hasNext()) 
 				outCov+=outIte.next().getNumber("cov");	
-			
+			if(node.getDegree()>0)
+				nc++;
 			System.out.println(node.getAttribute("name") + " len=" + node.getNumber("len") + " cov=" + node.getNumber("cov") + " inCov=" + inCov + " outCov=" + outCov);
 
 		}
-		
+		System.out.println("Nodes: " + nc + " Edges: " + graph.getEdgeCount());
 		/*
 		 * Estimate dominant peaks by searching for union of confident intervals of Poisson distributions
 		 */

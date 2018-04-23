@@ -27,9 +27,13 @@
       <artifactId>junit</artifactId>
       <scope>test</scope>
     </dependency>
-    <dependency>
+    	<dependency>
 		    <groupId>org.apache.commons</groupId>
 		    <artifactId>commons-math3</artifactId>
+		</dependency>
+    	<dependency>
+		    <groupId>com.joptimizer</groupId>
+		    <artifactId>joptimizer</artifactId>
 		</dependency>
 		<dependency>
 		    <groupId>commons-io</groupId>
@@ -143,6 +147,11 @@
    			<artifactId>commons-math3</artifactId>
    			<version>3.5</version>
    		</dependency>
+		<dependency>
+		    <groupId>com.joptimizer</groupId>
+		    <artifactId>joptimizer</artifactId>
+		    <version>3.4.0</version>
+		</dependency>
    		<dependency>
    			<groupId>junit</groupId>
    			<artifactId>junit</artifactId>
