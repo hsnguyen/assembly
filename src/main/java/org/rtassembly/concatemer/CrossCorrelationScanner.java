@@ -1,12 +1,22 @@
 package org.rtassembly.concatemer;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 
+import org.rtassembly.scaffold.AlignmentRecord;
+import org.rtassembly.scaffold.ReadFilling;
+
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMRecordIterator;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.ValidationStringency;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
+import japsa.seq.SequenceOutputStream;
 import japsa.seq.SequenceReader;
 
 public class CrossCorrelationScanner{

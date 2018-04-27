@@ -48,7 +48,7 @@ public class CovEstimation {
 	}
 	
 	void gradientDescent(BidirectedGraph graph) {
-		//function: \sum{i}{len_i*((\sum{edges_in} - cov_i)^2 + (\sum{edges_out} - cov_i)^2)/2}
+		//function: \sum{i}{len_i*deg_i*((\sum{edges_in} - cov_i)^2 + (\sum{edges_out} - cov_i)^2)/4}
 		int 	maxIterations=500, 
 				eIteCount=0, nIteCount=0;
 		double epsilon=.1;
@@ -75,7 +75,10 @@ public class CovEstimation {
 		    			sum1+=Double.isNaN(tmp)?1.0:tmp;
 		    		}	    		
 		    		//gamma_ij=1/(len_i+len_j) -> small enough!
-		    		double value=.5*(n0.getNumber("len")*(sum0-n0.getNumber("cov"))+n1.getNumber("len")*(sum1-n1.getNumber("cov")))/(n0.getNumber("len")+n1.getNumber("len"));
+		    		double 	w0=n0.getNumber("len")*n0.getDegree()/2,
+		    				w1=n1.getNumber("len")*n1.getDegree()/2;
+		    		
+		    		double value=.5*(w0*(sum0-n0.getNumber("cov"))+w1*(sum1-n1.getNumber("cov")))/(w0+w1);
 	
 		    		stepMap.put(e.getId(), value);
 				}

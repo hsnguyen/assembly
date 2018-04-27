@@ -158,7 +158,15 @@ public class AlignmentRecord implements Comparable<AlignmentRecord> {
 
 	}
 	
-	
+	public Contig getContig() {
+		return contig;
+	}
+	public int getScore() {
+		return score;
+	}
+	public ArrayList<CigarElement> getCigars(){
+		return alignmentCigars;
+	}
 	public int readAlignmentStart(){
 		return Math.min(readStart,readEnd);
 	
@@ -209,6 +217,7 @@ public class AlignmentRecord implements Comparable<AlignmentRecord> {
 
 		return align;
 	}
+
 	public void copy(AlignmentRecord rec){
 		readID = rec.readID;
 		contig = rec.contig;

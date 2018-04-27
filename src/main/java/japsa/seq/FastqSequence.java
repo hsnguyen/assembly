@@ -36,6 +36,8 @@ package japsa.seq;
 import java.io.IOException;
 import java.util.Arrays;
 
+import htsjdk.samtools.SAMRecord;
+
 
 
 
@@ -90,6 +92,12 @@ public class FastqSequence extends Sequence {
 
 	
 	
+	public FastqSequence(Alphabet alphabet, SAMRecord rec) {
+		// TODO Auto-generated constructor stub
+		super(alphabet, rec.getReadString(), rec.getReadName());
+		this.quality=rec.getBaseQualities();
+	}
+
 	/* (non-Javadoc)
 	 * @see japsa.seq.AbstractSequence#write(japsa.seq.SequenceOutputStream)
 	 * 
