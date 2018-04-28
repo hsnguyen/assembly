@@ -267,7 +267,7 @@ public class Sequence extends AbstractSequence implements Cloneable {
 	/* (non-Javadoc)
 	 * @see java.lang.CharSequence#subSequence(int, int)
 	 */
-	@Override
+	
 	public Sequence subSequence(int start, int end) {
 		byte [] newSeq = Arrays.copyOfRange(byteSeq, start, end); 
 		return new Sequence(alphabet(), newSeq);

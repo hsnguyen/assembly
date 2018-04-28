@@ -3,6 +3,8 @@ package org.rtassembly.concatemer;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 
 import org.rtassembly.scaffold.AlignmentRecord;
 import org.rtassembly.scaffold.Contig;
@@ -32,11 +34,15 @@ public class SequenceChopper {
 	}
 	// Chop the concatemers (long nanopore reads) based on the reference
 	public void chopLongReadsBasedOnRef(String samFile, String outFile, double qual) throws IOException {
+		HashMap<Integer,ArrayList<String>> count2Reads = new HashMap<>(); // concatemer information
+		ArrayList<Integer> allLength = new ArrayList<Integer>();
+		
 		SequenceOutputStream fout = SequenceOutputStream.makeOutputStream(outFile);
 		SamReaderFactory.setDefaultValidationStringency(ValidationStringency.SILENT);
 		SamReader reader=SamReaderFactory.makeDefault().open(new File(samFile));
 		SAMRecordIterator iter = reader.iterator();
-
+		
+		
 		String readID = "";
 		AlignmentRecord myRec = null;
 		ArrayList<AlignmentRecord> samList = null;// alignment record of the same read;		
@@ -52,12 +58,21 @@ public class SequenceChopper {
 			
 			if (!readID.equals(myRec.readID)){
 				//chop and print seq ...
-				if(samList!=null && samList.size() >= 1)
-					chopAndPrint(fullSeq, samList, fout);
+				if(samList!=null && samList.size() >= 1) {
+					int isomerCount=chopAndPrint(fullSeq, samList, fout);
+					if(count2Reads.get(isomerCount)==null) {
+						ArrayList<String> tmp = new ArrayList<String>();
+						tmp.add(readID);
+						count2Reads.put(isomerCount, tmp);
+					}else
+						count2Reads.get(isomerCount).add(readID);
+				}
 				//re-initialize
 				samList = new ArrayList<AlignmentRecord>();
 				readID = myRec.readID;	
 				fullSeq=new FastqSequence(Alphabet.DNA5(), rec);
+//				fullSeq.print(fout);
+				allLength.add(fullSeq.length());
 			}
 //			if (rec.getMappingQuality() < qual || !myRec.useful)	
 			if (rec.getMappingQuality() < qual || Math.abs(myRec.readEnd-myRec.readStart) < .8*ref.length()) //80% error rate of nanopore data		
@@ -67,30 +82,61 @@ public class SequenceChopper {
 
 		}// while
 		
-		//FastqSequence seq.print(fout);
+		ArrayList<Integer> counts = new ArrayList<Integer>(count2Reads.keySet());
+		Collections.sort(counts);
+		System.out.println("====================================================");
+		System.out.println("====================================================");
+		int cov=0;
+		for(int c:counts) {
+			System.out.printf("Number of %d-concatemer is %d\n",c,count2Reads.get(c).size());
+			for(String id:count2Reads.get(c))
+				System.out.println(id);
+			cov+=c*count2Reads.get(c).size();
+			System.out.println();
+		}
+		System.out.printf("Total=%dX\n",cov);
 		fout.close();
 		iter.close();
 		reader.close();
+		
+		System.out.println("====================================================");
+		System.out.println("## Length of all reads mapped:");
+		Collections.sort(allLength);
+		for(int l:allLength)
+			System.out.printf("%d ", l);
 	}
 	
-	private void chopAndPrint(FastqSequence read, ArrayList<AlignmentRecord> records, SequenceOutputStream out) {
+	private int chopAndPrint(FastqSequence read, ArrayList<AlignmentRecord> records, SequenceOutputStream out) throws IOException {
 		if(read==null || records == null || records.size()==0)
-			return;
+			return 0;
 		System.out.println("===========================================================");
 
+		Sequence motif = new Sequence(Alphabet.DNA5(), "TGGTATCAGAGC", "template");
+		CrossCorrelationScanner scanner = new CrossCorrelationScanner(motif);
+				
 		int[] 	start = new int[records.size()], 
 				stop = new int[records.size()];
+		
+		int[] 	start2 = new int[records.size()], 
+				stop2 = new int[records.size()];
+		
 		int count=0;
 		for(AlignmentRecord rec:records) {
 			start[count]=mapToRead(0, rec);
 			stop[count]=mapToRead(ref.length()-1, rec);
+			
+			start2[count] = scanner.scanAround(read, start[count], rec.strand);
+			stop2[count] = scanner.scanAround(read, stop[count], rec.strand);
+			
 			count++;
 		}
 		System.out.println("Read " + read.getName() + " length=" + read.length() + ":");
 		for(int i=0;i<count;i++) {
-			System.out.printf("\t%d -> %d\n", start[i], stop[i]);
+			System.out.printf("\t%d -> %d After scan: %d -> %d\n", start[i], stop[i], start2[i], stop2[i]);
+			FastqSequence isomer=read.subSequence(Math.min(start2[i], stop2[i]), Math.max(start2[i], stop2[i]));
+			isomer.print(out);
 		}
-		
+		return count;
 	}
 	static int mapToRead(int posOnRef, AlignmentRecord record){
 		// read htsjdk.samtools.* API
@@ -174,8 +220,10 @@ public class SequenceChopper {
 //	}
 	
 	public static void main(String[] args) throws IOException {
+//		SequenceChopper tony_tony_chopper = new SequenceChopper("/home/s_hoangnguyen/Projects/plant_virus/ref/BSMYV.fasta");
 		SequenceChopper tony_tony_chopper = new SequenceChopper("/home/s_hoangnguyen/Projects/plant_virus/ref/CaMV.fasta");
-		tony_tony_chopper.chopLongReadsBasedOnRef("/home/s_hoangnguyen/Projects/plant_virus/alignment/barcode08_pass_mm2.sam", "/home/s_hoangnguyen/Projects/plant_virus/test.out", 10);
+
+		tony_tony_chopper.chopLongReadsBasedOnRef("/home/s_hoangnguyen/Projects/plant_virus/alignment/barcode08_pass_mm2.sam", "/home/s_hoangnguyen/Projects/plant_virus/barcode08_isomers.fastq", 1);
 
 	}
 

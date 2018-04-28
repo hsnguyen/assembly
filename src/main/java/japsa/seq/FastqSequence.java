@@ -89,15 +89,20 @@ public class FastqSequence extends Sequence {
 		super(alphabet, toks[1], toks[0]);
 		this.quality = toks[3].getBytes();		
 	}
-
-	
 	
 	public FastqSequence(Alphabet alphabet, SAMRecord rec) {
 		// TODO Auto-generated constructor stub
-		super(alphabet, rec.getReadString(), rec.getReadName());
-		this.quality=rec.getBaseQualities();
+//		super(alphabet, rec.getReadString(), rec.getReadName());
+//		this.quality=rec.getBaseQualities();
+		this(alphabet, new String[]{rec.getReadName(),rec.getReadString(),"+",rec.getBaseQualityString()});
 	}
-
+	
+	public FastqSequence subSequence(int start, int end) {
+//		byte [] newSeq = Arrays.copyOfRange(byteSeq, start, end); 
+//		return new Sequence(alphabet(), newSeq);
+		String newName=getName()+":"+start+"-"+end;
+		return new FastqSequence(alphabet(), Arrays.copyOfRange(toBytes(), start, end), Arrays.copyOfRange(quality, start, end), newName);
+	}
 	/* (non-Javadoc)
 	 * @see japsa.seq.AbstractSequence#write(japsa.seq.SequenceOutputStream)
 	 * 

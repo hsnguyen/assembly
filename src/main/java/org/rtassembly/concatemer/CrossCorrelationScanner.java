@@ -15,12 +15,15 @@ import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import japsa.seq.Alphabet;
+import japsa.seq.Alphabet.DNA;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceOutputStream;
 import japsa.seq.SequenceReader;
 
 public class CrossCorrelationScanner{
+	public static final int SCAN_WINDOW=100;
 	Sequence template;
+	
 	public CrossCorrelationScanner(Sequence template) {
 		// TODO Auto-generated constructor stub
 		this.template=template;
@@ -58,7 +61,31 @@ public class CrossCorrelationScanner{
 		
 		return retval;
 	}
-	
+	public int scanAround(Sequence query, int coordinate, boolean strand) {
+		int retval=-1;
+		int l=query.length();
+		int lower=coordinate-SCAN_WINDOW>0?coordinate-SCAN_WINDOW:0,
+			upper=coordinate+SCAN_WINDOW<l?coordinate+SCAN_WINDOW:l-1;
+		int newcoord = coordinate-lower+1;
+		Sequence target=query.subSequence(lower, upper);
+		if(strand) {
+			target=DNA.complement(target);
+			newcoord=target.length()-newcoord;
+		}
+		ArrayList<Integer> spectrum=scan(target);
+		int max_score=0, min_dist=l;
+		for(int i=0;i<spectrum.size();i++) {
+			int distance=Math.abs(newcoord-i);
+			
+			if(spectrum.get(i)>max_score || (spectrum.get(i) == max_score && distance < min_dist)) {
+				max_score=spectrum.get(i);
+				retval=lower+i;
+				min_dist = distance;
+			}
+		}
+//		System.out.printf("Max and closest hit at %d, distance=%d, score=%d\n",retval, min_dist,max_score);
+		return retval;
+	}
 	public static void main(String args[]) throws IOException {
 		/***********************************************************************/
 		String 	inputFileName = "/home/s_hoangnguyen/Projects/plant_virus/barcode08_pass.fastq.gz",
