@@ -26,6 +26,7 @@ public class GraphExplore {
     }
 
     public GraphExplore() throws IOException{
+    	System.setProperty("org.graphstream.ui", "javafx");
     	//System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer"); 
     	String sample="EcK12S-careful";
 //    	String sample="Kp2146-careful";
@@ -94,7 +95,7 @@ public class GraphExplore {
     public static void redrawGraphComponents(BidirectedGraph graph) {
 //      graph.addAttribute("ui.quality");
 //      graph.addAttribute("ui.antialias");
-    	graph.addAttribute("ui.default.title", "New real-time hybrid assembler");
+//    	graph.addAttribute("ui.default.title", "New real-time hybrid assembler");
     	
     	graph.setAttribute("ui.style", dynamicStyle);
 
