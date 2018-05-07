@@ -28,8 +28,8 @@ public class GraphExplore {
     public GraphExplore() throws IOException{
     	System.setProperty("org.graphstream.ui", "javafx");
     	//System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer"); 
-    	String sample="EcK12S-careful";
-//    	String sample="Kp2146-careful";
+//    	String sample="EcK12S-careful";
+    	String sample="Kp2146-careful";
 //    	String sample="Kp13883-careful";
     	
     	//memory!!!
@@ -101,7 +101,7 @@ public class GraphExplore {
 
     	for (Node node : graph) {
 
-    		Sequence seq = node.getAttribute("seq");
+    		Sequence seq = (Sequence) node.getAttribute("seq");
     		double lengthScale = 1+(Math.log10(seq.length())-2)/3.5; //100->330,000
           
 			if(lengthScale<1) lengthScale=1;
@@ -124,7 +124,7 @@ public class GraphExplore {
           
 //          node.addAttribute("ui.label", covScale);
           
-			node.addAttribute("ui.label", node.getId());
+			node.setAttribute("ui.label", node.getId());
 //			node.addAttribute("ui.label", (int)(node.getNumber("cov")));
 
 

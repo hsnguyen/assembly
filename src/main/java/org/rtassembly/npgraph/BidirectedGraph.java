@@ -8,6 +8,8 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.graphstream.graph.*;
 import org.graphstream.graph.implementations.*;
@@ -21,7 +23,7 @@ import japsa.seq.SequenceOutputStream;
 import japsa.seq.SequenceReader;
 
 
-public class BidirectedGraph extends AdjacencyListGraph{
+public class BidirectedGraph extends MultiGraph{
     static int KMER=127;
     static double RCOV=0.0;
     
@@ -120,7 +122,7 @@ public class BidirectedGraph extends AdjacencyListGraph{
 	}
 	
 	protected BidirectedEdge addEdge(AbstractNode src, AbstractNode dst, boolean dir0, boolean dir1){
-		BidirectedEdge tmp = addEdge(BidirectedEdge.createID(src, dst, dir0, dir1), src, dst);
+		BidirectedEdge tmp = (BidirectedEdge) addEdge(BidirectedEdge.createID(src, dst, dir0, dir1), src, dst);
 //		String s1=tmp.toString();
 //		//tmp.setDir0(dir0);
 //		//tmp.setDir1(dir1);
@@ -131,14 +133,13 @@ public class BidirectedGraph extends AdjacencyListGraph{
 	
 	
 	public String printEdgesOfNode(BidirectedNode node){
-		Iterator<BidirectedEdge> 	ins = getNode(node.getId()).getEnteringEdgeIterator(),
-									outs = getNode(node.getId()).getLeavingEdgeIterator();
-		String retval=node.getId() + ": IN={";
-		while(ins.hasNext())
-			retval += ins.next().getId() + " ";
-		retval+="}; OUT={";
-		while(outs.hasNext())
-			retval += outs.next().getId() + " ";	
+		Stream<Edge> 	ins = getNode(node.getId()).enteringEdges(),
+						outs = getNode(node.getId()).leavingEdges();
+		String retval=node.getId() + ": IN={ ";
+//		ins.map(e->(retval += e.getId() + " "));
+		retval+=ins.map(e -> (e.getId()+" ")).reduce((a,b)->(a+b));
+		retval+="}; OUT={ ";
+		retval+=outs.map(e -> (e.getId()+" ")).reduce((a,b)->(a+b));
 		retval+="}";
 		return retval;		
 	}
@@ -147,7 +148,7 @@ public class BidirectedGraph extends AdjacencyListGraph{
 		SequenceOutputStream out = SequenceOutputStream.makeOutputStream(fileName);
 		
 		for(Node node:this) {
-			Sequence seq=node.getAttribute("seq");
+			Sequence seq=(Sequence) node.getAttribute("seq");
 			seq.writeFasta(out);
 		}
 		
@@ -418,17 +419,17 @@ public class BidirectedGraph extends AdjacencyListGraph{
     	BidirectedEdge currentEdge;
     	boolean curDir;//direction to the next node, = ! previous'
     	
-    	Iterator<BidirectedEdge> ite;
+    	Iterator<Edge> ite;
     	if(path.size() <= 1) //only root
 			curDir=srcDir;//re-check
 		else{
 			currentEdge = (BidirectedEdge) path.peekEdge();
 			curDir = !((BidirectedEdge) currentEdge).getDir(currentNode);
 		}
-		ite=curDir?currentNode.getLeavingEdgeIterator():currentNode.getEnteringEdgeIterator();
-
+		ite=curDir?currentNode.leavingEdges().iterator():currentNode.enteringEdges().iterator();
+		//FIXME: use stream directly?
     	while(ite.hasNext()){
-    		BidirectedEdge e = ite.next();
+    		BidirectedEdge e = (BidirectedEdge) ite.next();
 			path.add(e);
 			
 			int toTarget=Math.abs(distance-e.getLength());
@@ -669,7 +670,7 @@ public class BidirectedGraph extends AdjacencyListGraph{
     	double aveCov=0;
     	for(Edge e:p.getEdgePath()){
     			
-    		curNodeFromSimGraph=e.getOpposite(curNodeFromSimGraph);
+    		curNodeFromSimGraph=(BidirectedNode) e.getOpposite(curNodeFromSimGraph);
     		   		
 //    		curNodeFromSimGraph = simGraph.getNode(curNodeFromOrigGraph.getId()); //change back to Node belong to simGraph (instead of origGraph)
     		curDir=((BidirectedEdge) e).getDir(curNodeFromSimGraph);
@@ -739,26 +740,26 @@ public class BidirectedGraph extends AdjacencyListGraph{
     	//remove appropriate edges
     	for(BidirectedEdge e:tobeRemoved){
     		LOG.info("REMOVING EDGE " + e.getId() + " from " + e.getNode0().getGraph().getId() + "-" + e.getNode1().getGraph().getId());
-    		LOG.info("before: \n\t" + printEdgesOfNode(e.getNode0()) + "\n\t" + printEdgesOfNode(e.getNode1()));
+    		LOG.info("before: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
     		removeEdge(e.getId());
-    		LOG.info("after: \n\t" + printEdgesOfNode(e.getNode0()) + "\n\t" + printEdgesOfNode(e.getNode1()));
+    		LOG.info("after: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
     	}
     	
     	//add appropriate edges
     	for(BidirectedEdge e:tobeAdded){
     		LOG.info("ADDING EDGE " + e.getId()+ " from " + e.getNode0().getGraph().getId() + "-" + e.getNode1().getGraph().getId());
-    		LOG.info("before: \n\t" + printEdgesOfNode(e.getNode0()) + "\n\t" + printEdgesOfNode(e.getNode1()));
+    		LOG.info("before: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
     		
-    		BidirectedEdge reducedEdge = addEdge(e.getSourceNode(),e.getTargetNode(),e.getDir0(),e.getDir1());
+    		BidirectedEdge reducedEdge = addEdge((BidirectedNode)e.getSourceNode(),(BidirectedNode)e.getTargetNode(),e.getDir0(),e.getDir1());
     		
 			if(reducedEdge!=null){
 //				reducedEdge.addAttribute("ui.label", reducedEdge.getId());
 //				reducedEdge.setAttribute("ui.style", "text-offset: -10; text-alignment: along;"); 
-				reducedEdge.addAttribute("isReducedEdge", true);
+				reducedEdge.setAttribute("isReducedEdge", true);
 				reducedEdge.setAttribute("ui.class", "marked");
 //				reducedEdge.addAttribute("layout.weight", 10);
 			}
-    		LOG.info("after: \n\t" + printEdgesOfNode(e.getNode0()) + "\n\t" + printEdgesOfNode(e.getNode1()));
+    		LOG.info("after: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
 
     	}
     	
@@ -776,7 +777,7 @@ public class BidirectedGraph extends AdjacencyListGraph{
     	boolean res = false;
     	
     	if(node.getDegree()<=2){ // not always true, e.g. unique node in a repetitive component
-    		Sequence seq = node.getAttribute("seq");
+    		Sequence seq = (Sequence) node.getAttribute("seq");
 //    		if(seq.length() > 1000 && node.getNumber("astats") > 10 && node.getNumber("cov")/RCOV > .3)
     		if(seq.length() > 300 && node.getNumber("astats") > 10 && node.getNumber("cov")/RCOV > .3)
     			res=true;
@@ -808,19 +809,17 @@ public class BidirectedGraph extends AdjacencyListGraph{
      * and update a node's coverage if possible (later)
      */
     synchronized public void balancing() {
-    	ArrayList<BidirectedEdge> unknownEdges= new ArrayList<BidirectedEdge>(this.getEdgeSet());
-    	
-    	
-    	ArrayList<BidirectedEdge> newUnknownEdges = new ArrayList<BidirectedEdge>();
+    	List<Edge> unknownEdges=this.edges().collect(Collectors.toList());
+    	ArrayList<Edge> newUnknownEdges = new ArrayList<Edge>();
     	while(true) {
-	    	for(BidirectedEdge e:unknownEdges) {
+	    	for(Edge e:unknownEdges) {
 	    		if(!Double.isNaN(e.getNumber("cov")))
 	    			continue;
 	    			
-	    		BidirectedNode n0 = e.getNode0(), n1=e.getNode1();
-	    		boolean dir0 = e.getDir0(), dir1 = e.getDir1();
-	    		Iterator<Edge> 	in0 = n0.getEnteringEdgeIterator(), out0 = n0.getLeavingEdgeIterator(),
-	    						in1 = n1.getEnteringEdgeIterator(), out1 = n1.getLeavingEdgeIterator();
+	    		BidirectedNode n0 = (BidirectedNode) e.getNode0(), n1=(BidirectedNode) e.getNode1();
+	    		boolean dir0 = ((BidirectedEdge) e).getDir0(), dir1 = ((BidirectedEdge) e).getDir1();
+	    		Iterator<Edge> 	in0 = n0.enteringEdges().iterator(), out0 = n0.leavingEdges().iterator(),
+	    						in1 = n1.enteringEdges().iterator(), out1 = n1.leavingEdges().iterator();
 	    		int unknwIn0 = 0, unknwOut0 = 0, unknwIn1  = 0, unknwOut1 = 0;
 	    		double inWeight0 = 0, outWeight0 = 0, inWeight1 = 0, outWeight1 = 0;
 	    		while(in0.hasNext()) {
@@ -932,7 +931,7 @@ public class BidirectedGraph extends AdjacencyListGraph{
 	    	}
 
 	    	unknownEdges = newUnknownEdges;
-	    	newUnknownEdges = new ArrayList<BidirectedEdge>();
+	    	newUnknownEdges = new ArrayList<Edge>();
 	    	if(unknownEdges.isEmpty())
 	    		break;
 	    	else {
@@ -960,15 +959,14 @@ public class BidirectedGraph extends AdjacencyListGraph{
      * Print adjacent edges' coverage of a node
      */
     public void printEdgesCov(Node node) {
-    	Iterator<BidirectedEdge> in = node.getEnteringEdgeIterator(), out = node.getLeavingEdgeIterator();
-    	System.out.print("+++Node " + node.getAttribute("name") + "\tIN: ");
+    	Iterator<Edge> in = node.enteringEdges().iterator(), out = node.leavingEdges().iterator();
     	while(in.hasNext()) {
-    		BidirectedEdge e = in.next();
+    		BidirectedEdge e = (BidirectedEdge) in.next();
     		System.out.printf("[%s]=%.2f; ", e.getId(), e.getNumber("cov"));
     	}
     	System.out.print("\n\tOUT: ");
     	while(out.hasNext()) {
-    		BidirectedEdge e = out.next();
+    		BidirectedEdge e = (BidirectedEdge) out.next();
     		System.out.printf("[%s]=%.2f; ", e.getId(), e.getNumber("cov"));
     	}
     	System.out.println();

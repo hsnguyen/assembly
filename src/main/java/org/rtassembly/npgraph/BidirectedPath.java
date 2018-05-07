@@ -70,15 +70,15 @@ public class BidirectedPath extends Path{
 		String curID = comps[0], nextID;
 		boolean curDir = curID.contains("+")?true:false,
 				nextDir;
-		BidirectedNode curNode = graph.getNode(curID.substring(0,curID.length()-1)),
+		BidirectedNode curNode = (BidirectedNode) graph.getNode(curID.substring(0,curID.length()-1)),
 						nextNode;
 		setRoot(curNode);
 		for(int i=1; i<comps.length; i++){
 			nextID = comps[i];
 			nextDir = nextID.contains("+")?true:false;
-			nextNode = graph.getNode(nextID.substring(0,nextID.length()-1));		
+			nextNode = (BidirectedNode) graph.getNode(nextID.substring(0,nextID.length()-1));		
 			
-			BidirectedEdge curEdge=graph.getEdge(BidirectedEdge.createID(curNode, nextNode, curDir, !nextDir));
+			BidirectedEdge curEdge=(BidirectedEdge) graph.getEdge(BidirectedEdge.createID(curNode, nextNode, curDir, !nextDir));
 
 			add(curEdge);
 			curDir=nextDir;
@@ -104,7 +104,7 @@ public class BidirectedPath extends Path{
 				curDir=((BidirectedEdge) getEdgePath().get(0)).getDir(curNode)?"+":"-";
 		retval+=curDir;
 		for(Edge e:getEdgePath()){
-			curNode=e.getOpposite(curNode);
+			curNode=(BidirectedNode) e.getOpposite(curNode);
 			retval+=","+curNode.getId();
 			curDir=((BidirectedEdge) e).getDir(curNode)?"-":"+"; //note that curNode is target node
 			retval+=curDir;
@@ -120,7 +120,7 @@ public class BidirectedPath extends Path{
 	public Sequence spelling(){
 	
 		BidirectedNode curNode = (BidirectedNode) getRoot();
-		Sequence curSeq = curNode.getAttribute("seq");
+		Sequence curSeq = (Sequence) curNode.getAttribute("seq");
 	
 		if(getEdgeCount()<1)
 			return curSeq;
@@ -131,8 +131,8 @@ public class BidirectedPath extends Path{
 	
 		seq.append(curSeq.subSequence(0, curSeq.length()-BidirectedGraph.getKmerSize()));
 		for(Edge e:getEdgePath()){
-			curNode=e.getOpposite(curNode);
-			curSeq= curNode.getAttribute("seq");
+			curNode=(BidirectedNode) e.getOpposite(curNode);
+			curSeq= (Sequence) curNode.getAttribute("seq");
 			curDir=!((BidirectedEdge) e).getDir(curNode);
 			curSeq = curDir?curSeq:Alphabet.DNA.complement(curSeq);
 	

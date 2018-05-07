@@ -140,7 +140,7 @@ public class HybridAssembler {
 			
 			if (simGraph.getNode(refID)==null)
 				continue;
-			Alignment myRec = new Alignment(rec, simGraph.getNode(refID)); //FIXME: optimize
+			Alignment myRec = new Alignment(rec, (BidirectedNode) simGraph.getNode(refID)); //FIXME: optimize
 
 			//////////////////////////////////////////////////////////////////
 			// make list of alignments of the same (Nanopore) read. 
@@ -230,7 +230,7 @@ public class HybridAssembler {
 			String refID = rec.getReferenceName().split("_")[1];
 			if (simGraph.getNode(refID)==null)
 				continue;
-			Alignment myRec = new Alignment(rec, simGraph.getNode(refID)); //FIXME: optimize
+			Alignment myRec = new Alignment(rec, (BidirectedNode) simGraph.getNode(refID)); //FIXME: optimize
 
 			//////////////////////////////////////////////////////////////////
 			// make list of alignments of the same (Nanopore) read. 

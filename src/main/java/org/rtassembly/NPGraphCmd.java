@@ -130,6 +130,8 @@ public class NPGraphCmd extends CommandLine{
         }
 		//4. Call the assembly function or invoke GUI to do so
         if(gui) {
+        	//settings...
+        	
 //			NPGraphFX.setAssembler(hbAss);
 //			Application.launch(NPGraphFX.class,args);
         }else {

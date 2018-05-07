@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.apache.commons.math3.ml.clustering.Cluster;
 import org.apache.commons.math3.ml.clustering.DBSCANClusterer;
@@ -108,8 +109,10 @@ public class CoverageBinner {
 //		GraphUtil.coverageOptimizer(graph);
 		nodesClustering();
 		//Store the unresolved nodes(edges)..
-		ArrayList<BidirectedEdge> 	unresolvedEdges = new ArrayList<BidirectedEdge>(graph.getEdgeSet()),
-									nextSetOfUnresolvedEdges=null;
+		List<Edge> 	unresolvedEdges = 
+				graph.edges().sorted((o1,o2)->(int)(o1.getNumber("cov")-o2.getNumber("cov"))).collect(Collectors.toList());
+		
+		List<Edge>	nextSetOfUnresolvedEdges=null;
 		Collections.sort(unresolvedEdges, (o1,o2)->(int)(o1.getNumber("cov")-o2.getNumber("cov")));
 		//now do the task here:
 		Collections.sort(binList, (o1,o2)->(int)(o1.estCov-o2.estCov));
@@ -123,7 +126,7 @@ public class CoverageBinner {
 					tobeRemoved.add(n);
 					//create/split to 2 new bins here???
 				}else {
-					Iterator<Edge> ite=n.getEdgeIterator();
+					Iterator<Edge> ite=n.edges().iterator();
 					while(ite.hasNext()) {
 						Edge e=ite.next();
 						addToMaps(e, b, 1);
@@ -142,15 +145,15 @@ public class CoverageBinner {
 			System.out.println("=====================================================================");
 			System.out.println("Starting assigning " + unresolvedEdges.size() + " unresolved edges");
 			nextSetOfUnresolvedEdges = new ArrayList<>();
-			for(BidirectedEdge e:unresolvedEdges) {
+			for(Edge e:unresolvedEdges) {
 				//fuk its hard here!!    		
 				//not sure about the order of step
 				//1. considering information from neighbors
 				//refer to the old balance() function!
-	    		BidirectedNode n0 = e.getNode0(), n1=e.getNode1();
-	    		boolean dir0 = e.getDir0(), dir1 = e.getDir1();
-	    		Iterator<Edge> 	in0 = n0.getEnteringEdgeIterator(), out0 = n0.getLeavingEdgeIterator(),
-	    						in1 = n1.getEnteringEdgeIterator(), out1 = n1.getLeavingEdgeIterator();
+	    		BidirectedNode n0 = (BidirectedNode) e.getNode0(), n1=(BidirectedNode) e.getNode1();
+	    		boolean dir0 = ((BidirectedEdge) e).getDir0(), dir1 = ((BidirectedEdge) e).getDir1();
+	    		Iterator<Edge> 	in0 = n0.enteringEdges().iterator(), out0 = n0.leavingEdges().iterator(),
+	    						in1 = n1.enteringEdges().iterator(), out1 = n1.leavingEdges().iterator();
 	    		int unknwIn0 = 0, unknwOut0 = 0, unknwIn1  = 0, unknwOut1 = 0;
 	    		HashMap<Bin, Integer> 	inBins0 = new HashMap<Bin, Integer>(),
 	    		 						outBins0 = new HashMap<Bin, Integer>(), 
@@ -298,12 +301,14 @@ public class CoverageBinner {
 	
 	
 	public static void main(String[] args) throws IOException {
-		HybridAssembler hbAss = new HybridAssembler(GraphExplore.spadesFolder+"W303-careful/assembly_graph.fastg");
+		HybridAssembler hbAss = new HybridAssembler(GraphExplore.spadesFolder+"EcK12S-careful/assembly_graph.fastg");
 		BidirectedGraph graph = hbAss.simGraph;		
 		CoverageBinner binner = new CoverageBinner(graph);
 		binner.estimatePathsByCoverage();
 		for(Node n:graph) {
-			for(Edge e:n.getEdgeSet()) {
+			Iterator<Edge> ite = n.edges().iterator();
+			while(ite.hasNext()) {
+				Edge e = ite.next();
 				System.out.println("Edge "+e.getId() + ":");
 				HashMap<Bin,Integer> tmp = binner.edge2BinMap.get(e);
 				for(Bin b:tmp.keySet()) {

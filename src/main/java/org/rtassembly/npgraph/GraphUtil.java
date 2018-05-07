@@ -56,7 +56,7 @@ public class GraphUtil {
 			name=name.replaceAll("[^a-zA-Z0-9_.]", "").trim(); //EDGE_X_length_Y_cov_Z
 			
 			String nodeID = name.split("_")[1];
-			AbstractNode node = graph.addNode(nodeID); //or get the existing node prototype created below (to set the attributes)
+			AbstractNode node = (AbstractNode) graph.addNode(nodeID); //or get the existing node prototype created below (to set the attributes)
 			node.setAttribute("name", name);
 			
 			if(dir0){
@@ -85,7 +85,7 @@ public class GraphUtil {
 					neighbor=neighbor.replaceAll("[^a-zA-Z0-9_.]", "").trim();
 					
 					String neighborID = neighbor.split("_")[1];
-					AbstractNode nbr = graph.addNode(neighborID); //just need a prototype, attributes can be set later...
+					AbstractNode nbr = (AbstractNode) graph.addNode(neighborID); //just need a prototype, attributes can be set later...
 
 					potentialEdgeSet.add(new EdgeComponents(node,nbr,dir0,dir1)); //edges' prototype
 					
@@ -98,14 +98,16 @@ public class GraphUtil {
 		
 		for(EdgeComponents ec:potentialEdgeSet) {
 			BidirectedEdge e = graph.addEdge(ec.n1, ec.n2, ec.dir1, ec.dir2);
+//			System.out.println("...adding edge " + e.getId() + " -> total no of edges = " + graph.getEdgeCount());
 			graph.updateGraphMap(e, new BidirectedPath(e));
 		}
 		//rough estimation of kmer used
 		if((shortestLen-1) != BidirectedGraph.getKmerSize()){
 			BidirectedGraph.setKmerSize(shortestLen-1);
-			for(Edge e:graph.getEdgeSet()){
-				((BidirectedEdge)e).changeKmerSize(BidirectedGraph.KMER);
-			}
+//			for(Edge e:graph.getEdgeSet()){
+//				((BidirectedEdge)e).changeKmerSize(BidirectedGraph.KMER);
+//			}
+			graph.edges().forEach(e -> ((BidirectedEdge)e).changeKmerSize(BidirectedGraph.KMER));
 		}
 		
 		double totReadsLen=0, totContigsLen=0;
@@ -129,14 +131,14 @@ public class GraphUtil {
 		 * Recalculated by Cx, contig_len, read_len, RCOV (average read coverage over the genome)
 		 */
 		for (Node n:graph) {
-			Sequence nseq = n.getAttribute("seq");
+			Sequence nseq = (Sequence) n.getAttribute("seq");
 			double astats = nseq.length()*BidirectedGraph.RCOV/BidirectedGraph.ILLUMINA_READ_LENGTH
 							-Math.log(2)*n.getNumber("cov")*nseq.length()/BidirectedGraph.ILLUMINA_READ_LENGTH;
 			astats*=Math.log10(Math.E);
 			n.setAttribute("astats", astats);
 			LOG.info("{} Read coverage = {} Length = {} A-stats = {}", n.getAttribute("name"), n.getNumber("cov"), n.getNumber("len"), astats );
 		}
-		LOG.info("Estimated read coverage = {} Total contigs length = {}", BidirectedGraph.RCOV,totContigsLen );
+		LOG.info("No of nodes= {} No of edges = {} Estimated avg. read coverage = {} Total contigs length = {}", graph.getNodeCount(), graph.getEdgeCount(), BidirectedGraph.RCOV, totContigsLen );
 		
     }
     
@@ -168,7 +170,7 @@ public class GraphUtil {
 				assert toks[0].equals("KC")&&toks[1].equals("i"):"Invalid k-mer count field!";
 				
 				seq = new Sequence(Alphabet.DNA5(), gfaFields[2], nodeID);
-				AbstractNode node = graph.addNode(nodeID); //or get the existing node prototype created below (to set the attributes)
+				AbstractNode node = (AbstractNode) graph.addNode(nodeID); //or get the existing node prototype created below (to set the attributes)
 				node.setAttribute("name", "Node "+nodeID);
 				node.setAttribute("seq", seq);
 				node.setAttribute("len", seq.length());
@@ -182,8 +184,8 @@ public class GraphUtil {
 				
 				break;
 			case "L"://links
-				BidirectedNode 	n0=graph.getNode(gfaFields[1]),
-								n1=graph.getNode(gfaFields[3]);
+				BidirectedNode 	n0=(BidirectedNode) graph.getNode(gfaFields[1]),
+								n1=(BidirectedNode) graph.getNode(gfaFields[3]);
 				boolean dir0=gfaFields[2].equals("+")?true:false,
 						dir1=gfaFields[4].equals("+")?false:true;
 				BidirectedEdge e = graph.addEdge(n0, n1, dir0, dir1);
@@ -223,9 +225,11 @@ public class GraphUtil {
 		//rough estimation of kmer used
 		if((shortestLen-1) != BidirectedGraph.getKmerSize()){
 			BidirectedGraph.setKmerSize(shortestLen-1);
-			for(Edge e:graph.getEdgeSet()){
-				((BidirectedEdge)e).changeKmerSize(BidirectedGraph.KMER);
-			}
+//			for(Edge e:graph.getEdgeSet()){
+//				((BidirectedEdge)e).changeKmerSize(BidirectedGraph.KMER);
+//			}
+			graph.edges().forEach(e -> ((BidirectedEdge)e).changeKmerSize(BidirectedGraph.KMER));
+
 		}
 		
 		double totReadsLen=0, totContigsLen=0;
@@ -249,14 +253,14 @@ public class GraphUtil {
 		 * Recalculated by Cx, contig_len, read_len, RCOV (average read coverage over the genome)
 		 */
 		for (Node n:graph) {
-			Sequence nseq = n.getAttribute("seq");
+			Sequence nseq = (Sequence) n.getAttribute("seq");
 			double astats = nseq.length()*BidirectedGraph.RCOV/BidirectedGraph.ILLUMINA_READ_LENGTH
 							-Math.log(2)*n.getNumber("cov")*nseq.length()/BidirectedGraph.ILLUMINA_READ_LENGTH;
 			astats*=Math.log10(Math.E);
 			n.setAttribute("astats", astats);
 			LOG.info("{} Read coverage = {} Length = {} A-stats = {}", n.getAttribute("name"), n.getNumber("cov"), n.getNumber("len"), astats );
 		}
-		LOG.info("Estimated read coverage = {} Total contigs length = {}", BidirectedGraph.RCOV,totContigsLen );
+		LOG.info("No of nodes= {} No of edges = {} Estimated avg. read coverage = {} Total contigs length = {}", graph.getNodeCount(), graph.getEdgeCount(), BidirectedGraph.RCOV, totContigsLen );
 		
     }
     
@@ -271,28 +275,39 @@ public class GraphUtil {
 			while(true) {
 				eIteCount++;
 				HashMap<String,Double> stepMap = new HashMap<>();
-				for(Edge e:graph.getEdgeSet()) {
-		    		BidirectedNode n0 = e.getNode0(), n1=e.getNode1();
+				Iterator<Edge> edgesIterator=graph.edges().iterator();
+				while(edgesIterator.hasNext()) {
+					Edge e = edgesIterator.next();
+//					System.out.println("Working on edge "+e.getId());
+		    		BidirectedNode n0 = (BidirectedNode) e.getNode0(), n1=(BidirectedNode) e.getNode1();
 		    		boolean dir0 = ((BidirectedEdge) e).getDir0(), dir1 = ((BidirectedEdge) e).getDir1();
-		    		Iterator<Edge> 	ite0 = dir0?n0.getLeavingEdgeIterator():n0.getEnteringEdgeIterator(),
-		    						ite1 = dir1?n1.getLeavingEdgeIterator():n1.getEnteringEdgeIterator();
+		    		Iterator<Edge> 	ite0 = dir0?n0.leavingEdges().iterator():n0.enteringEdges().iterator(),
+		    						ite1 = dir1?n1.leavingEdges().iterator():n1.enteringEdges().iterator();
 		    		double sum0=0, sum1=0, tmp;
 		    		while(ite0.hasNext()) {
-		    			tmp=ite0.next().getNumber("cov");
+		    			Edge e0=ite0.next();
+		    			tmp=e0.getNumber("cov");
 		    			sum0+=Double.isNaN(tmp)?1.0:tmp;
+//		    			System.out.printf("\tedge %s cov=%.2f sum0=%.2f\n",e0.getId(),tmp,sum0);
 		    		}
-		    		while(ite1.hasNext())	    		 {
-		    			tmp=ite1.next().getNumber("cov");
+		    		while(ite1.hasNext()) {
+		    			Edge e1=ite1.next();
+		    			tmp=e1.getNumber("cov");		    			
 		    			sum1+=Double.isNaN(tmp)?1.0:tmp;
+//		    			System.out.printf("\tedge %s cov=%.2f sum1=%.2f\n",e1.getId(),tmp,sum1);
+
 		    		}	    		
 		    		//gamma_ij=1/*(len_i+len_j) -> failed!
 		    		//gamma_ij=1/2*(len_i+len_j) -> small enough! (explaination???)
 		    		double value=.5*(n0.getNumber("len")*(sum0-n0.getNumber("cov"))+n1.getNumber("len")*(sum1-n1.getNumber("cov")))/(n0.getNumber("len")+n1.getNumber("len"));
-	
+//		    		System.out.println("=> step="+value);
 		    		stepMap.put(e.getId(), value);
 				}
 				boolean isConverged=true, isZero=false;
-				for(Edge e:graph.getEdgeSet()) {
+				
+				edgesIterator=graph.edges().iterator();
+				while(edgesIterator.hasNext()) {
+					Edge e = edgesIterator.next();
 					double delta=stepMap.get(e.getId()),
 							curCov=Double.isNaN(e.getNumber("cov"))?1.0:e.getNumber("cov");
 					if(Math.abs(delta/curCov) > epsilon) {
@@ -300,7 +315,7 @@ public class GraphUtil {
 					}
 					
 					if(curCov<=delta) {
-						LOG.warn("Edge " + e.getId() + " coverage is not positive!!!");
+						LOG.warn("Edge " + e.getId() + " coverage is not positive : curCov=" + curCov + ", delta=" + delta);
 //						isZero=true;
 					}else
 						e.setAttribute("cov", curCov-delta);
@@ -315,8 +330,8 @@ public class GraphUtil {
 			//2. Updating nodes' coverage
 			boolean isConverged=true;
 			for(Node n:graph) {
-				Iterator<Edge> 	in=n.getEnteringEdgeIterator(),
-								out=n.getLeavingEdgeIterator();
+				Iterator<Edge> 	in=n.enteringEdges().iterator(),
+								out=n.leavingEdges().iterator();
 				long inWeight=0, outWeight=0;
 				double inCov=0, outCov=0;
 				while(in.hasNext()) {
@@ -349,13 +364,14 @@ public class GraphUtil {
 		while(true) {
 			nIteCount++;
 			//1. Updating edges' coverage
-			ArrayList<Edge> edges = new ArrayList<Edge>(graph.getEdgeSet());
-			int edgesNumber=edges.size();
+//			ArrayList<Edge> edges = new ArrayList<Edge>(graph.getEdgeSet());
+			Edge[] edges = (Edge[]) graph.edges().toArray();
+			int edgesNumber=edges.length;
 			HashMap<Edge,Integer> idToIndex = new HashMap<Edge,Integer>();
 			double[] init = new double[edgesNumber];
 			for(int i=0;i<edgesNumber;i++) {
-				idToIndex.put(edges.get(i), i);
-				init[i]=Double.isNaN(edges.get(i).getNumber("cov"))?0:edges.get(i).getNumber("cov");
+				idToIndex.put(edges[i], i);
+				init[i]=Double.isNaN(edges[i].getNumber("cov"))?0:edges[i].getNumber("cov");
 			}
 			
 			
@@ -383,8 +399,8 @@ public class GraphUtil {
 					continue;
 				double cov=node.getNumber("cov");
 				int len=(int)node.getNumber("len");
-				Iterator<Edge> 	in=node.getEnteringEdgeIterator(),
-								out=node.getLeavingEdgeIterator();
+				Iterator<Edge> 	in=node.enteringEdges().iterator(),
+								out=node.leavingEdges().iterator();
 				ArrayList<Integer> 	inIndices = new ArrayList<Integer>(), 
 									outIndices = new ArrayList<Integer>();
 				while(in.hasNext()) {
@@ -435,7 +451,7 @@ public class GraphUtil {
 				opt.optimize();
 				double[] sol = opt.getOptimizationResponse().getSolution();
 				for(int i=0;i<edgesNumber;i++) {
-					edges.get(i).setAttribute("cov", sol[i]);
+					edges[i].setAttribute("cov", sol[i]);
 				}
 				
 			} catch (Exception e) {
@@ -447,8 +463,8 @@ public class GraphUtil {
 			//2. Updating nodes' coverage
 			boolean isConverged=true;
 			for(Node n:graph) {
-				Iterator<Edge> 	in=n.getEnteringEdgeIterator(),
-								out=n.getLeavingEdgeIterator();
+				Iterator<Edge> 	in=n.enteringEdges().iterator(),
+								out=n.leavingEdges().iterator();
 				long inWeight=0, outWeight=0;
 				double inCov=0, outCov=0;
 				while(in.hasNext()) {

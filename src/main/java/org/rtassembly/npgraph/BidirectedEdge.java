@@ -182,7 +182,13 @@ public class BidirectedEdge extends AbstractEdge{
 	public static String createID(AbstractNode source, AbstractNode dst, boolean dir0, boolean dir1){
 		String 	srcDes = source.getId(),
 				dstDes = dst.getId();
-		if(srcDes.compareTo(dstDes)<0)
+		if(srcDes.compareTo(dstDes) == 0) { // loop
+			if(dir0 == dir1)
+				return String.format("%s%s,%s%s", srcDes, "+", dstDes, "+");
+			else
+				return String.format("%s%s,%s%s", srcDes, "+", dstDes, "-");
+		}
+		else if(srcDes.compareTo(dstDes) < 0)
 			return String.format("%s%s,%s%s", srcDes, (dir0?"+":"-"), dstDes, (dir1?"-":"+"));
 		else
 			return String.format("%s%s,%s%s", dstDes, (dir1?"+":"-"), srcDes, (dir0?"-":"+"));

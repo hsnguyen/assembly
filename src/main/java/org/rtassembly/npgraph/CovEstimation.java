@@ -10,6 +10,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.commons.math3.ml.clustering.*;
 import org.apache.commons.math3.linear.RealMatrix;
@@ -25,8 +26,10 @@ public class CovEstimation {
 	static double alpha=.05; //confident level ~95%
 	
 	public static void initialGuess(BidirectedGraph graph) {
-		for(Edge e:graph.getEdgeSet()) {
-    		BidirectedNode n0 = e.getNode0(), n1=e.getNode1();
+		Iterator<Edge> edgesIterator=graph.edges().iterator();
+		while(edgesIterator.hasNext()) {
+			Edge e = edgesIterator.next();
+    		BidirectedNode n0 = (BidirectedNode) e.getNode0(), n1=(BidirectedNode) e.getNode1();
     		boolean dir0 = ((BidirectedEdge) e).getDir0(), dir1 = ((BidirectedEdge) e).getDir1();
     		n0.getInDegree();
     		double guess = 	(n0.getNumber("len")*n0.getNumber("cov")/(dir0?n0.getOutDegree():n0.getInDegree())
@@ -60,11 +63,14 @@ public class CovEstimation {
 			while(true) {
 				eIteCount++;
 				HashMap<String,Double> stepMap = new HashMap<>();
-				for(Edge e:graph.getEdgeSet()) {
-		    		BidirectedNode n0 = e.getNode0(), n1=e.getNode1();
+				
+				Iterator<Edge> edgesIterator=graph.edges().iterator();
+				while(edgesIterator.hasNext()) {
+					Edge e = edgesIterator.next();
+		    		BidirectedNode n0 = (BidirectedNode) e.getNode0(), n1=(BidirectedNode) e.getNode1();
 		    		boolean dir0 = ((BidirectedEdge) e).getDir0(), dir1 = ((BidirectedEdge) e).getDir1();
-		    		Iterator<Edge> 	ite0 = dir0?n0.getLeavingEdgeIterator():n0.getEnteringEdgeIterator(),
-		    						ite1 = dir1?n1.getLeavingEdgeIterator():n1.getEnteringEdgeIterator();
+		    		Iterator<Edge> 	ite0 = dir0?n0.leavingEdges().iterator():n0.enteringEdges().iterator(),
+		    						ite1 = dir1?n1.leavingEdges().iterator():n1.enteringEdges().iterator();
 		    		double sum0=0, sum1=0, tmp;
 		    		while(ite0.hasNext()) {
 		    			tmp=ite0.next().getNumber("cov");
@@ -84,7 +90,10 @@ public class CovEstimation {
 				}
 				boolean isConverged=true;
 				ArrayList<Edge> negative = new ArrayList<Edge>();
-				for(Edge e:graph.getEdgeSet()) {
+				
+				edgesIterator=graph.edges().iterator();
+				while(edgesIterator.hasNext()) {
+					Edge e = edgesIterator.next();
 					double delta=stepMap.get(e.getId()),
 							curCov=Double.isNaN(e.getNumber("cov"))?1.0:e.getNumber("cov");
 					if(Math.abs(delta/curCov) > epsilon) {
@@ -106,8 +115,8 @@ public class CovEstimation {
 			//2. Updating nodes' coverage
 			boolean isConverged=true;
 			for(Node n:graph) {
-				Iterator<Edge> 	in=n.getEnteringEdgeIterator(),
-								out=n.getLeavingEdgeIterator();
+				Iterator<Edge> 	in=n.enteringEdges().iterator(),
+								out=n.leavingEdges().iterator();
 				long inWeight=0, outWeight=0;
 				double inCov=0, outCov=0;
 				while(in.hasNext()) {
@@ -164,8 +173,8 @@ public class CovEstimation {
 		System.out.println("=========================AFTER============================");
 		int nc=0, ec=0;
 		for(Node node:graph) {
-			Iterator<Edge> 	inIte = node.getEnteringEdgeIterator(),
-							outIte = node.getLeavingEdgeIterator();
+			Iterator<Edge> 	inIte = node.enteringEdges().iterator(),
+							outIte = node.leavingEdges().iterator();
 			double inCov=0, outCov=0;
 			while(inIte.hasNext()) 
 				inCov+=inIte.next().getNumber("cov");			
@@ -209,7 +218,7 @@ public class CovEstimation {
 //			}
 //		}
 		// FIXME: tricky epsilon. need to loop to find best value??? 
-		DBSCANClusterer dbscan = new DBSCANClusterer(1.0, 0, (a,b)->(.5*(a[0]-b[0])*(Math.log(a[0]) -Math.log(b[0]))));
+		DBSCANClusterer<DoublePoint> dbscan = new DBSCANClusterer<DoublePoint>(1.0, 0, (a,b)->(.5*(a[0]-b[0])*(Math.log(a[0]) -Math.log(b[0]))));
 
 		List<Cluster<DoublePoint>> cluster = dbscan.cluster(points);
 		int count=0;
@@ -227,12 +236,11 @@ public class CovEstimation {
 		System.out.println("=============================================================");
 		
 		ArrayList<Node> unresolvedNodes = new ArrayList<>();
-		ArrayList<Node> allNodes = new ArrayList<Node>(graph.getNodeSet());
-		Collections.sort(allNodes, (o1,o2)->(int)(((Node)o2).getNumber("len")-((Node)o1).getNumber("len")));
+		List<Node> allNodes = graph.nodes().sorted((o1,o2)->(int)(((Node)o2).getNumber("len")-((Node)o1).getNumber("len"))).collect(Collectors.toList());
 		for(Node node:allNodes) {
 //			System.out.println(n.getId() + ":" + n.getNumber("len"));
-			Iterator<Edge> 	inIte = node.getEnteringEdgeIterator(),
-							outIte = node.getLeavingEdgeIterator();
+			Iterator<Edge> 	inIte = node.enteringEdges().iterator(),
+							outIte = node.leavingEdges().iterator();
 			int m = node.getInDegree(), n = node.getOutDegree();
 			
 			if(m*n==0)
@@ -245,13 +253,13 @@ public class CovEstimation {
 				if(in.getAttribute("covdis")==null) {
 					in.setAttribute("covdis", new CoverageDistribution(in.getNumber("cov")));
 				}
-				CoverageDistribution inCovDist = in.getAttribute("covdis");
+				CoverageDistribution inCovDist = (CoverageDistribution) in.getAttribute("covdis");
 				inComponents.addAll(inCovDist.getAllComponents());
 				
 			}
 			while(outIte.hasNext()) {
 				Edge out = outIte.next();
-				CoverageDistribution outCovDist = out.getAttribute("covdis");
+				CoverageDistribution outCovDist = (CoverageDistribution) out.getAttribute("covdis");
 				if(outCovDist!=null)
 					outComponents.addAll(outCovDist.getAllComponents());
 			}
