@@ -8,6 +8,7 @@ import java.util.regex.Pattern;
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Node;
 import org.graphstream.ui.view.Viewer;
+import org.rtassembly.gui.NPGraphFX;
 import org.rtassembly.npgraph.Alignment;
 import org.rtassembly.npgraph.BidirectedGraph;
 import org.rtassembly.npgraph.GraphExplore;
@@ -23,9 +24,10 @@ public class NPGraphCmd extends CommandLine{
 	public NPGraphCmd(){
 		super();
 
-		addString("graph", null, "Name of the assembly graph file. Accepted format are FASTG, GFA",true);
-		addString("input", "-", "Name of the input file, - for stdin.", true);
-		addString("format", "fastq", "Format of the input file. This may be FASTQ/FASTA (MinION reads) or SAM/BAM (aligned with the assembly graph).", true);
+		addString("si", null, "Name of the short-read assembly file.",true);
+		addString("sf", "gfa", "Format of the assembly input file. Accepted format are FASTG, GFA", true);
+		addString("li", "-", "Name of the long-read data input file, - for stdin.", true);
+		addString("lf", "fastq", "Format of the long-read data input file. This may be FASTQ/FASTA (MinION reads) or SAM/BAM (aligned with the assembly graph already)", true);
 		addString("output", null, "Name of the output folder.", true);
 		
 		addBoolean("overwrite", false, "Whether to overwrite or reuse the intermediate file.");
@@ -45,12 +47,13 @@ public class NPGraphCmd extends CommandLine{
 		args = cmdLine.stdParseLine(args);
 
 		/***********************************************************************/
-		String 	graphFileName = cmdLine.getStringVal("graph"),
-				dataInputFileName = cmdLine.getStringVal("input"),
-				inputFormat = cmdLine.getStringVal("format"),
+		String 	shortReadsAssembly = cmdLine.getStringVal("si"),
+				shortReadsAssemblyFormat = cmdLine.getStringVal("sf"),
+				longReadsInput = cmdLine.getStringVal("li"),
+				longReadsInputFormat = cmdLine.getStringVal("lf"),
 				outputDir = cmdLine.getStringVal("output"),
 				mm2Path = cmdLine.getStringVal("mm2Path"),
-				mm2Setting = cmdLine.getStringVal("mm2Preset");
+				mm2Preset = cmdLine.getStringVal("mm2Preset");
 		boolean overwrite = cmdLine.getBooleanVal("overwrite"),
 				gui = cmdLine.getBooleanVal("gui");
 		int 	mm2Threads = cmdLine.getIntVal("mm2Threads");
@@ -59,85 +62,46 @@ public class NPGraphCmd extends CommandLine{
 		
 		//Default output dir 
 		if(outputDir == null) {
-			outputDir = new File(dataInputFileName).getAbsoluteFile().getParent();
+			outputDir = new File(shortReadsAssembly).getAbsoluteFile().getParent();
 		}
 		File outDir = new File(outputDir);
 		if(!outDir.exists())
 			outDir.mkdirs();
+		
 		mm2Path+=mm2Path.isEmpty()?"":"/";
 		
 		//1. Create an assembler object with appropriate file loader
-		HybridAssembler hbAss = new HybridAssembler(graphFileName);
-		BidirectedGraph graph = hbAss.simGraph;
+		HybridAssembler hbAss = new HybridAssembler();
+		hbAss.setShortReadsInput(shortReadsAssembly);
+		hbAss.setShortReadsInputFormat(shortReadsAssemblyFormat);
+		hbAss.setLongReadsInput(longReadsInput);
+		hbAss.setLongReadsInputFormat(longReadsInputFormat);
 		
-    	GraphExplore.redrawGraphComponents(graph);
-        graph.display();
+		hbAss.setPrefix(outputDir);
+		
+		hbAss.setMinimapPath(mm2Path);
+		hbAss.setMinimapPreset(mm2Preset);
+		hbAss.setMinimapThreads(mm2Threads);
+		
+		hbAss.setOverwrite(overwrite);
+		
+		
+		BidirectedGraph graph = hbAss.simGraph;      
         
-        //2. Create minimap2 index file for alignment if needed
-        if(inputFormat.toLowerCase().startsWith("fast")) {
-			File indexFile=new File(outputDir+"/assembly_graph.mmi");
-			if(overwrite || !indexFile.exists()) {
-				
-				graph.printNodeSequencesToFile(outputDir+"/assembly_graph.fasta");
-		
-				
-				try{
-					ProcessBuilder pb = new ProcessBuilder(mm2Path+"minimap2","-V").redirectErrorStream(true);
-					Process process =  pb.start();
-					//Allen changes: BWA process doesn't produce gzip-compressed output
-					BufferedReader bf = SequenceReader.openInputStream(process.getInputStream());
-		
-		
-					String line;
-					String version = "";
-					Pattern versionPattern = Pattern.compile("^(\\d+\\.\\d+).*");
-					Matcher matcher=versionPattern.matcher("");
-					
-					while ((line = bf.readLine())!=null){				
-						matcher.reset(line);
-						if (matcher.find()){
-						    version = matcher.group(1);
-						    break;//while
-						}
-						
-										
-					}	
-					bf.close();
-					
-					if (version.length() == 0){
-						System.err.println("ERROR: minimap2 command not found. Please install minimap2 and set the appropriate PATH variable;\n"
-											+ "	or run the alignment yourself and provide the SAM file instead of FASTA/Q file.");
-						System.exit(1);
-					}else{
-						System.out.println("minimap version: " + version);
-						if (version.compareTo("2.0") < 0){
-							System.err.println(" ERROR: require minimap version 2 or above!");
-							System.exit(1);
-						}
-					}
-					
-					
-					ProcessBuilder pb2 = new ProcessBuilder(mm2Path+"minimap2", "-t", Integer.toString(mm2Threads), "-x", mm2Setting,"-d", outputDir+"/assembly_graph.mmi",outputDir+"/assembly_graph.fasta");
-					Process indexProcess =  pb2.start();
-					indexProcess.waitFor();
-					
-				}catch (IOException | InterruptedException e){
-					System.err.println("Issue when indexing with minimap2: \n" + e.getMessage());
-					e.printStackTrace();
-					System.exit(1);
-				}
-			}
-        }
 		//4. Call the assembly function or invoke GUI to do so
         if(gui) {
         	//settings...
-        	
-//			NPGraphFX.setAssembler(hbAss);
-//			Application.launch(NPGraphFX.class,args);
+//        	GraphExplore.redrawGraphComponents(graph);
+//            graph.display();
+			NPGraphFX.setAssembler(hbAss);
+			Application.launch(NPGraphFX.class,args);
         }else {
 	        
 			try {
-				hbAss.assembly(dataInputFileName,inputFormat, mm2Path, mm2Setting, mm2Threads, outputDir+"/assembly_graph.mmi");
+				hbAss.prepareShortReadsProcess();
+				hbAss.prepareLongReadsProcess();
+
+				hbAss.assembly();
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				System.err.println("Issue when assembly: \n" + e.getMessage());

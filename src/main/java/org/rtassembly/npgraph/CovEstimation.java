@@ -146,8 +146,10 @@ public class CovEstimation {
 	
 
 	public static void main(String[] args) throws IOException {
-		HybridAssembler hbAss = new HybridAssembler(GraphExplore.spadesFolder+"W303-careful/assembly_graph.fastg");
-		BidirectedGraph graph = hbAss.simGraph;
+		HybridAssembler hbAss = new HybridAssembler();
+		hbAss.setShortReadsInput(GraphExplore.spadesFolder+"W303-careful/assembly_graph.fastg");
+		hbAss.setShortReadsInputFormat("fastg");
+		hbAss.prepareShortReadsProcess();		BidirectedGraph graph = hbAss.simGraph;
 		CovEstimation est = new CovEstimation();
 		
 //		est.initialGuess(graph);

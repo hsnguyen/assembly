@@ -10,6 +10,8 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Scanner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.graphstream.algorithm.ConnectedComponents;
 import org.graphstream.graph.Edge;
@@ -25,47 +27,120 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
+import japsa.seq.SequenceReader;
 
 
 public class HybridAssembler {
     private static final Logger LOG = LoggerFactory.getLogger(HybridAssembler.class);
+	//setting parameter for the GUI
+    private boolean ready=false, overwrite=false;
+    private String prefix = "";
+	private String 	mm2Path="minimap2", 
+					mm2Preset="map-ont";
+	private int mm2Threads = 4;
 	
+	private String shortReadsInput, longReadsInput;
+	private String shortReadsInputFormat, longReadsInputFormat;
+	
+	//Getters and Setters
+	//==============================================================================================//
+	public void setReady(boolean isReady) {ready=isReady;}
+	public boolean getReady() {return ready;}
+	
+	public void setOverwrite(boolean overwrite) {this.overwrite=overwrite;}
+	public boolean getOverwrite() {return overwrite;}
+	
+	public void setPrefix(String prefix) {this.prefix=prefix;}
+	public String getPrefix() {return prefix;}
+	
+	public void setMinimapPath(String path) {mm2Path=path;}
+	public String getMinimapPath() {return mm2Path;}
+	
+	public void setMinimapPreset(String setting) {mm2Preset=setting;}
+	public String getMinimapPreset() {return mm2Preset;}
+	
+	public void setMinimapThreads(int threadNum) {mm2Threads=threadNum;}
+	public int getMinimapThreads() {return mm2Threads;}
+	
+	public void setShortReadsInput(String srInput) {shortReadsInput=srInput;}
+	public String getShortReadsInput() {return shortReadsInput;}
+	
+	public void setLongReadsInput(String lrInput) {longReadsInput=lrInput;}
+	public String getLongReadsInput() {return longReadsInput;}
+	
+	public void setShortReadsInputFormat(String srInputFormat) {shortReadsInputFormat=srInputFormat;}
+	public String getShortReadsInputFormat() {return shortReadsInputFormat;}
+	
+	public void setLongReadsInputFormat(String lrInputFormat) {longReadsInputFormat=lrInputFormat;}
+	public String getLongReadsInputFormat() {return longReadsInputFormat;}
+	
+	//===============================================================================================//
+	
+	//Operational variables
 //	final BidirectedGraph origGraph;
 	public BidirectedGraph simGraph; //original and simplified graph should be separated, no???
 	public ConnectedComponents rtComponents;
+	
 	public HybridAssembler(){
 //		origGraph=new BidirectedGraph("batch");
 		simGraph=new BidirectedGraph("real");
 		rtComponents = new ConnectedComponents();
+		
+		simGraph.setAttribute("ui.quality");
+		simGraph.setAttribute("ui.antialias");
 	}
+		
 	
-	
-	public HybridAssembler(String graphInputFile) throws IOException{
-		this();
-
-		if(graphInputFile.toLowerCase().endsWith(".gfa")) 
-			GraphUtil.loadFromGFA(graphInputFile, simGraph);
-		else if(graphInputFile.toLowerCase().endsWith(".fastg"))
-			GraphUtil.loadFromFASTG(graphInputFile, simGraph);
-		else {
-			System.err.println("Assembly graph file must have .gfa or .fastg extension!");
+	//Indexing reference, prepare for alignment...
+	public void prepareLongReadsProcess(){
+		//if long reads data not given in SAM/BAM, need to invoke minimap2
+        if(longReadsInputFormat.toLowerCase().startsWith("fast")) {
+			File indexFile=new File(prefix+"/assembly_graph.mmi");
+			if(overwrite || !indexFile.exists()) {						
+				try{
+					simGraph.printNodeSequencesToFile(prefix+"/assembly_graph.fasta");
+					if(!checkMinimap2()) {
+							LOG.error("Dependancy check failed! Please config to the right version of minimap2!");
+							System.exit(1);
+					}
+					ProcessBuilder pb2 = new ProcessBuilder(mm2Path+"minimap2", "-t", Integer.toString(mm2Threads), "-x", mm2Preset,"-d", prefix+"/assembly_graph.mmi",prefix+"/assembly_graph.fasta");
+					Process indexProcess =  pb2.start();
+					indexProcess.waitFor();
+					
+				}catch (IOException | InterruptedException e){
+					System.err.println("Issue when indexing with minimap2: \n" + e.getMessage());
+					e.printStackTrace();
+					System.exit(1);
+				}
+			}
+        }
+	}
+	//Loading the graph, doing preprocessing
+	//binning, ...
+	public void prepareShortReadsProcess() {
+		try {
+			if(shortReadsInputFormat.toLowerCase().equals("gfa")) 
+				GraphUtil.loadFromGFA(shortReadsInput, simGraph);
+			else if(shortReadsInputFormat.toLowerCase().equals("fastg"))
+				GraphUtil.loadFromFASTG(shortReadsInput, simGraph);
+			else 				
+				throw new IOException("assembly graph file must have .gfa or .fastg extension!");
+			
+		}catch(IOException e) {
+			System.err.println("Issue when loading pre-assembly: \n" + e.getMessage());
+			e.printStackTrace();
 			System.exit(1);
 		}
 		
 		rtComponents.init(simGraph);
-
 	}
+
 	/**
 	 * SHN modified the default aligner to minimap2
-	 * @param bamFile
-	 * @param readNumber
-	 * @param timeNumber
-	 * @param minCov
-	 * @param qual
 	 * @throws IOException
 	 * @throws InterruptedException
 	 */
-	public void assembly(String inFile, String inFormat, String mm2Path, String mm2Preset, int mm2Threads, String mm2Index) 
+	public void assembly() 
 			throws IOException, InterruptedException{
 
 		LOG.info("Scaffolding ready at {}", new Date());
@@ -75,15 +150,15 @@ public class HybridAssembler {
 
 		Process mm2Process = null;
 
-		if (inFormat.endsWith("am")){//bam or sam
-			if ("-".equals(inFile))
+		if (longReadsInputFormat.endsWith("am")){//bam or sam
+			if ("-".equals(longReadsInput))
 				reader = SamReaderFactory.makeDefault().open(SamInputResource.of(System.in));
 			else
-				reader = SamReaderFactory.makeDefault().open(new File(inFile));	
+				reader = SamReaderFactory.makeDefault().open(new File(longReadsInput));	
 		}else{
 			LOG.info("Starting alignment by minimap2 at {}", new Date());
 			ProcessBuilder pb = null;
-			if ("-".equals(inFile)){
+			if ("-".equals(longReadsInput)){
 				pb = new ProcessBuilder(mm2Path+"minimap2", 
 						"-t",
 						"" + mm2Threads,
@@ -93,7 +168,7 @@ public class HybridAssembler {
 //						"40g",
 						"-K",
 						"20000",
-						mm2Index,
+						prefix+"./assembly_graph.mmi",
 						"-"
 						).
 						redirectInput(Redirect.INHERIT);
@@ -107,8 +182,8 @@ public class HybridAssembler {
 //						"40g",
 						"-K",
 						"20000",
-						mm2Index,
-						inFile
+						prefix+"./assembly_graph.mmi",
+						longReadsInput
 						);
 			}
 
@@ -140,11 +215,11 @@ public class HybridAssembler {
 			
 			if (simGraph.getNode(refID)==null)
 				continue;
-			Alignment myRec = new Alignment(rec, (BidirectedNode) simGraph.getNode(refID)); //FIXME: optimize
+			Alignment myRec = new Alignment(rec, (BidirectedNode) simGraph.getNode(refID)); 
 
 			//////////////////////////////////////////////////////////////////
+			//FIXME: optimize
 			// make list of alignments of the same (Nanopore) read. 
-
 			//not the first occurrance				
 			if (!readID.equals("") && !readID.equals(myRec.readID)) {	
 				synchronized(simGraph) {
@@ -204,101 +279,6 @@ public class HybridAssembler {
 
 	}
 	
-	@Deprecated
-	public void assembly(String bamFile) throws IOException{
-		SamReaderFactory.setDefaultValidationStringency(ValidationStringency.SILENT);
-
-		SamReader reader;
-		if ("-".equals(bamFile))
-			reader = SamReaderFactory.makeDefault().open(SamInputResource.of(System.in));
-		else
-			reader = SamReaderFactory.makeDefault().open(new File(bamFile));	
-
-		SAMRecordIterator iter = reader.iterator();
-
-		String readID = "";
-		int currentNumOfComponents=rtComponents.getConnectedComponentsCount();
-		//ReadFilling readFilling = null;
-		ArrayList<Alignment> samList =  new ArrayList<Alignment>();;// alignment record of the same read;	
-		while (iter.hasNext()) {
-			SAMRecord rec = iter.next();
-			if (rec.getReadUnmappedFlag())
-				continue;
-//			if (rec.getMappingQuality() < qual)
-//				continue;
-			
-			String refID = rec.getReferenceName().split("_")[1];
-			if (simGraph.getNode(refID)==null)
-				continue;
-			Alignment myRec = new Alignment(rec, (BidirectedNode) simGraph.getNode(refID)); //FIXME: optimize
-
-			//////////////////////////////////////////////////////////////////
-			// make list of alignments of the same (Nanopore) read. 
-
-			//not the first occurrance				
-			if (!readID.equals("") && !readID.equals(myRec.readID)) {	
-				synchronized(simGraph) {
-					//p=origGraph.pathFinding(samList);
-//					List<BidirectedPath> paths=simGraph.pathFinding(samList);// the graph MUST be the same as from new Alignment(...)
-					List<BidirectedPath> paths=simGraph.uniqueBridgesFinding(samList);
-					if(paths!=null)						
-						for(BidirectedPath p:paths) 
-						{
-					    	if(simGraph.reduce(p)) {
-
-					    		GraphExplore.redrawGraphComponents(simGraph);
-
-////					    		LOG.info("==========================================================================");
-////					    		LOG.info("\nTotal number of components: {} \ncomponents containing more than 1: {} \nsize of biggest component: {}", 
-////					    					rtComponents.getConnectedComponentsCount(),rtComponents.getConnectedComponentsCount(2),rtComponents.getGiantComponent().size());
-////					    		
-////					    		LOG.info("==========================================================================");    		
-//					    		if(currentNumOfComponents != rtComponents.getConnectedComponentsCount()) {
-//						    		currentNumOfComponents = rtComponents.getConnectedComponentsCount();
-//
-//						    		//Hide components with no markers! Optimize it to work dynamically
-//						    		ArrayList<Node> cleanup = new ArrayList<>();
-//						    		for (Iterator<ConnectedComponents.ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
-//						    			ConnectedComponents.ConnectedComponent comp = compIter.next();
-//	
-//						    			int numOfMarker=0;
-//						    			ArrayList<Node> tmp = new ArrayList<>();
-//						    			for(Node n:comp.getEachNode()) {
-//						    				if(BidirectedGraph.isMarker(n)) 
-//						    					numOfMarker++;
-//						    				tmp.add(n);
-//						    			}
-//						    			if(numOfMarker==0)
-//						    				cleanup.addAll(tmp);
-//						    		}
-//						    		for(Node n:cleanup) {
-//					    				n.addAttribute("ui.hide");
-//						    			for(Edge e:n.getEachEdge())
-//						    				e.addAttribute("ui.hide");
-//	//					    			simGraph.removeNode(n); //this faster but careful here!!!
-//						    		}
-//					    		}
-////					    		promptEnterKey();
-					    	}
-						}
-				}
-
-
-//				reduce2(p);
-				samList = new ArrayList<Alignment>();
-				//readID = myRec.readID;	
-			}	
-			readID = myRec.readID;
-			samList.add(myRec); 
-		}// while
-		iter.close();
-
-		//outOS.close();
-		reader.close();		
-	
-	}
-	
-	
     /*
      * Read paths from contigs.path and reduce the graph
      */
@@ -342,14 +322,56 @@ public class HybridAssembler {
     protected void sleep() {
         try { Thread.sleep(1000); } catch (Exception e) {}
     }
+    
+    public boolean checkMinimap2() throws IOException {
 
-	public static void main(String[] argv) throws IOException{
-		HybridAssembler hbAss = new HybridAssembler(GraphExplore.spadesFolder+"EcK12S-careful/assembly_graph.fastg");
-		//For SAM file, run bwa first on the edited assembly_graph.fastg by running:
-		//awk -F '[:;]' -v q=\' 'BEGIN{flag=0;}/^>/{if(index($1,q)!=0) flag=0; else flag=1;}{if(flag==1) print $1;}' ../EcK12S-careful/assembly_graph.fastg > Eck12-careful.fasta
-		//TODO: need to make this easier
+		ProcessBuilder pb = new ProcessBuilder(mm2Path+"minimap2","-V").redirectErrorStream(true);
+		Process process =  pb.start();
+		//Allen changes: BWA process doesn't produce gzip-compressed output
+		BufferedReader bf = SequenceReader.openInputStream(process.getInputStream());
 
-		hbAss.assembly(GraphExplore.spadesFolder+"EcK12S-careful/assembly_graph.sam");
+
+		String line;
+		String version = "";
+		Pattern versionPattern = Pattern.compile("^(\\d+\\.\\d+).*");
+		Matcher matcher=versionPattern.matcher("");
+		
+		while ((line = bf.readLine())!=null){				
+			matcher.reset(line);
+			if (matcher.find()){
+			    version = matcher.group(1);
+			    break;//while
+			}
+			
+							
+		}	
+		bf.close();
+		
+		if (version.length() == 0){
+			System.err.println("ERROR: minimap2 command not found. Please install minimap2 and set the appropriate PATH variable;\n"
+								+ "	or run the alignment yourself and provide the SAM file instead of FASTA/Q file.");
+			return false;
+		}else{
+			System.out.println("minimap version: " + version);
+			if (version.compareTo("2.0") < 0){
+				System.err.println(" ERROR: require minimap version 2 or above!");
+				return false;
+			}
+		}
+		return true;
+			
+    }
+
+	public static void main(String[] argv) throws IOException, InterruptedException{
+		HybridAssembler hbAss = new HybridAssembler();
+		
+		hbAss.setShortReadsInput(GraphExplore.spadesFolder+"EcK12S-careful/assembly_graph.fastg");
+		hbAss.setShortReadsInputFormat("fastg");
+		hbAss.prepareShortReadsProcess();
+		hbAss.setLongReadsInput(GraphExplore.spadesFolder+"EcK12S-careful/assembly_graph.sam");
+		hbAss.setLongReadsInputFormat("sam");
+		hbAss.prepareLongReadsProcess();
+		hbAss.assembly();
 
 	}
 	

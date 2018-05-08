@@ -37,8 +37,12 @@ public class GraphExplore {
 //    	String sample="meta-careful";
 //    	String sample="cp_S5";
 
-        HybridAssembler ass = new HybridAssembler(spadesFolder+sample+"/assembly_graph.fastg");
-    	BidirectedGraph graph= ass.simGraph;
+		HybridAssembler hbAss = new HybridAssembler();
+		hbAss.setShortReadsInput(spadesFolder+sample+"/assembly_graph.fastg");
+		hbAss.setShortReadsInputFormat("fastg");
+		hbAss.prepareShortReadsProcess();
+		
+    	BidirectedGraph graph= hbAss.simGraph;
 
     	redrawGraphComponents(graph);
 
@@ -51,11 +55,15 @@ public class GraphExplore {
          */
         try {
 //        	HybridAssembler.promptEnterKey();
-//			ass.reduceFromSPAdesPaths(spadesFolder+sample+"/contigs.paths");
+//			hbAss.reduceFromSPAdesPaths(spadesFolder+sample+"/contigs.paths");
 //			HybridAssembler.promptEnterKey();
-			ass.assembly(spadesFolder+sample+"/assembly_graph.sam");
+        	hbAss.setLongReadsInput(spadesFolder+sample+"/assembly_graph.sam");
+        	hbAss.setLongReadsInputFormat("sam");
+        	hbAss.prepareLongReadsProcess();
+        	
+        	hbAss.assembly();
 			
-		} catch (IOException e) {
+		} catch (IOException | InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}

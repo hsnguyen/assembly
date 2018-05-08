@@ -31,43 +31,29 @@
  * 03/25/2018 - Son Hoang Nguyen: Created                                        
  *  
  ****************************************************************************/
-package org.rtassembly.npgraph;
-
-import japsa.util.DynamicHistogram;
-import japsa.util.FxDialogs;
-import japsa.util.JapsaException;
+package org.rtassembly.gui;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Paths;
-import java.text.DecimalFormat;
-import java.text.SimpleDateFormat;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import japsa.util.*;
 
-import org.jfree.chart.ChartColor;
-import org.jfree.chart.ChartFactory;
-import org.jfree.chart.ChartPanel;
-import org.jfree.chart.JFreeChart;
-import org.jfree.chart.axis.DateAxis;
-import org.jfree.chart.axis.NumberAxis;
-import org.jfree.chart.labels.StandardCategoryItemLabelGenerator;
-import org.jfree.chart.plot.CategoryPlot;
-import org.jfree.chart.plot.PlotOrientation;
-import org.jfree.chart.plot.SeriesRenderingOrder;
-import org.jfree.chart.plot.XYPlot;
-import org.jfree.chart.renderer.category.BarRenderer;
-import org.jfree.chart.renderer.xy.StackedXYAreaRenderer;
-import org.jfree.data.category.DefaultCategoryDataset;
-import org.jfree.data.statistics.HistogramType;
-import org.jfree.data.time.Second;
-import org.jfree.data.time.TimeTableXYDataset;
+import org.graphstream.stream.thread.ThreadProxyPipe;
+import org.graphstream.ui.fx_viewer.FxDefaultView;
+import org.graphstream.ui.fx_viewer.FxViewer;
+import org.graphstream.ui.javafx.FxGraphRenderer;
+import org.graphstream.ui.view.Viewer;
+import org.rtassembly.npgraph.BidirectedGraph;
+import org.rtassembly.npgraph.GraphExplore;
+import org.rtassembly.npgraph.HybridAssembler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import japsa.util.FxDialogs;
+import japsa.util.ImageButton;
+import japsa.util.JapsaException;
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.embed.swing.SwingNode;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -98,8 +84,6 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.stage.Stage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @SuppressWarnings("restriction")
 
@@ -107,17 +91,10 @@ public class NPGraphFX extends Application{
     private static final Logger LOG = LoggerFactory.getLogger(NPGraphFX.class);
 
 
-    
-    TimeTableXYDataset 	allReadsCount = new TimeTableXYDataset(),
-						demultiplexedStackReadsCount = new TimeTableXYDataset();
-	DefaultCategoryDataset demultiplexedBarReadsCount = new DefaultCategoryDataset();
-	DynamicHistogram 	histoLengthDataSet = new DynamicHistogram(),
-						histoQualDataSet = new DynamicHistogram();
-	
-	static HybridAssembler assembler = new HybridAssembler();
+	static HybridAssembler ass = new HybridAssembler();
 
 	public static void setAssembler(HybridAssembler ass){
-		assembler = ass;
+		NPGraphFX.ass = ass;
 	}
     
     public void start(Stage primaryStage){  	 
@@ -143,8 +120,8 @@ public class NPGraphFX extends Application{
         
         // Here the main content    
         tabPane = new TabPane();
-        Tab mainTab = new Tab("Main",addMainGridPane()),
-        	bcTab = new Tab("Barcode",addBarcodePane());
+        Tab mainTab = new Tab("Assembly statistics",addAssemblyStatsPane()),
+        	bcTab = new Tab("Assembly graph",addGraphResolverPane());
         tabPane.getTabs().addAll(mainTab,bcTab);
         
         bcTab.disableProperty().bind(barcodeCB.selectedProperty().not());     
@@ -153,7 +130,7 @@ public class NPGraphFX extends Application{
      
         Scene scene = new Scene(border);
         stage.setScene(scene);
-        stage.setTitle("npreader");
+        stage.setTitle("npGraph");
         stage.setOnCloseRequest(e -> {
             Platform.exit();
             System.exit(0);
@@ -164,27 +141,25 @@ public class NPGraphFX extends Application{
 
 			@Override
 			public void run() {
-//				while (!assembler.ready){
-//					//LOG.info("NOT READY");
-//					try {
-//						Thread.sleep(1000);
-//					} catch (InterruptedException e) {					
-//						e.printStackTrace();
-//					}			
-//				}
-//				// TODO Auto-generated method stub
-//				LOG.info("GO");
-//
+				while (!ass.getReady()){
+					//LOG.info("NOT READY");
+					try {
+						Thread.sleep(1000);
+					} catch (InterruptedException e) {					
+						e.printStackTrace();
+					}			
+				}
+				// TODO Auto-generated method stub
+				LOG.info("GO");
+
 //				updateData();
-//				try{
-//					assembler.readFast5();
-//				}catch (JapsaException e){
-//					System.err.println(e.getMessage());
-//					e.getStackTrace();
-//					interupt(e);
-//				}catch (Exception e){
-//					e.printStackTrace();
-//				}
+				try{
+					ass.assembly();
+				}catch (Exception e){
+					System.err.println(e.getMessage());
+					e.getStackTrace();
+					interupt(e);
+				}
 
 			}
 			
@@ -193,14 +168,14 @@ public class NPGraphFX extends Application{
     }
     
     private void reset(){
-    	buttonStart.setDisable(false);
-    	buttonStop.setDisable(true);
-    	leftBox.setDisable(false);
-    		
-    	allReadsCount = new TimeTableXYDataset();
-    	demultiplexedStackReadsCount = new TimeTableXYDataset();
-		histoLengthDataSet = new DynamicHistogram(); 
-		histoQualDataSet = new DynamicHistogram();
+//    	buttonStart.setDisable(false);
+//    	buttonStop.setDisable(true);
+//    	leftBox.setDisable(false);
+//    		
+//    	allReadsCount = new TimeTableXYDataset();
+//    	demultiplexedStackReadsCount = new TimeTableXYDataset();
+//		histoLengthDataSet = new DynamicHistogram(); 
+//		histoQualDataSet = new DynamicHistogram();
     	 
 		HybridAssembler newAss = new HybridAssembler();
 		//assembler.getTime = time;
@@ -222,12 +197,12 @@ public class NPGraphFX extends Application{
     	
 		setAssembler(newAss);
 		
-		txtCompReads.setText("0");
-		txtTempReads.setText("0");
-		txt2DReads.setText("0");
-		txtPFiles.setText("0");
-		txtFFiles.setText("0"); 
-		txtTFiles.setText("0");
+//		txtCompReads.setText("0");
+//		txtTempReads.setText("0");
+//		txt2DReads.setText("0");
+//		txtPFiles.setText("0");
+//		txtFFiles.setText("0"); 
+//		txtTFiles.setText("0");
     	
     }
     
@@ -257,76 +232,76 @@ public class NPGraphFX extends Application{
         hbox.setStyle("-fx-background-color: #336699;");
  
 
-        Image imageStart = new Image(getClass().getResourceAsStream("icons/start.png"));
+        Image imageStart = new Image(getClass().getResourceAsStream("/start.png"));
         ImageView viewStart = new ImageView(imageStart); 
         viewStart.setFitWidth(20);
         viewStart.setFitHeight(20);
         buttonStart = new Button("Start", viewStart);
         buttonStart.setPrefSize(100, 20);
         buttonStart.setOnAction((event) -> {
-			//1. Validate before running	
-			//validate input
-			String _path = inputTF.getText().trim();				
-			if (_path.equals("")){
-				FxDialogs.showWarning("File not found!", "Please specify download directory");
-				inputTF.requestFocus();
-				return;
-			}
-
-			File _file = new File(_path);
-			if (!_file.isDirectory()){
-				FxDialogs.showWarning("File not found!", "Directory \"" + _path + "\" does not exist!");
-				inputTF.requestFocus();
-				return;
-			}
-//			assembler.folder = _path;
-			//validate output
-			if (outputToCombo.getSelectionModel().getSelectedItem().toString().equals("to file")){
-				String _foutput = outputTF.getText().trim();
-				if (_foutput.equals("")){		
-					FxDialogs.showWarning("File not found!", "Please specify output file");
-					outputTF.requestFocus();
-					return;
-				} else if(new File(_foutput).exists()){
-					String confirm = FxDialogs.showConfirm( "Output file already exists!", "Are you sure to overwrite the old file?", "No", "Yes");
-					if(confirm.equals("No")){
-						outputTF.requestFocus();
-						return;
-					}
-				}
-//				assembler.output = new File(_foutput).getAbsolutePath();			
-//				try{
-//					System.setProperty("usr.dir", Paths.get(assembler.output).getParent().toString());
-//				}
-//				catch(NullPointerException | IllegalArgumentException | SecurityException e ){
-//					e.printStackTrace();
-//					FxDialogs.showWarning("Illegal output folder!", "Please specify another output destination");
+//			//1. Validate before running	
+//			//validate input
+//			String _path = inputTF.getText().trim();				
+//			if (_path.equals("")){
+//				FxDialogs.showWarning("File not found!", "Please specify download directory");
+//				inputTF.requestFocus();
+//				return;
+//			}
+//
+//			File _file = new File(_path);
+//			if (!_file.isDirectory()){
+//				FxDialogs.showWarning("File not found!", "Directory \"" + _path + "\" does not exist!");
+//				inputTF.requestFocus();
+//				return;
+//			}
+////			assembler.folder = _path;
+//			//validate output
+//			if (outputToCombo.getSelectionModel().getSelectedItem().toString().equals("to file")){
+//				String _foutput = outputTF.getText().trim();
+//				if (_foutput.equals("")){		
+//					FxDialogs.showWarning("File not found!", "Please specify output file");
 //					outputTF.requestFocus();
 //					return;
+//				} else if(new File(_foutput).exists()){
+//					String confirm = FxDialogs.showConfirm( "Output file already exists!", "Are you sure to overwrite the old file?", "No", "Yes");
+//					if(confirm.equals("No")){
+//						outputTF.requestFocus();
+//						return;
+//					}
 //				}
-			}else
-//				assembler.output = "-";//stream
-				
-			
-			//validate stream
-			if (serversCB.isSelected()){
-				if (streamTF.getText().trim().equals("")){
-					FxDialogs.showWarning("Server(s) not found!", "Please specify output address of a server");
-					streamTF.requestFocus();
-					return;
-				}			
-//				assembler.streamServers = streamTF.getText().trim();
-			}
-			
-			//validate barcode analysis
-			if(barcodeCB.isSelected()){
-				if(barcodeTF.getText().trim().equals("")){
-					FxDialogs.showWarning("File not found!", "Please specify barcode file for demultiplex");
-					barcodeTF.requestFocus();
-					return;
-				}
-//				assembler.updateDemultiplexFile(barcodeTF.getText().trim());
-			}
+////				assembler.output = new File(_foutput).getAbsolutePath();			
+////				try{
+////					System.setProperty("usr.dir", Paths.get(assembler.output).getParent().toString());
+////				}
+////				catch(NullPointerException | IllegalArgumentException | SecurityException e ){
+////					e.printStackTrace();
+////					FxDialogs.showWarning("Illegal output folder!", "Please specify another output destination");
+////					outputTF.requestFocus();
+////					return;
+////				}
+//			}else
+////				assembler.output = "-";//stream
+//				
+//			
+//			//validate stream
+//			if (serversCB.isSelected()){
+//				if (streamTF.getText().trim().equals("")){
+//					FxDialogs.showWarning("Server(s) not found!", "Please specify output address of a server");
+//					streamTF.requestFocus();
+//					return;
+//				}			
+////				assembler.streamServers = streamTF.getText().trim();
+//			}
+//			
+//			//validate barcode analysis
+//			if(barcodeCB.isSelected()){
+//				if(barcodeTF.getText().trim().equals("")){
+//					FxDialogs.showWarning("File not found!", "Please specify barcode file for demultiplex");
+//					barcodeTF.requestFocus();
+//					return;
+//				}
+////				assembler.updateDemultiplexFile(barcodeTF.getText().trim());
+//			}
 
 			
 //			String msg = assembler.prepareIO();
@@ -341,10 +316,10 @@ public class NPGraphFX extends Application{
 			buttonStart.setDisable(true);;
 			buttonStop.setDisable(false);
 
-//			assembler.ready = true;
+			ass.setReady(true);
 		});
         
-        Image imageStop = new Image(getClass().getResourceAsStream("icons/stop.png"));
+        Image imageStop = new Image(getClass().getResourceAsStream("/stop.png"));
         ImageView viewStop = new ImageView(imageStop); 
         viewStop.setFitWidth(20);
         viewStop.setFitHeight(20);
@@ -435,7 +410,7 @@ public class NPGraphFX extends Application{
     	
 	
     	
-//    	inputTF = new TextField(assembler.folder == null?"":assembler.folder);
+    	inputTF = new TextField("");
     	inputTF.setPromptText("Enter folder of basecalled reads...");
     	inputTF.setOnKeyPressed(e -> {
             if (e.getCode() == KeyCode.ENTER)  {
@@ -447,7 +422,7 @@ public class NPGraphFX extends Application{
     	inputPane.getChildren().add(inputTF);
     	
 
-//    	inputBrowseButton = new ImageButton("icons/folder.png");
+    	inputBrowseButton = new ImageButton("/folder.png");
     	inputBrowseButton.setPrefSize(10, 10);
     	inputBrowseButton.setOnAction((event) -> {
     		DirectoryChooser chooser = new DirectoryChooser();
@@ -471,7 +446,7 @@ public class NPGraphFX extends Application{
     	GridPane.setConstraints(barcodeCB, 0,3,5,1);
     	inputPane.getChildren().add(barcodeCB);
     	
-//    	barcodeTF = new TextField(assembler.getBCFileName() == null?"":assembler.getBCFileName());
+    	barcodeTF = new TextField("");
     	barcodeTF.setPromptText("Enter name of barcode sequences file...");
     	barcodeTF.setDisable(!barcodeCB.isSelected());
     	barcodeTF.setOnKeyPressed(e -> {
@@ -482,7 +457,7 @@ public class NPGraphFX extends Application{
     	GridPane.setConstraints(barcodeTF, 0,4,4,1);
     	inputPane.getChildren().add(barcodeTF);
     	
-//    	barcodeBrowseButton = new ImageButton("icons/folder.png");
+    	barcodeBrowseButton = new ImageButton("/folder.png");
     	barcodeBrowseButton.setPrefSize(10, 10);
     	barcodeBrowseButton.setDisable(!barcodeCB.isSelected());
     	barcodeBrowseButton.setOnAction((event) -> {
@@ -505,7 +480,7 @@ public class NPGraphFX extends Application{
     	GridPane.setConstraints(label, 0,5,3,1);
     	inputPane.getChildren().add(label);
     	
-//    	bcThresholdTF = new TextField(assembler.dmplx!=null?Integer.toString(assembler.dmplx.SCORE_THRES):"");
+    	bcThresholdTF = new TextField("");
     	bcThresholdTF.setPromptText("Enter minimum score...");
     	barcodeBrowseButton.setDisable(!barcodeCB.isSelected());
     	bcThresholdTF.setOnKeyPressed(e -> {
@@ -569,8 +544,8 @@ public class NPGraphFX extends Application{
         GridPane.setConstraints(outputFormatCombo, 3, 0, 2, 1);
         outputPane.getChildren().add(outputFormatCombo);
     	
-//    	outputTF = new TextField(assembler.output);
-//    	outputTF.setDisable(assembler.output.equals("-"));
+    	outputTF = new TextField("");
+//    	outputTF.setDisable(ass.getLongReadsInput().equals("-"));
     	outputTF.setPromptText("Enter name for output file...");
     	outputTF.setOnKeyPressed(e -> {
             if (e.getCode() == KeyCode.ENTER)  {
@@ -581,7 +556,7 @@ public class NPGraphFX extends Application{
     	outputPane.getChildren().add(outputTF);
     	
 
-//    	outputBrowseButton = new ImageButton("icons/folder.png");
+    	outputBrowseButton = new ImageButton("/folder.png");
     	outputBrowseButton.setPrefSize(10, 10);
 //    	outputBrowseButton.setDisable(assembler.output.equals("-"));
     	outputBrowseButton.setOnAction((event) -> {
@@ -685,7 +660,7 @@ public class NPGraphFX extends Application{
     	GridPane.setConstraints(label2, 0,8,3,1);
     	optionPane.getChildren().add(label2);
     	
-//    	minLenTF = new TextField(Integer.toString(assembler.minLength));
+    	minLenTF = new TextField("");
     	minLenTF.setPromptText("min.");
     	minLenTF.setOnKeyPressed(e -> {
             if (e.getCode() == KeyCode.ENTER)  {
@@ -762,314 +737,42 @@ public class NPGraphFX extends Application{
     /*
      * Creates a grid for the center region with 2 columns and 2 rows
      */
-    private GridPane addMainGridPane() {
- 
-        GridPane mainGrid = createAutoresizeGridPane(2,2);
-        mainGrid.setStyle("-fx-background-color: #C0C0C0;");
-        /*
-         * Read count chart
-         */
-		final JFreeChart chart = ChartFactory.createStackedXYAreaChart(
-			"Read count",      // chart title
-			"Time",             // domain axis label
-			"Read number",                   // range axis label
-				allReadsCount, null, false, false, false   
-				);			
-
-		final StackedXYAreaRenderer render = new StackedXYAreaRenderer();
-		DateAxis domainAxis = new DateAxis();
-		domainAxis.setAutoRange(true);
-		domainAxis.setDateFormatOverride(new SimpleDateFormat("HH:mm:ss"));
-
-		XYPlot plot = (XYPlot) chart.getPlot();
-		plot.setRenderer(render);
-		plot.setDomainAxis(domainAxis);
-		plot.setSeriesRenderingOrder(SeriesRenderingOrder.FORWARD);
-		plot.setForegroundAlpha(0.5f);
-
-		NumberAxis rangeAxis = (NumberAxis) plot.getRangeAxis();
-		rangeAxis.setNumberFormatOverride(new DecimalFormat("#,###.#"));
-		rangeAxis.setAutoRange(true);
-
-		ChartPanel chartPanel = new ChartPanel(chart,	            
-			450,
-			280,
-			450,
-			280,
-			450,
-			280,
-			true,
-			true,  // properties
-			true,  // save
-			true,  // print
-			true,  // zoom
-			true   // tooltips
-			);		
-
-		SwingNode chartSwingNode = new SwingNode();
-		chartSwingNode.setContent(chartPanel);
-		GridPane.setConstraints(chartSwingNode, 0,0);
-		
-		mainGrid.getChildren().add(chartSwingNode);	
-			
-		/*
-		 * Read length histogram	
-		 */
-		
-		//histoLengthDataSet=new DynamicHistogram();
-		histoLengthDataSet.prepareSeries("Read Length", 500, 0, 40000);
-		//histoDataset.prepareSeries("2D", 50, 0, 50000);
-		//histoDataset.prepareSeries("template", 50, 0, 50000);
-		//histoDataset.prepareSeries("complement", 50, 0, 50000);		
-
-		JFreeChart hisLengths=ChartFactory.createHistogram("Read length histogram","length","count",histoLengthDataSet,PlotOrientation.VERTICAL,true,true,false);
-		ChartPanel hisPanel = new ChartPanel(hisLengths,	            
-			450,
-			280,
-			450,
-			280,
-			450,
-			280,
-			true,
-			true,  // properties
-			true,  // save
-			true,  // print
-			true,  // zoom
-			true   // tooltips
-			);
-
-
-		XYPlot hisPlot = (XYPlot) hisLengths.getPlot();
-		hisPlot.getDomainAxis().setAutoRange(true);		
-		hisPlot.getRangeAxis().setAutoRange(true);
-
-		SwingNode lengthSwingNode = new SwingNode();
-		lengthSwingNode.setContent(hisPanel);
-		GridPane.setConstraints(lengthSwingNode, 1,0);
-//		GridPane.setHalignment(lengthSwingNode, HPos.CENTER);
-//		GridPane.setValignment(lengthSwingNode, VPos.CENTER);
-		mainGrid.getChildren().add(lengthSwingNode);
-		
-		/*
-		 * Quality histogram
-		 */
-		//histoQualDataSet=new DynamicHistogram();
-		histoQualDataSet.setType(HistogramType.SCALE_AREA_TO_1);
-		histoQualDataSet.prepareSeries("2D", 100, 0, 30);
-		histoQualDataSet.prepareSeries("template", 100, 0, 30);
-		histoQualDataSet.prepareSeries("complement", 100, 0, 30);
-
-
-		JFreeChart hisQual=ChartFactory.createXYLineChart("Quality","quality","frequency",histoQualDataSet,PlotOrientation.VERTICAL,true,true,false);
-		ChartPanel hisQualPanel = new ChartPanel(hisQual,	            
-			450,
-			280,
-			450,
-			280,
-			450,
-			280,
-			true,
-			true,  // properties
-			true,  // save
-			true,  // print
-			true,  // zoom
-			true   // tooltips
-			);
-
-
-		XYPlot hisQualPlot = (XYPlot) hisQual.getPlot();
-		hisQualPlot.getDomainAxis().setAutoRange(true);		
-		hisQualPlot.getRangeAxis().setAutoRange(true);
-		hisQualPlot.setForegroundAlpha(0.8F);
-		
-		SwingNode qualitySwingNode = new SwingNode();
-		qualitySwingNode.setContent(hisQualPanel);
-		GridPane.setConstraints(qualitySwingNode, 1,1);
-		mainGrid.getChildren().add(qualitySwingNode);
+    private GridPane addAssemblyStatsPane() {
+    	
+ 	   GridPane mainGrid = createAutoresizeGridPane(1,2);
+       mainGrid.setStyle("-fx-background-color: #C0C0C0;");
+       mainGrid.setPadding(new Insets(5, 100, 5, 100));
+       mainGrid.setVgap(5);
+       mainGrid.setHgap(5);
        
-		/*
-         * Statistics field
-         */
-		GridPane countPane = createAutoresizeGridPane(3, 9);
-		countPane.setPadding(new Insets(30, 30, 30, 30));
-        countPane.setStyle("-fx-background-color: #AABBCC;");
-
-        
-        final Label lblFiles = new Label("Total fast5 files");
-		GridPane.setConstraints(lblFiles, 0, 0);
-		countPane.getChildren().add(lblFiles);
-
-		//txtTFiles = new TextField("0");
-		txtTFiles.setPrefWidth(100);
-		GridPane.setConstraints(txtTFiles, 1, 0);
-		countPane.getChildren().add(txtTFiles);
-
-		final Label lblpFiles = new Label("Good-read fast5");
-		GridPane.setConstraints(lblpFiles, 0, 1);
-		countPane.getChildren().add(lblpFiles);
-
-		//txtPFiles = new TextField("0");
-		txtPFiles.setEditable(false);
-		txtPFiles.setPrefWidth(100);
-		GridPane.setConstraints(txtPFiles, 1, 1);
-		countPane.getChildren().add(txtPFiles);
-
-
-		final Label lblFFiles = new Label("Invalid fast5");
-		GridPane.setConstraints(lblFFiles, 0, 2);
-		countPane.getChildren().add(lblFFiles);
-
-		//txtFFiles = new TextField("0");
-		txtFFiles.setEditable(false);
-		txtFFiles.setPrefWidth(100);
-		GridPane.setConstraints(txtFFiles, 1, 2);
-		countPane.getChildren().add(txtFFiles);
-
-
-
-		final Label lbl2DReads = new Label("2D reads");
-		GridPane.setConstraints(lbl2DReads, 0, 3);
-		countPane.getChildren().add(lbl2DReads);		
-
-		//txt2DReads= new TextField("0");
-		txt2DReads.setEditable(false);
-		txt2DReads.setPrefWidth(100);
-		GridPane.setConstraints(txt2DReads, 1, 3);
-		countPane.getChildren().add(txt2DReads);
-
-		final Label lblTempReads = new Label("Template reads");
-		GridPane.setConstraints(lblTempReads, 0, 4);
-		countPane.getChildren().add(lblTempReads);
-
-		//txtTempReads= new TextField("0");
-		txtTempReads.setEditable(false);
-		txtTempReads.setPrefWidth(100);
-		GridPane.setConstraints(txtTempReads, 1, 4);
-		countPane.getChildren().add(txtTempReads);
-
-		final Label lblCompReads = new Label("Complement reads");
-		GridPane.setConstraints(lblCompReads, 0, 5);
-		countPane.getChildren().add(lblCompReads);
-		
-		//txtCompReads= new TextField("0");
-		txtCompReads.setEditable(false);
-		txtCompReads.setPrefWidth(100);
-		GridPane.setConstraints(txtCompReads, 1, 5);
-        countPane.getChildren().add(txtCompReads);
-
-        
-        GridPane.setConstraints(countPane, 0, 1);
-        mainGrid.getChildren().add(countPane);
-        
-//        mainGrid.setGridLinesVisible(true);
-        return mainGrid;
+//     GridPane.setConstraints(countPane, 0, 1);
+//     mainGrid.getChildren().add(countPane);
+     
+//     mainGrid.setGridLinesVisible(true);
+   		
+   		return mainGrid;
     }
     
     /*
      * Create a Grid Pane for barcode analysis
      */
-    private GridPane addBarcodePane(){
-	   GridPane mainGrid = createAutoresizeGridPane(1,2);
-       mainGrid.setStyle("-fx-background-color: #C0C0C0;");
-       mainGrid.setPadding(new Insets(5, 100, 5, 100));
-       mainGrid.setVgap(5);
-       mainGrid.setHgap(5);
-       /*
-        * Read count stack chart
-        */
-   		final JFreeChart stackChart = ChartFactory.createXYLineChart(
-   				"",      // chart title
-   				"Time",             // domain axis label
-   				"Over-time read count",                   // range axis label
-   				demultiplexedStackReadsCount,
-   				PlotOrientation.VERTICAL,
-   				true,
-   				true,
-   				false
-   				);			
+    private GridPane addGraphResolverPane(){  		
+    	GridPane mainGrid = createAutoresizeGridPane(1,1);
+		mainGrid.setStyle("-fx-background-color: #C0C0C0;");
+		
+		
+		ThreadProxyPipe pipe = new ThreadProxyPipe() ;
+		pipe.init(ass.simGraph);
+		
+		Viewer viewer = new FxViewer(pipe);
 
-   		final StackedXYAreaRenderer stackRender = new StackedXYAreaRenderer();		
-   				
-   		DateAxis domainAxis = new DateAxis();
-   		domainAxis.setAutoRange(true);
-   		domainAxis.setDateFormatOverride(new SimpleDateFormat("HH:mm:ss"));
-
-   		XYPlot plot = (XYPlot) stackChart.getPlot();
-   		plot.setRenderer(stackRender);
-   		plot.setDomainAxis(domainAxis);
-   		plot.setSeriesRenderingOrder(SeriesRenderingOrder.FORWARD);
-   		plot.setForegroundAlpha(0.5f);
-
-   		NumberAxis rangeAxis = (NumberAxis) plot.getRangeAxis();
-   		rangeAxis.setNumberFormatOverride(new DecimalFormat("#,###.#"));
-   		rangeAxis.setAutoRange(true);
-
-   		ChartPanel stackChartPanel = new ChartPanel(stackChart,	            
-   			500,
-   			300,
-   			500,
-   			300,
-   			500,
-   			300,
-   			true,
-   			true,  // properties
-   			true,  // save
-   			true,  // print
-   			true,  // zoom
-   			true   // tooltips
-   			);		
-
-   		SwingNode stackChartSwingNode = new SwingNode();
-   		stackChartSwingNode.setContent(stackChartPanel);
-   		
-   		GridPane.setConstraints(stackChartSwingNode, 0,0);
-   		mainGrid.getChildren().add(stackChartSwingNode);	
-   		
-   		/*
-   		 * Reads count bar chart
-   		 */
-   		final JFreeChart barChart = ChartFactory.createBarChart(
-   				"", 
-   				"Barcode", 
-   				"In-time read count", 
-   				demultiplexedBarReadsCount, 
-   				PlotOrientation.VERTICAL, 
-   				false, 
-   				false, 
-   				false);
-   		final BarRenderer barRender = new CustomRenderer(ChartColor.createDefaultPaintArray());
-   		barRender.setSeriesItemLabelGenerator(0, new StandardCategoryItemLabelGenerator());
-   		barRender.setSeriesItemLabelsVisible(0, true);
-//   	barRender.setBarPainter(new StandardBarPainter());
-   		
-   		CategoryPlot bar = barChart.getCategoryPlot();
-   		bar.getDomainAxis().setVisible(false);
-   		bar.setRenderer(barRender);
-   		bar.setForegroundAlpha(0.5f);
-
-
-   		ChartPanel barChartPanel = new ChartPanel(barChart,	            
-   			500,
-   			300,
-   			500,
-   			300,
-   			500,
-   			300,
-   			true,
-   			true,  // properties
-   			true,  // save
-   			true,  // print
-   			true,  // zoom
-   			true   // tooltips
-   			);		
-
-   		SwingNode barChartSwingNode = new SwingNode();
-   		barChartSwingNode.setContent(barChartPanel);
-   		
-   		GridPane.setConstraints(barChartSwingNode, 0,1);
-   		mainGrid.getChildren().add(barChartSwingNode);
-   		
-   		return mainGrid;
+		FxDefaultView view = new FxDefaultView(viewer, "npGraph", new FxGraphRenderer());
+		viewer.addView(view);
+		viewer.enableAutoLayout();
+		
+		mainGrid.getChildren().add(view);
+		
+		return mainGrid;
     }
     
     /******************************************************************************************
@@ -1084,7 +787,7 @@ public class NPGraphFX extends Application{
 
 	//private static boolean stillRun = true;
 
-	public static void interupt(JapsaException e){
+	public static void interupt(Exception e){
 		//stillRun = false;
 //		assembler.wait = false;
 		FxDialogs.showError("Unexpected errors happened!", e.getMessage());
@@ -1176,5 +879,26 @@ public class NPGraphFX extends Application{
 //                TimeUnit.SECONDS);     
 	}
 
+
+	public static void main(String[] args) {
+		HybridAssembler hbAss = new HybridAssembler();
+		
+		hbAss.setShortReadsInput(GraphExplore.spadesFolder+"EcK12S-careful/assembly_graph.fastg");
+		hbAss.setShortReadsInputFormat("fastg");
+		hbAss.setLongReadsInput(GraphExplore.spadesFolder+"EcK12S-careful/assembly_graph.sam");
+		hbAss.setLongReadsInputFormat("sam");
+		 
+		System.setProperty("org.graphstream.ui", "javafx");
+		
+		NPGraphFX.setAssembler(hbAss);
+		hbAss.prepareShortReadsProcess();
+		hbAss.prepareLongReadsProcess();
+		
+		BidirectedGraph graph= hbAss.simGraph;
+    	GraphExplore.redrawGraphComponents(graph);
+//    	graph.display();
+		Application.launch(NPGraphFX.class,args);
+	}
+	
 }
 

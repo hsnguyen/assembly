@@ -301,7 +301,11 @@ public class CoverageBinner {
 	
 	
 	public static void main(String[] args) throws IOException {
-		HybridAssembler hbAss = new HybridAssembler(GraphExplore.spadesFolder+"EcK12S-careful/assembly_graph.fastg");
+		HybridAssembler hbAss = new HybridAssembler();
+		hbAss.setShortReadsInput(GraphExplore.spadesFolder+"EcK12S-careful/assembly_graph.fastg");
+		hbAss.setShortReadsInputFormat("fastg");
+		hbAss.prepareShortReadsProcess();
+		
 		BidirectedGraph graph = hbAss.simGraph;		
 		CoverageBinner binner = new CoverageBinner(graph);
 		binner.estimatePathsByCoverage();
