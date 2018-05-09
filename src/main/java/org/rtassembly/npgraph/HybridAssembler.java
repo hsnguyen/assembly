@@ -34,13 +34,12 @@ public class HybridAssembler {
     private static final Logger LOG = LoggerFactory.getLogger(HybridAssembler.class);
 	//setting parameter for the GUI
     private boolean ready=false, overwrite=false;
-    private String prefix = "";
-	private String 	mm2Path="minimap2", 
-					mm2Preset="map-ont";
-	private int mm2Threads = 4;
-	
-	private String shortReadsInput, longReadsInput;
-	private String shortReadsInputFormat, longReadsInputFormat;
+    private String prefix = "/tmp/";
+	private String 	mm2Path="", 
+					mm2Opt="-t4 -x map-ont";
+
+	private String shortReadsInput="", longReadsInput="";
+	private String shortReadsInputFormat="", longReadsInputFormat="";
 	
 	//Getters and Setters
 	//==============================================================================================//
@@ -56,16 +55,34 @@ public class HybridAssembler {
 	public void setMinimapPath(String path) {mm2Path=path;}
 	public String getMinimapPath() {return mm2Path;}
 	
-	public void setMinimapPreset(String setting) {mm2Preset=setting;}
-	public String getMinimapPreset() {return mm2Preset;}
+	public void setMinimapOpts(String setting) {mm2Opt=setting;}
+	public String getMinimapOpts() {return mm2Opt;}
 	
-	public void setMinimapThreads(int threadNum) {mm2Threads=threadNum;}
-	public int getMinimapThreads() {return mm2Threads;}
 	
-	public void setShortReadsInput(String srInput) {shortReadsInput=srInput;}
+	public void setShortReadsInput(String srInput) {
+		shortReadsInput=srInput;
+//		String fn = srInput.toLowerCase();
+//		if(	fn.endsWith(".fastg") || fn.endsWith(".gfa") ) 
+//			setShortReadsInputFormat("fastg");
+//		else if(fn.endsWith(".sam") || fn.endsWith(".bam")) 
+//			setShortReadsInputFormat("gfa");
+//		else
+//			setShortReadsInputFormat("");
+	}
 	public String getShortReadsInput() {return shortReadsInput;}
 	
-	public void setLongReadsInput(String lrInput) {longReadsInput=lrInput;}
+	public void setLongReadsInput(String lrInput) {
+		longReadsInput=lrInput;
+//		String fn = lrInput.toLowerCase();
+//		if(	fn.endsWith(".fasta") || fn.endsWith(".fa") || fn.endsWith("fna")
+//			|| fn.endsWith(".fastq") || fn.endsWith(".fq") 
+//			) 
+//			setLongReadsInputFormat("fasta/fastq");
+//		else if(fn.endsWith(".sam") || fn.endsWith(".bam")) 
+//			setLongReadsInputFormat("sam/bam");
+//		else
+//			setLongReadsInputFormat("");
+	}
 	public String getLongReadsInput() {return longReadsInput;}
 	
 	public void setShortReadsInputFormat(String srInputFormat) {shortReadsInputFormat=srInputFormat;}
@@ -92,32 +109,32 @@ public class HybridAssembler {
 		
 	
 	//Indexing reference, prepare for alignment...
-	public void prepareLongReadsProcess(){
+	public boolean prepareLongReadsProcess(){
 		//if long reads data not given in SAM/BAM, need to invoke minimap2
         if(longReadsInputFormat.toLowerCase().startsWith("fast")) {
 			File indexFile=new File(prefix+"/assembly_graph.mmi");
 			if(overwrite || !indexFile.exists()) {						
 				try{
 					simGraph.printNodeSequencesToFile(prefix+"/assembly_graph.fasta");
-					if(!checkMinimap2()) {
-							LOG.error("Dependancy check failed! Please config to the right version of minimap2!");
-							System.exit(1);
-					}
-					ProcessBuilder pb2 = new ProcessBuilder(mm2Path+"minimap2", "-t", Integer.toString(mm2Threads), "-x", mm2Preset,"-d", prefix+"/assembly_graph.mmi",prefix+"/assembly_graph.fasta");
-					Process indexProcess =  pb2.start();
+//					if(!checkMinimap2()) {
+//							LOG.error("Dependancy check failed! Please config to the right version of minimap2!");
+//							return false;
+//					}
+					ProcessBuilder pb = new ProcessBuilder(mm2Path+"/minimap2", mm2Opt,"-d", prefix+"/assembly_graph.mmi",prefix+"/assembly_graph.fasta");
+					Process indexProcess =  pb.start();
 					indexProcess.waitFor();
 					
 				}catch (IOException | InterruptedException e){
 					System.err.println("Issue when indexing with minimap2: \n" + e.getMessage());
-					e.printStackTrace();
-					System.exit(1);
+					return false;
 				}
 			}
         }
+        return true;
 	}
 	//Loading the graph, doing preprocessing
 	//binning, ...
-	public void prepareShortReadsProcess() {
+	public boolean prepareShortReadsProcess() {
 		try {
 			if(shortReadsInputFormat.toLowerCase().equals("gfa")) 
 				GraphUtil.loadFromGFA(shortReadsInput, simGraph);
@@ -128,11 +145,11 @@ public class HybridAssembler {
 			
 		}catch(IOException e) {
 			System.err.println("Issue when loading pre-assembly: \n" + e.getMessage());
-			e.printStackTrace();
-			System.exit(1);
+			return false;
 		}
 		
 		rtComponents.init(simGraph);
+		return true;
 	}
 
 	/**
@@ -159,13 +176,9 @@ public class HybridAssembler {
 			LOG.info("Starting alignment by minimap2 at {}", new Date());
 			ProcessBuilder pb = null;
 			if ("-".equals(longReadsInput)){
-				pb = new ProcessBuilder(mm2Path+"minimap2", 
-						"-t",
-						"" + mm2Threads,
-						"-ax",
-						mm2Preset,
-//						"-I",
-//						"40g",
+				pb = new ProcessBuilder(mm2Path+"/minimap2", 
+						"-a",
+						mm2Opt,
 						"-K",
 						"20000",
 						prefix+"./assembly_graph.mmi",
@@ -173,13 +186,9 @@ public class HybridAssembler {
 						).
 						redirectInput(Redirect.INHERIT);
 			}else{
-				pb = new ProcessBuilder(mm2Path+"minimap2", 
-						"-t",
-						"" + mm2Threads,
-						"-ax",
-						mm2Preset,
-//						"-I",
-//						"40g",
+				pb = new ProcessBuilder(mm2Path+"/minimap2", 
+						"-a",
+						mm2Opt,
 						"-K",
 						"20000",
 						prefix+"./assembly_graph.mmi",
@@ -187,8 +196,8 @@ public class HybridAssembler {
 						);
 			}
 
-			mm2Process  = pb.redirectError(ProcessBuilder.Redirect.to(new File("/dev/null"))).start();
-//			mm2Process  = pb.redirectError(ProcessBuilder.Redirect.to(new File("mm2.err"))).start();
+//			mm2Process  = pb.redirectError(ProcessBuilder.Redirect.to(new File("/dev/null"))).start();
+			mm2Process  = pb.redirectError(ProcessBuilder.Redirect.to(new File("mm2.err"))).start();
 
 			LOG.info("minimap2 started!");			
 
@@ -323,41 +332,51 @@ public class HybridAssembler {
         try { Thread.sleep(1000); } catch (Exception e) {}
     }
     
-    public boolean checkMinimap2() throws IOException {
+    public boolean checkMinimap2() {
 
-		ProcessBuilder pb = new ProcessBuilder(mm2Path+"minimap2","-V").redirectErrorStream(true);
-		Process process =  pb.start();
-		//Allen changes: BWA process doesn't produce gzip-compressed output
-		BufferedReader bf = SequenceReader.openInputStream(process.getInputStream());
+		ProcessBuilder pb = new ProcessBuilder(mm2Path+"/minimap2","-V").redirectErrorStream(true);
+		Process process;
+		try {
+			process = pb.start();
 
-
-		String line;
-		String version = "";
-		Pattern versionPattern = Pattern.compile("^(\\d+\\.\\d+).*");
-		Matcher matcher=versionPattern.matcher("");
-		
-		while ((line = bf.readLine())!=null){				
-			matcher.reset(line);
-			if (matcher.find()){
-			    version = matcher.group(1);
-			    break;//while
-			}
+			//Allen changes: BWA process doesn't produce gzip-compressed output
+			BufferedReader bf = SequenceReader.openInputStream(process.getInputStream());
+	
+	
+			String line;
+			String version = "";
+			Pattern versionPattern = Pattern.compile("^(\\d+\\.\\d+).*");
+			Matcher matcher=versionPattern.matcher("");
 			
-							
-		}	
-		bf.close();
-		
-		if (version.length() == 0){
-			System.err.println("ERROR: minimap2 command not found. Please install minimap2 and set the appropriate PATH variable;\n"
-								+ "	or run the alignment yourself and provide the SAM file instead of FASTA/Q file.");
-			return false;
-		}else{
-			System.out.println("minimap version: " + version);
-			if (version.compareTo("2.0") < 0){
-				System.err.println(" ERROR: require minimap version 2 or above!");
+			while ((line = bf.readLine())!=null){				
+				matcher.reset(line);
+				if (matcher.find()){
+				    version = matcher.group(1);
+				    break;//while
+				}
+				
+								
+			}	
+			bf.close();
+			
+			if (version.length() == 0){
+				System.err.println("ERROR: minimap2 command not found. Please install minimap2 and set the appropriate PATH variable;\n"
+									+ "	or run the alignment yourself and provide the SAM file instead of FASTA/Q file.");
 				return false;
+			}else{
+				System.out.println("minimap version: " + version);
+				if (version.compareTo("2.0") < 0){
+					System.err.println(" ERROR: require minimap version 2 or above!");
+					return false;
+				}
 			}
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			System.err.println("Error running: " + mm2Path + "/minimap2 \n" + e.getMessage());
+			e.printStackTrace();			
+			return false;
 		}
+		
 		return true;
 			
     }
@@ -369,7 +388,7 @@ public class HybridAssembler {
 		hbAss.setShortReadsInputFormat("fastg");
 		hbAss.prepareShortReadsProcess();
 		hbAss.setLongReadsInput(GraphExplore.spadesFolder+"EcK12S-careful/assembly_graph.sam");
-		hbAss.setLongReadsInputFormat("sam");
+		hbAss.setLongReadsInputFormat("sam/bam");
 		hbAss.prepareLongReadsProcess();
 		hbAss.assembly();
 

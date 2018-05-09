@@ -34,7 +34,6 @@
 package org.rtassembly.gui;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -43,6 +42,7 @@ import org.graphstream.ui.fx_viewer.FxDefaultView;
 import org.graphstream.ui.fx_viewer.FxViewer;
 import org.graphstream.ui.javafx.FxGraphRenderer;
 import org.graphstream.ui.view.Viewer;
+import org.rtassembly.npgraph.Alignment;
 import org.rtassembly.npgraph.BidirectedGraph;
 import org.rtassembly.npgraph.GraphExplore;
 import org.rtassembly.npgraph.HybridAssembler;
@@ -51,7 +51,6 @@ import org.slf4j.LoggerFactory;
 
 import japsa.util.FxDialogs;
 import japsa.util.ImageButton;
-import japsa.util.JapsaException;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.HPos;
@@ -85,16 +84,16 @@ import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.stage.Stage;
 
-@SuppressWarnings("restriction")
 
 public class NPGraphFX extends Application{
     private static final Logger LOG = LoggerFactory.getLogger(NPGraphFX.class);
 
 
-	static HybridAssembler ass = new HybridAssembler();
-
+	static HybridAssembler myass = new HybridAssembler();
+	static Viewer graphViewer;
+	
 	public static void setAssembler(HybridAssembler ass){
-		NPGraphFX.ass = ass;
+		myass = ass;
 	}
     
     public void start(Stage primaryStage){  	 
@@ -120,11 +119,11 @@ public class NPGraphFX extends Application{
         
         // Here the main content    
         tabPane = new TabPane();
-        Tab mainTab = new Tab("Assembly statistics",addAssemblyStatsPane()),
-        	bcTab = new Tab("Assembly graph",addGraphResolverPane());
-        tabPane.getTabs().addAll(mainTab,bcTab);
+        statsTab = new Tab("Assembly statistics",addAssemblyStatsPane());
+        graphTab = new Tab("Assembly graph",addGraphResolverPane());
+        tabPane.getTabs().addAll(statsTab,graphTab);
         
-        bcTab.disableProperty().bind(barcodeCB.selectedProperty().not());     
+        graphTab.disableProperty().bind(graphCB.selectedProperty().not());     
         border.setCenter(tabPane);
         
      
@@ -141,7 +140,7 @@ public class NPGraphFX extends Application{
 
 			@Override
 			public void run() {
-				while (!ass.getReady()){
+				while (!myass.getReady()){
 					//LOG.info("NOT READY");
 					try {
 						Thread.sleep(1000);
@@ -154,7 +153,7 @@ public class NPGraphFX extends Application{
 
 //				updateData();
 				try{
-					ass.assembly();
+					myass.assembly();
 				}catch (Exception e){
 					System.err.println(e.getMessage());
 					e.getStackTrace();
@@ -215,11 +214,12 @@ public class NPGraphFX extends Application{
      */
     private VBox leftBox;
     private TabPane tabPane; 
+    private Tab statsTab, graphTab;
     private Button 	buttonStart, buttonStop, buttonRestart,
-    				inputBrowseButton, barcodeBrowseButton, outputBrowseButton;
-    private TextField inputTF, barcodeTF, bcThresholdTF, outputTF, streamTF, minLenTF;
-    private CheckBox failCB, exhautiveCB, barcodeCB, serversCB, saveDemultiplexToFilesOptCB, addNumberOptCB;
-    private ComboBox<String> outputToCombo, outputFormatCombo;
+    				shortInputBrowseButton, longReadsBrowseButton, outputBrowseButton, mm2BrowseButton;
+    private TextField shortInputTF, longInputTF, outputTF, minQualTF, mm2PathTF, mm2OptTF;
+    private CheckBox graphCB, overwriteCB;
+    private ComboBox<String> shortInputFormatCombo, longInputFormatCombo;
     /*
      * Creates an HBox with two buttons for the top region
      */
@@ -239,84 +239,14 @@ public class NPGraphFX extends Application{
         buttonStart = new Button("Start", viewStart);
         buttonStart.setPrefSize(100, 20);
         buttonStart.setOnAction((event) -> {
-//			//1. Validate before running	
-//			//validate input
-//			String _path = inputTF.getText().trim();				
-//			if (_path.equals("")){
-//				FxDialogs.showWarning("File not found!", "Please specify download directory");
-//				inputTF.requestFocus();
-//				return;
-//			}
-//
-//			File _file = new File(_path);
-//			if (!_file.isDirectory()){
-//				FxDialogs.showWarning("File not found!", "Directory \"" + _path + "\" does not exist!");
-//				inputTF.requestFocus();
-//				return;
-//			}
-////			assembler.folder = _path;
-//			//validate output
-//			if (outputToCombo.getSelectionModel().getSelectedItem().toString().equals("to file")){
-//				String _foutput = outputTF.getText().trim();
-//				if (_foutput.equals("")){		
-//					FxDialogs.showWarning("File not found!", "Please specify output file");
-//					outputTF.requestFocus();
-//					return;
-//				} else if(new File(_foutput).exists()){
-//					String confirm = FxDialogs.showConfirm( "Output file already exists!", "Are you sure to overwrite the old file?", "No", "Yes");
-//					if(confirm.equals("No")){
-//						outputTF.requestFocus();
-//						return;
-//					}
-//				}
-////				assembler.output = new File(_foutput).getAbsolutePath();			
-////				try{
-////					System.setProperty("usr.dir", Paths.get(assembler.output).getParent().toString());
-////				}
-////				catch(NullPointerException | IllegalArgumentException | SecurityException e ){
-////					e.printStackTrace();
-////					FxDialogs.showWarning("Illegal output folder!", "Please specify another output destination");
-////					outputTF.requestFocus();
-////					return;
-////				}
-//			}else
-////				assembler.output = "-";//stream
-//				
-//			
-//			//validate stream
-//			if (serversCB.isSelected()){
-//				if (streamTF.getText().trim().equals("")){
-//					FxDialogs.showWarning("Server(s) not found!", "Please specify output address of a server");
-//					streamTF.requestFocus();
-//					return;
-//				}			
-////				assembler.streamServers = streamTF.getText().trim();
-//			}
-//			
-//			//validate barcode analysis
-//			if(barcodeCB.isSelected()){
-//				if(barcodeTF.getText().trim().equals("")){
-//					FxDialogs.showWarning("File not found!", "Please specify barcode file for demultiplex");
-//					barcodeTF.requestFocus();
-//					return;
-//				}
-////				assembler.updateDemultiplexFile(barcodeTF.getText().trim());
-//			}
-
-			
-//			String msg = assembler.prepareIO();
-//			if (msg !=null){
-//				FxDialogs.showWarning("Warning", msg);
-//				return;
-//			}
-
+        	if(!checkingAndSetting())
+        		return;
+        	
 			//Start running
 			leftBox.setDisable(true);
-
+			//TODO: leftbox slide away
 			buttonStart.setDisable(true);;
 			buttonStop.setDisable(false);
-
-			ass.setReady(true);
 		});
         
         Image imageStop = new Image(getClass().getResourceAsStream("/stop.png"));
@@ -353,8 +283,87 @@ public class NPGraphFX extends Application{
         
         return hbox;
     }
-        
+    private boolean checkFileFromTextField(TextField tf) {
+		String _path = tf.getText().trim();				
+		if (_path.equals("")){
+			FxDialogs.showWarning("File not found!", "Text field must not be empty!");
+			tf.requestFocus();
+			return false;
+		}
+		File _file = new File(_path);
+		if (!_file.isFile()){
+			FxDialogs.showWarning("File not found!", "File \"" + _path + "\" does not exist!");
+			tf.requestFocus();
+			return false;
+		}
+		return true;
+    }
+    private boolean checkFolderFromTextField(TextField tf) {
+		String _path = tf.getText().trim();				
+		if (_path.equals("")){
+			FxDialogs.showWarning("Directory not found!", "Text field must not be empty!");
+			tf.requestFocus();
+			return false;
+		}
+		File _file = new File(_path);
+		if (!_file.isDirectory()){
+			FxDialogs.showWarning("File not found!", "Directory \"" + _path + "\" does not exist!");
+			tf.requestFocus();
+			return false;
+		}
+		return true;
+    }
+    private boolean checkingAndSetting() {	
+    	if(myass==null)
+    		myass=new HybridAssembler();
+		//1. validate short-read assembly input
+		if(!checkFileFromTextField(shortInputTF))
+			return false;
+		myass.setShortReadsInput(shortInputTF.getText());
+		if(!checkFileFromTextField(longInputTF))
+			return false;
+		myass.setLongReadsInput(longInputTF.getText());
+		if(!checkFolderFromTextField(outputTF))
+			return false;
+		myass.setPrefix(outputTF.getText());
+		if(shortInputFormatCombo.getValue().equals("fasta/fastq")) {
+			if(!checkFolderFromTextField(mm2PathTF))
+				return false;
+			if(!myass.checkMinimap2())
+				return false;
+			myass.setMinimapPath(mm2PathTF.getText());
+			myass.setMinimapOpts(mm2OptTF.getText());
+			
+			Alignment.MIN_QUAL=Integer.valueOf(minQualTF.getText());
+		}
+		try{
+			System.setProperty("usr.dir", myass.getPrefix());
+		}
+		catch(NullPointerException | IllegalArgumentException | SecurityException e ){
+			e.printStackTrace();
+			FxDialogs.showWarning("Illegal output folder!", "Please specify another output destination");
+			outputTF.requestFocus();
+			return false;
+		}
+		
+		if(!myass.prepareShortReadsProcess()) {
+			FxDialogs.showWarning("Warning", "Problems preparing assembly graph file. Check stderr!");
+			return false;
+		}
+
+		if(!myass.prepareLongReadsProcess()) {
+			FxDialogs.showWarning("Warning", "Problems preparing long-reads data. Check stderr");
+			return false;
+		}
+
+    	GraphExplore.redrawGraphComponents(myass.simGraph);
+    	myass.setReady(true);
+    	return true;
+    }
+    
+    
     private final int LeftPaneWidth=360;
+
     /*
      * Creates a VBox with a list of parameter settings
      */
@@ -384,7 +393,7 @@ public class NPGraphFX extends Application{
         sep3.setMaxWidth(LeftPaneWidth);
         vbox.getChildren().add(5, sep3);
         
-        vbox.getChildren().add(addOptionPane());
+        vbox.getChildren().add(addOptionPane(stage));
                
         
         return vbox;
@@ -397,113 +406,143 @@ public class NPGraphFX extends Application{
     	inputLabel.setStyle("-fx-underline:true");
     	GridPane.setConstraints(inputLabel, 0,0);
     	inputPane.getChildren().add(inputLabel);
+    	   		
+    	final Label shortInputLabel = new Label("1. Pre-assemblies:");
+    	shortInputLabel.setFont(Font.font("Roman", FontWeight.SEMI_BOLD, 12));
+    	GridPane.setConstraints(shortInputLabel, 0,1,2,1);
+    	inputPane.getChildren().add(shortInputLabel);
     	
-    	failCB = new CheckBox("Include fail folder");
-//    	failCB.setSelected(assembler.doFail);
-//    	failCB.selectedProperty().addListener(
-//            (obs_val,old_val,new_val) -> {
-//            	assembler.doFail = new_val;
-//            });	
+    	shortInputFormatCombo=new ComboBox<String>();
+        shortInputFormatCombo.getItems().addAll("fastg", "gfa");   
+        shortInputFormatCombo.setValue(myass.getShortReadsInputFormat());
+        shortInputFormatCombo.valueProperty().addListener((obs_val, old_val, new_val) -> {
+        	myass.setShortReadsInputFormat(new_val);
+        	shortInputTF.setText("");
+        	myass.setShortReadsInput("");
+        });
+        GridPane.setConstraints(shortInputFormatCombo, 2, 1, 2, 1);
+        inputPane.getChildren().add(shortInputFormatCombo);
     	
-    	GridPane.setConstraints(failCB, 2,0,2,1);
-    	inputPane.getChildren().add(failCB);
-    	
-	
-    	
-    	inputTF = new TextField("");
-    	inputTF.setPromptText("Enter folder of basecalled reads...");
-    	inputTF.setOnKeyPressed(e -> {
+    	shortInputTF = new TextField("");
+    	shortInputTF.setPromptText("Enter file name for assembly graph...");
+    	if(!myass.getShortReadsInput().isEmpty())
+    		shortInputTF.setText(myass.getShortReadsInput());
+    	shortInputTF.setOnKeyPressed(e -> {
             if (e.getCode() == KeyCode.ENTER)  {
                 buttonStart.requestFocus();
             }
     	});
     	//textField.setPrefWidth(250);
-    	GridPane.setConstraints(inputTF, 0,1,4,1);
-    	inputPane.getChildren().add(inputTF);
+    	GridPane.setConstraints(shortInputTF, 0,2,4,1);
+    	inputPane.getChildren().add(shortInputTF);
     	
 
-    	inputBrowseButton = new ImageButton("/folder.png");
-    	inputBrowseButton.setPrefSize(10, 10);
-    	inputBrowseButton.setOnAction((event) -> {
-    		DirectoryChooser chooser = new DirectoryChooser();
-    		chooser.setTitle("Select basecalled raw data (fast5) directory");
-    		File defaultDirectory = new File(inputTF.getText());
-    		if(defaultDirectory.isDirectory())
-    			chooser.setInitialDirectory(defaultDirectory);
-    		File selectedDirectory = chooser.showDialog(stage);
-//    		if(selectedDirectory != null){
-//				assembler.folder = selectedDirectory.getPath();
-//				inputTF.setText(assembler.folder);	
-//    		}
-        });
-    	GridPane.setConstraints(inputBrowseButton, 4,1);
-    	GridPane.setHalignment(inputBrowseButton,HPos.LEFT);
-    	inputPane.getChildren().add(inputBrowseButton);
-    	//inputPane.setGridLinesVisible(true);
-
-    	barcodeCB = new CheckBox("Demultiplexing for barcode analysis");
-//    	barcodeCB.setSelected(assembler.dmplx!=null);
-    	GridPane.setConstraints(barcodeCB, 0,3,5,1);
-    	inputPane.getChildren().add(barcodeCB);
-    	
-    	barcodeTF = new TextField("");
-    	barcodeTF.setPromptText("Enter name of barcode sequences file...");
-    	barcodeTF.setDisable(!barcodeCB.isSelected());
-    	barcodeTF.setOnKeyPressed(e -> {
-            if (e.getCode() == KeyCode.ENTER)  {
-                buttonStart.requestFocus();
-            }
-    	});
-    	GridPane.setConstraints(barcodeTF, 0,4,4,1);
-    	inputPane.getChildren().add(barcodeTF);
-    	
-    	barcodeBrowseButton = new ImageButton("/folder.png");
-    	barcodeBrowseButton.setPrefSize(10, 10);
-    	barcodeBrowseButton.setDisable(!barcodeCB.isSelected());
-    	barcodeBrowseButton.setOnAction((event) -> {
-    		FileChooser chooser = new FileChooser();
-    		chooser.setTitle("Select barcode file");
-    		File defaultFile = new File(barcodeTF.getText());
+    	shortInputBrowseButton = new ImageButton("/folder.png");
+    	shortInputBrowseButton.setPrefSize(10, 10);
+    	shortInputBrowseButton.setOnAction((event) -> {
+       		FileChooser chooser = new FileChooser();
+    		chooser.setTitle("Select assembly graph file");
+    		File defaultFile = new File(shortInputTF.getText());
     		if(defaultFile.isFile())
     			chooser.setInitialFileName(defaultFile.getName());
     		chooser.setInitialDirectory(defaultFile.getParentFile());
-    		chooser.setSelectedExtensionFilter(new ExtensionFilter("FASTA files", "*.fasta", "*.fna", "*.fa"));
+    		chooser.setSelectedExtensionFilter(
+    				new ExtensionFilter("Assembly graph", 	"*.fastg", "*.FASTG", "*.gfa", "*.GFA"));
     		File selectedFile = chooser.showOpenDialog(stage);
-//    		if(selectedFile != null){
-//				assembler.updateDemultiplexFile(selectedFile.getPath());
-//				barcodeTF.setText(assembler.getBCFileName());	
-//    		}
+    		if(selectedFile != null){
+				myass.setShortReadsInput(selectedFile.getPath());
+				if(selectedFile.getName().endsWith(".fastg") || selectedFile.getName().endsWith(".FASTG")) {
+					myass.setShortReadsInputFormat("fastg");
+					shortInputFormatCombo.setValue(myass.getShortReadsInputFormat());
+				}else if(selectedFile.getName().endsWith(".gfa") || selectedFile.getName().endsWith(".GFA")) {
+					myass.setShortReadsInputFormat("gfa");
+					shortInputFormatCombo.setValue(myass.getShortReadsInputFormat());
+				}
+				else
+					shortInputFormatCombo.setValue("");
+				
+				shortInputTF.setText(myass.getShortReadsInput());	
+
+    		}
         });
+    	GridPane.setConstraints(shortInputBrowseButton, 4,2);
+    	GridPane.setHalignment(shortInputBrowseButton,HPos.LEFT);
+    	inputPane.getChildren().add(shortInputBrowseButton);
+    	//inputPane.setGridLinesVisible(true);
+
+    	graphCB = new CheckBox("Show assembly graph");
+    	graphCB.setSelected(myass.simGraph!=null);
+    	GridPane.setConstraints(graphCB, 0,3,5,1);
+    	inputPane.getChildren().add(graphCB);
     	
-    	final Label label = new Label("Barcode matching threshold");
-    	label.setDisable(!barcodeCB.isSelected());;
-    	GridPane.setConstraints(label, 0,5,3,1);
-    	inputPane.getChildren().add(label);
+    	final Label longInputLabel = new Label("2. Long-reads data:");
+    	longInputLabel.setFont(Font.font("Roman", FontWeight.SEMI_BOLD, 12));
+    	GridPane.setConstraints(longInputLabel, 0,4,2,1);
+    	inputPane.getChildren().add(longInputLabel);
     	
-    	bcThresholdTF = new TextField("");
-    	bcThresholdTF.setPromptText("Enter minimum score...");
-    	barcodeBrowseButton.setDisable(!barcodeCB.isSelected());
-    	bcThresholdTF.setOnKeyPressed(e -> {
+    	longInputFormatCombo = new ComboBox<>();
+        longInputFormatCombo.getItems().addAll("fasta/fastq", "sam/bam");   
+        longInputFormatCombo.setValue(myass.getLongReadsInputFormat());
+        longInputFormatCombo.valueProperty().addListener((obs_val, old_val, new_val) -> {
+        	myass.setLongReadsInputFormat(new_val);
+        	longInputTF.setText("");
+        	myass.setLongReadsInput("");
+        });
+        GridPane.setConstraints(longInputFormatCombo, 2, 4, 2, 1);
+        inputPane.getChildren().add(longInputFormatCombo);
+    	
+    	longInputTF = new TextField("");
+    	longInputTF.setPromptText("Enter file name of long-reads data...");
+    	if(!myass.getLongReadsInput().isEmpty())
+    		longInputTF.setText(myass.getLongReadsInput());
+    	longInputTF.setOnKeyPressed(e -> {
             if (e.getCode() == KeyCode.ENTER)  {
                 buttonStart.requestFocus();
             }
     	});
-    	GridPane.setConstraints(bcThresholdTF, 3,5);
-    	inputPane.getChildren().add(bcThresholdTF);
+    	GridPane.setConstraints(longInputTF, 0,5,4,1);
+    	inputPane.getChildren().add(longInputTF);
     	
-    	GridPane.setConstraints(barcodeBrowseButton, 4,4);
-    	GridPane.setHalignment(barcodeBrowseButton,HPos.LEFT);
-    	inputPane.getChildren().add(barcodeBrowseButton);
+    	longReadsBrowseButton = new ImageButton("/folder.png");
+    	longReadsBrowseButton.setPrefSize(10, 10);
+    	longReadsBrowseButton.setDisable(!graphCB.isSelected());
+    	longReadsBrowseButton.setOnAction((event) -> {
+    		FileChooser chooser = new FileChooser();
+    		chooser.setTitle("Select long-reads data file");
+    		File defaultFile = new File(longInputTF.getText());
+    		if(defaultFile.isFile())
+    			chooser.setInitialFileName(defaultFile.getName());
+    		chooser.setInitialDirectory(defaultFile.getParentFile());
+    		chooser.setSelectedExtensionFilter(
+    				new ExtensionFilter("Long-reads data", 	"*.fastq", "*.fasta", "*.fq", "*.fa", "*.fna", "*.sam", "*.bam" , 
+    														"*.FASTQ", "*.FASTA", "*.FQ", "*.FA", "*.FNA", "*.SAM", "*.BAM"));
+    		File selectedFile = chooser.showOpenDialog(stage);
+    		if(selectedFile != null){
+				myass.setLongReadsInput(selectedFile.getPath());
+				String fn = selectedFile.getName().toLowerCase();
+				if(	fn.endsWith(".fasta") || fn.endsWith(".fa") || fn.endsWith("fna")
+					|| fn.endsWith(".fastq") || fn.endsWith(".fq") 
+					) {
+					myass.setLongReadsInputFormat("fasta/fastq");
+					longInputFormatCombo.setValue(myass.getLongReadsInputFormat());
+				}else if(fn.endsWith(".sam") || fn.endsWith(".bam")) {
+					myass.setLongReadsInputFormat("sam/bam");
+					longInputFormatCombo.setValue(myass.getLongReadsInputFormat());
+				}else
+					longInputFormatCombo.setValue("");
+				
+				longInputTF.setText(myass.getLongReadsInput());	
+
+    		}
+        });
     	
-    	barcodeCB.selectedProperty().addListener(
+    	
+    	GridPane.setConstraints(longReadsBrowseButton, 4,5);
+    	GridPane.setHalignment(longReadsBrowseButton,HPos.LEFT);
+    	inputPane.getChildren().add(longReadsBrowseButton);
+    	
+    	graphCB.selectedProperty().addListener(
                 (obs_val,old_val,new_val) -> {
-//                	if(!new_val)
-//                		assembler.dmplx = null;
-                	barcodeTF.setDisable(!new_val);
-                	barcodeBrowseButton.setDisable(!new_val);
-                	bcThresholdTF.setDisable(!new_val);
-                	saveDemultiplexToFilesOptCB.setDisable(!new_val);
-                	label.setDisable(!new_val);
                 	tabPane.getSelectionModel().select(0);
                 });	
     	
@@ -518,34 +557,9 @@ public class NPGraphFX extends Application{
     	GridPane.setConstraints(outputLabel, 0,0);
     	outputPane.getChildren().add(outputLabel);
     	
-        outputToCombo = new ComboBox<String>();
-        outputToCombo.getItems().addAll("to file", "to stdout");   
-//        outputToCombo.setValue(assembler.output.equals("-")?"to stdout":"to file");
-        outputToCombo.valueProperty().addListener((obs_val, old_val, new_val) -> {
-        	if(new_val.trim().equals("to file")){
-        		//outputTF.setText("");
-        		outputTF.setDisable(false);
-        		outputBrowseButton.setDisable(false);
-        	} else{
-        		outputTF.setText("-");
-        		outputTF.setDisable(true);
-        		outputBrowseButton.setDisable(true);
-        	}
-        });
-        GridPane.setConstraints(outputToCombo, 1, 0, 2, 1);
-        outputPane.getChildren().add(outputToCombo);
-        
-        outputFormatCombo = new ComboBox<String>();
-        outputFormatCombo.getItems().addAll("fastq", "fasta");   
-//        outputFormatCombo.setValue(assembler.format);
-//        outputFormatCombo.valueProperty().addListener((obs_val, old_val, new_val) -> {
-//        	assembler.format = new_val;
-//        });
-        GridPane.setConstraints(outputFormatCombo, 3, 0, 2, 1);
-        outputPane.getChildren().add(outputFormatCombo);
-    	
     	outputTF = new TextField("");
-//    	outputTF.setDisable(ass.getLongReadsInput().equals("-"));
+    	if(!myass.getPrefix().isEmpty())
+    		outputTF.setText(myass.getPrefix());
     	outputTF.setPromptText("Enter name for output file...");
     	outputTF.setOnKeyPressed(e -> {
             if (e.getCode() == KeyCode.ENTER)  {
@@ -560,120 +574,112 @@ public class NPGraphFX extends Application{
     	outputBrowseButton.setPrefSize(10, 10);
 //    	outputBrowseButton.setDisable(assembler.output.equals("-"));
     	outputBrowseButton.setOnAction((event) -> {
-    		FileChooser fileChooser = new FileChooser();
-    		fileChooser.setTitle("Save output to file");
-    		File initFolder = new File(inputTF.getText());
-    		if(initFolder.isDirectory())
-    			fileChooser.setInitialDirectory(initFolder);
-//    		fileChooser.setInitialFileName("output."+assembler.format);
-    		File savedFile = fileChooser.showSaveDialog(stage);
-//    		if(savedFile != null){
-//    			assembler.output = savedFile.getAbsolutePath();
-//    			outputTF.setText(assembler.output);
-//    		}
+    		DirectoryChooser chooser = new DirectoryChooser();
+    		chooser.setTitle("Save output to a destination folder");
+    		File defaultDirectory=new File(outputTF.getText());
+    		if(defaultDirectory.isDirectory())
+    			chooser.setInitialDirectory(defaultDirectory);
+    		File selectedDirectory=chooser.showDialog(stage);
+    		if(selectedDirectory != null) {
+    			myass.setPrefix(selectedDirectory.getPath());
+    			outputTF.setText(myass.getPrefix());
+    		}
+
         });
     	GridPane.setConstraints(outputBrowseButton, 4,1);
     	GridPane.setHalignment(outputBrowseButton, HPos.LEFT);
     	outputPane.getChildren().add(outputBrowseButton);
-
-    	//init
-//        if(assembler.output.equals("-")){
-//        	outputTF.setText("-");
-//        	outputToCombo.setValue("to stdout");
-//    		outputTF.setDisable(true);
-//    		outputBrowseButton.setDisable(true);
-//        }else{
-//        	outputTF.setText(assembler.output);
-//        	outputToCombo.setValue("to file");
-//    		outputTF.setDisable(false);
-//    		outputBrowseButton.setDisable(false);
-//        }
-        
     	
-    	serversCB = new CheckBox("Streaming output to server(s)");
-    	serversCB.selectedProperty().addListener(
-                (obs_val,old_val,new_val) -> {
-                	streamTF.setDisable(!new_val);
-                });	
-    	GridPane.setConstraints(serversCB, 0,4,3,1);
-    	outputPane.getChildren().add(serversCB);
+    	overwriteCB = new CheckBox("Overwrite existing files if needed");
+    	overwriteCB.selectedProperty().addListener(
+    			(obs_val, old_val, new_val) -> {
+    				myass.setOverwrite(new_val);
+    			}		
+		);
+    	GridPane.setConstraints(overwriteCB, 0, 2, 4, 1);
+    	outputPane.getChildren().add(overwriteCB);
     	
-    	streamTF = new TextField();
-    	streamTF.setPromptText("address1:port1, address2:port2,...");
-    	streamTF.setOnKeyPressed(e -> {
-            if (e.getCode() == KeyCode.ENTER)  {
-                buttonStart.requestFocus();
-            }
-    	});
-    	GridPane.setConstraints(streamTF, 0,5,4,1);
-    	outputPane.getChildren().add(streamTF);
-    	
-//    	if(assembler.streamServers != null){
-//    		serversCB.setSelected(true);
-//    		streamTF.setText(assembler.streamServers);
-//    	}else{
-//    		streamTF.setDisable(true);
-//    	}
-    	//outputPane.setGridLinesVisible(true);
 		return outputPane;
 	}
-    private GridPane addOptionPane() {
+    private GridPane addOptionPane(Stage stage) {
     	GridPane optionPane = createFixGridPane(LeftPaneWidth, 5);
     	
-    	final Label optLabel = new Label("Other options:");
+    	final Label optLabel = new Label("Alignment options:");
     	optLabel.setFont(Font.font("Roman", FontWeight.BOLD, 12));
     	optLabel.setStyle("-fx-underline:true");
     	
     	GridPane.setConstraints(optLabel, 0,0,4,1);
     	optionPane.getChildren().add(optLabel);
     	
-    	saveDemultiplexToFilesOptCB = new CheckBox("Save demultiplexed reads to separated files");
-//    	saveDemultiplexToFilesOptCB.setSelected(Demultiplexer.toPrint);
-    	saveDemultiplexToFilesOptCB.setDisable(!barcodeCB.isSelected());;
-//    	saveDemultiplexToFilesOptCB.selectedProperty().addListener(
-//                (obs_val,old_val,new_val) -> {
-//                	Demultiplexer.toPrint=new_val;
-//                });	
-    	GridPane.setConstraints(saveDemultiplexToFilesOptCB, 0,2,4,1);
-    	optionPane.getChildren().add(saveDemultiplexToFilesOptCB);
+    	final Label label1 = new Label("Path to ./minimap2: "),
+					label2= new Label("Parameters setting:");
+    	
+    	GridPane.setConstraints(label1, 0,1,4,1);
+    	optionPane.getChildren().add(label1);
+    	
+       	mm2PathTF = new TextField("");
+       	mm2PathTF.setPromptText("Enter path to minimap2...");
+       	mm2PathTF.setOnKeyPressed(e -> {
+            if (e.getCode() == KeyCode.ENTER)  {
+            	myass.setMinimapPath(mm2PathTF.getText());
+                buttonStart.requestFocus();
+            }
+    	});
+    	GridPane.setConstraints(mm2PathTF, 0,2,4,1);
+    	optionPane.getChildren().add(mm2PathTF);
+    	
 
-    	addNumberOptCB = new CheckBox("Assign unique number to every read name");
-//    	addNumberOptCB.setSelected(assembler.number);
-//    	addNumberOptCB.selectedProperty().addListener(
-//                (obs_val,old_val,new_val) -> {
-//                	assembler.number=new_val;
-//                });	
-    	GridPane.setConstraints(addNumberOptCB, 0,4,4,1);
-    	optionPane.getChildren().add(addNumberOptCB);
+    	mm2BrowseButton = new ImageButton("/folder.png");
+    	mm2BrowseButton.setPrefSize(10, 10);
+    	mm2BrowseButton.setOnAction((event) -> {
+    		DirectoryChooser chooser = new DirectoryChooser();
+    		chooser.setTitle("Folder containing minimap2");
+    		File defaultDirectory=new File(mm2PathTF.getText());
+    		if(defaultDirectory.isDirectory())
+    			chooser.setInitialDirectory(defaultDirectory);
+    		File selectedDirectory=chooser.showDialog(stage);
+    		if(selectedDirectory != null) {
+    			myass.setMinimapPath(selectedDirectory.getPath());
+    			mm2PathTF.setText(myass.getMinimapPath());
+    		}
+
+        });
+    	GridPane.setConstraints(mm2BrowseButton,4,2);
+    	optionPane.getChildren().add(mm2BrowseButton);
     	
-    	exhautiveCB = new CheckBox("Exhaustively watch-mode (Albacore)");
-//    	exhautiveCB.setSelected(assembler.exhaustive);
-//    	exhautiveCB.selectedProperty().addListener(
-//            (obs_val,old_val,new_val) -> {
-//            	assembler.exhaustive = new_val;
-//            });	
-    	
-    	GridPane.setConstraints(exhautiveCB, 0,6,4,1);
-    	optionPane.getChildren().add(exhautiveCB);
-    	
-    	final Label label2 = new Label("Filter out read shorter than ");
-    	GridPane.setConstraints(label2, 0,8,3,1);
+    	GridPane.setConstraints(label2, 0,3,4,1);
     	optionPane.getChildren().add(label2);
     	
-    	minLenTF = new TextField("");
-    	minLenTF.setPromptText("min.");
-    	minLenTF.setOnKeyPressed(e -> {
+       	mm2OptTF = new TextField("");
+       	mm2OptTF.setPromptText("Enter options to minimap2...");
+       	if(!myass.getMinimapOpts().isEmpty())
+       		mm2OptTF.setText(myass.getMinimapOpts());
+       	mm2OptTF.setOnKeyPressed(e -> {
+            if (e.getCode() == KeyCode.ENTER)  {
+            	myass.setMinimapPath(mm2OptTF.getText());
+                buttonStart.requestFocus();
+            }
+    	});
+    	GridPane.setConstraints(mm2OptTF, 0,4,4,1);
+    	optionPane.getChildren().add(mm2OptTF);
+    	
+    	
+    	final Label labelQual = new Label("Must have quality greater than ");
+    	GridPane.setConstraints(labelQual, 0,6,3,1);
+    	optionPane.getChildren().add(labelQual);
+    	
+    	minQualTF = new TextField("");
+    	minQualTF.setPromptText("min.");
+    	minQualTF.setText(Integer.toString(Alignment.MIN_QUAL));
+    	minQualTF.setOnKeyPressed(e -> {
             if (e.getCode() == KeyCode.ENTER)  {
                 buttonStart.requestFocus();
             }
     	});
-    	GridPane.setConstraints(minLenTF, 3,8);
-    	optionPane.getChildren().add(minLenTF);
+    	GridPane.setConstraints(minQualTF, 3,6);
+    	optionPane.getChildren().add(minQualTF);
     	
-    	final Label label3 = new Label("bp");
-    	GridPane.setConstraints(label3, 4,8);
-    	optionPane.getChildren().add(label3);
-    	
+    	optionPane.disableProperty().bind(longInputFormatCombo.valueProperty().isEqualTo("sam/bam"));  
 		return optionPane;
 	}
     
@@ -762,13 +768,13 @@ public class NPGraphFX extends Application{
 		
 		
 		ThreadProxyPipe pipe = new ThreadProxyPipe() ;
-		pipe.init(ass.simGraph);
-		
-		Viewer viewer = new FxViewer(pipe);
+		pipe.init(myass.simGraph);
+		Viewer graphViewer = new FxViewer(pipe);
+		System.setProperty("org.graphstream.ui", "javafx");
 
-		FxDefaultView view = new FxDefaultView(viewer, "npGraph", new FxGraphRenderer());
-		viewer.addView(view);
-		viewer.enableAutoLayout();
+		FxDefaultView view = new FxDefaultView(graphViewer, "npGraph", new FxGraphRenderer());
+		graphViewer.addView(view);
+		graphViewer.enableAutoLayout();
 		
 		mainGrid.getChildren().add(view);
 		
@@ -885,18 +891,12 @@ public class NPGraphFX extends Application{
 		
 		hbAss.setShortReadsInput(GraphExplore.spadesFolder+"EcK12S-careful/assembly_graph.fastg");
 		hbAss.setShortReadsInputFormat("fastg");
-		hbAss.setLongReadsInput(GraphExplore.spadesFolder+"EcK12S-careful/assembly_graph.sam");
-		hbAss.setLongReadsInputFormat("sam");
+//		hbAss.setLongReadsInput(GraphExplore.spadesFolder+"EcK12S-careful/assembly_graph.sam");
+		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/reads/EcK12S_ONT.fastq");
+		hbAss.setLongReadsInputFormat("fastq");
 		 
-		System.setProperty("org.graphstream.ui", "javafx");
 		
 		NPGraphFX.setAssembler(hbAss);
-		hbAss.prepareShortReadsProcess();
-		hbAss.prepareLongReadsProcess();
-		
-		BidirectedGraph graph= hbAss.simGraph;
-    	GraphExplore.redrawGraphComponents(graph);
-//    	graph.display();
 		Application.launch(NPGraphFX.class,args);
 	}
 	

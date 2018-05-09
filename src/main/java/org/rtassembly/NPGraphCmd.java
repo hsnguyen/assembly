@@ -30,11 +30,11 @@ public class NPGraphCmd extends CommandLine{
 		addString("lf", "fastq", "Format of the long-read data input file. This may be FASTQ/FASTA (MinION reads) or SAM/BAM (aligned with the assembly graph already)", true);
 		addString("output", null, "Name of the output folder.", true);
 		
-		addBoolean("overwrite", false, "Whether to overwrite or reuse the intermediate file.");
+		addBoolean("overwrite", false, "Whether to overwrite or reuse the intermediate file");
 		
-		addString("mm2Path","","Path to the folder containing binary minimap2 if you don't have it included in $PATH");
-		addString("mm2Preset", "map-ont", "Preset used by minimap2 to align long reads to the contigs");
-		addInt("mm2Threads", 4, "Theads used by minimap2");
+		addString("mm2Path","","Absolute path to the folder containing binary minimap2");
+		addString("mm2Opt", "-t4 -x map-ont", "Preset used by minimap2 to align long reads to the contigs");
+		
 		addInt("qual", 1, "Minimum quality of alignment to considered");
  
 		addBoolean("gui", false, "Whether using GUI or not.");
@@ -53,11 +53,10 @@ public class NPGraphCmd extends CommandLine{
 				longReadsInputFormat = cmdLine.getStringVal("lf"),
 				outputDir = cmdLine.getStringVal("output"),
 				mm2Path = cmdLine.getStringVal("mm2Path"),
-				mm2Preset = cmdLine.getStringVal("mm2Preset");
+				mm2Opt = cmdLine.getStringVal("mm2Opt");
 		boolean overwrite = cmdLine.getBooleanVal("overwrite"),
 				gui = cmdLine.getBooleanVal("gui");
-		int 	mm2Threads = cmdLine.getIntVal("mm2Threads");
-				
+			
 		Alignment.MIN_QUAL = cmdLine.getIntVal("qual");
 		
 		//Default output dir 
@@ -80,8 +79,7 @@ public class NPGraphCmd extends CommandLine{
 		hbAss.setPrefix(outputDir);
 		
 		hbAss.setMinimapPath(mm2Path);
-		hbAss.setMinimapPreset(mm2Preset);
-		hbAss.setMinimapThreads(mm2Threads);
+		hbAss.setMinimapOpts(mm2Opt);
 		
 		hbAss.setOverwrite(overwrite);
 		
@@ -98,10 +96,13 @@ public class NPGraphCmd extends CommandLine{
         }else {
 	        
 			try {
-				hbAss.prepareShortReadsProcess();
-				hbAss.prepareLongReadsProcess();
-
-				hbAss.assembly();
+				if(hbAss.checkMinimap2() && hbAss.prepareShortReadsProcess() &&	hbAss.prepareLongReadsProcess())
+					hbAss.assembly();
+				else{
+					System.err.println("Error with pre-processing step! Config and try again!");
+					System.exit(1);
+				}
+					
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				System.err.println("Issue when assembly: \n" + e.getMessage());
