@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.stream.Collectors;
 
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Node;
@@ -364,14 +365,13 @@ public class GraphUtil {
 		while(true) {
 			nIteCount++;
 			//1. Updating edges' coverage
-//			ArrayList<Edge> edges = new ArrayList<Edge>(graph.getEdgeSet());
-			Edge[] edges = (Edge[]) graph.edges().toArray();
-			int edgesNumber=edges.length;
+			ArrayList<Edge> edges = new ArrayList<Edge>(graph.edges().collect(Collectors.toList()));
+			int edgesNumber=edges.size();
 			HashMap<Edge,Integer> idToIndex = new HashMap<Edge,Integer>();
 			double[] init = new double[edgesNumber];
 			for(int i=0;i<edgesNumber;i++) {
-				idToIndex.put(edges[i], i);
-				init[i]=Double.isNaN(edges[i].getNumber("cov"))?0:edges[i].getNumber("cov");
+				idToIndex.put(edges.get(i), i);
+				init[i]=Double.isNaN(edges.get(i).getNumber("cov"))?0:edges.get(i).getNumber("cov");
 			}
 			
 			
@@ -451,7 +451,7 @@ public class GraphUtil {
 				opt.optimize();
 				double[] sol = opt.getOptimizationResponse().getSolution();
 				for(int i=0;i<edgesNumber;i++) {
-					edges[i].setAttribute("cov", sol[i]);
+					edges.get(i).setAttribute("cov", sol[i]);
 				}
 				
 			} catch (Exception e) {

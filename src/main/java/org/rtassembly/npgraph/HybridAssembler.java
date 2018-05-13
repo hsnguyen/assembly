@@ -40,7 +40,8 @@ public class HybridAssembler {
 
 	private String shortReadsInput="", longReadsInput="";
 	private String shortReadsInputFormat="", longReadsInputFormat="";
-	
+	Process mm2Process = null;
+	private boolean stop=false;
 	//Getters and Setters
 	//==============================================================================================//
 	public void setReady(boolean isReady) {ready=isReady;}
@@ -91,6 +92,8 @@ public class HybridAssembler {
 	public void setLongReadsInputFormat(String lrInputFormat) {longReadsInputFormat=lrInputFormat;}
 	public String getLongReadsInputFormat() {return longReadsInputFormat;}
 	
+	public synchronized void setStopSignal(boolean stop) {this.stop=stop;}
+	public synchronized boolean getStopSignal() {return stop;}
 	//===============================================================================================//
 	
 	//Operational variables
@@ -165,8 +168,6 @@ public class HybridAssembler {
 		SamReaderFactory.setDefaultValidationStringency(ValidationStringency.SILENT);
 		SamReader reader = null;
 
-		Process mm2Process = null;
-
 		if (longReadsInputFormat.endsWith("am")){//bam or sam
 			if ("-".equals(longReadsInput))
 				reader = SamReaderFactory.makeDefault().open(SamInputResource.of(System.in));
@@ -196,8 +197,8 @@ public class HybridAssembler {
 						);
 			}
 
-//			mm2Process  = pb.redirectError(ProcessBuilder.Redirect.to(new File("/dev/null"))).start();
-			mm2Process  = pb.redirectError(ProcessBuilder.Redirect.to(new File("mm2.err"))).start();
+			mm2Process  = pb.redirectError(ProcessBuilder.Redirect.to(new File("/dev/null"))).start();
+//			mm2Process  = pb.redirectError(ProcessBuilder.Redirect.to(new File("mm2.err"))).start();
 
 			LOG.info("minimap2 started!");			
 
@@ -209,9 +210,12 @@ public class HybridAssembler {
 		String readID = "";
 		int currentNumOfComponents=rtComponents.getConnectedComponentsCount();
 
-		ArrayList<Alignment> samList =  new ArrayList<Alignment>();;// alignment record of the same read;	
+		ArrayList<Alignment> samList =  new ArrayList<Alignment>();// alignment record of the same read;	
 		
 		while (iter.hasNext()) {
+			if(getStopSignal())
+				break;
+			
 			SAMRecord rec = iter.next();
 			if (rec.getReadUnmappedFlag())
 				continue;

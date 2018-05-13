@@ -261,18 +261,9 @@ public class NPGraphFX extends Application{
 			if(confirm.equals("No")){
 				return;
 			}
-			
-//        	assembler.wait = false;
+			myass.setStopSignal(true);
         	buttonStop.setDisable(true);
 
-//			
-//			if(!assembler.output.equals("-")){
-//				try {
-//					assembler.close();
-//				} catch (IOException e){
-//					e.printStackTrace();
-//				}
-//			}
 
         	//buttonRestart.setDisable(false);
 
