@@ -285,22 +285,25 @@ public class GraphUtil {
 		    		Iterator<Edge> 	ite0 = dir0?n0.leavingEdges().iterator():n0.enteringEdges().iterator(),
 		    						ite1 = dir1?n1.leavingEdges().iterator():n1.enteringEdges().iterator();
 		    		double sum0=0, sum1=0, tmp;
+		    		int deg0=0, deg1=0;
 		    		while(ite0.hasNext()) {
 		    			Edge e0=ite0.next();
 		    			tmp=e0.getNumber("cov");
 		    			sum0+=Double.isNaN(tmp)?1.0:tmp;
+		    			deg0++;
 //		    			System.out.printf("\tedge %s cov=%.2f sum0=%.2f\n",e0.getId(),tmp,sum0);
 		    		}
 		    		while(ite1.hasNext()) {
 		    			Edge e1=ite1.next();
 		    			tmp=e1.getNumber("cov");		    			
 		    			sum1+=Double.isNaN(tmp)?1.0:tmp;
+		    			deg1++;
 //		    			System.out.printf("\tedge %s cov=%.2f sum1=%.2f\n",e1.getId(),tmp,sum1);
 
 		    		}	    		
 		    		//gamma_ij=1/*(len_i+len_j) -> failed!
-		    		//gamma_ij=1/2*(len_i+len_j) -> small enough! (explaination???)
-		    		double value=.5*(n0.getNumber("len")*(sum0-n0.getNumber("cov"))+n1.getNumber("len")*(sum1-n1.getNumber("cov")))/(n0.getNumber("len")+n1.getNumber("len"));
+		    		//gamma_ij=1/2*(len_i+len_j) -> small enough! (explanation???)
+		    		double value=.5*(n0.getNumber("len")*(sum0-n0.getNumber("cov"))/(deg0*deg0) + n1.getNumber("len")*(sum1-n1.getNumber("cov"))/(deg1*deg1))/(n0.getNumber("len")+n1.getNumber("len"));
 //		    		System.out.println("=> step="+value);
 		    		stepMap.put(e.getId(), value);
 				}
@@ -328,9 +331,12 @@ public class GraphUtil {
 					break;
 				}
 			}
-			//2. Updating nodes' coverage
+			//2. Updating nodes' coverage: keep significant node info intact!
 			boolean isConverged=true;
 			for(Node n:graph) {
+//				if(n.getAttribute("marked") != null)//do smt???
+//					continue;
+				
 				Iterator<Edge> 	in=n.enteringEdges().iterator(),
 								out=n.leavingEdges().iterator();
 				long inWeight=0, outWeight=0;
