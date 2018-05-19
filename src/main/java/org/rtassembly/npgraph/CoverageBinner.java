@@ -136,6 +136,8 @@ public class CoverageBinner {
 //		nodesClustering();
 //		GraphUtil.coverageOptimizer(graph);
 		//Store the unresolved nodes(edges)..
+		
+		Bin bb=getMostSignificantBin();
 		List<Edge> 	unresolvedEdges = 
 				graph.edges().sorted((o1,o2)->(int)(o1.getNumber("cov")-o2.getNumber("cov"))).collect(Collectors.toList());
 		
@@ -156,7 +158,12 @@ public class CoverageBinner {
 				}
 			}			
 		}
-		
+		ArrayList<Edge> highlyPossibleEdges = new ArrayList<>();
+		for(Edge e:unresolvedEdges){
+			if(scanAndGuess(e.getNumber("cov"))==bb && (e.getNode0().getDegree() <=2 || e.getNode1().getDegree() <=2)){
+				highlyPossibleEdges.add(e);
+			}
+		}
 		//2. Second round of thorough assignment: suck it deep!
 		int numberOfResolvedEdges=0;
 		while(true) {
@@ -173,32 +180,38 @@ public class CoverageBinner {
 			numberOfResolvedEdges=-nextSetOfUnresolvedEdges.size()+unresolvedEdges.size();
 			LOG.info(numberOfResolvedEdges + " edges has been solved! ");
 			// now just guess
-			if(numberOfResolvedEdges==0){
-				ArrayList<Edge> tmp = new ArrayList<>();
-				for(Edge e:nextSetOfUnresolvedEdges) {
-					Bin b = scanAndGuess(e.getNumber("cov"));
-					if(b!=null) {
-						addToMaps(e, b, 1);
-						tmp.add(e);
-					}	
-				}
-				for(Edge e:tmp)
-					nextSetOfUnresolvedEdges.remove(e);
-			}
+//			if(numberOfResolvedEdges==0){
+//				ArrayList<Edge> tmp = new ArrayList<>();
+//				for(Edge e:nextSetOfUnresolvedEdges) {
+//					Bin b = scanAndGuess(e.getNumber("cov"));
+//					if(b!=null) {
+//						addToMaps(e, b, 1);
+//						tmp.add(e);
+//					}	
+//				}
+//				for(Edge e:tmp)
+//					nextSetOfUnresolvedEdges.remove(e);
+//			}
 			
 			if(nextSetOfUnresolvedEdges.size()==0)
 				break;
-			else if(nextSetOfUnresolvedEdges.size()!=unresolvedEdges.size()){//make some guesses
-				unresolvedEdges=nextSetOfUnresolvedEdges;
-				continue;
-			}else {//last try: divide by 1X cov
-				Bin pop = getLeastAbundanceBin();
-				for(Edge e:nextSetOfUnresolvedEdges) {
-					addToMaps(e, pop, (int)((e.getNumber("cov")/pop.estCov)));
+			else if(nextSetOfUnresolvedEdges.size()==unresolvedEdges.size()){
+//				Bin pop = getLeastAbundanceBin();
+//				for(Edge e:nextSetOfUnresolvedEdges) {
+//					addToMaps(e, pop, (int)((e.getNumber("cov")/pop.estCov)));
+//				}
+				if(highlyPossibleEdges.size()>0){
+					Edge e = highlyPossibleEdges.remove(0);
+					addToMaps(e,bb,1);
+					nextSetOfUnresolvedEdges.remove(e);
+					continue;
+				}else{
+					LOG.info("IMPOTENT!!!");
+					break;
 				}
-				break;
 
 			}
+			unresolvedEdges=nextSetOfUnresolvedEdges;
 			
 		}
 		
