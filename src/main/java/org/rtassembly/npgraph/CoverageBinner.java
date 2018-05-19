@@ -170,7 +170,8 @@ public class CoverageBinner {
 			LOG.info("Starting assigning " + unresolvedEdges.size() + " unresolved edges");
 			nextSetOfUnresolvedEdges = new ArrayList<>();
 			for(Edge e:unresolvedEdges) {
-				//fuk its hard here!!    		
+				//fuk its hard here!!  
+				//TODO: should move to update(Edge justUpdatedEdge) to update graph everytime an edge is classified
 				if(!assignEdgeBins(e)) 
 					nextSetOfUnresolvedEdges.add(e);
 				else
