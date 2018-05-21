@@ -30,12 +30,13 @@ public class SimpleBinner {
 	ArrayList<Bin> binList;
 	HashMap<Edge, HashMap<Bin,Integer>> edge2BinMap;
 	HashMap<Node, HashMap<Bin, Integer>> node2BinMap;
-	
+	ArrayList<Edge> unresolvedEdges;
 	SimpleBinner(BidirectedGraph graph){
 		this.graph = graph;
 		binList = new ArrayList<Bin>();
 		edge2BinMap = new HashMap<Edge, HashMap<Bin,Integer>>();
 		node2BinMap = new HashMap<Node, HashMap<Bin, Integer>>();
+		unresolvedEdges = new ArrayList<Edge>(graph.edges().collect(Collectors.toList()));
 	}
 	private Bin getLeastAbundanceBin() {//bin that have least coverage
 		Bin retval=null;
@@ -57,40 +58,40 @@ public class SimpleBinner {
 			}
 		return retval;
 	}
-	private void assignEdgeBin(Edge e, Bin b, int multiplicity) {
-		//Add to map: edge->occurences in bin
-		HashMap<Bin, Integer> ebEntry=edge2BinMap.get(e);
-		if(ebEntry==null) {
-			ebEntry=new HashMap<Bin,Integer>();
-			ebEntry.put(b, new Integer(multiplicity));
-			edge2BinMap.put(e, ebEntry);
-		}else if(ebEntry.get(b) == null){
-			ebEntry.put(b, multiplicity);
-		}else {
-			if(ebEntry.get(b)!=multiplicity) {
-				System.out.println("WARNING: conflict edge multiplicity!");
-				//ebEntry.put(b, ebEntry.get(b)+multiplicity);
-			}
-		}
-
-	}
-	private void assignNodeBin(Node n, Bin b, int multiplicity) {
-		//Add to map: edge->occurences in bin
-		HashMap<Bin, Integer> nbEntry=node2BinMap.get(n);
-		if(nbEntry==null) {
-			nbEntry=new HashMap<Bin,Integer>();
-			nbEntry.put(b, new Integer(multiplicity));
-			node2BinMap.put(n, nbEntry);
-		}else if(nbEntry.get(b) == null){
-			nbEntry.put(b, multiplicity);
-		}else {
-			if(nbEntry.get(b)!=multiplicity) {
-				System.out.println("WARNING: conflict node multiplicity!");
-				//nbEntry.put(b, ebEntry.get(b)+multiplicity);
-			}
-		}
-
-	}
+//	private void assignEdgeBin(Edge e, Bin b, int multiplicity) {
+//		//Add to map: edge->occurences in bin
+//		HashMap<Bin, Integer> ebEntry=edge2BinMap.get(e);
+//		if(ebEntry==null) {
+//			ebEntry=new HashMap<Bin,Integer>();
+//			ebEntry.put(b, new Integer(multiplicity));
+//			edge2BinMap.put(e, ebEntry);
+//		}else if(ebEntry.get(b) == null){
+//			ebEntry.put(b, multiplicity);
+//		}else {
+//			if(ebEntry.get(b)!=multiplicity) {
+//				System.out.println("WARNING: conflict edge multiplicity!");
+//				//ebEntry.put(b, ebEntry.get(b)+multiplicity);
+//			}
+//		}
+//
+//	}
+//	private void assignNodeBin(Node n, Bin b, int multiplicity) {
+//		//Add to map: edge->occurences in bin
+//		HashMap<Bin, Integer> nbEntry=node2BinMap.get(n);
+//		if(nbEntry==null) {
+//			nbEntry=new HashMap<Bin,Integer>();
+//			nbEntry.put(b, new Integer(multiplicity));
+//			node2BinMap.put(n, nbEntry);
+//		}else if(nbEntry.get(b) == null){
+//			nbEntry.put(b, multiplicity);
+//		}else {
+//			if(nbEntry.get(b)!=multiplicity) {
+//				System.out.println("WARNING: conflict node multiplicity!");
+//				//nbEntry.put(b, ebEntry.get(b)+multiplicity);
+//			}
+//		}
+//
+//	}
 	/*
 	 * When a node bin is set, traverse the graph to assign edges if possible
 	 */
@@ -115,8 +116,8 @@ public class SimpleBinner {
 				}
 			}
 		});
-		if(unknownEnteringEdges.size()==1){
-			Edge e = unknownEnteringEdges.get(0);
+		if(unknownLeavingEdges.size()==1){
+			Edge e = unknownLeavingEdges.get(0);
 			edge2BinMap.put(e, substract(nbins, leavingEdgeBinCount));
 			exploringFromEdge(e);
 		}
@@ -146,7 +147,7 @@ public class SimpleBinner {
 	private void exploringFromEdge(Edge edge){
 		if(!edge2BinMap.containsKey(edge))
 			return;
-		
+		unresolvedEdges.remove(edge);
 		Node 	n0 = edge.getNode0(),
 				n1 = edge.getNode1();
 	
@@ -257,218 +258,28 @@ public class SimpleBinner {
 	public void estimatePathsByCoverage() {
 		nodesClustering();
 		GraphUtil.gradientDescent(graph);
-//		nodesClustering();
-//		GraphUtil.coverageOptimizer(graph);
-		//Store the unresolved nodes(edges)..
-		
-		Bin bb=getMostSignificantBin();
-		List<Edge> 	unresolvedEdges = 
-				graph.edges().sorted((o1,o2)->(int)(o1.getNumber("cov")-o2.getNumber("cov"))).collect(Collectors.toList());
-		
-		List<Edge>	nextSetOfUnresolvedEdges=null;
-		Collections.sort(unresolvedEdges, (o1,o2)->(int)(o1.getNumber("cov")-o2.getNumber("cov")));
-		//now do the task here:
-		Collections.sort(binList, (o1,o2)->(int)(o1.estCov-o2.estCov));
-		
 		//1.First round of assigning unit cov: from binned significant nodes
 		
 		for(Bin b:binList) {
 			for(Node n:b.getNodesList()) {
-				Iterator<Edge> ite=n.edges().iterator();
-				while(ite.hasNext()) {
-					Edge e=ite.next();
-					assignEdgeBin(e, b, 1);
-					unresolvedEdges.remove(e);
-				}
+				exploringFromNode(n);
 			}			
 		}
-		ArrayList<Edge> highlyPossibleEdges = new ArrayList<>();
-		for(Edge e:unresolvedEdges){
-			if(scanAndGuess(e.getNumber("cov"))==bb && (e.getNode0().getDegree() <=2 || e.getNode1().getDegree() <=2)){
-				highlyPossibleEdges.add(e);
-			}
-		}
-		//2. Second round of thorough assignment: suck it deep!
-		int numberOfResolvedEdges=0;
-		while(true) {
-			LOG.info("Starting assigning " + unresolvedEdges.size() + " unresolved edges");
-			nextSetOfUnresolvedEdges = new ArrayList<>();
-			for(Edge e:unresolvedEdges) {
-				//fuk its hard here!!  
-				//TODO: should move to update(Edge justUpdatedEdge) to update graph everytime an edge is classified
-				if(!assignEdgeBins(e)) 
-					nextSetOfUnresolvedEdges.add(e);
-				else
-					System.out.println("Solved edge " + e + " cov=" + e.getNumber("cov") + " :" + edge2BinMap.get(e).toString());
-			}
-			
-			numberOfResolvedEdges=-nextSetOfUnresolvedEdges.size()+unresolvedEdges.size();
-			LOG.info(numberOfResolvedEdges + " edges has been solved! ");
-			// now just guess
-//			if(numberOfResolvedEdges==0){
-//				ArrayList<Edge> tmp = new ArrayList<>();
-//				for(Edge e:nextSetOfUnresolvedEdges) {
-//					Bin b = scanAndGuess(e.getNumber("cov"));
-//					if(b!=null) {
-//						addToMaps(e, b, 1);
-//						tmp.add(e);
-//					}	
-//				}
-//				for(Edge e:tmp)
-//					nextSetOfUnresolvedEdges.remove(e);
+//		ArrayList<Edge> highlyPossibleEdges = new ArrayList<>();
+//		for(Edge e:unresolvedEdges){
+//			if(scanAndGuess(e.getNumber("cov"))==bb && (e.getNode0().getDegree() <=2 || e.getNode1().getDegree() <=2)){
+//				highlyPossibleEdges.add(e);
 //			}
-			
-			if(nextSetOfUnresolvedEdges.size()==0)
-				break;
-			else if(nextSetOfUnresolvedEdges.size()==unresolvedEdges.size()){
-//				Bin pop = getLeastAbundanceBin();
-//				for(Edge e:nextSetOfUnresolvedEdges) {
-//					addToMaps(e, pop, (int)((e.getNumber("cov")/pop.estCov)));
-//				}
-				if(highlyPossibleEdges.size()>0){
-					Edge e = highlyPossibleEdges.remove(0);
-					assignEdgeBin(e,bb,1);
-					nextSetOfUnresolvedEdges.remove(e);
-					continue;
-				}else{
-					LOG.info("IMPOTENT!!!");
-					break;
-				}
-
-			}
-			unresolvedEdges=nextSetOfUnresolvedEdges;
+//		}
+		//2. Second round of thorough assignment: suck it deep!
+		while(!unresolvedEdges.isEmpty()) {
+			LOG.info("Starting assigning " + unresolvedEdges.size() + " unresolved edges");
+			//sort the unresolved edges based on confidence and guess until all gone...
 			
 		}
 		
 	}
-	private boolean assignEdgeBins(Edge e) {
-		//1. considering information from neighbors
-		//refer to the old balance() function!
-		BidirectedNode n0 = (BidirectedNode) e.getNode0(), n1=(BidirectedNode) e.getNode1();
-		boolean dir0 = ((BidirectedEdge) e).getDir0(), dir1 = ((BidirectedEdge) e).getDir1();
-		Iterator<Edge> 	in0 = n0.enteringEdges().iterator(), out0 = n0.leavingEdges().iterator(),
-						in1 = n1.enteringEdges().iterator(), out1 = n1.leavingEdges().iterator();
-		int unknwIn0 = 0, unknwOut0 = 0, unknwIn1  = 0, unknwOut1 = 0;
-		HashMap<Bin, Integer> 	inBins0 = new HashMap<Bin, Integer>(),
-		 						outBins0 = new HashMap<Bin, Integer>(), 
-	 							inBins1 = new HashMap<Bin, Integer>(), 
-	 							outBins1 = new HashMap<Bin, Integer>();
-		while(in0.hasNext()) {
-			HashMap<Bin,Integer> tmp = edge2BinMap.get(in0.next());
-			if(tmp!=null) {
-				for(Bin key:tmp.keySet()) {
-					if(inBins0.get(key)==null)
-						inBins0.put(key, tmp.get(key));
-					else
-						inBins0.replace(key, inBins0.get(key)+tmp.get(key));
-				}
-			}else {
-				unknwIn0++;
-			}
-		}
-		while(out0.hasNext()) {
-			HashMap<Bin,Integer> tmp = edge2BinMap.get(out0.next());
-			if(tmp!=null) {
-				for(Bin key:tmp.keySet()) {
-					if(outBins0.get(key)==null)
-						outBins0.put(key, tmp.get(key));
-					else
-						outBins0.replace(key, outBins0.get(key)+tmp.get(key));
-				}
-			}else
-				unknwOut0++;
-		}
-		
-		while(in1.hasNext()) {
-			HashMap<Bin,Integer> tmp = edge2BinMap.get(in1.next());
-			if(tmp!=null) {
-				for(Bin key:tmp.keySet()) {
-					if(inBins1.get(key)==null)
-						inBins1.put(key, tmp.get(key));
-					else
-						inBins1.replace(key, inBins1.get(key)+tmp.get(key));
-				}
-			}else
-				unknwIn1++;
-		}
-		while(out1.hasNext()) {
-			HashMap<Bin,Integer> tmp = edge2BinMap.get(out1.next());
-			if(tmp!=null) {
-				for(Bin key:tmp.keySet()) {
-					if(outBins1.get(key)==null)
-						outBins1.put(key, tmp.get(key));
-					else
-						outBins1.replace(key, outBins1.get(key)+tmp.get(key));
-				}
-			}else
-				unknwOut1++;
-		}
-		//map containing assigned bins and corresponding multiplicities
-		HashMap<Bin,Integer> 	results0=new HashMap<Bin,Integer>(),
-								results1=new HashMap<Bin,Integer>();
-		if(dir0) {
-			if(unknwOut0 == 1) {
-				if(unknwIn0==0) {
-					for(Bin b:inBins0.keySet()) {
-						if(inBins0.get(b) != outBins0.get(b))
-							results0.put(b, inBins0.get(b)-(outBins0.get(b)==null?0:outBins0.get(b)));
-					}
-				}
-			}
-		}else {
-			if(unknwIn0 == 1) {
-				if(unknwOut0==0) {
-					for(Bin b:outBins0.keySet()) {
-						if(outBins0.get(b) != inBins0.get(b))
-							results0.put(b, outBins0.get(b)-(inBins0.get(b)==null?0:inBins0.get(b)));
-					}
-				}
-			}
-		}
-		
-		if(dir1) {
-			if(unknwOut1 == 1) {
-				if(unknwIn1==0) {
-					for(Bin b:inBins1.keySet()) {
-						if(inBins1.get(b) != outBins1.get(b))
-							results1.put(b, inBins1.get(b)-(outBins1.get(b)==null?0:outBins1.get(b)));
-					}
-				}
-			}
-		}else {
-			if(unknwIn1 == 1) {
-				if(unknwOut1==0) {
-					for(Bin b:outBins1.keySet()) {
-						if(outBins1.get(b) != inBins1.get(b))
-							results1.put(b, outBins1.get(b)-(inBins1.get(b)==null?0:inBins1.get(b)));
-					}
-				}
-				
-			}
-		}
-		
-		if(results0.isEmpty() && results1.isEmpty()) {
-			LOG.info("Could not resolve edge " + e.getId() + " with estimated cov=" + e.getNumber("cov"));
-			return false;
-		}else if(!results0.isEmpty() && results1.isEmpty()) {
-			for(Bin b:results0.keySet()) 
-				assignEdgeBin(e, b, results0.get(b));
-			
-		}else if(results0.isEmpty() && !results1.isEmpty()) {
-			for(Bin b:results1.keySet()) 
-				assignEdgeBin(e, b, results1.get(b));
-		}else {
-			for(Bin b:results0.keySet()) {
-				if(results0.get(b)!=results1.get(b)) {
-					LOG.info("There is conflict prediction on edge " + e.getId()  + " for bin " + b.binID + ": " + results0.get(b) + " vs " + results1.get(b));
-					return false;
-				}
-				assignEdgeBin(e, b, results0.get(b));
-			}
-		}
 
-		return true;
-	}
 	
 
 	public static void main(String[] args) throws IOException {
