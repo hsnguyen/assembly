@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -58,40 +59,7 @@ public class SimpleBinner {
 			}
 		return retval;
 	}
-//	private void assignEdgeBin(Edge e, Bin b, int multiplicity) {
-//		//Add to map: edge->occurences in bin
-//		HashMap<Bin, Integer> ebEntry=edge2BinMap.get(e);
-//		if(ebEntry==null) {
-//			ebEntry=new HashMap<Bin,Integer>();
-//			ebEntry.put(b, new Integer(multiplicity));
-//			edge2BinMap.put(e, ebEntry);
-//		}else if(ebEntry.get(b) == null){
-//			ebEntry.put(b, multiplicity);
-//		}else {
-//			if(ebEntry.get(b)!=multiplicity) {
-//				System.out.println("WARNING: conflict edge multiplicity!");
-//				//ebEntry.put(b, ebEntry.get(b)+multiplicity);
-//			}
-//		}
-//
-//	}
-//	private void assignNodeBin(Node n, Bin b, int multiplicity) {
-//		//Add to map: edge->occurences in bin
-//		HashMap<Bin, Integer> nbEntry=node2BinMap.get(n);
-//		if(nbEntry==null) {
-//			nbEntry=new HashMap<Bin,Integer>();
-//			nbEntry.put(b, new Integer(multiplicity));
-//			node2BinMap.put(n, nbEntry);
-//		}else if(nbEntry.get(b) == null){
-//			nbEntry.put(b, multiplicity);
-//		}else {
-//			if(nbEntry.get(b)!=multiplicity) {
-//				System.out.println("WARNING: conflict node multiplicity!");
-//				//nbEntry.put(b, ebEntry.get(b)+multiplicity);
-//			}
-//		}
-//
-//	}
+
 	/*
 	 * When a node bin is set, traverse the graph to assign edges if possible
 	 */
@@ -153,15 +121,31 @@ public class SimpleBinner {
 	
 		if(!node2BinMap.containsKey(n0)){
 			boolean dir0 = ((BidirectedEdge)edge).getDir0();
-			Stream<Edge> edgeSet0 = dir0?n0.leavingEdges():n0.enteringEdges();
+			Stream<Edge> edgeSet0 = dir0?n0.leavingEdges():n0.enteringEdges();		
 			
-			edgeSet0.map(e -> edge2BinMap.get(e))
-						.reduce(SimpleBinner::sum)
-						.ifPresent(s -> {
-							node2BinMap.put(n0, s);
-							exploringFromNode(n0);
-						}
-			);
+//			edgeSet0.map(e -> edge2BinMap.get(e))
+//						.filter(Objects::nonNull)
+//						.reduce(SimpleBinner::sum)
+//						.ifPresent(s -> {
+//							node2BinMap.put(n0, s);
+//							exploringFromNode(n0);
+//						}
+//			);
+			ArrayList<Edge> edgeList0 = (ArrayList<Edge>) edgeSet0.collect(Collectors.toList());
+			HashMap<Bin,Integer> binCounts0 = new HashMap<Bin,Integer>();
+			boolean fully = true;
+			for(Edge e:edgeList0){
+				if(edge2BinMap.containsKey(e)){
+					binCounts0=sum(binCounts0, edge2BinMap.get(e));
+				}else{
+					fully = false;
+					break;
+				}
+			}
+			if(fully){
+				node2BinMap.put(n0, binCounts0);
+				exploringFromNode(n0);
+			}
 		}
 		
 		
@@ -169,13 +153,30 @@ public class SimpleBinner {
 			boolean dir1 = ((BidirectedEdge)edge).getDir0();
 			Stream<Edge> edgeSet1 = dir1?n1.leavingEdges():n1.enteringEdges();
 			
-			edgeSet1.map(e -> edge2BinMap.get(e))
-						.reduce(SimpleBinner::sum)
-						.ifPresent(s -> {
-							node2BinMap.put(n1, s);
-							exploringFromNode(n1);
-						}
-			);
+//			edgeSet1.map(e -> edge2BinMap.get(e))
+//						.filter(Objects::nonNull)
+//						.reduce(SimpleBinner::sum)
+//						.ifPresent(s -> {
+//							node2BinMap.put(n1, s);
+//							exploringFromNode(n1);
+//						}
+//			);
+			ArrayList<Edge> edgeList1 = (ArrayList<Edge>) edgeSet1.collect(Collectors.toList());
+			HashMap<Bin,Integer> binCounts1 = new HashMap<Bin,Integer>();
+			boolean fully = true;
+			for(Edge e:edgeList1){
+				if(edge2BinMap.containsKey(e)){
+					binCounts1=sum(binCounts1, edge2BinMap.get(e));
+				}else{
+					fully = false;
+					break;
+				}
+			}
+			if(fully){
+				node2BinMap.put(n1, binCounts1);
+				exploringFromNode(n1);
+			}
+			
 		}
 	}
 	
@@ -191,13 +192,13 @@ public class SimpleBinner {
 		return difference;
 	}
 	
-	private static HashMap<Bin, Integer> sum(HashMap<Bin, Integer> opt1, HashMap<Bin, Integer> opt2){
-		if(opt1==null||opt2==null)
+	private static HashMap<Bin, Integer> sum(HashMap<Bin, Integer> augend, HashMap<Bin, Integer> addend){
+		if(augend==null||addend==null)
 			return null;
 		
 		HashMap<Bin, Integer> retval = new HashMap<Bin, Integer>();
-		for(Bin b:Sets.union(opt1.keySet(), opt2.keySet()))
-			retval.put(b, (opt1.containsKey(b)?opt1.get(b):0) + (opt2.containsKey(b)?opt2.get(b):0));
+		for(Bin b:Sets.union(augend.keySet(), addend.keySet()))
+			retval.put(b, (augend.containsKey(b)?augend.get(b):0) + (addend.containsKey(b)?addend.get(b):0));
 		
 		return retval;
 	}
@@ -241,11 +242,16 @@ public class SimpleBinner {
 			Bin bin=new Bin();
 			for(DoublePoint p:c.getPoints()) {
 				Node tmp = graph.getNode(((int)p.getPoint()[1])+"");
-				if(tmp.getDegree() <= 2)
+				if(tmp.getDegree() <= 2){
 					bin.addNode(tmp);
+					HashMap<Bin, Integer> entry = new HashMap<Bin, Integer>();
+					entry.put(bin, 1);
+					node2BinMap.put(tmp, entry);
+				}
 			}
-			if(bin.getNodesList().size() > 0)
+			if(bin.getNodesList().size() > 0){
 				binList.add(bin);
+			}
 			
 		}
 		
@@ -265,17 +271,29 @@ public class SimpleBinner {
 				exploringFromNode(n);
 			}			
 		}
-//		ArrayList<Edge> highlyPossibleEdges = new ArrayList<>();
-//		for(Edge e:unresolvedEdges){
-//			if(scanAndGuess(e.getNumber("cov"))==bb && (e.getNode0().getDegree() <=2 || e.getNode1().getDegree() <=2)){
-//				highlyPossibleEdges.add(e);
-//			}
-//		}
-		//2. Second round of thorough assignment: suck it deep!
+		ArrayList<Edge> highlyPossibleEdges = new ArrayList<>();
+		Bin bb = getMostSignificantBin();
+		HashMap<Bin, Integer> bb1 = new HashMap<Bin, Integer>();
+		bb1.put(bb, 1);
+		for(Edge e:unresolvedEdges){
+			if(scanAndGuess(e.getNumber("cov"))==bb && (e.getNode0().getDegree() <=2 || e.getNode1().getDegree() <=2)){
+				highlyPossibleEdges.add(e);
+			}
+		}
+//		2. Second round of thorough assignment: suck it deep!
+
 		while(!unresolvedEdges.isEmpty()) {
 			LOG.info("Starting assigning " + unresolvedEdges.size() + " unresolved edges");
 			//sort the unresolved edges based on confidence and guess until all gone...
-			
+			if(highlyPossibleEdges.size()>0){
+				Edge guess = highlyPossibleEdges.remove(0);
+				edge2BinMap.put(guess, bb1);
+				exploringFromEdge(guess);
+			}
+			else{
+				LOG.info("GUESS NO MORE!!!");
+				break;
+			}
 		}
 		
 	}
