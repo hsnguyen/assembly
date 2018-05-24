@@ -2,12 +2,9 @@ package org.rtassembly.npgraph;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -21,65 +18,44 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Sets;
 
-import japsa.seq.Sequence;
 
 public class SimpleBinner {
     private static final Logger LOG = LoggerFactory.getLogger(SimpleBinner.class);
 	public static volatile int SIGNIFICANT_CTG_LEN=10000;
 	
 	BidirectedGraph graph;
-	ArrayList<Bin> binList;
-	HashMap<Edge, HashMap<Bin,Integer>> edge2BinMap;
-	HashMap<Node, HashMap<Bin, Integer>> node2BinMap;
+	ArrayList<SimpleBin> binList;
+	HashMap<Edge, HashMap<SimpleBin,Integer>> edge2BinMap;
+	HashMap<Node, HashMap<SimpleBin, Integer>> node2BinMap;
 	ArrayList<Edge> unresolvedEdges;
 	SimpleBinner(BidirectedGraph graph){
 		this.graph = graph;
-		binList = new ArrayList<Bin>();
-		edge2BinMap = new HashMap<Edge, HashMap<Bin,Integer>>();
-		node2BinMap = new HashMap<Node, HashMap<Bin, Integer>>();
+		binList = new ArrayList<SimpleBin>();
+		edge2BinMap = new HashMap<Edge, HashMap<SimpleBin,Integer>>();
+		node2BinMap = new HashMap<Node, HashMap<SimpleBin, Integer>>();
 		unresolvedEdges = new ArrayList<Edge>(graph.edges().collect(Collectors.toList()));
-	}
-	private Bin getLeastAbundanceBin() {//bin that have least coverage
-		Bin retval=null;
-		double cov=Double.MAX_VALUE;
-		for(Bin b:binList)
-			if(b.estCov < cov) {
-				cov=b.estCov;
-				retval=b;
-			}
-		return retval;
-	}
-	private Bin getMostSignificantBin() {//bin that have cover longest fraction in the genome
-		Bin retval=null;
-		long maxLen=0;
-		for(Bin b:binList)
-			if(b.totLen > maxLen) {
-				maxLen=b.totLen;
-				retval=b;
-			}
-		return retval;
 	}
 
 	/*
 	 * When a node bin is set, traverse the graph to assign edges if possible
 	 */
 	private void exploringFromNode(Node node){
-		HashMap<Bin, Integer> nbins = node2BinMap.get(node);
+		HashMap<SimpleBin, Integer> nbins = node2BinMap.get(node);
 		if(nbins == null || nbins.isEmpty())
 			return;
 		
 		ArrayList<Edge> unknownLeavingEdges = new ArrayList<>(),
 						unknownEnteringEdges = new ArrayList<>();
-		HashMap<Bin,Integer> 	leavingEdgeBinCount=new HashMap<Bin,Integer>(),
-								enteringEdgeBinCount=new HashMap<Bin,Integer>();
+		HashMap<SimpleBin,Integer> 	leavingEdgeBinCount=new HashMap<SimpleBin,Integer>(),
+								enteringEdgeBinCount=new HashMap<SimpleBin,Integer>();
 		// Leaving edges
 		node.leavingEdges().forEach(e -> 
 		{
-			HashMap<Bin, Integer> ebins = edge2BinMap.get(e); 
+			HashMap<SimpleBin, Integer> ebins = edge2BinMap.get(e); 
 			if(ebins == null || ebins.size()==0)
 				unknownLeavingEdges.add(e);
 			else{
-				for(Bin b:ebins.keySet()) {
+				for(SimpleBin b:ebins.keySet()) {
 					leavingEdgeBinCount.put(b, ebins.get(b)+ (leavingEdgeBinCount.get(b)==null?0:leavingEdgeBinCount.get(b)));
 				}
 			}
@@ -87,17 +63,18 @@ public class SimpleBinner {
 		if(unknownLeavingEdges.size()==1){
 			Edge e = unknownLeavingEdges.get(0);
 			edge2BinMap.put(e, substract(nbins, leavingEdgeBinCount));
+			System.out.println("From node " + node.getId() + " firing edge " + e.getId());
 			exploringFromEdge(e);
 		}
 
 		// Entering edges
 		node.enteringEdges().forEach(e -> 
 		{
-			HashMap<Bin, Integer> ebins = edge2BinMap.get(e); 
+			HashMap<SimpleBin, Integer> ebins = edge2BinMap.get(e); 
 			if(ebins == null || ebins.size()==0)
 				unknownEnteringEdges.add(e);
 			else{
-				for(Bin b:ebins.keySet()) {
+				for(SimpleBin b:ebins.keySet()) {
 					enteringEdgeBinCount.put(b, ebins.get(b)+ (enteringEdgeBinCount.get(b)==null?0:enteringEdgeBinCount.get(b)));
 				}
 			}
@@ -105,6 +82,7 @@ public class SimpleBinner {
 		if(unknownEnteringEdges.size()==1){
 			Edge e = unknownEnteringEdges.get(0);
 			edge2BinMap.put(e, substract(nbins, enteringEdgeBinCount));
+			System.out.println("From node " + node.getId() + " firing edge " + e.getId());
 			exploringFromEdge(e);
 		}
 		
@@ -123,66 +101,60 @@ public class SimpleBinner {
 			boolean dir0 = ((BidirectedEdge)edge).getDir0();
 			Stream<Edge> edgeSet0 = dir0?n0.leavingEdges():n0.enteringEdges();		
 			
-//			edgeSet0.map(e -> edge2BinMap.get(e))
-//						.filter(Objects::nonNull)
-//						.reduce(SimpleBinner::sum)
-//						.ifPresent(s -> {
-//							node2BinMap.put(n0, s);
-//							exploringFromNode(n0);
-//						}
-//			);
 			ArrayList<Edge> edgeList0 = (ArrayList<Edge>) edgeSet0.collect(Collectors.toList());
-			HashMap<Bin,Integer> binCounts0 = new HashMap<Bin,Integer>();
+			HashMap<SimpleBin,Integer> binCounts0 = new HashMap<SimpleBin,Integer>();
 			boolean fully = true;
 			for(Edge e:edgeList0){
 				if(edge2BinMap.containsKey(e)){
 					binCounts0=sum(binCounts0, edge2BinMap.get(e));
 				}else{
+//					System.out.println("...node " + n0.getId() + " not yet fully solved at: " + e.getId());
 					fully = false;
 					break;
 				}
 			}
 			if(fully){
 				node2BinMap.put(n0, binCounts0);
+//				System.out.println("From edge " + edge.getId() + " updating node " + n0.getId());
 				exploringFromNode(n0);
 			}
+		}else{
+//			System.out.println("From edge " + edge.getId() + " try firing node " + n0.getId());
+			exploringFromNode(n0);
 		}
 		
 		
 		if(!node2BinMap.containsKey(n1)){
-			boolean dir1 = ((BidirectedEdge)edge).getDir0();
+			boolean dir1 = ((BidirectedEdge)edge).getDir1();
 			Stream<Edge> edgeSet1 = dir1?n1.leavingEdges():n1.enteringEdges();
 			
-//			edgeSet1.map(e -> edge2BinMap.get(e))
-//						.filter(Objects::nonNull)
-//						.reduce(SimpleBinner::sum)
-//						.ifPresent(s -> {
-//							node2BinMap.put(n1, s);
-//							exploringFromNode(n1);
-//						}
-//			);
 			ArrayList<Edge> edgeList1 = (ArrayList<Edge>) edgeSet1.collect(Collectors.toList());
-			HashMap<Bin,Integer> binCounts1 = new HashMap<Bin,Integer>();
+			HashMap<SimpleBin,Integer> binCounts1 = new HashMap<SimpleBin,Integer>();
 			boolean fully = true;
 			for(Edge e:edgeList1){
 				if(edge2BinMap.containsKey(e)){
 					binCounts1=sum(binCounts1, edge2BinMap.get(e));
 				}else{
 					fully = false;
+//					System.out.println("...node " + n1.getId() + " not yet fully solved at: " + e.getId());
 					break;
 				}
 			}
 			if(fully){
 				node2BinMap.put(n1, binCounts1);
+//				System.out.println("From edge " + edge.getId() + " updating node " + n1.getId());
 				exploringFromNode(n1);
 			}
 			
+		}else{
+//			System.out.println("From edge " + edge.getId() + " try firing node " + n1.getId());
+			exploringFromNode(n1);
 		}
 	}
 	
-	private static HashMap<Bin, Integer> substract(HashMap<Bin, Integer> minuend, HashMap<Bin, Integer> subtrahend){
-		HashMap<Bin, Integer> difference = new HashMap<Bin, Integer>();
-		for(Bin b:minuend.keySet()){
+	private static HashMap<SimpleBin, Integer> substract(HashMap<SimpleBin, Integer> minuend, HashMap<SimpleBin, Integer> subtrahend){
+		HashMap<SimpleBin, Integer> difference = new HashMap<SimpleBin, Integer>();
+		for(SimpleBin b:minuend.keySet()){
 			int _minuend = minuend.get(b),
 				_diff = _minuend - (subtrahend.containsKey(b)?subtrahend.get(b):0);	
 			if(_diff > 0)
@@ -192,24 +164,21 @@ public class SimpleBinner {
 		return difference;
 	}
 	
-	private static HashMap<Bin, Integer> sum(HashMap<Bin, Integer> augend, HashMap<Bin, Integer> addend){
+	private static HashMap<SimpleBin, Integer> sum(HashMap<SimpleBin, Integer> augend, HashMap<SimpleBin, Integer> addend){
 		if(augend==null||addend==null)
 			return null;
 		
-		HashMap<Bin, Integer> retval = new HashMap<Bin, Integer>();
-		for(Bin b:Sets.union(augend.keySet(), addend.keySet()))
+		HashMap<SimpleBin, Integer> retval = new HashMap<SimpleBin, Integer>();
+		for(SimpleBin b:Sets.union(augend.keySet(), addend.keySet()))
 			retval.put(b, (augend.containsKey(b)?augend.get(b):0) + (addend.containsKey(b)?addend.get(b):0));
 		
 		return retval;
 	}
 	
-	private Bin scanAndGuess(double cov) {
-		Bin target=null, pop = getLeastAbundanceBin();
-		if(cov < pop.estCov)
-			return pop;
-		
+	private SimpleBin scanAndGuess(double cov) {
+		SimpleBin target=null;
 		double tmp=100;
-		for(Bin b:binList) {
+		for(SimpleBin b:binList) {
 			double distance=GraphUtil.metric(cov, b.estCov);
 			if(distance<tmp) {
 				tmp=distance;
@@ -226,7 +195,7 @@ public class SimpleBinner {
 	//A simple clustering with DBSCAN. used internal
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private void nodesClustering() {
-		binList = new ArrayList<Bin>();
+		binList = new ArrayList<SimpleBin>();
 		List<DoublePoint> points = new ArrayList<DoublePoint>();
 		
 		for(Node n:graph) {
@@ -239,12 +208,12 @@ public class SimpleBinner {
 
 		List<Cluster<DoublePoint>> cluster = dbscan.cluster(points);
 		for(Cluster<DoublePoint> c:cluster) {
-			Bin bin=new Bin();
+			SimpleBin bin=new SimpleBin();
 			for(DoublePoint p:c.getPoints()) {
 				Node tmp = graph.getNode(((int)p.getPoint()[1])+"");
 				if(tmp.getDegree() <= 2){
-					bin.addNode(tmp);
-					HashMap<Bin, Integer> entry = new HashMap<Bin, Integer>();
+					bin.addCoreNode(tmp);
+					HashMap<SimpleBin, Integer> entry = new HashMap<SimpleBin, Integer>();
 					entry.put(bin, 1);
 					node2BinMap.put(tmp, entry);
 				}
@@ -254,10 +223,7 @@ public class SimpleBinner {
 			}
 			
 		}
-		
-		Bin mainBin = getMostSignificantBin();
-		for(Node n:mainBin.nodesIncludedList)
-			n.setAttribute("marked");
+
 	}
 	
 	//Now traverse and clustering the edges (+assign cov)
@@ -266,18 +232,24 @@ public class SimpleBinner {
 		GraphUtil.gradientDescent(graph);
 		//1.First round of assigning unit cov: from binned significant nodes
 		
-		for(Bin b:binList) {
+		for(SimpleBin b:binList) {
 			for(Node n:b.getNodesList()) {
 				exploringFromNode(n);
 			}			
 		}
-		ArrayList<Edge> highlyPossibleEdges = new ArrayList<>();
-		Bin bb = getMostSignificantBin();
-		HashMap<Bin, Integer> bb1 = new HashMap<Bin, Integer>();
-		bb1.put(bb, 1);
+		HashMap<SimpleBin, ArrayList<Edge>> highlyPossibleEdges = new HashMap<SimpleBin, ArrayList<Edge>>();
+
 		for(Edge e:unresolvedEdges){
-			if(scanAndGuess(e.getNumber("cov"))==bb && (e.getNode0().getDegree() <=2 || e.getNode1().getDegree() <=2)){
-				highlyPossibleEdges.add(e);
+			if(e.getNode0().getDegree() <=2 || e.getNode1().getDegree() <=2){
+				SimpleBin tmp = scanAndGuess(e.getNumber("cov"));
+				if(tmp!=null){
+					if(!highlyPossibleEdges.containsKey(tmp))
+						highlyPossibleEdges.put(tmp, new ArrayList<Edge>());
+					
+					highlyPossibleEdges.get(tmp).add(e);
+
+				}
+					
 			}
 		}
 //		2. Second round of thorough assignment: suck it deep!
@@ -285,12 +257,26 @@ public class SimpleBinner {
 		while(!unresolvedEdges.isEmpty()) {
 			LOG.info("Starting assigning " + unresolvedEdges.size() + " unresolved edges");
 			//sort the unresolved edges based on confidence and guess until all gone...
-			if(highlyPossibleEdges.size()>0){
-				Edge guess = highlyPossibleEdges.remove(0);
-				edge2BinMap.put(guess, bb1);
-				exploringFromEdge(guess);
+			if(!highlyPossibleEdges.keySet().isEmpty()){
+				for(SimpleBin b:binList){
+					if(!highlyPossibleEdges.containsKey(b))
+						continue;
+					else if(highlyPossibleEdges.get(b).isEmpty()){
+						highlyPossibleEdges.remove(b);
+						continue;
+					}
+					else{
+						Edge guess = highlyPossibleEdges.get(b).remove(0);
+						HashMap<SimpleBin, Integer> bc = new HashMap<>();
+						bc.put(b, 1);
+						edge2BinMap.put(guess, bc);
+						exploringFromEdge(guess);
+					}
+				}
+
 			}
 			else{
+				//we can go further with random guessing but let's stop here for now
 				LOG.info("GUESS NO MORE!!!");
 				break;
 			}
@@ -298,11 +284,24 @@ public class SimpleBinner {
 		
 	}
 
-	
+	public boolean isMarker(Node node){
+		boolean retval = false;
+		
+		if(node2BinMap.containsKey(node)){
+			HashMap<SimpleBin, Integer> bc = node2BinMap.get(node);
+			ArrayList<Integer> counts = new ArrayList<Integer>(bc.values());
+			if(counts.size()==1 && counts.get(0)==1){ //and should check for any conflict???
+				if(node.getNumber("len") >= 500)
+					retval=true;
+			}
+		}
+				
+		return retval;
+	}
 
 	public static void main(String[] args) throws IOException {
 		HybridAssembler hbAss = new HybridAssembler();
-		hbAss.setShortReadsInput(GraphExplore.spadesFolder+"EcK12S-careful/assembly_graph.fastg");
+		hbAss.setShortReadsInput(GraphExplore.spadesFolder+"W303-careful/assembly_graph.fastg");
 		hbAss.setShortReadsInputFormat("fastg");
 		hbAss.prepareShortReadsProcess();
 		
@@ -310,9 +309,9 @@ public class SimpleBinner {
 		SimpleBinner binner = new SimpleBinner(graph);
 		binner.estimatePathsByCoverage();
 		System.out.println("=> number of bin = " + binner.binList.size());
-		for(Bin b:binner.binList) {
+		for(SimpleBin b:binner.binList) {
 			System.out.println("Bin " + b.binID + " estCov=" + b.estCov + " totLen=" + b.totLen);
-			for(Node n:b.nodesIncludedList)
+			for(Node n:b.getNodesList())
 				System.out.println(n.getAttribute("name"));
 		}
 			
@@ -322,12 +321,12 @@ public class SimpleBinner {
 			while(ite.hasNext()) {
 				Edge e = ite.next();
 				System.out.println("Edge "+e.getId() + " cov=" + e.getNumber("cov") );
-				HashMap<Bin,Integer> tmp = binner.edge2BinMap.get(e);
+				HashMap<SimpleBin,Integer> tmp = binner.edge2BinMap.get(e);
 				if(tmp==null) {
 					System.out.println("...has not yet assigned!");
 					continue;
 				}
-				for(Bin b:tmp.keySet()) {
+				for(SimpleBin b:tmp.keySet()) {
 					System.out.printf(" bin %d : %d, ", b.binID, tmp.get(b));
 				}
 				System.out.println();
@@ -375,7 +374,7 @@ class SimpleBin{
 	/*
 	 * Return true if this bin also covers cov value
 	 */
-	public boolean isCloseTo(Bin b) {
+	public boolean isCloseTo(SimpleBin b) {
 		return GraphUtil.metric(this.estCov, b.estCov) < GraphUtil.DISTANCE_THRES;
 	} 
 }

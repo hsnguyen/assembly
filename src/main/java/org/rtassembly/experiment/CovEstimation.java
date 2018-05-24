@@ -1,4 +1,4 @@
-package org.rtassembly.npgraph;
+package org.rtassembly.experiment;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -20,6 +20,11 @@ import org.apache.commons.math3.linear.LUDecomposition;
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Node;
 import org.jfree.util.Log;
+import org.rtassembly.npgraph.BidirectedEdge;
+import org.rtassembly.npgraph.BidirectedGraph;
+import org.rtassembly.npgraph.BidirectedNode;
+import org.rtassembly.npgraph.GraphExplore;
+import org.rtassembly.npgraph.HybridAssembler;
 
 
 public class CovEstimation {

@@ -100,6 +100,7 @@ public class HybridAssembler {
 //	final BidirectedGraph origGraph;
 	public BidirectedGraph simGraph; //original and simplified graph should be separated, no???
 	public ConnectedComponents rtComponents;
+	private SimpleBinner binner;
 	
 	public HybridAssembler(){
 //		origGraph=new BidirectedGraph("batch");
@@ -108,6 +109,8 @@ public class HybridAssembler {
 		
 		simGraph.setAttribute("ui.quality");
 		simGraph.setAttribute("ui.antialias");
+		
+		binner = new SimpleBinner(simGraph);
 	}
 		
 	
@@ -138,6 +141,7 @@ public class HybridAssembler {
 	//Loading the graph, doing preprocessing
 	//binning, ...
 	public boolean prepareShortReadsProcess() {
+		//1. loading graph file
 		try {
 			if(shortReadsInputFormat.toLowerCase().equals("gfa")) 
 				GraphUtil.loadFromGFA(shortReadsInput, simGraph);
@@ -150,6 +154,8 @@ public class HybridAssembler {
 			System.err.println("Issue when loading pre-assembly: \n" + e.getMessage());
 			return false;
 		}
+		//2. Pre-process the graph: binning + connected components
+		binner.estimatePathsByCoverage();
 		
 		rtComponents.init(simGraph);
 		return true;
