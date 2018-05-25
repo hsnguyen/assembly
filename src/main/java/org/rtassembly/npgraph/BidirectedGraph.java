@@ -640,25 +640,25 @@ public class BidirectedGraph extends MultiGraph{
     /**
      * Another reduce that doesn't remove the unique nodes
      * Instead redundant edges are removed on a path way
-     * @param p Path to simplify the graph (from origGraph)
+     * @param path Path to simplify the graph (from origGraph)
      * @param target Subjected graph for the simplification
      */
-    public boolean reduce(BidirectedPath p){
+    public boolean reduce(BidirectedPath path){
     	//do nothing if the path has only one node
-    	if(p==null || p.getEdgeCount()<1)
+    	if(path==null || path.getEdgeCount()<1)
     		return false;
     	else
-    		System.out.println("Reducing path: " + p.getId());
+    		System.out.println("Reducing path: " + path.getId());
     	//loop over the edges of path (like spelling())
     	BidirectedNode 	markerNode = null,
-    			curNodeFromSimGraph = (BidirectedNode) p.getRoot();
+    			curNodeFromSimGraph = (BidirectedNode) path.getRoot();
 	
     	BidirectedPath curPath= null;
     	boolean markerDir=true, curDir;
     	
     	if(BidirectedGraph.isMarker(curNodeFromSimGraph)){
     		markerNode=curNodeFromSimGraph;
-    		markerDir=((BidirectedEdge) p.getEdgePath().get(0)).getDir(markerNode);
+    		markerDir=((BidirectedEdge) path.getEdgePath().get(0)).getDir(markerNode);
     		curPath = new BidirectedPath();
     		curPath.setRoot(curNodeFromSimGraph);
     	}
@@ -668,18 +668,18 @@ public class BidirectedGraph extends MultiGraph{
     	ArrayList<BidirectedEdge> 	tobeRemoved = new ArrayList<BidirectedEdge>(),
     								tobeAdded = new ArrayList<BidirectedEdge>();
     	double aveCov=0;
-    	for(Edge e:p.getEdgePath()){
+    	for(Edge edge:path.getEdgePath()){
     			
-    		curNodeFromSimGraph=(BidirectedNode) e.getOpposite(curNodeFromSimGraph);
+    		curNodeFromSimGraph=(BidirectedNode) edge.getOpposite(curNodeFromSimGraph);
     		   		
 //    		curNodeFromSimGraph = simGraph.getNode(curNodeFromOrigGraph.getId()); //change back to Node belong to simGraph (instead of origGraph)
-    		curDir=((BidirectedEdge) e).getDir(curNodeFromSimGraph);
+    		curDir=((BidirectedEdge) edge).getDir(curNodeFromSimGraph);
     		
     		if(BidirectedGraph.isMarker(curNodeFromSimGraph)){
         		
 				if(markerNode!=null){
 					//this is when we have 1 jumping path (both ends are markers)
-					curPath.add(e);	
+					curPath.add(edge);	
 //					LOG.info("Processing path {} with marker {}:{}:{} and curNode {}:{}:{}", curPath.getId(), markerNode.getId(), markerDir?"out":"in", markerNode.getGraph().getId(), curNodeFromSimGraph.getId(), curDir?"out":"in", curNodeFromSimGraph.getGraph().getId());
 					//create an edge connect markerNode to curNode with curPath
 					//Edge reducedEdge = simGraph.addEdge(markerNode, curNodeFromSimGraph, markerDir, curDir);
@@ -730,7 +730,7 @@ public class BidirectedGraph extends MultiGraph{
     		}
     		else{
     			if(markerNode!=null){
-    				curPath.add(e);
+    				curPath.add(edge);
     			}
     		}
     		
@@ -790,19 +790,7 @@ public class BidirectedGraph extends MultiGraph{
 
     	return res;
     }
-    /*	need more powerful function:
-     * A-statistics?
-     * Mixture of Poisson distributions??? Kalman filter idea...
-     */
-//    public static boolean isUnique(Node node, double cov){
-//    	boolean res = false;
-//    	if(node.getDegree()<=2 || Math.abs(node.getAttribute("cov" )) < cov){
-////    		if(((Sequence)node.getAttribute("seq")).length() > 5000 || node.getDegree()==0)
-//    			res=true;
-//    	}
-//    		
-//    	return res;
-//    }
+
     	
     /*
      * Traverse the graph and assign weights to every edges based on coverage of ending nodes

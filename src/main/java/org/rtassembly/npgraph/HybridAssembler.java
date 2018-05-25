@@ -244,9 +244,9 @@ public class HybridAssembler {
 				synchronized(simGraph) {
 					List<BidirectedPath> paths=simGraph.uniqueBridgesFinding(samList);
 					if(paths!=null)						
-						for(BidirectedPath p:paths) 
+						for(BidirectedPath path:paths) 
 						{
-					    	if(simGraph.reduce(p)) {
+					    	if(simGraph.reduce(path)) {
 
 					    		GraphExplore.redrawGraphComponents(simGraph);
 
