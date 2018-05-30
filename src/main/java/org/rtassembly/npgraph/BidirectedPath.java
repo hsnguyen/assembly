@@ -16,7 +16,6 @@ import org.slf4j.LoggerFactory;
 
 public class BidirectedPath extends Path{
 	int deviation; //how this path differ to long read data (todo: by multiple-alignment??)
-	private double coverage=-1; //representative coverage of this path (basically the coverage of unique nodes weighted by length)
     private int len=0;
 	private static final Logger LOG = LoggerFactory.getLogger(BidirectedPath.class);
     
@@ -28,11 +27,7 @@ public class BidirectedPath extends Path{
     	len+=((Sequence)lastNode.getAttribute("seq")).length()-BidirectedGraph.getKmerSize();
     	
     	double newCoverage = lastNode.getNumber("cov");
-    	//now just take the minimum
-    	if(coverage<=0)
-    		coverage=newCoverage;
-    	else
-    		coverage=Math.min(coverage, newCoverage);
+
     	
     }
     @Override
@@ -166,7 +161,6 @@ public class BidirectedPath extends Path{
 			add(e);
 		}
 		
-		coverage=Math.min(coverage, newPath.coverage);
 		return true;
 	}
 	
@@ -177,35 +171,25 @@ public class BidirectedPath extends Path{
 		this.deviation=deviation;
 	}
 
-	public double getCoverage(){
-		return coverage;
-	}
+
 	public int getLength() {
 		return len;
 	}
-	/**
-	 * Get the length-weighted coverage of all marker as an approximation for this path's coverage
-	 * @return average depth of this path
-	 */
-	public double averageCov(){
-		int len=0;
-		double res=0;
-		for(Node n:getNodePath()){
-			if(BidirectedGraph.isMarker(n)){
-				Sequence seq = (Sequence) n.getAttribute("seq");
-				len+=(n==getRoot())?seq.length():seq.length()-BidirectedGraph.getKmerSize();
-				res+=seq.length()*n.getNumber("cov");
-			}
-		}
-		return res/len;
-	}
+//	/**
+//	 * Get the length-weighted coverage of all marker as an approximation for this path's coverage
+//	 * @return average depth of this path
+//	 */
+//	public double averageCov(){
+//		int len=0;
+//		double res=0;
+//		for(Node n:getNodePath()){
+//			if(BidirectedGraph.isMarker(n)){
+//				Sequence seq = (Sequence) n.getAttribute("seq");
+//				len+=(n==getRoot())?seq.length():seq.length()-BidirectedGraph.getKmerSize();
+//				res+=seq.length()*n.getNumber("cov");
+//			}
+//		}
+//		return res/len;
+//	}
 	
-	public int getNumOfMarkers() {
-		int retval = 0;
-		for(Node n:getNodePath()){
-			if(BidirectedGraph.isMarker(n))
-				retval++;
-		}
-		return retval;	
-	}
 }

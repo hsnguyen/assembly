@@ -100,7 +100,6 @@ public class HybridAssembler {
 //	final BidirectedGraph origGraph;
 	public BidirectedGraph simGraph; //original and simplified graph should be separated, no???
 	public ConnectedComponents rtComponents;
-	private SimpleBinner binner;
 	
 	public HybridAssembler(){
 //		origGraph=new BidirectedGraph("batch");
@@ -110,7 +109,6 @@ public class HybridAssembler {
 		simGraph.setAttribute("ui.quality");
 		simGraph.setAttribute("ui.antialias");
 		
-		binner = new SimpleBinner(simGraph);
 	}
 		
 	
@@ -154,9 +152,8 @@ public class HybridAssembler {
 			System.err.println("Issue when loading pre-assembly: \n" + e.getMessage());
 			return false;
 		}
-		//2. Pre-process the graph: binning + connected components
-		binner.estimatePathsByCoverage();
-		
+		//2. Pre-process the graph: binning + connected componentsap
+		simGraph.binning();
 		rtComponents.init(simGraph);
 		return true;
 	}

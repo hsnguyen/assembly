@@ -18,6 +18,8 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Sets;
 
+import japsa.seq.Sequence;
+
 
 public class SimpleBinner {
     private static final Logger LOG = LoggerFactory.getLogger(SimpleBinner.class);
@@ -226,6 +228,21 @@ public class SimpleBinner {
 
 	}
 	
+	public SimpleBin getUniqueBinFromPath(BidirectedPath path) {
+		int len=0;
+		double res=0;
+		for(Node n:path.getNodePath()){
+			SimpleBin unqBin = getUniqueBin(n);
+			if(unqBin!=null){
+				Sequence seq = (Sequence) n.getAttribute("seq");
+				len+=(n==path.getRoot())?seq.length():seq.length()-BidirectedGraph.getKmerSize();
+				res+=seq.length()*unqBin.estCov;
+			}
+		}
+		
+		return scanAndGuess(res/len);
+	}
+	
 	//Now traverse and clustering the edges (+assign cov)
 	public void estimatePathsByCoverage() {
 		nodesClustering();
@@ -284,21 +301,105 @@ public class SimpleBinner {
 		
 	}
 
-	public boolean isMarker(Node node){
-		boolean retval = false;
+//	public boolean isMarker(Node node){
+//		boolean retval = false;
+//		
+//		if(node2BinMap.containsKey(node)){
+//			HashMap<SimpleBin, Integer> bc = node2BinMap.get(node);
+//			ArrayList<Integer> counts = new ArrayList<Integer>(bc.values());
+//			if(counts.size()==1 && counts.get(0)==1){ //and should check for any conflict???
+//				if(node.getNumber("len") >= 1000)
+//					retval=true;
+//			}
+//		}
+//				
+//		return retval;
+//	}
+
+	synchronized public SimpleBin getUniqueBin(Node node){
+		SimpleBin retval = null;
 		
 		if(node2BinMap.containsKey(node)){
 			HashMap<SimpleBin, Integer> bc = node2BinMap.get(node);
-			ArrayList<Integer> counts = new ArrayList<Integer>(bc.values());
-			if(counts.size()==1 && counts.get(0)==1){ //and should check for any conflict???
-				if(node.getNumber("len") >= 500)
-					retval=true;
+			ArrayList<SimpleBin> counts = new ArrayList<SimpleBin>(bc.keySet());
+			if(counts.size()==1 && bc.get(counts.get(0))==1){ //and should check for any conflict???
+				if(node.getNumber("len") >= 1000)
+					retval=counts.get(0);
 			}
 		}
 				
 		return retval;
 	}
+	//Traversal along a unique path (unique ends) and return list of unique edges
+	//Must only be called from BidirectedGraph.reduce()
+	synchronized public ArrayList<BidirectedEdge> reducedUniquePath(BidirectedPath path, SimpleBin uniqueBin) {
+		Node  	curNode = path.getRoot(), nextNode;
 
+		HashMap<SimpleBin, Integer> oneBin=new HashMap<>();
+		oneBin.put(uniqueBin, 1);
+
+		ArrayList<BidirectedEdge> retval = new ArrayList<BidirectedEdge>();	
+		double aveCov=uniqueBin.estCov;
+		
+		for(Edge ep:path.getEdgePath()){
+			nextNode=ep.getOpposite(curNode);
+			HashMap<SimpleBin, Integer> edgeBinsCount, bcMinusOne,  
+										nodeBinsCount;	
+
+			if(edge2BinMap.containsKey(ep)) {
+				edgeBinsCount=edge2BinMap.get(ep);
+				if(edgeBinsCount.containsKey(uniqueBin)) {
+					bcMinusOne=substract(edgeBinsCount, oneBin);
+					if(!bcMinusOne.isEmpty()) {
+						edge2BinMap.replace(ep, bcMinusOne);
+						
+					}
+					else {
+						//delete here???
+						edge2BinMap.remove(ep);
+						retval.add((BidirectedEdge) ep);
+					}
+				}else {//TODO: different due to mis-binning: need to rectify here... (same to node)
+				//E.g. b2 vs b1 =>  b2==b1	
+					System.out.println("On path: " + path.getId());
+					System.out.println("...conflict binning on " + ep.getId() + ": " +edgeBinsCount+ " vs " + oneBin + "("+uniqueBin.estCov+")");
+					
+				}
+				
+			}
+			
+//			LOG.info("--edge {} coverage:{} to {}",ep.getId(),ep.getNumber("cov"),ep.getNumber("cov") - aveCov);
+			ep.setAttribute("cov", ep.getNumber("cov") - aveCov);	
+
+
+//			if(ep.getNumber("cov")/aveCov < .5 && (isMarker(ep.getSourceNode()) || isMarker(ep.getTargetNode())) ) //plasmid coverage is different!!!
+//				retval.add((BidirectedEdge) ep);
+			
+			if(getUniqueBin(curNode)==null) {
+				if(node2BinMap.containsKey(curNode) && node2BinMap.get(curNode).containsKey(uniqueBin)) {
+					nodeBinsCount=node2BinMap.get(curNode);
+					bcMinusOne=substract(nodeBinsCount, oneBin);
+					if(!bcMinusOne.isEmpty()) {
+						node2BinMap.replace(curNode, bcMinusOne);
+					}
+					else {
+						node2BinMap.remove(curNode);
+					}
+					
+				}				
+				
+				curNode.setAttribute("cov", curNode.getNumber("cov")>aveCov?curNode.getNumber("cov")-aveCov:0);
+				
+			}
+			
+			curNode=nextNode;
+		}
+		
+		return retval;
+	}
+	
+	
+	
 	public static void main(String[] args) throws IOException {
 		HybridAssembler hbAss = new HybridAssembler();
 		hbAss.setShortReadsInput(GraphExplore.spadesFolder+"W303-careful/assembly_graph.fastg");

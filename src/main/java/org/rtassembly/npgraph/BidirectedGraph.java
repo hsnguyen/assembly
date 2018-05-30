@@ -2,9 +2,6 @@ package org.rtassembly.npgraph;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -17,16 +14,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import japsa.seq.Alphabet;
-import japsa.seq.FastaReader;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceOutputStream;
-import japsa.seq.SequenceReader;
 
 
 public class BidirectedGraph extends MultiGraph{
     static int KMER=127;
     static double RCOV=0.0;
-    
+	private SimpleBinner binner;
+
     volatile static double ILLUMINA_READ_LENGTH=300; //Illumina MiSeq
     
     static final int TOLERATE=500;
@@ -113,21 +109,9 @@ public class BidirectedGraph extends MultiGraph{
     	this("Assembly graph",true,false, 1000, 10000);
         setKmerSize(127);//default kmer size used by SPAdes to assembly MiSeq data
     }
-    
-	//just to make AbstractGraph.removeEdge(AbstractEdge, boolean, boolean, boolean) visible
-	protected void removeEdgeDup(AbstractEdge edge, boolean graphCallback,
-			boolean sourceCallback, boolean targetCallback) {
-		this.removeEdge(edge, graphCallback, sourceCallback, targetCallback);
-	
-	}
 	
 	protected BidirectedEdge addEdge(AbstractNode src, AbstractNode dst, boolean dir0, boolean dir1){
 		BidirectedEdge tmp = (BidirectedEdge) addEdge(BidirectedEdge.createID(src, dst, dir0, dir1), src, dst);
-//		String s1=tmp.toString();
-//		//tmp.setDir0(dir0);
-//		//tmp.setDir1(dir1);
-//		if(!s1.equals(tmp.toString()))
-//			System.out.println(s1 + " ---> " + tmp);
 		return tmp;
 	}
 	
@@ -184,138 +168,11 @@ public class BidirectedGraph extends MultiGraph{
     		return graphMap.put(e.getId(), path);
     }
     
+    synchronized public void binning() {
+    	binner=new SimpleBinner(this);
+    	binner.estimatePathsByCoverage();
+    }
 
-   
-//    /**
-//     * 
-//     * @param p Path to be grouped as a virtually vertex
-//     */
-//    public AbstractNode reduce(BidirectedPath p){
-//    	//do nothing if the path has only one node
-//    	if(p==null || p.getEdgeCount()<1)
-//    		return null;
-//    	
-//    	//now only work with path containing more than 2 unique nodes
-//    	int uniqueCount=0;
-//    	for(Node n:p.getEachNode()){
-//    		if(isUnique(n))
-//    			uniqueCount++;
-//    	}
-//    	if(uniqueCount < 2)
-//    	{
-//    		System.out.println("ignore path with less than 1 unique contig!");
-//    		return null;
-//    	}
-//    	//add the new composite Node to the graph
-//    	//compare id from sense & anti-sense to get the unique one
-//    	AbstractNode comp = addNode(p.getId().compareTo(p.getReversedComplemented().getId())>0?
-//    								p.getReversedComplemented().getId():p.getId());
-//    	
-//    	comp.addAttribute("path", p);
-//    	comp.addAttribute("seq", p.spelling());
-//        comp.addAttribute("ui.label", comp.getId());
-//        comp.setAttribute("ui.style", "text-offset: -10;"); 
-//        comp.setAttribute("ui.class", "marked");
-//        try { Thread.sleep(100); } catch (Exception e) {}
-//
-//    	//store unique nodes on p for removing
-//    	ArrayList<String> tobeRemoved=new ArrayList<String>();
-//    	for(Node n:p.getEachNode()){
-//    		if(isUnique(n))
-//    			tobeRemoved.add(n.getId());
-//    	}
-//    	BidirectedNode 	start = (BidirectedNode) p.getRoot(),
-//    					end = (BidirectedNode) p.peekNode();
-//    	boolean startDir = ((BidirectedEdge) p.getEdgePath().get(0)).getDir(start), 
-//    			endDir = ((BidirectedEdge) p.peekEdge()).getDir(end);
-//    	//set neighbors of the composite Node
-//    	Iterator<Edge> startEdges = startDir?start.getEnteringEdgeIterator():start.getLeavingEdgeIterator(),
-//    					endEdges = endDir?end.getEnteringEdgeIterator():end.getLeavingEdgeIterator();
-//    	while(startEdges.hasNext()){
-//    		BidirectedEdge e = (BidirectedEdge) startEdges.next();
-//    		BidirectedNode opNode = e.getOpposite(start);
-//    		boolean opDir = e.getDir(opNode);
-//    		//Edge tmp=
-//    		addEdge(BidirectedEdge.createID(comp, opNode, false, opDir), comp, opNode);//always into start node
-//    		//System.out.println("From " + start.getId() + ": " + tmp.getId() + " added!");
-//    	}
-//    	
-//    	while(endEdges.hasNext()){
-//    		BidirectedEdge e = (BidirectedEdge) endEdges.next();
-//    		BidirectedNode opNode = e.getOpposite(end);
-//    		boolean opDir = e.getDir(opNode);
-//    		//Edge tmp=
-//    		addEdge(BidirectedEdge.createID(comp, opNode, true, opDir), comp, opNode);//always out of end node
-//    	
-//    		//System.out.println("From " + end.getId() + ": " + tmp.getId() + " added!");
-//
-//    	}
-//
-//    	for(String nLabel:tobeRemoved){
-//    		//System.out.println("About to remove " + nLabel);
-//    		removeNode(nLabel);
-//    	}
-//    		
-//    	//todo: remove bubbles...
-//    	return comp;
-//    }
-//    
-//    
-//    /**
-//     * 
-//     * @param v Node to be reverted (1-level reverting)
-//     */
-//    public void revert(AbstractNode v){
-//    	System.out.println("Reverting...");
-//    	Path p=v.getAttribute("path");
-//    	if(p==null) return;
-//    	
-//    	BidirectedNode 	start = (BidirectedNode) p.getRoot(),
-//    					end = (BidirectedNode) p.peekNode();
-//    	boolean startDir = ((BidirectedEdge) p.getEdgePath().get(0)).getDir(start), 
-//    			endDir = ((BidirectedEdge) p.peekEdge()).getDir(end);
-//    	
-//    	//add back all neighbor edges of this composite vertex
-//    	Iterator<Edge> 	startEdges = v.getEnteringEdgeIterator(),
-//						endEdges = v.getLeavingEdgeIterator();
-//    	//add back all nodes from the path
-//		for(Node n:p.getNodeSet()){
-//			if(getNode(n.getId())!=null)
-//				continue;
-//			Node tmp = addNode(n.getId());
-//			tmp.addAttribute("seq", (japsa.seq.Sequence)n.getAttribute("seq"));
-//			tmp.addAttribute("name", (String)n.getAttribute("name"));
-//			tmp.addAttribute("path", (BidirectedPath)n.getAttribute("path"));
-//
-//			//System.out.println("Adding back edge "+tmp.getId());
-//		}
-//		while(startEdges.hasNext()){
-//			BidirectedEdge e = (BidirectedEdge) startEdges.next();
-//			BidirectedNode opNode = e.getOpposite(v);
-//			boolean opDir = e.getDir(opNode);
-//			//Edge tmp = 
-//			addEdge(BidirectedEdge.createID(start, opNode, !startDir, opDir), start, opNode);
-//			//System.out.println("Adding back edge "+tmp.getId());
-//		}
-//		
-//		while(endEdges.hasNext()){
-//			BidirectedEdge e = (BidirectedEdge) endEdges.next();
-//			BidirectedNode opNode = e.getOpposite(v);
-//			boolean opDir = e.getDir(opNode);
-//			//Edge tmp = 
-//			addEdge(BidirectedEdge.createID(end, opNode, !endDir, opDir), end, opNode);
-//			//System.out.println("Adding back edge "+tmp.getId());
-//		}
-//
-//    	//add back all edges from the path
-//		for(Edge e:p.getEdgeSet()){
-//			//Edge tmp = 
-//			addEdge(e.getId(), e.getSourceNode().getId(), e.getTargetNode().getId());
-//			//System.out.println("Adding back edge "+tmp.getId());
-//		}
-//    	//finally remove the composite node
-//    	removeNode(v);
-//	}
     
     /*
      * This function deduces a full path in this graph between 2 nodes aligned with a long read
@@ -382,7 +239,7 @@ public class BidirectedGraph extends MultiGraph{
     		}
     		//if a path couldn't be found between 2 dead-ends but alignments quality are insanely high
     		//FIXME: return a pseudo path having an nanopore edge
-    		else if(isMarker(srcNode) && isMarker(dstNode) && srcNode.getDegree() == 1 && dstNode.getDegree()==1 &&
+    		else if(binner.getUniqueBin(srcNode)!=null && binner.getUniqueBin(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 &&
 				Math.min(from.quality, to.quality) >= Alignment.GOOD_QUAL)
     		{
     			BidirectedEdge pseudoEdge = new BidirectedEdge(srcNode, dstNode, from.strand, to.strand);
@@ -508,13 +365,13 @@ public class BidirectedGraph extends MultiGraph{
 		ArrayList<BidirectedBridge> bridges = new ArrayList<>();
 		BidirectedBridge curBridge=null;
 		
-		if(isMarker(curAlignment.node))
+		if(binner.getUniqueBin(curAlignment.node) != null)
 			curBridge=new BidirectedBridge(curAlignment);
 				
 		for(int i=1; i<stepRanges.size();i++){
 			Range nextRanges = stepRanges.get(i);
 			nextAlignment = allAlignments.get(nextRanges);
-			if(isMarker(nextAlignment.node)) {
+			if(binner.getUniqueBin(nextAlignment.node)!=null) {
 				if(curBridge!=null) {
 					curBridge.append(nextAlignment);
 					bridges.add(curBridge);
@@ -558,8 +415,9 @@ public class BidirectedGraph extends MultiGraph{
 	
     	BidirectedPath curPath= null;
     	boolean markerDir=true, curDir;
-    	
-    	if(BidirectedGraph.isMarker(curNodeFromSimGraph)){
+    	SimpleBin 	curUniqueBin = binner.getUniqueBin(curNodeFromSimGraph),
+    				avgBin = binner.getUniqueBinFromPath(path);
+    	if(curUniqueBin!=null){
     		markerNode=curNodeFromSimGraph;
     		markerDir=((BidirectedEdge) path.getEdgePath().get(0)).getDir(markerNode);
     		curPath = new BidirectedPath();
@@ -570,7 +428,6 @@ public class BidirectedGraph extends MultiGraph{
     	//search for an unique node as the marker. 
     	ArrayList<BidirectedEdge> 	tobeRemoved = new ArrayList<BidirectedEdge>(),
     								tobeAdded = new ArrayList<BidirectedEdge>();
-    	double aveCov=0;
     	for(Edge edge:path.getEdgePath()){
     			
     		curNodeFromSimGraph=(BidirectedNode) edge.getOpposite(curNodeFromSimGraph);
@@ -578,14 +435,14 @@ public class BidirectedGraph extends MultiGraph{
 //    		curNodeFromSimGraph = simGraph.getNode(curNodeFromOrigGraph.getId()); //change back to Node belong to simGraph (instead of origGraph)
     		curDir=((BidirectedEdge) edge).getDir(curNodeFromSimGraph);
     		
-    		if(BidirectedGraph.isMarker(curNodeFromSimGraph)){
+    		curUniqueBin = binner.getUniqueBin(curNodeFromSimGraph);//TODO: check consistency
+    		if(curUniqueBin!=null){
         		
 				if(markerNode!=null){
 					//this is when we have 1 jumping path (both ends are markers)
 					curPath.add(edge);	
 //					LOG.info("Processing path {} with marker {}:{}:{} and curNode {}:{}:{}", curPath.getId(), markerNode.getId(), markerDir?"out":"in", markerNode.getGraph().getId(), curNodeFromSimGraph.getId(), curDir?"out":"in", curNodeFromSimGraph.getGraph().getId());
 					//create an edge connect markerNode to curNode with curPath
-					//Edge reducedEdge = simGraph.addEdge(markerNode, curNodeFromSimGraph, markerDir, curDir);
 					BidirectedEdge reducedEdge = new BidirectedEdge(markerNode, curNodeFromSimGraph, markerDir, curDir);
 
 //					if(reducedEdge!=null)
@@ -593,35 +450,12 @@ public class BidirectedGraph extends MultiGraph{
 				
 					tobeAdded.add(reducedEdge);
 					updateGraphMap(reducedEdge, curPath);
-					//loop over curPath to find out edges needed to be removed
-//					Node  	n0 = curPath.getRoot(),
-//							n1 = null;
 					
-					Node  	curNode = curPath.getRoot();
-					aveCov=curPath.averageCov();
-					for(Edge ep:curPath.getEdgePath()){
-						LOG.info("--edge {} coverage:{} to {}",ep.getId(),ep.getNumber("cov"),ep.getNumber("cov") - aveCov);
-						ep.setAttribute("cov", ep.getNumber("cov") - aveCov);	
-
-						if(ep.getNumber("cov")/aveCov < .5 && (BidirectedGraph.isMarker(ep.getSourceNode()) || BidirectedGraph.isMarker(ep.getTargetNode())) ) //plasmid coverage is different!!!
-							tobeRemoved.add((BidirectedEdge) ep);
-						
-						if(!BidirectedGraph.isMarker(curNode))
-							curNode.setAttribute("cov", curNode.getNumber("cov")>aveCov?curNode.getNumber("cov")-aveCov:0);
-						curNode=ep.getOpposite(curNode);
-//						n1 = ep.getOpposite(n0);
-//						if(!BidirectedGraph.isUnique(n0) == BidirectedGraph.isUnique(n1)){
-//			    			tobeRemoved.add((BidirectedEdge)ep);
-////			    			if(BidirectedGraph.isUnique(n0))
-////			    				n1.setAttribute("cov", Math.max(n1.getNumber("cov")-n0.getNumber("cov"),n0.getNumber("cov")));   
-////			    			if(BidirectedGraph.isUnique(n1))
-////			    				n0.setAttribute("cov", Math.max(n0.getNumber("cov")-n1.getNumber("cov"),n1.getNumber("cov")));   
-//
-//						}
-//						
-//						
-//			    		n0=n1;
-					}
+					tobeRemoved=binner.reducedUniquePath(curPath, avgBin);
+					
+					HashMap<SimpleBin, Integer> oneBin = new HashMap<>();
+					oneBin.put(curUniqueBin, 1);
+					binner.edge2BinMap.put(reducedEdge, oneBin);
 
 				}
 				
@@ -676,23 +510,23 @@ public class BidirectedGraph extends MultiGraph{
      * 1. pick the least coverage ones among a path as the base
      * 2. global base
      */
-    synchronized public static boolean isMarker(Node node){
-    	boolean res = false;
-    	
-    	if(node.getDegree()<=2){ // not always true, e.g. unique node in a repetitive component
-    		Sequence seq = (Sequence) node.getAttribute("seq");
-//    		if(seq.length() > 1000 && node.getNumber("astats") > 10 && node.getNumber("cov")/RCOV > .3)
-    		if(seq.length() > 300 && node.getNumber("astats") > 10 && node.getNumber("cov")/RCOV > .3)
-    			res=true;
-    	}
-    	
-//    	if(res)
-//    		LOG.info(node.getAttribute("name") + " with coverage " + node.getNumber("cov") + " is a marker!");
-//    	else
-//    		LOG.info(node.getAttribute("name") + " with coverage " + node.getNumber("cov") + " is NOT a marker!");
-
-    	return res;
-    }
+//    synchronized public static boolean isMarker(Node node){
+//    	boolean res = false;
+//    	
+//    	if(node.getDegree()<=2){ // not always true, e.g. unique node in a repetitive component
+//    		Sequence seq = (Sequence) node.getAttribute("seq");
+////    		if(seq.length() > 1000 && node.getNumber("astats") > 10 && node.getNumber("cov")/RCOV > .3)
+//    		if(seq.length() > 300 && node.getNumber("astats") > 10 && node.getNumber("cov")/RCOV > .3)
+//    			res=true;
+//    	}
+//    	
+////    	if(res)
+////    		LOG.info(node.getAttribute("name") + " with coverage " + node.getNumber("cov") + " is a marker!");
+////    	else
+////    		LOG.info(node.getAttribute("name") + " with coverage " + node.getNumber("cov") + " is NOT a marker!");
+//
+//    	return res;
+//    }
 
     	
     /*
