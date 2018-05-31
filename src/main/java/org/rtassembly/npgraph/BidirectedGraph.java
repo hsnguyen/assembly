@@ -187,7 +187,6 @@ public class BidirectedGraph extends MultiGraph{
     								retval = new ArrayList<BidirectedPath>();
     	tmp.setRoot(srcNode);  	
     	
-    	//traverse(tmp, dest, retval, distance+source.getSeq().length()+dest.getSeq().length());
     	traverse(tmp, dstNode, possiblePaths, distance, from.strand, to.strand, 0);
     	//only get the best ones
     	if(possiblePaths.isEmpty()){
@@ -364,19 +363,33 @@ public class BidirectedGraph extends MultiGraph{
 					nextAlignment;
 		ArrayList<BidirectedBridge> bridges = new ArrayList<>();
 		BidirectedBridge curBridge=null;
+		PopBin tmp=null;
+		HashMap<PopBin, Long> bins2Length = new HashMap<PopBin,Long>();
 		
-		if(binner.getUniqueBin(curAlignment.node) != null)
+		tmp=binner.getUniqueBin(curAlignment.node);
+		if( tmp != null){
 			curBridge=new BidirectedBridge(curAlignment);
+			bins2Length.put(tmp, (long)curAlignment.node.getNumber("len"));
+		}
 				
 		for(int i=1; i<stepRanges.size();i++){
 			Range nextRanges = stepRanges.get(i);
 			nextAlignment = allAlignments.get(nextRanges);
-			if(binner.getUniqueBin(nextAlignment.node)!=null) {
+			tmp=binner.getUniqueBin(nextAlignment.node);
+			if(tmp!=null) {
 				if(curBridge!=null) {
 					curBridge.append(nextAlignment);
 					bridges.add(curBridge);
 				}
 				curBridge=new BidirectedBridge(nextAlignment);
+				
+				if(bins2Length.containsKey(tmp)){
+					long newval=bins2Length.get(tmp)+(long)nextAlignment.node.getNumber("len");
+					bins2Length.replace(tmp, newval);
+				}else
+					bins2Length.put(tmp, (long)nextAlignment.node.getNumber("len"));
+
+					
 				
 			}else if(curBridge!=null){
 				curBridge.append(nextAlignment);
@@ -384,13 +397,22 @@ public class BidirectedGraph extends MultiGraph{
 			}	
 			
 		}
+		//determine the global unique bin of the whole path
+		long ltmp=0;
+		for(PopBin b:bins2Length.keySet())
+			if(bins2Length.get(b)>ltmp){
+				ltmp=bins2Length.get(b);
+				tmp=b;
+			}
+		
 		ArrayList<BidirectedPath> retrievedPaths = new ArrayList<>();
 		// Now we got all possible unique bridges from the alignments, do smt with them:
 		for(BidirectedBridge brg:bridges) {
-			//TODO: check already-found path here! (increase score, conflict resolve???)
-			if(graphMap.get(brg.getEndingsID())!=null)
+			//TODO: check already-found path here: both ends must have reasonable bin!
+			if(brg==null||graphMap.get(brg.getEndingsID())!=null)
 				continue;
 			brg.bridging(this);
+			brg.getPath().setUniquePathBin(tmp);
 			retrievedPaths.add(brg.getPath());
 		}
 		
@@ -400,8 +422,7 @@ public class BidirectedGraph extends MultiGraph{
     /**
      * Another reduce that doesn't remove the unique nodes
      * Instead redundant edges are removed on a path way
-     * @param path Path to simplify the graph (from origGraph)
-     * @param target Subjected graph for the simplification
+     * @param path: unique path to simplify the graph (from origGraph)
      */
     public boolean reduce(BidirectedPath path){
     	//do nothing if the path has only one node
@@ -415,8 +436,7 @@ public class BidirectedGraph extends MultiGraph{
 	
     	BidirectedPath curPath= null;
     	boolean markerDir=true, curDir;
-    	SimpleBin 	curUniqueBin = binner.getUniqueBin(curNodeFromSimGraph),
-    				avgBin = binner.getUniqueBinFromPath(path);
+    	PopBin 	curUniqueBin = binner.getUniqueBin(curNodeFromSimGraph);
     	if(curUniqueBin!=null){
     		markerNode=curNodeFromSimGraph;
     		markerDir=((BidirectedEdge) path.getEdgePath().get(0)).getDir(markerNode);
@@ -436,7 +456,7 @@ public class BidirectedGraph extends MultiGraph{
     		curDir=((BidirectedEdge) edge).getDir(curNodeFromSimGraph);
     		
     		curUniqueBin = binner.getUniqueBin(curNodeFromSimGraph);//TODO: check consistency
-    		if(curUniqueBin!=null){
+    		if(curUniqueBin!=null){//only when reach the end of path
         		
 				if(markerNode!=null){
 					//this is when we have 1 jumping path (both ends are markers)
@@ -451,9 +471,9 @@ public class BidirectedGraph extends MultiGraph{
 					tobeAdded.add(reducedEdge);
 					updateGraphMap(reducedEdge, curPath);
 					
-					tobeRemoved=binner.reducedUniquePath(curPath, avgBin);
+					tobeRemoved=binner.reducedUniquePath(curPath);
 					
-					HashMap<SimpleBin, Integer> oneBin = new HashMap<>();
+					HashMap<PopBin, Integer> oneBin = new HashMap<>();
 					oneBin.put(curUniqueBin, 1);
 					binner.edge2BinMap.put(reducedEdge, oneBin);
 

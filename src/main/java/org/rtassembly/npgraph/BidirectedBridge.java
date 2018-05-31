@@ -24,6 +24,17 @@ public class BidirectedBridge {
 			return true;
 		}
 	}
+	public boolean appendAll(BidirectedBridge brg){
+		if(brg.getStartAlignment()!=getEndAlignment())
+			return false;
+		else{
+			for(int i=1;i<brg.steps.size();i++){
+				append(brg.steps.remove(i));
+			}
+			brg=null;
+			return true;
+		}
+	}
 	public Alignment getStartAlignment() {
 		return steps.get(0);
 	}

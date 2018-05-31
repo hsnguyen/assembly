@@ -16,24 +16,21 @@ import org.slf4j.LoggerFactory;
 
 public class BidirectedPath extends Path{
 	int deviation; //how this path differ to long read data (todo: by multiple-alignment??)
-    private int len=0;
+    private long len=0;
 	private static final Logger LOG = LoggerFactory.getLogger(BidirectedPath.class);
-    
+    private PopBin uniqueBin;//the unique population bin that this path belongs to
     @Override
     public void add(Edge edge) {
     	super.add(edge);
     	Node lastNode = peekNode();
     	
-    	len+=((Sequence)lastNode.getAttribute("seq")).length()-BidirectedGraph.getKmerSize();
-    	
-    	double newCoverage = lastNode.getNumber("cov");
-
-    	
+    	len+=((long)lastNode.getNumber("len"))-BidirectedGraph.getKmerSize();
+    	  	
     }
     @Override
     public void setRoot(Node root) {
     	super.setRoot(root);
-    	len=((Sequence) root.getAttribute("seq")).length();
+    	len=(long) root.getNumber("len");
     }
     
 	public BidirectedPath(){
@@ -172,8 +169,15 @@ public class BidirectedPath extends Path{
 	}
 
 
-	public int getLength() {
+	public long getLength() {
 		return len;
+	}
+	
+	public void setUniquePathBin(PopBin bin){
+		uniqueBin=bin;
+	}
+	public PopBin getUniquePathBin(){
+		return uniqueBin;
 	}
 //	/**
 //	 * Get the length-weighted coverage of all marker as an approximation for this path's coverage
