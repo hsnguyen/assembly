@@ -409,9 +409,12 @@ public class BidirectedGraph extends MultiGraph{
 		// Now we got all possible unique bridges from the alignments, do smt with them:
 		for(BidirectedBridge brg:bridges) {
 			//TODO: check already-found path here: both ends must have reasonable bin!
-			if(brg==null||graphMap.get(brg.getEndingsID())!=null)
+			if(brg==null||graphMap.get(brg.getEndingsID())!=null) {
 				continue;
+			}
 			brg.bridging(this);
+			if(brg.getPath()==null)
+				continue;
 			brg.getPath().setUniquePathBin(tmp);
 			retrievedPaths.add(brg.getPath());
 		}
@@ -471,6 +474,7 @@ public class BidirectedGraph extends MultiGraph{
 					tobeAdded.add(reducedEdge);
 					updateGraphMap(reducedEdge, curPath);
 					
+					curPath.setUniquePathBin(path.getUniquePathBin());
 					tobeRemoved=binner.reducedUniquePath(curPath);
 					
 					HashMap<PopBin, Integer> oneBin = new HashMap<>();
@@ -484,6 +488,7 @@ public class BidirectedGraph extends MultiGraph{
         		markerDir=!curDir; //in-out, out-in
 				curPath= new BidirectedPath();
 				curPath.setRoot(curNodeFromSimGraph);
+				
     		}
     		else{
     			if(markerNode!=null){
