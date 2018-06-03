@@ -173,10 +173,10 @@ public class BidirectedPath extends Path{
 		return len;
 	}
 	
-	public void setUniquePathBin(PopBin bin){
+	public void setConsensusUniqueBinOfPath(PopBin bin){
 		uniqueBin=bin;
 	}
-	public PopBin getUniquePathBin(){
+	public PopBin getConsensusUniqueBinOfPath(){
 		return uniqueBin;
 	}
 //	/**

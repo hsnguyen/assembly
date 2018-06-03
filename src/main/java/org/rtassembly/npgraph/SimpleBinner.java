@@ -321,17 +321,33 @@ public class SimpleBinner {
 	//Must only be called from BidirectedGraph.reduce()
 	synchronized public ArrayList<BidirectedEdge> reducedUniquePath(BidirectedPath path) {
 		Node  	curNode = path.getRoot(), nextNode;
-		PopBin uniqueBin=path.getUniquePathBin();
-		if(uniqueBin==null){
-			LOG.error("Population bin of the path is not detected!");
+		PopBin 	uniqueBin=path.getConsensusUniqueBinOfPath(),
+				startBin=getUniqueBin(path.getRoot()),
+				endBin=getUniqueBin(path.peekNode());;
+		if(uniqueBin==null||startBin==null||endBin==null){
+			LOG.info("Ignored: population bin of the path (either at ending node or global) is not known!");
+			return null;
+		}else if(uniqueBin!=startBin && uniqueBin!=endBin){
+			LOG.info("Ignored: consensus bin must be one of the endings bin: Ignored!");
+			//clean from bin map here...
+			return null;
+		}else if(!uniqueBin.isCloseTo(startBin)){
+			LOG.info("Ignored: consensus bin doesn't agree with one of the endings bin at node {}", path.getRoot());
+			node2BinMap.remove(path.getRoot());
+			//clean from bin map here...
+			return null;
+		}else if(!uniqueBin.isCloseTo(endBin)){
+			LOG.info("Ignored: consensus bin doesn't agree with one of the endings bin at node {}", path.peekNode());
+			node2BinMap.remove(path.peekNode());
+			//clean from bin map here...
 			return null;
 		}
-		
 		HashMap<PopBin, Integer> oneBin=new HashMap<>();
 		oneBin.put(uniqueBin, 1);
 
 		ArrayList<BidirectedEdge> retval = new ArrayList<BidirectedEdge>();	
 		double aveCov=uniqueBin.estCov;
+	
 		
 		for(Edge ep:path.getEdgePath()){
 			nextNode=ep.getOpposite(curNode);

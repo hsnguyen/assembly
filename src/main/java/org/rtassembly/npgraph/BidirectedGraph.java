@@ -415,7 +415,7 @@ public class BidirectedGraph extends MultiGraph{
 			brg.bridging(this);
 			if(brg.getPath()==null)
 				continue;
-			brg.getPath().setUniquePathBin(tmp);
+			brg.getPath().setConsensusUniqueBinOfPath(tmp);
 			retrievedPaths.add(brg.getPath());
 		}
 		
@@ -474,7 +474,7 @@ public class BidirectedGraph extends MultiGraph{
 					tobeAdded.add(reducedEdge);
 					updateGraphMap(reducedEdge, curPath);
 					
-					curPath.setUniquePathBin(path.getUniquePathBin());
+					curPath.setConsensusUniqueBinOfPath(path.getConsensusUniqueBinOfPath());
 					tobeRemoved=binner.reducedUniquePath(curPath);
 					
 					HashMap<PopBin, Integer> oneBin = new HashMap<>();
@@ -498,34 +498,35 @@ public class BidirectedGraph extends MultiGraph{
     		
 		}
     	
-    	boolean retval = tobeRemoved.size()>0?true:false;
-    	//remove appropriate edges
-    	for(BidirectedEdge e:tobeRemoved){
-    		LOG.info("REMOVING EDGE " + e.getId() + " from " + e.getNode0().getGraph().getId() + "-" + e.getNode1().getGraph().getId());
-    		LOG.info("before: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
-    		removeEdge(e.getId());
-    		LOG.info("after: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
-    	}
-    	
-    	//add appropriate edges
-    	for(BidirectedEdge e:tobeAdded){
-    		LOG.info("ADDING EDGE " + e.getId()+ " from " + e.getNode0().getGraph().getId() + "-" + e.getNode1().getGraph().getId());
-    		LOG.info("before: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
-    		
-    		BidirectedEdge reducedEdge = addEdge((BidirectedNode)e.getSourceNode(),(BidirectedNode)e.getTargetNode(),e.getDir0(),e.getDir1());
-    		
-			if(reducedEdge!=null){
-//				reducedEdge.addAttribute("ui.label", reducedEdge.getId());
-//				reducedEdge.setAttribute("ui.style", "text-offset: -10; text-alignment: along;"); 
-				reducedEdge.setAttribute("isReducedEdge", true);
-				reducedEdge.setAttribute("ui.class", "marked");
-//				reducedEdge.addAttribute("layout.weight", 10);
-			}
-    		LOG.info("after: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
-
-    	}
-    	
-    	return retval;
+    	if(tobeRemoved.size()>0){
+	    	//remove appropriate edges
+	    	for(BidirectedEdge e:tobeRemoved){
+	    		LOG.info("REMOVING EDGE " + e.getId() + " from " + e.getNode0().getGraph().getId() + "-" + e.getNode1().getGraph().getId());
+	    		LOG.info("before: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
+	    		removeEdge(e.getId());
+	    		LOG.info("after: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
+	    	}
+	    	
+	    	//add appropriate edges
+	    	for(BidirectedEdge e:tobeAdded){
+	    		LOG.info("ADDING EDGE " + e.getId()+ " from " + e.getNode0().getGraph().getId() + "-" + e.getNode1().getGraph().getId());
+	    		LOG.info("before: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
+	    		
+	    		BidirectedEdge reducedEdge = addEdge((BidirectedNode)e.getSourceNode(),(BidirectedNode)e.getTargetNode(),e.getDir0(),e.getDir1());
+	    		
+				if(reducedEdge!=null){
+	//				reducedEdge.addAttribute("ui.label", reducedEdge.getId());
+	//				reducedEdge.setAttribute("ui.style", "text-offset: -10; text-alignment: along;"); 
+					reducedEdge.setAttribute("isReducedEdge", true);
+					reducedEdge.setAttribute("ui.class", "marked");
+	//				reducedEdge.addAttribute("layout.weight", 10);
+				}
+	    		LOG.info("after: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
+	
+	    	}
+	    	return true;
+    	}else
+    		return false;
 
     }
     
