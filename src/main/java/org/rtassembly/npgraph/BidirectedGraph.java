@@ -343,12 +343,12 @@ public class BidirectedGraph extends MultiGraph{
 		
 		List<Range> stepRanges=new ArrayList<>(rangeGroups.size());
 		
-		System.out.println("Binning ranges: ");
+		System.out.println("Step ranges: ");
 	    for(List<Range> group : rangeGroups){
 	    	int maxscore=0;
 	    	Range rangeOfBest=null;
 	    	for(Range range:group) { 
-	    		System.out.print(allAlignments.get(range).node.getId() + ": " + range + "; ");	    
+	    		System.out.print(allAlignments.get(range).node.getId() + " "+ binner.getBinsOfNode(allAlignments.get(range).node) + ": " + range + "; ");	    
 	    		if(allAlignments.get(range).quality > maxscore)
 	    			rangeOfBest=range;
 	    	}
@@ -407,18 +407,21 @@ public class BidirectedGraph extends MultiGraph{
 		
 		ArrayList<BidirectedPath> retrievedPaths = new ArrayList<>();
 		// Now we got all possible unique bridges from the alignments, do smt with them:
+		System.out.println("\n=> bridges list: ");
 		for(BidirectedBridge brg:bridges) {
 			//TODO: check already-found path here: both ends must have reasonable bin!
+			System.out.printf("...%s ", brg.getEndingsID());
 			if(brg==null||graphMap.get(brg.getEndingsID())!=null) {
+				System.out.println(": ignored, already processed!");
 				continue;
 			}
+			System.out.println();
 			brg.bridging(this);
 			if(brg.getPath()==null)
 				continue;
 			brg.getPath().setConsensusUniqueBinOfPath(tmp);
 			retrievedPaths.add(brg.getPath());
 		}
-		
 		return retrievedPaths;
 	}
  	
@@ -498,7 +501,7 @@ public class BidirectedGraph extends MultiGraph{
     		
 		}
     	
-    	if(tobeRemoved.size()>0){
+    	if(tobeRemoved!=null && tobeRemoved.size()>0){
 	    	//remove appropriate edges
 	    	for(BidirectedEdge e:tobeRemoved){
 	    		LOG.info("REMOVING EDGE " + e.getId() + " from " + e.getNode0().getGraph().getId() + "-" + e.getNode1().getGraph().getId());
@@ -525,8 +528,10 @@ public class BidirectedGraph extends MultiGraph{
 	
 	    	}
 	    	return true;
-    	}else
+    	}else {
+    		LOG.info("Nothing to remove!");
     		return false;
+    	}
 
     }
     
@@ -553,158 +558,6 @@ public class BidirectedGraph extends MultiGraph{
 //
 //    	return res;
 //    }
-
-    	
-    /*
-     * Traverse the graph and assign weights to every edges based on coverage of ending nodes
-     * and update a node's coverage if possible (later)
-     */
-    synchronized public void balancing() {
-    	List<Edge> unknownEdges=this.edges().collect(Collectors.toList());
-    	ArrayList<Edge> newUnknownEdges = new ArrayList<Edge>();
-    	while(true) {
-	    	for(Edge e:unknownEdges) {
-	    		if(!Double.isNaN(e.getNumber("cov")))
-	    			continue;
-	    			
-	    		BidirectedNode n0 = (BidirectedNode) e.getNode0(), n1=(BidirectedNode) e.getNode1();
-	    		boolean dir0 = ((BidirectedEdge) e).getDir0(), dir1 = ((BidirectedEdge) e).getDir1();
-	    		Iterator<Edge> 	in0 = n0.enteringEdges().iterator(), out0 = n0.leavingEdges().iterator(),
-	    						in1 = n1.enteringEdges().iterator(), out1 = n1.leavingEdges().iterator();
-	    		int unknwIn0 = 0, unknwOut0 = 0, unknwIn1  = 0, unknwOut1 = 0;
-	    		double inWeight0 = 0, outWeight0 = 0, inWeight1 = 0, outWeight1 = 0;
-	    		while(in0.hasNext()) {
-	    			BidirectedEdge tmp = (BidirectedEdge) in0.next();
-	    			double tmpW = tmp.getNumber("cov");
-	    			if(!Double.isNaN(tmpW))
-	    				inWeight0+=tmpW;
-	    			else
-	    				unknwIn0++;
-	    		}
-	    		while(out0.hasNext()) {
-	    			BidirectedEdge tmp = (BidirectedEdge) out0.next();
-	    			double tmpW = tmp.getNumber("cov");
-	    			if(!Double.isNaN(tmpW))
-	    				outWeight0+=tmpW;
-	    			else
-	    				unknwOut0++;
-	    		}
-	    		
-	    		while(in1.hasNext()) {
-	    			BidirectedEdge tmp = (BidirectedEdge) in1.next();
-	    			double tmpW = tmp.getNumber("cov");
-	    			if(!Double.isNaN(tmpW))
-	    				inWeight1+=tmpW;
-	    			else
-	    				unknwIn1++;
-	    		}
-	    		while(out1.hasNext()) {
-	    			BidirectedEdge tmp = (BidirectedEdge) out1.next();
-	    			double tmpW = tmp.getNumber("cov");
-	    			if(!Double.isNaN(tmpW))
-	    				outWeight1+=tmpW;
-	    			else
-	    				unknwOut1++;
-	    		}
-	    		
-	    		//calculate sumOfCovToN0, sumOfCovFromN0; sumOfCovToN1, sumOfCovFromN1;
-	    		//should be: sumOfCovToN0==sumOfCovFromN0==covOfN0; sumOfCovToN1==sumOfCovFromN1==covOfN1 ??? 
-	    		double covInferredFromN0 = Double.NaN, covInferredFromN1=Double.NaN, estimatedCov=Double.NaN;
-	    		//int confidence = 0; //maximum=sum of length of 2 end nodes
-	    		double aveCov0=n0.getNumber("cov"), aveCov1=n1.getNumber("cov");
-	    		if(dir0) {
-	    			if(unknwOut0 == 1) {
-	    				if(unknwIn0==0) {
-	    					if(approxCompare(inWeight0, aveCov0)!=0)
-	    						System.out.println("Node " + n0.getAttribute("name") + ": sum of entering edges = " + inWeight0);
-	    					aveCov0=calibrate(aveCov0,inWeight0);
-	    				}
-	    				covInferredFromN0 = aveCov0-outWeight0;
-	    			}
-	    		}else {
-	    			if(unknwIn0 == 1) {
-	    				if(unknwOut0==0) {
-	    					if(approxCompare(outWeight0, aveCov0)!=0)
-	    						System.out.println("Node " + n0.getAttribute("name") + ": sum of out-going edges = " + outWeight0);
-	    					aveCov0=calibrate(aveCov0,outWeight0);
-	    				}
-	    				covInferredFromN0 = aveCov0-inWeight0;
-	    			}
-	    		}
-	    		
-	    		if(dir1) {
-	    			if(unknwOut1 == 1) {
-	    				if(unknwIn1==0) {
-	    					if(approxCompare(inWeight1, aveCov1)!=0)
-	    						System.out.println("Node " + n1.getAttribute("name") + ": sum of entering edges = " + inWeight1);
-	    					aveCov1=calibrate(aveCov1,inWeight1);
-	    				}
-	    				covInferredFromN1 = aveCov1-outWeight1;
-	    			}
-	    		}else {
-	    			if(unknwIn1 == 1) {
-	    				if(unknwOut1==0) {
-	    					if(approxCompare(outWeight1, aveCov1)!=0)
-	    						System.out.println("Node " + n1.getAttribute("name") + ": sum of out-going edges = " + outWeight1);
-	    					aveCov1=calibrate(aveCov1,outWeight1);
-	    				}
-	    				covInferredFromN1 = aveCov1-inWeight1;
-	    				
-	    			}
-	    		}
-	    		
-	    		
-	    		if(Double.isNaN(covInferredFromN0) && Double.isNaN(covInferredFromN1)) { //both are unknown
-	    			System.out.println("==> Unable to resolve: " + e.getId() + " : " + (dir0?unknwOut0:unknwIn0) + "(" + n0.getId()+ ") --- " + (dir1?unknwOut1:unknwIn1) + "(" + n1.getId() + ")");
-	    		}else if (!Double.isNaN(covInferredFromN0) && !Double.isNaN(covInferredFromN1)){
-					if(approxCompare(covInferredFromN0, covInferredFromN1)!=0) {
-						System.out.println("==> Infer from node " + n0.getAttribute("name") + " cov="+ n0.getNumber("cov") + ": " + covInferredFromN0 
-								+ " and from node " + n1.getAttribute("name") + " cov="+ n1.getNumber("cov") + ": " + covInferredFromN1);
-						printEdgesCov(n0);
-						printEdgesCov(n1);
-					}
-	    			
-					//estimatedCov=calibrate(covInferredFromN0,covInferredFromN1);
-					estimatedCov=calibrateWithWeight(	covInferredFromN0, ((Sequence)(n0.getAttribute("seq"))).length(), 
-														covInferredFromN1, ((Sequence)(n1.getAttribute("seq"))).length());
-	    		}else {
-	    			estimatedCov=Double.isNaN(covInferredFromN0)?covInferredFromN1:covInferredFromN0;
-	    		}
-	    		
-	    		if(Double.isNaN(estimatedCov))
-	    			newUnknownEdges.add(e);
-	    		else {
-	    			System.out.println("Final estimated coverage for " + e.getId() + " is " + estimatedCov);
-
-	    			e.setAttribute("cov", estimatedCov);
-	    		}
-					
-	    	}
-
-	    	unknownEdges = newUnknownEdges;
-	    	newUnknownEdges = new ArrayList<Edge>();
-	    	if(unknownEdges.isEmpty())
-	    		break;
-	    	else {
-	    		
-	    		System.out.println("Next traversal round on "+unknownEdges.size() + " edges");
-	    		continue;
-	    	}
-    	}
-    	
-    }
-    /*
-     * Compare 2 double values x,y
-     * Return 0 if x~=y, 1 if x>>y, -1 if x<<y
-     */
-    public static int approxCompare(double x, double y) {
-    	int retval=0;
-    	double ratio=Math.abs(x-y)/(Math.max(Math.abs(x), Math.abs(y)));
-    	if(ratio > .3)
-    		retval=x>y?1:-1;
-    	
-    	return retval;
-    }
     
     /*
      * Print adjacent edges' coverage of a node
@@ -721,17 +574,6 @@ public class BidirectedGraph extends MultiGraph{
     		System.out.printf("[%s]=%.2f; ", e.getId(), e.getNumber("cov"));
     	}
     	System.out.println();
-    }
-    
-    /*
-     * Balance function
-     */
-    private double calibrate(double x, double y) {
-    	return Math.max(x, y);
-//    	return (a+b)/2;
-    }
-    private double calibrateWithWeight(double x, int xw, double y, int yw){
-    	return (x*xw+y*yw)/(xw+yw);
     }
     
 }

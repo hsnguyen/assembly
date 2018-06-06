@@ -3,14 +3,16 @@ package org.rtassembly.npgraph;
 import java.io.IOException;
 import java.util.Iterator;
 import org.graphstream.graph.*;
+import org.graphstream.ui.view.Viewer;
+
 import japsa.seq.Sequence;
 
 
 public class GraphExplore {
 
-	public static String spadesFolder="/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/"; //imb desktop
+//	public static String spadesFolder="/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/"; //imb desktop
 //	public static String spadesFolder="/home/hoangnguyen/workspace/data/spades/"; //sony
-//	public static String spadesFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/"; //dell FASTG
+	public static String spadesFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/"; //dell FASTG
 //	public static String spadesFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades_v3.10/"; //dell GFA
 
 
@@ -46,7 +48,7 @@ public class GraphExplore {
 
     	redrawGraphComponents(graph);
 
-        graph.display();
+        Viewer viewer=graph.display();
         
         System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
                 
@@ -83,6 +85,8 @@ public class GraphExplore {
 //	        }
 //        }
         System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
+        HybridAssembler.promptEnterKey();
+        viewer.disableAutoLayout();
 
         /*
          * Testing BidirectedEdge id pattern
@@ -143,7 +147,7 @@ public class GraphExplore {
         		  			            "	stroke-width: 2px;");
     	}
     	
-    	graph.balancing();
+//    	graph.balancing();
 //    	for(Edge e : graph.getEdgeSet()) {
 //    		e.addAttribute("ui.label", (int)(e.getNumber("cov")));
 //    	}

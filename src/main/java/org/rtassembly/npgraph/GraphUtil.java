@@ -504,6 +504,21 @@ public class GraphUtil {
 		return (.5*(a-b)*(Math.log(a) -Math.log(b)));
 	}
     
+	
+    /*
+     * Compare 2 double values x,y
+     * Return 0 if x~=y, 1 if x>>y, -1 if x<<y
+     */
+    public static int approxCompare(double x, double y) {
+    	int retval=0;
+    	double ratio=Math.abs(x-y)/(Math.max(Math.abs(x), Math.abs(y)));
+    	if(ratio > .3)
+    		retval=x>y?1:-1;
+    	
+    	return retval;
+    }
+    
+    
 }
 class EdgeComponents{
 	AbstractNode n1,n2;

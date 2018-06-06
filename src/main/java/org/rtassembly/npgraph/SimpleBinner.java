@@ -304,13 +304,16 @@ public class SimpleBinner {
 //	}
 
 	synchronized public PopBin getUniqueBin(Node node){
-		PopBin retval = null;
+		if(node.getDegree()>2)//instead, check unbinned edges
+			return null;
 		
+		PopBin retval = null;
+
 		if(node2BinMap.containsKey(node)){
 			HashMap<PopBin, Integer> bc = node2BinMap.get(node);
 			ArrayList<PopBin> counts = new ArrayList<PopBin>(bc.keySet());
 			if(counts.size()==1 && bc.get(counts.get(0))==1){ //and should check for any conflict???
-				if(node.getNumber("len") >= 1000)
+				if(node.getNumber("len") >= 500)
 					retval=counts.get(0);
 			}
 		}
@@ -320,6 +323,7 @@ public class SimpleBinner {
 	//Traversal along a unique path (unique ends) and return list of unique edges
 	//Must only be called from BidirectedGraph.reduce()
 	synchronized public ArrayList<BidirectedEdge> reducedUniquePath(BidirectedPath path) {
+		LOG.info("Path {} being processed based on binning info...", path.getId());
 		Node  	curNode = path.getRoot(), nextNode;
 		PopBin 	uniqueBin=path.getConsensusUniqueBinOfPath(),
 				startBin=getUniqueBin(path.getRoot()),
@@ -327,9 +331,11 @@ public class SimpleBinner {
 		if(uniqueBin==null||startBin==null||endBin==null){
 			LOG.info("Ignored: population bin of the path (either at ending node or global) is not known!");
 			return null;
-		}else if(uniqueBin!=startBin && uniqueBin!=endBin){
+		}else if(uniqueBin!=startBin && uniqueBin!=endBin){//at least one end must agree with the wholepath bin
 			LOG.info("Ignored: consensus bin must be one of the endings bin: Ignored!");
 			//clean from bin map here...
+			node2BinMap.remove(path.getRoot());
+			node2BinMap.remove(path.peekNode());
 			return null;
 		}else if(!uniqueBin.isCloseTo(startBin)){
 			LOG.info("Ignored: consensus bin doesn't agree with one of the endings bin at node {}", path.getRoot());
@@ -342,9 +348,12 @@ public class SimpleBinner {
 			//clean from bin map here...
 			return null;
 		}
-		HashMap<PopBin, Integer> oneBin=new HashMap<>();
+		PopBin other=(uniqueBin==startBin?endBin:startBin);
+		HashMap<PopBin, Integer> 	oneBin=new HashMap<>(),
+									otherBin=new HashMap<>();
 		oneBin.put(uniqueBin, 1);
-
+		otherBin.put(other, 1);
+		
 		ArrayList<BidirectedEdge> retval = new ArrayList<BidirectedEdge>();	
 		double aveCov=uniqueBin.estCov;
 	
@@ -367,12 +376,21 @@ public class SimpleBinner {
 						edge2BinMap.remove(ep);
 						retval.add((BidirectedEdge) ep);
 					}
-				}else {//TODO: different due to mis-binning: need to rectify here... (same to node)
-				//E.g. b2 vs b1 =>  b2==b1	
-					System.out.println("On path: " + path.getId());
-					System.out.println("...conflict binning on " + ep.getId() + ": " +edgeBinsCount+ " vs " + oneBin + "("+uniqueBin.estCov+")");
-						//...
-					
+				}else if(edgeBinsCount.containsKey(other)){//TODO: different due to mis-binning: need to rectify here... (same to node)
+				//E.g. b2 vs b1 =>  b2==b1							//...
+					bcMinusOne=substract(edgeBinsCount, otherBin);
+					if(!bcMinusOne.isEmpty()) {
+						edge2BinMap.replace(ep, bcMinusOne);
+						
+					}
+					else {
+						//delete here???
+						edge2BinMap.remove(ep);
+						retval.add((BidirectedEdge) ep);
+					}
+				}else {
+					LOG.error("Conflict binning information on path {}, at edge {}!,", path.getId(), ep.getId());
+					edge2BinMap.remove(ep);
 				}
 		
 				
@@ -386,14 +404,25 @@ public class SimpleBinner {
 //				retval.add((BidirectedEdge) ep);
 			
 			if(getUniqueBin(curNode)==null) {
-				if(node2BinMap.containsKey(curNode) && node2BinMap.get(curNode).containsKey(uniqueBin)) {
-					nodeBinsCount=node2BinMap.get(curNode);
-					bcMinusOne=substract(nodeBinsCount, oneBin);
-					if(!bcMinusOne.isEmpty()) {
-						node2BinMap.replace(curNode, bcMinusOne);
-					}
-					else {
-						node2BinMap.remove(curNode);
+				if(node2BinMap.containsKey(curNode)) {
+					if(node2BinMap.get(curNode).containsKey(uniqueBin)) {
+						nodeBinsCount=node2BinMap.get(curNode);
+						bcMinusOne=substract(nodeBinsCount, oneBin);
+						if(!bcMinusOne.isEmpty()) {
+							node2BinMap.replace(curNode, bcMinusOne);
+						}
+						else {
+							node2BinMap.remove(curNode);
+						}
+					}else if(node2BinMap.get(curNode).containsKey(other)) {
+						nodeBinsCount=node2BinMap.get(curNode);
+						bcMinusOne=substract(nodeBinsCount, otherBin);
+						if(!bcMinusOne.isEmpty()) {
+							node2BinMap.replace(curNode, bcMinusOne);
+						}
+						else {
+							node2BinMap.remove(curNode);
+						}
 					}
 					
 				}				
@@ -408,8 +437,34 @@ public class SimpleBinner {
 		return retval;
 	}
 	
-	
-	
+	public String getBinsOfNode(Node node) {
+		String retval="[";
+		HashMap<PopBin, Integer> binCount=node2BinMap.get(node);
+		if(binCount==null)
+			retval+="unknown";
+		else {
+			for(PopBin b:binCount.keySet()) {
+				int count=binCount.get(b);
+				retval+=b.getId()+":"+count+"; ";
+			}
+		}
+		retval+="]";
+		return retval;
+	}
+	public String getBinsOfEdge(Edge edge) {
+		String retval="[";
+		HashMap<PopBin, Integer> binCount=edge2BinMap.get(edge);
+		if(binCount==null)
+			retval+="unknown";
+		else {
+			for(PopBin b:binCount.keySet()) {
+				int count=binCount.get(b);
+				retval+=b.getId()+":"+count+"; ";
+			}
+		}
+		retval+="]";
+		return retval;
+	}
 	public static void main(String[] args) throws IOException {
 		HybridAssembler hbAss = new HybridAssembler();
 		hbAss.setShortReadsInput(GraphExplore.spadesFolder+"EcK12S-careful/assembly_graph.fastg");
