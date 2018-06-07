@@ -140,7 +140,7 @@ public class BidirectedPath extends Path{
 	  */
 	public boolean join(BidirectedPath newPath) {
 		if(newPath==null || newPath.size() <=1)
-			return true;//old:false
+			return false;//true if want to continue searching sub-path
 		
 		if(newPath.getRoot() != peekNode()){
 			LOG.error("Cannot join path with disagreed first node: " + newPath.getRoot().getId() + " != " + peekNode().getId());

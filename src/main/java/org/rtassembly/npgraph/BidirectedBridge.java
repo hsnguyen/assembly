@@ -76,12 +76,14 @@ public class BidirectedBridge {
 					//TODO: find the best path representing this bridge here:
 					curBridge = bridges.get(0);
 				}
+				else
+					return;
 			}else 
 				continue;
 	
 			//join all paths from previous to the new ones
 			//TODO:optimize it
-			System.out.println("====Before curPath: " + curPath + "; curBridge:" + curBridge);
+			System.out.println("====Before: curPath: " + curPath + "; curBridge:" + curBridge);
 	
 			if(curPath==null)
 				curPath=curBridge;
@@ -92,7 +94,7 @@ public class BidirectedBridge {
 			}
 			curAlignment=nextAlignment;
 			
-			System.out.println("====After curPath: " + curPath + "; curBridge:" + curBridge);
+			System.out.println("====After: curPath: " + curPath + "; curBridge:" + curBridge);
 		}
 		
 		if(curPath!=null)

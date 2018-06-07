@@ -535,6 +535,56 @@ public class BidirectedGraph extends MultiGraph{
 
     }
     
+    //This assuming path is surely unique!!!
+    public boolean reduce2(BidirectedPath path){
+    	//do nothing if the path has only one node
+    	if(path.getEdgeCount()<2)
+    		return false;
+    	else
+    		System.out.println("Reducing path: " + path.getId());
+    	//loop over the edges of path (like spelling())
+    	BidirectedNode 	startNode = (BidirectedNode) path.getRoot(),
+    					endNode = (BidirectedNode) path.peekNode();
+	
+    	boolean startDir=((BidirectedEdge) path.getEdgePath().get(0)).getDir(startNode),
+    			endDir=((BidirectedEdge) path.peekEdge()).getDir(endNode);
+
+    	//search for an unique node as the marker. 
+    	ArrayList<BidirectedEdge> 	tobeRemoved = binner.reducedUniquePath(path);
+		HashMap<PopBin, Integer> oneBin = new HashMap<>();
+		oneBin.put(path.getConsensusUniqueBinOfPath(), 1);
+    	
+    	if(tobeRemoved!=null && tobeRemoved.size()>1){
+	    	//remove appropriate edges
+	    	for(BidirectedEdge e:tobeRemoved){
+	    		LOG.info("REMOVING EDGE " + e.getId() + " from " + e.getNode0().getGraph().getId() + "-" + e.getNode1().getGraph().getId());
+	    		LOG.info("before: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
+	    		removeEdge(e.getId());
+	    		LOG.info("after: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
+	    	}
+	    	
+	    	//add appropriate edges
+
+    		BidirectedEdge reducedEdge = addEdge(startNode,endNode,startDir,endDir);
+    		LOG.info("ADDING EDGE " + reducedEdge.getId()+ " from " + reducedEdge.getNode0().getGraph().getId() + "-" + reducedEdge.getNode1().getGraph().getId());
+    		
+			if(reducedEdge!=null){
+				reducedEdge.setAttribute("ui.label", path.getId());
+				reducedEdge.setAttribute("ui.style", "text-offset: -10; text-alignment: along;"); 
+				reducedEdge.setAttribute("isReducedEdge", true);
+				reducedEdge.setAttribute("ui.class", "marked");
+//				reducedEdge.addAttribute("layout.weight", 10);
+				binner.edge2BinMap.put(reducedEdge, oneBin);
+				updateGraphMap(reducedEdge, path);
+			}
+			
+	    	return true;
+    	}else {
+    		LOG.info("Path {} has failed reduce operation!", path.getId());
+    		return false;
+    	}
+
+    }
     /*
      * Important function: determine if a node is able to be removed or not
      * TODO: re-implement it based on statistics of coverage also

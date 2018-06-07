@@ -44,6 +44,6 @@ public class PopBin{
 	 * A-stats here?
 	 */
 	public boolean isCloseTo(PopBin b) {
-		return GraphUtil.metric(this.estCov, b.estCov) < GraphUtil.DISTANCE_THRES;
+		return GraphUtil.approxCompare(this.estCov, b.estCov)==0;
 	} 
 }

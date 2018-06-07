@@ -243,7 +243,8 @@ public class HybridAssembler {
 					if(paths!=null)						
 						for(BidirectedPath path:paths) 
 						{
-					    	if(simGraph.reduce(path)) {
+							//path here is already unique! (2 unique ending nodes)
+					    	if(simGraph.reduce2(path)) {
 
 					    		GraphExplore.redrawGraphComponents(simGraph);
 

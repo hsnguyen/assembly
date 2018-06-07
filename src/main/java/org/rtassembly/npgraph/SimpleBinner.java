@@ -66,7 +66,7 @@ public class SimpleBinner {
 		if(unknownLeavingEdges.size()==1){
 			Edge e = unknownLeavingEdges.get(0);
 			edge2BinMap.put(e, substract(nbins, leavingEdgeBinCount));
-			System.out.println("From node " + node.getId() + " firing edge " + e.getId());
+			System.out.printf("From node %s%s firing edge %s%s\n",node.getId(),getBinsOfNode(node), e.getId(), getBinsOfEdge(e));
 			exploringFromEdge(e);
 		}
 
@@ -85,7 +85,7 @@ public class SimpleBinner {
 		if(unknownEnteringEdges.size()==1){
 			Edge e = unknownEnteringEdges.get(0);
 			edge2BinMap.put(e, substract(nbins, enteringEdgeBinCount));
-			System.out.println("From node " + node.getId() + " firing edge " + e.getId());
+			System.out.printf("From node %s%s firing edge %s%s\n",node.getId(),getBinsOfNode(node), e.getId(), getBinsOfEdge(e));
 			exploringFromEdge(e);
 		}
 		
@@ -99,7 +99,7 @@ public class SimpleBinner {
 		unresolvedEdges.remove(edge);
 		Node 	n0 = edge.getNode0(),
 				n1 = edge.getNode1();
-	
+		
 		if(!node2BinMap.containsKey(n0)){
 			boolean dir0 = ((BidirectedEdge)edge).getDir0();
 			Stream<Edge> edgeSet0 = dir0?n0.leavingEdges():n0.enteringEdges();		
@@ -111,7 +111,6 @@ public class SimpleBinner {
 				if(edge2BinMap.containsKey(e)){
 					binCounts0=sum(binCounts0, edge2BinMap.get(e));
 				}else{
-//					System.out.println("...node " + n0.getId() + " not yet fully solved at: " + e.getId());
 					fully = false;
 					break;
 				}
@@ -119,13 +118,15 @@ public class SimpleBinner {
 			if(fully){
 				node2BinMap.put(n0, binCounts0);
 //				System.out.println("From edge " + edge.getId() + " updating node " + n0.getId());
+				System.out.printf("From edge %s%s completing node %s%s\n", edge.getId(), getBinsOfEdge(edge), n0.getId(),getBinsOfNode(n0));
+
 				exploringFromNode(n0);
 			}
 		}else{
-//			System.out.println("From edge " + edge.getId() + " try firing node " + n0.getId());
+			//TODO: check consistent here			
+			System.out.printf("From edge %s%s firing node %s%s\n",edge.getId(), getBinsOfEdge(edge), n0.getId(),getBinsOfNode(n0));
 			exploringFromNode(n0);
 		}
-		
 		
 		if(!node2BinMap.containsKey(n1)){
 			boolean dir1 = ((BidirectedEdge)edge).getDir1();
@@ -145,12 +146,13 @@ public class SimpleBinner {
 			}
 			if(fully){
 				node2BinMap.put(n1, binCounts1);
-//				System.out.println("From edge " + edge.getId() + " updating node " + n1.getId());
+				System.out.printf("From edge %s%s completing node %s%s\n", edge.getId(), getBinsOfEdge(edge), n1.getId(),getBinsOfNode(n1));
 				exploringFromNode(n1);
 			}
 			
-		}else{
-//			System.out.println("From edge " + edge.getId() + " try firing node " + n1.getId());
+		}else{ 
+			//TODO: check consistent here also
+			System.out.printf("From edge %s%s firing node %s%s\n",edge.getId(), getBinsOfEdge(edge), n1.getId(),getBinsOfNode(n1));
 			exploringFromNode(n1);
 		}
 	}
@@ -206,7 +208,6 @@ public class SimpleBinner {
 				points.add(new DoublePoint(new double[]{n.getNumber("cov"), new Double(n.getId())}));
 			}
 		}
-		// FIXME: tricky epsilon. need to loop to find best value??? 
 		DBSCANClusterer dbscan = new DBSCANClusterer(GraphUtil.DISTANCE_THRES, 0, (a,b)->GraphUtil.metric(a[0], b[0]));
 
 		List<Cluster<DoublePoint>> cluster = dbscan.cluster(points);
@@ -376,7 +377,7 @@ public class SimpleBinner {
 						edge2BinMap.remove(ep);
 						retval.add((BidirectedEdge) ep);
 					}
-				}else if(edgeBinsCount.containsKey(other)){//TODO: different due to mis-binning: need to rectify here... (same to node)
+				}else if(edgeBinsCount.containsKey(other)){
 				//E.g. b2 vs b1 =>  b2==b1							//...
 					bcMinusOne=substract(edgeBinsCount, otherBin);
 					if(!bcMinusOne.isEmpty()) {
@@ -389,7 +390,7 @@ public class SimpleBinner {
 						retval.add((BidirectedEdge) ep);
 					}
 				}else {
-					LOG.error("Conflict binning information on path {}, at edge {}!,", path.getId(), ep.getId());
+					LOG.error("Conflict binning information on path {}, at edge {}: {}!,", path.getId(), ep.getId(), getBinsOfEdge(ep));
 					edge2BinMap.remove(ep);
 				}
 		
@@ -403,26 +404,29 @@ public class SimpleBinner {
 //			if(ep.getNumber("cov")/aveCov < .5 && (isMarker(ep.getSourceNode()) || isMarker(ep.getTargetNode())) ) //plasmid coverage is different!!!
 //				retval.add((BidirectedEdge) ep);
 			
-			if(getUniqueBin(curNode)==null) {
+//			if(getUniqueBin(curNode)==null) {
+			if(curNode!=path.getRoot() && curNode!=path.peekNode()) {
 				if(node2BinMap.containsKey(curNode)) {
 					if(node2BinMap.get(curNode).containsKey(uniqueBin)) {
 						nodeBinsCount=node2BinMap.get(curNode);
 						bcMinusOne=substract(nodeBinsCount, oneBin);
-						if(!bcMinusOne.isEmpty()) {
-							node2BinMap.replace(curNode, bcMinusOne);
-						}
-						else {
-							node2BinMap.remove(curNode);
-						}
+						node2BinMap.replace(curNode, bcMinusOne);
+//						if(!bcMinusOne.isEmpty()) {
+//							node2BinMap.replace(curNode, bcMinusOne);
+//						}
+//						else {
+//							node2BinMap.remove(curNode);
+//						}
 					}else if(node2BinMap.get(curNode).containsKey(other)) {
 						nodeBinsCount=node2BinMap.get(curNode);
 						bcMinusOne=substract(nodeBinsCount, otherBin);
-						if(!bcMinusOne.isEmpty()) {
-							node2BinMap.replace(curNode, bcMinusOne);
-						}
-						else {
-							node2BinMap.remove(curNode);
-						}
+						node2BinMap.replace(curNode, bcMinusOne);
+//						if(!bcMinusOne.isEmpty()) {
+//							node2BinMap.replace(curNode, bcMinusOne);
+//						}
+//						else {
+//							node2BinMap.remove(curNode);
+//						}
 					}
 					
 				}				
