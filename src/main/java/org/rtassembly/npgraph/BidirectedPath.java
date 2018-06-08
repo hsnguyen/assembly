@@ -15,7 +15,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class BidirectedPath extends Path{
-	int deviation; //how this path differ to long read data (todo: by multiple-alignment??)
+	//TODO: edit-distance(none from alignment) + coverage traversed??
+	int deviation; 
     private long len=0;
 	private static final Logger LOG = LoggerFactory.getLogger(BidirectedPath.class);
     private PopBin uniqueBin;//the unique population bin that this path belongs to

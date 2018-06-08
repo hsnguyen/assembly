@@ -272,10 +272,14 @@ public class SimpleBinner {
 					}
 					else{
 						Edge guess = highlyPossibleEdges.get(b).remove(0);
-						HashMap<PopBin, Integer> bc = new HashMap<>();
-						bc.put(b, 1);
-						edge2BinMap.put(guess, bc);
-						exploringFromEdge(guess);
+						if(unresolvedEdges.contains(guess)){
+							HashMap<PopBin, Integer> bc = new HashMap<>();
+							bc.put(b, 1);
+							edge2BinMap.put(guess, bc);
+							exploringFromEdge(guess);
+						}else{
+							//TODO: check consistent here or just take it?
+						}
 					}
 				}
 
@@ -401,8 +405,9 @@ public class SimpleBinner {
 			ep.setAttribute("cov", ep.getNumber("cov") - aveCov);	
 
 
-//			if(ep.getNumber("cov")/aveCov < .5 && (isMarker(ep.getSourceNode()) || isMarker(ep.getTargetNode())) ) //plasmid coverage is different!!!
-//				retval.add((BidirectedEdge) ep);
+//			if(ep.getNumber("cov") < 0  && !unresolvedEdges.contains(ep)) //plasmid coverage is different!!!
+			if(ep.getNumber("cov") < 0  && !edge2BinMap.containsKey(ep)) //plasmid coverage is different!!!
+				retval.add((BidirectedEdge) ep);
 			
 //			if(getUniqueBin(curNode)==null) {
 			if(curNode!=path.getRoot() && curNode!=path.peekNode()) {

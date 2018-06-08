@@ -430,113 +430,10 @@ public class BidirectedGraph extends MultiGraph{
      * Instead redundant edges are removed on a path way
      * @param path: unique path to simplify the graph (from origGraph)
      */
-    public boolean reduce(BidirectedPath path){
-    	//do nothing if the path has only one node
-    	if(path==null || path.getEdgeCount()<1)
-    		return false;
-    	else
-    		System.out.println("Reducing path: " + path.getId());
-    	//loop over the edges of path (like spelling())
-    	BidirectedNode 	markerNode = null,
-    			curNodeFromSimGraph = (BidirectedNode) path.getRoot();
-	
-    	BidirectedPath curPath= null;
-    	boolean markerDir=true, curDir;
-    	PopBin 	curUniqueBin = binner.getUniqueBin(curNodeFromSimGraph);
-    	if(curUniqueBin!=null){
-    		markerNode=curNodeFromSimGraph;
-    		markerDir=((BidirectedEdge) path.getEdgePath().get(0)).getDir(markerNode);
-    		curPath = new BidirectedPath();
-    		curPath.setRoot(curNodeFromSimGraph);
-    	}
-    	
 
-    	//search for an unique node as the marker. 
-    	ArrayList<BidirectedEdge> 	tobeRemoved = new ArrayList<BidirectedEdge>(),
-    								tobeAdded = new ArrayList<BidirectedEdge>();
-    	for(Edge edge:path.getEdgePath()){
-    			
-    		curNodeFromSimGraph=(BidirectedNode) edge.getOpposite(curNodeFromSimGraph);
-    		   		
-//    		curNodeFromSimGraph = simGraph.getNode(curNodeFromOrigGraph.getId()); //change back to Node belong to simGraph (instead of origGraph)
-    		curDir=((BidirectedEdge) edge).getDir(curNodeFromSimGraph);
-    		
-    		curUniqueBin = binner.getUniqueBin(curNodeFromSimGraph);//TODO: check consistency
-    		if(curUniqueBin!=null){//only when reach the end of path
-        		
-				if(markerNode!=null){
-					//this is when we have 1 jumping path (both ends are markers)
-					curPath.add(edge);	
-//					LOG.info("Processing path {} with marker {}:{}:{} and curNode {}:{}:{}", curPath.getId(), markerNode.getId(), markerDir?"out":"in", markerNode.getGraph().getId(), curNodeFromSimGraph.getId(), curDir?"out":"in", curNodeFromSimGraph.getGraph().getId());
-					//create an edge connect markerNode to curNode with curPath
-					BidirectedEdge reducedEdge = new BidirectedEdge(markerNode, curNodeFromSimGraph, markerDir, curDir);
-
-//					if(reducedEdge!=null)
-//						reducedEdge.addAttribute("path", new BidirectedPath(curPath));
-				
-					tobeAdded.add(reducedEdge);
-					updateGraphMap(reducedEdge, curPath);
-					
-					curPath.setConsensusUniqueBinOfPath(path.getConsensusUniqueBinOfPath());
-					tobeRemoved=binner.reducedUniquePath(curPath);
-					
-					HashMap<PopBin, Integer> oneBin = new HashMap<>();
-					oneBin.put(curUniqueBin, 1);
-					binner.edge2BinMap.put(reducedEdge, oneBin);
-
-				}
-				
-				
-				markerNode=curNodeFromSimGraph;
-        		markerDir=!curDir; //in-out, out-in
-				curPath= new BidirectedPath();
-				curPath.setRoot(curNodeFromSimGraph);
-				
-    		}
-    		else{
-    			if(markerNode!=null){
-    				curPath.add(edge);
-    			}
-    		}
-    		
-		}
-    	
-    	if(tobeRemoved!=null && tobeRemoved.size()>0){
-	    	//remove appropriate edges
-	    	for(BidirectedEdge e:tobeRemoved){
-	    		LOG.info("REMOVING EDGE " + e.getId() + " from " + e.getNode0().getGraph().getId() + "-" + e.getNode1().getGraph().getId());
-	    		LOG.info("before: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
-	    		removeEdge(e.getId());
-	    		LOG.info("after: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
-	    	}
-	    	
-	    	//add appropriate edges
-	    	for(BidirectedEdge e:tobeAdded){
-	    		LOG.info("ADDING EDGE " + e.getId()+ " from " + e.getNode0().getGraph().getId() + "-" + e.getNode1().getGraph().getId());
-	    		LOG.info("before: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
-	    		
-	    		BidirectedEdge reducedEdge = addEdge((BidirectedNode)e.getSourceNode(),(BidirectedNode)e.getTargetNode(),e.getDir0(),e.getDir1());
-	    		
-				if(reducedEdge!=null){
-	//				reducedEdge.addAttribute("ui.label", reducedEdge.getId());
-	//				reducedEdge.setAttribute("ui.style", "text-offset: -10; text-alignment: along;"); 
-					reducedEdge.setAttribute("isReducedEdge", true);
-					reducedEdge.setAttribute("ui.class", "marked");
-	//				reducedEdge.addAttribute("layout.weight", 10);
-				}
-	    		LOG.info("after: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
-	
-	    	}
-	    	return true;
-    	}else {
-    		LOG.info("Nothing to remove!");
-    		return false;
-    	}
-
-    }
     
     //This assuming path is surely unique!!!
-    public boolean reduce2(BidirectedPath path){
+    public boolean reduce(BidirectedPath path){
     	//do nothing if the path has only one node
     	if(path.getEdgeCount()<2)
     		return false;
@@ -569,10 +466,10 @@ public class BidirectedGraph extends MultiGraph{
     		LOG.info("ADDING EDGE " + reducedEdge.getId()+ " from " + reducedEdge.getNode0().getGraph().getId() + "-" + reducedEdge.getNode1().getGraph().getId());
     		
 			if(reducedEdge!=null){
-				reducedEdge.setAttribute("ui.label", path.getId());
-				reducedEdge.setAttribute("ui.style", "text-offset: -10; text-alignment: along;"); 
-				reducedEdge.setAttribute("isReducedEdge", true);
-				reducedEdge.setAttribute("ui.class", "marked");
+//				reducedEdge.setAttribute("ui.label", path.getId());
+//				reducedEdge.setAttribute("ui.style", "text-offset: -10; text-alignment: along;"); 
+//				reducedEdge.setAttribute("isReducedEdge", true);
+//				reducedEdge.setAttribute("ui.class", "marked");
 //				reducedEdge.addAttribute("layout.weight", 10);
 				binner.edge2BinMap.put(reducedEdge, oneBin);
 				updateGraphMap(reducedEdge, path);
@@ -585,45 +482,6 @@ public class BidirectedGraph extends MultiGraph{
     	}
 
     }
-    /*
-     * Important function: determine if a node is able to be removed or not
-     * TODO: re-implement it based on statistics of coverage also
-     * 1. pick the least coverage ones among a path as the base
-     * 2. global base
-     */
-//    synchronized public static boolean isMarker(Node node){
-//    	boolean res = false;
-//    	
-//    	if(node.getDegree()<=2){ // not always true, e.g. unique node in a repetitive component
-//    		Sequence seq = (Sequence) node.getAttribute("seq");
-////    		if(seq.length() > 1000 && node.getNumber("astats") > 10 && node.getNumber("cov")/RCOV > .3)
-//    		if(seq.length() > 300 && node.getNumber("astats") > 10 && node.getNumber("cov")/RCOV > .3)
-//    			res=true;
-//    	}
-//    	
-////    	if(res)
-////    		LOG.info(node.getAttribute("name") + " with coverage " + node.getNumber("cov") + " is a marker!");
-////    	else
-////    		LOG.info(node.getAttribute("name") + " with coverage " + node.getNumber("cov") + " is NOT a marker!");
-//
-//    	return res;
-//    }
     
-    /*
-     * Print adjacent edges' coverage of a node
-     */
-    public void printEdgesCov(Node node) {
-    	Iterator<Edge> in = node.enteringEdges().iterator(), out = node.leavingEdges().iterator();
-    	while(in.hasNext()) {
-    		BidirectedEdge e = (BidirectedEdge) in.next();
-    		System.out.printf("[%s]=%.2f; ", e.getId(), e.getNumber("cov"));
-    	}
-    	System.out.print("\n\tOUT: ");
-    	while(out.hasNext()) {
-    		BidirectedEdge e = (BidirectedEdge) out.next();
-    		System.out.printf("[%s]=%.2f; ", e.getId(), e.getNumber("cov"));
-    	}
-    	System.out.println();
-    }
     
 }
