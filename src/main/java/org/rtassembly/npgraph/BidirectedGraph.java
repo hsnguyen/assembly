@@ -25,9 +25,9 @@ public class BidirectedGraph extends MultiGraph{
 
     volatile static double ILLUMINA_READ_LENGTH=300; //Illumina MiSeq
     
-    static final int TOLERATE=500;
-    static final int D_LIMIT=10000; //distance bigger than this will be ignored
-    static final int S_LIMIT=50;
+    static final double TOLERATE=.3;//can be interpreted as long read error rate (10-25%)
+    static final int D_LIMIT=5000; //distance bigger than this will be ignored
+    static final int S_LIMIT=100;// maximum number of DFS steps
     
     //provide dynamic state of particular pair of nodes with directions (e.g. A+B- : state)
     //state of edge: -1=removed, 0=connect, 1=new connect(reduce edge)
@@ -187,8 +187,13 @@ public class BidirectedGraph extends MultiGraph{
     								retval = new ArrayList<BidirectedPath>();
     	tmp.setRoot(srcNode);  	
     	
-    	traverse(tmp, dstNode, possiblePaths, distance, from.strand, to.strand, 0);
-    	//only get the best ones
+    	//TODO: set tolerance dynamically based on distance
+//    	traverse(tmp, dstNode, possiblePaths, distance, distance>200?(int) (TOLERATE*distance):200, from.strand, to.strand, 0);
+    	traverse(tmp, dstNode, possiblePaths, distance, 500, from.strand, to.strand, 0);
+
+    	/**************************************************************************************
+    	 * To cover the missing edges due to big k-mer of DBG
+    	 **************************************************************************************/
     	if(possiblePaths.isEmpty()){
     		//try to find an overlap < kmer size (dead-end)
     		if(distance < 0) {
@@ -242,7 +247,7 @@ public class BidirectedGraph extends MultiGraph{
 				Math.min(from.quality, to.quality) >= Alignment.GOOD_QUAL)
     		{
     			BidirectedEdge pseudoEdge = new BidirectedEdge(srcNode, dstNode, from.strand, to.strand);
-    			//TODO: save the corresponding content of long reads to this edge
+    			//save the corresponding content of long reads to this edge
     			pseudoEdge.setAttribute("dist", distance);
     			tmp.add(pseudoEdge);
     			retval.add(tmp);
@@ -252,6 +257,8 @@ public class BidirectedGraph extends MultiGraph{
     		}else
     			return null;
     	}
+    	/*****************************************************************************************/
+    	
     	double bestScore=possiblePaths.get(0).getDeviation();
     	for(int i=0;i<possiblePaths.size();i++){
     		BidirectedPath p = possiblePaths.get(i);
@@ -265,7 +272,7 @@ public class BidirectedGraph extends MultiGraph{
     }
     
     synchronized private void traverse(	BidirectedPath path, BidirectedNode dst, ArrayList<BidirectedPath> curResult, 
-    						int distance, boolean srcDir, boolean dstDir, int stepCount)
+    						int distance, int tolerance, boolean srcDir, boolean dstDir, int stepCount)
     {
     	//stop if it's going too far!
     	if(stepCount >= S_LIMIT)
@@ -288,24 +295,24 @@ public class BidirectedGraph extends MultiGraph{
     		BidirectedEdge e = (BidirectedEdge) ite.next();
 			path.add(e);
 			
-			int toTarget=Math.abs(distance-e.getLength());
-			if(e.getOpposite(currentNode)==dst && e.getDir(dst)!=dstDir && toTarget < TOLERATE){
+			int delta=Math.abs(distance-e.getLength());
+			if(e.getOpposite(currentNode)==dst && e.getDir(dst)!=dstDir && delta < tolerance){
 		    	BidirectedPath 	curPath=curResult.isEmpty()?new BidirectedPath():curResult.get(0), //the best path saved among all possible paths from the list curResult
 		    					tmpPath=new BidirectedPath(path);
-		    	tmpPath.setDeviation(toTarget);
-		    	if(	toTarget < curPath.getDeviation() )
+		    	tmpPath.setDeviation(delta);
+		    	if(	delta < curPath.getDeviation() )
 		    		curResult.add(0, tmpPath);
 		    	else
 		    		curResult.add(tmpPath);
 				
-				System.out.println("Hit added: "+path.getId()+"(candidate deviation: "+toTarget+")");
+				System.out.println("Hit added: "+path.getId()+"(candidate deviation: "+delta+")");
 			}else{
 				int newDistance = distance - ((Sequence) e.getOpposite(currentNode).getAttribute("seq")).length() - e.getLength();
 //				System.out.println("adding edge: " + e.getId() + " length=" + e.getLength() +" -> distance=" + newDistance);
-				if (newDistance - e.getLength() < -TOLERATE){
+				if (newDistance - e.getLength() < -tolerance){
 					System.out.println("Stop go to edge " + e.getId() + " from path with distance "+newDistance+" already! : "+path.getId());
 				}else
-					traverse(path, dst, curResult, newDistance, srcDir, dstDir, stepCount++);
+					traverse(path, dst, curResult, newDistance, tolerance, srcDir, dstDir, stepCount++);
 			}
 			path.popNode();
     	
@@ -466,8 +473,8 @@ public class BidirectedGraph extends MultiGraph{
     		LOG.info("ADDING EDGE " + reducedEdge.getId()+ " from " + reducedEdge.getNode0().getGraph().getId() + "-" + reducedEdge.getNode1().getGraph().getId());
     		
 			if(reducedEdge!=null){
-//				reducedEdge.setAttribute("ui.label", path.getId());
-//				reducedEdge.setAttribute("ui.style", "text-offset: -10; text-alignment: along;"); 
+				reducedEdge.setAttribute("ui.label", path.getId());
+				reducedEdge.setAttribute("ui.style", "text-offset: -10; text-alignment: along;"); 
 //				reducedEdge.setAttribute("isReducedEdge", true);
 //				reducedEdge.setAttribute("ui.class", "marked");
 //				reducedEdge.addAttribute("layout.weight", 10);

@@ -25,7 +25,7 @@ public class BidirectedPath extends Path{
     	super.add(edge);
     	Node lastNode = peekNode();
     	
-    	len+=((long)lastNode.getNumber("len"))-BidirectedGraph.getKmerSize();
+    	len+=((long)lastNode.getNumber("len"))+((BidirectedEdge)edge).getLength();
     	  	
     }
     @Override
@@ -50,6 +50,7 @@ public class BidirectedPath extends Path{
 				add(e);
 		}
 		deviation=p.deviation;
+		len=p.len;
 	}
 	
 	//This constructor is used e.g. to load in contigs.path from SPAdes
