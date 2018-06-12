@@ -411,7 +411,7 @@ public class BidirectedGraph extends MultiGraph{
 		for(BidirectedBridge brg:bridges) {
 			//TODO: check already-found path here: both ends must have reasonable bin!
 			System.out.printf("...%s ", brg.getEndingsID());
-			if(brg==null||graphMap.get(brg.getEndingsID())!=null) {
+			if(graphMap.get(brg.getEndingsID())!=null) {
 				System.out.println(": ignored, already processed!");
 				continue;
 			}
