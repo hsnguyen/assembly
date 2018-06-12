@@ -178,7 +178,7 @@ public class BidirectedGraph extends MultiGraph{
      * This function deduces a full path in this graph between 2 nodes aligned with a long read
      * 
      */
-    synchronized protected ArrayList<BidirectedPath> getClosestPath(Alignment from, Alignment to, int distance){
+    synchronized protected ArrayList<BidirectedPath> getClosestPaths(Alignment from, Alignment to, int distance){
     	BidirectedNode srcNode = from.node,
     					dstNode = to.node;
     	System.out.println("Looking for path between " + srcNode.getId() + " to " + dstNode.getId() + " with distance " + distance);
@@ -259,15 +259,16 @@ public class BidirectedGraph extends MultiGraph{
     	}
     	/*****************************************************************************************/
     	
-    	double bestScore=possiblePaths.get(0).getDeviation();
-    	for(int i=0;i<possiblePaths.size();i++){
-    		BidirectedPath p = possiblePaths.get(i);
-    		if(p.getDeviation() != bestScore)
-    			break;
-    		retval.add(p);
-    	}
-    	
-    	return retval;
+//    	double bestScore=possiblePaths.get(0).getDeviation();
+//    	for(int i=0;i<possiblePaths.size();i++){
+//    		BidirectedPath p = possiblePaths.get(i);
+//    		if(p.getDeviation()>bestScore*(1+TOLERATE))
+//    			break;
+//    		retval.add(p);
+//    	}
+//    	
+//    	return retval;
+    	return possiblePaths;
     	
     }
     
@@ -424,10 +425,10 @@ public class BidirectedGraph extends MultiGraph{
 			}
 			System.out.println();
 			brg.bridging(this);
-			if(brg.getPath()==null)
+			if(brg.getBestPath()==null)
 				continue;
-			brg.getPath().setConsensusUniqueBinOfPath(tmp);
-			retrievedPaths.add(brg.getPath());
+			brg.getBestPath().setConsensusUniqueBinOfPath(tmp);
+			retrievedPaths.add(brg.getBestPath());
 		}
 		return retrievedPaths;
 	}
@@ -473,8 +474,8 @@ public class BidirectedGraph extends MultiGraph{
     		LOG.info("ADDING EDGE " + reducedEdge.getId()+ " from " + reducedEdge.getNode0().getGraph().getId() + "-" + reducedEdge.getNode1().getGraph().getId());
     		
 			if(reducedEdge!=null){
-				reducedEdge.setAttribute("ui.label", path.getId());
-				reducedEdge.setAttribute("ui.style", "text-offset: -10; text-alignment: along;"); 
+//				reducedEdge.setAttribute("ui.label", path.getId());
+//				reducedEdge.setAttribute("ui.style", "text-offset: -10; text-alignment: along;"); 
 //				reducedEdge.setAttribute("isReducedEdge", true);
 //				reducedEdge.setAttribute("ui.class", "marked");
 //				reducedEdge.addAttribute("layout.weight", 10);

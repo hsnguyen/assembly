@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory;
 
 public class BidirectedPath extends Path{
 	//TODO: edit-distance(none from alignment) + coverage traversed??
-	int deviation; 
+	private int deviation, vote=0; 
     private long len=0;
 	private static final Logger LOG = LoggerFactory.getLogger(BidirectedPath.class);
     private PopBin uniqueBin;//the unique population bin that this path belongs to
@@ -170,7 +170,13 @@ public class BidirectedPath extends Path{
 		this.deviation=deviation;
 	}
 
-
+	public void elected() {
+		vote++;
+	}
+	
+	public int getVote() {
+		return vote;
+	}
 	public long getLength() {
 		return len;
 	}

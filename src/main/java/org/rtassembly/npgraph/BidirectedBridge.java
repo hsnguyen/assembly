@@ -4,12 +4,13 @@ import java.util.ArrayList;
 
 public class BidirectedBridge {
 	ArrayList<Alignment> steps;
-	BidirectedPath path;
+	ArrayList<BidirectedPath> paths;
 	
 	BidirectedBridge(Alignment start){
 		steps=new ArrayList<>();
 		steps.add(start);
-		path=null;
+		
+		paths = new ArrayList<>();
 	}
 
 	
@@ -43,9 +44,13 @@ public class BidirectedBridge {
 		return steps.get(steps.size()-1);
 	}
 	
-	public BidirectedPath getPath() {
-		return path;
+	public BidirectedPath getBestPath() {
+		//return best path (unique path or best voted path); or null if undetermined
+		BidirectedPath retval=null;
+		
+		return retval;
 	}
+	
 	public String getEndingsID() {
 		if(steps.size()<=1)
 			return null;
@@ -64,41 +69,37 @@ public class BidirectedBridge {
 		Alignment 	curAlignment = getStartAlignment(),
 					nextAlignment;
 
-		BidirectedPath curPath=null;
+		ArrayList<BidirectedPath> 	wholePaths=new ArrayList<>(),
+									stepPaths=new ArrayList<>();
 		for(int i=1; i<steps.size();i++){
 			nextAlignment = steps.get(i);
-			BidirectedPath curBridge=null;			
-	
+			
 			int distance = nextAlignment.readAlignmentStart()-curAlignment.readAlignmentEnd();
 			if(distance<BidirectedGraph.D_LIMIT){
-				ArrayList<BidirectedPath> bridges = graph.getClosestPath(curAlignment, nextAlignment, distance);
-				if(bridges!=null) {
-					//TODO: find the best path representing this bridge here:
-					curBridge = bridges.get(0);
-				}
-				else
-					return;
+				stepPaths = graph.getClosestPaths(curAlignment, nextAlignment, distance);
+				if(stepPaths==null || stepPaths.isEmpty())
+					continue;
 			}else 
-				continue;
+				return;
 	
 			//join all paths from previous to the new ones
 			//TODO:optimize it
-			System.out.println("====Before: curPath: " + curPath + "; curBridge:" + curBridge);
-	
-			if(curPath==null)
-				curPath=curBridge;
+
+			if(wholePaths.size()==0)
+				wholePaths=stepPaths;
 			else{
-				if(!curPath.join(curBridge)) {
-					return;
-				}
+				for(BidirectedPath curPath:wholePaths)
+					for(BidirectedPath stepPath:stepPaths)
+						if(!curPath.join(stepPath)) {
+							return;
+						}
 			}
 			curAlignment=nextAlignment;
 			
-			System.out.println("====After: curPath: " + curPath + "; curBridge:" + curBridge);
 		}
 		
-		if(curPath!=null)
-			path=curPath;
+		if(!wholePaths.isEmpty())
+			paths=wholePaths;
 		
 	}
 		
