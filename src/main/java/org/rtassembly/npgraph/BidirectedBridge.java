@@ -5,6 +5,7 @@ import java.util.ArrayList;
 public class BidirectedBridge {
 	ArrayList<Alignment> steps;
 	ArrayList<BidirectedPath> paths;
+	boolean isSolved=false;
 	
 	BidirectedBridge(Alignment start){
 		steps=new ArrayList<>();
@@ -46,9 +47,12 @@ public class BidirectedBridge {
 	
 	public BidirectedPath getBestPath() {
 		//return best path (unique path or best voted path); or null if undetermined
-		BidirectedPath retval=null;
-		
-		return retval;
+		if(isSolved)
+			return paths.get(0);
+		else{
+			//still a list of possible paths to deal with
+			return null;
+		}
 	}
 	
 	public String getEndingsID() {
@@ -60,7 +64,19 @@ public class BidirectedBridge {
 			return BidirectedEdge.createID(start.node, end.node, start.strand, !end.strand);
 		}
 	}
-	
+	//Using another list of steps to rectify the current bridge's steps
+	public void merging(BidirectedBridge brg){
+		if(isSolved)
+			return;
+		else{
+			for(BidirectedPath p:paths)
+				if(brg.agreeWith(p))
+					p.elected();										
+		}
+		//check if one path has dominant vote -> solved!
+//		if()
+//			isSolved=true;
+	}
 
 	public void bridging(BidirectedGraph graph){
 		if(steps.size()<=1) {
@@ -100,8 +116,30 @@ public class BidirectedBridge {
 		
 		if(!wholePaths.isEmpty())
 			paths=wholePaths;
+		if(wholePaths.size()==1)
+			isSolved=true;
 		
 	}
 		
-		//should we overwrite compareTo() to compare 2 bridges???
+	public String getAllPossiblePathsString(){
+		String retval="";
+		if(paths==null || paths.isEmpty()){
+			retval="possible paths not available!";
+		}else{
+			retval+=paths.stream().map(p->p.getId()).reduce((a,b)->a+"\n"+b);
+		}
+		
+		return retval;
+	}
+	
+	//check if the steps case agree with a path or not
+	private boolean agreeWith(BidirectedPath path){
+		boolean retval=false;
+		//1. first check the unique starting point, reverse it if necessary
+		
+		//2. then check the distances of nodes to the starting node 
+		
+		
+		return retval;
+	}
 }

@@ -43,12 +43,16 @@ public class GraphTest {
 //        
 //        samReader.close();
     	
-    	Pattern versionPattern = Pattern.compile("^Version:\\s(\\d+\\.\\d+\\.\\d+).*");
-    	String line="Version: 0.7.5a-r405";
-		Matcher matcher =versionPattern.matcher(line);
+    	Pattern pattern = Pattern.compile("(\\d+)([\\+\\-])(\\d+)([\\+\\-])");
+    	String line="103-82-";
+		Matcher matcher =pattern.matcher(line);
+		System.out.println(line);
+		String[] retval = new String[2];
 		if (matcher.find()){
-			System.out.println(line);
-			System.out.println(matcher.group(1));
+			retval[0]=matcher.group(1)+matcher.group(2);
+
+			retval[1]=matcher.group(3) + matcher.group(4);
 		}
+		System.out.println(retval[0] + " " + retval[1]);
     }
 }

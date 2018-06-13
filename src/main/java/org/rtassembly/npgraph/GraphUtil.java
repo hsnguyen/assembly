@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.graphstream.graph.Edge;
@@ -100,7 +102,7 @@ public class GraphUtil {
 		for(EdgeComponents ec:potentialEdgeSet) {
 			BidirectedEdge e = graph.addEdge(ec.n1, ec.n2, ec.dir1, ec.dir2);
 //			System.out.println("...adding edge " + e.getId() + " -> total no of edges = " + graph.getEdgeCount());
-			graph.updateGraphMap(e, new BidirectedPath(e));
+//			graph.updateGraphMap(e, new BidirectedPath(e));
 		}
 		//rough estimation of kmer used
 		if((shortestLen-1) != BidirectedGraph.getKmerSize()){
@@ -190,7 +192,7 @@ public class GraphUtil {
 				boolean dir0=gfaFields[2].equals("+")?true:false,
 						dir1=gfaFields[4].equals("+")?false:true;
 				BidirectedEdge e = graph.addEdge(n0, n1, dir0, dir1);
-				graph.updateGraphMap(e, new BidirectedPath(e));
+//				graph.updateGraphMap(e, new BidirectedPath(e));
 				
 				//just do it simple for now when the last field of Links line is xxM (kmer=xx)
 				String cigar=gfaFields[5];
@@ -518,6 +520,22 @@ public class GraphUtil {
     	return retval;
     }
     
+    /*
+     * Get string representative of a path starting node. 
+     * Note that there are 2 of them (template start + reversed-complementary end)
+     * E.g: 103-82- would return 103- and 82+
+     */
+    public static String[] getHeadOfPathString(String brg){
+    	String[] retval = null;
+    	Pattern pattern = Pattern.compile("(\\d+)([\\+\\-])(\\d+)([\\+\\-])");
+		Matcher matcher =pattern.matcher(brg);
+		if (matcher.find()){
+			retval = new String[2];
+			retval[0]=matcher.group(1)+matcher.group(2);
+			retval[1]=matcher.group(3)+matcher.group(4);
+		}
+		return retval;
+    }
     
 }
 class EdgeComponents{
