@@ -2,6 +2,8 @@ package org.rtassembly.npgraph;
 
 import java.util.ArrayList;
 
+import org.jfree.util.Log;
+
 public class BidirectedBridge {
 	ArrayList<Alignment> steps;
 	ArrayList<BidirectedPath> paths;
@@ -63,6 +65,13 @@ public class BidirectedBridge {
 			Alignment start = getStartAlignment(), end = getEndAlignment();
 			return BidirectedEdge.createID(start.node, end.node, start.strand, !end.strand);
 		}
+	}
+	public String getBridgeString() {
+		String retval="";
+		if(steps.size()>1) {
+			retval=steps.stream().map(a->a.node.getId().concat(a.strand?"+":"-")).reduce("", (a,b) -> a + b);;
+		}
+		return retval;
 	}
 	//Using another list of steps to rectify the current bridge's steps
 	public void merging(BidirectedBridge brg){
@@ -132,10 +141,12 @@ public class BidirectedBridge {
 		return retval;
 	}
 	
-	//check if the steps case agree with a path or not
+	//check if the steps case agree with a unique path or not
 	private boolean agreeWith(BidirectedPath path){
 		boolean retval=false;
+		System.out.printf("Checking consistency of bridge %s to path %s...\n", getBridgeString(), path.getId());
 		//1. first check the unique starting point, reverse it if necessary
+		BidirectedNode unqStart=getStartAlignment().node;
 		
 		//2. then check the distances of nodes to the starting node 
 		
