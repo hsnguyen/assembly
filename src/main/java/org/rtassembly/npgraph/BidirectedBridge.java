@@ -81,8 +81,10 @@ public class BidirectedBridge {
 		else{
 			ArrayList<BidirectedPath> tobeRemoved = new ArrayList<BidirectedPath>();
 			for(BidirectedPath p:paths){
-				if(brg.agreeWith(p, startNode))
-					p.elected();		
+				if(brg.agreeWith(p, startNode)) {
+					p.elected();	
+					System.out.printf("...path % now has %d votes!", p.getId(), p.getVote());
+				}
 				else
 					tobeRemoved.add(p);
 			}
