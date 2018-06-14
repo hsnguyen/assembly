@@ -73,18 +73,26 @@ public class BidirectedBridge {
 		}
 		return retval;
 	}
+	
 	//Using another list of steps to rectify the current bridge's steps
-	public void merging(BidirectedBridge brg){
+	public void merging(BidirectedBridge brg, BidirectedNode startNode){
 		if(isSolved)
 			return;
 		else{
-			for(BidirectedPath p:paths)
-				if(brg.agreeWith(p))
-					p.elected();										
+			ArrayList<BidirectedPath> tobeRemoved = new ArrayList<BidirectedPath>();
+			for(BidirectedPath p:paths){
+				if(brg.agreeWith(p, startNode))
+					p.elected();		
+				else
+					tobeRemoved.add(p);
+			}
+			if(tobeRemoved.size()==paths.size()-1)
+				isSolved=true;
+			
+			for(BidirectedPath p:tobeRemoved)
+				paths.remove(p);
+			
 		}
-		//check if one path has dominant vote -> solved!
-//		if()
-//			isSolved=true;
 	}
 
 	public void bridging(BidirectedGraph graph){
@@ -110,7 +118,7 @@ public class BidirectedBridge {
 			//join all paths from previous to the new ones
 			//TODO:optimize it
 
-			if(wholePaths.size()==0)
+			if(wholePaths.isEmpty())
 				wholePaths=stepPaths;
 			else{
 				for(BidirectedPath curPath:wholePaths)
@@ -142,14 +150,49 @@ public class BidirectedBridge {
 	}
 	
 	//check if the steps case agree with a unique path or not
-	private boolean agreeWith(BidirectedPath path){
-		boolean retval=false;
+	//must start with an unique Node (startdingNode)
+	private boolean agreeWith(BidirectedPath path, BidirectedNode startingNode){
+		if(steps.size()<2)
+			return false;
+		
+		boolean retval=true;
 		System.out.printf("Checking consistency of bridge %s to path %s...\n", getBridgeString(), path.getId());
 		//1. first check the unique starting point, reverse it if necessary
-		BidirectedNode unqStart=getStartAlignment().node;
+		if(path.getRoot()!=startingNode && path.peekNode() != startingNode){
+			System.err.println("Couldn't find " + startingNode.getId() + " from both ends of path " + path.getId());
+			return false;
+		}
 		
-		//2. then check the distances of nodes to the starting node 
-		
+		boolean dir=true; //true if bridge starts from left, false if from right
+		Alignment root = getStartAlignment();
+		if(startingNode==getEndAlignment().node){
+			root=getEndAlignment();
+			dir=false;
+		}
+		else if(startingNode!=getStartAlignment().node){
+			System.err.println("Couldn't find " + startingNode.getId() + " from both ends of bridge " + this.getBridgeString());
+			return false;			
+		}
+		//2. then check the distances of nodes to the starting node: 
+		//need a function to calculate the distance from the common unique node in the path!
+		//TODO: check for consistency of the direction between the two also
+		if(dir){
+			for(int i=1; i < steps.size(); i++){
+				Alignment curAlg = steps.get(i);
+				int distance = curAlg.readStart - root.readEnd+1;
+				boolean direction=root.strand && curAlg.strand;
+				if(!path.checkDistanceConsistency(startingNode, curAlg.node, direction, distance))
+					return false;
+			}
+		}else{
+			for(int i=steps.size()-2; i>=0 ; i--){
+				Alignment curAlg = steps.get(i);
+				int distance = root.readStart - curAlg.readEnd+1;
+				boolean direction=root.strand && curAlg.strand;
+				if(!path.checkDistanceConsistency(startingNode, curAlg.node, direction, distance))
+					return false;
+			}
+		}		
 		
 		return retval;
 	}

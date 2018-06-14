@@ -514,7 +514,7 @@ public class GraphUtil {
     public static int approxCompare(double x, double y) {
     	int retval=0;
     	double ratio=Math.abs(x-y)/(Math.max(Math.abs(x), Math.abs(y)));
-    	if(ratio > .5)
+    	if(ratio > .33)
     		retval=x>y?1:-1;
     	
     	return retval;
@@ -527,7 +527,7 @@ public class GraphUtil {
      */
     public static String[] getHeadOfPathString(String brg){
     	String[] retval = null;
-    	Pattern pattern = Pattern.compile("(\\d+)([\\+\\-])(\\d+)([\\+\\-])");
+    	Pattern pattern = Pattern.compile("(\\d+)([\\+\\-]),(\\d+)([\\+\\-])");
 		Matcher matcher =pattern.matcher(brg);
 		if (matcher.find()){
 			retval = new String[2];

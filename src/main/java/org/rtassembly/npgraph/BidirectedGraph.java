@@ -448,7 +448,10 @@ public class BidirectedGraph extends MultiGraph{
 				}else{
 					System.out.println(": already processed: fortify!");
 					System.out.println( storedBridge.getAllPossiblePathsString());
-					storedBridge.merging(brg);
+					BidirectedNode startNode=brg.getStartAlignment().node;
+					if(binner.getUniqueBin(startNode)==null)
+						startNode=brg.getEndAlignment().node;
+					storedBridge.merging(brg, startNode);
 					if(storedBridge.isSolved){
 						storedBridge.getBestPath().setConsensusUniqueBinOfPath(tmp);
 						retrievedPaths.add(storedBridge.getBestPath());
@@ -461,12 +464,14 @@ public class BidirectedGraph extends MultiGraph{
 			//check if brg is unique or not (only bridging unique bridge)
 			if(checkUniqueBridge(brg)){				
 				brg.bridging(this);
-				if(!brg.isSolved)
-					continue;
-					
-				brg.getBestPath().setConsensusUniqueBinOfPath(tmp);
-				retrievedPaths.add(brg.getBestPath());
-				updateBridgesMap(brg.getEndingsID(), brg);
+				if(!brg.paths.isEmpty())
+					updateBridgesMap(brg.getEndingsID(), brg);//must be here
+
+				BidirectedPath bestPath=brg.getBestPath();
+				if(bestPath!=null){
+					brg.getBestPath().setConsensusUniqueBinOfPath(tmp);
+					retrievedPaths.add(brg.getBestPath());
+				}
 			}
 		}
 		return retrievedPaths;

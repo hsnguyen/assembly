@@ -130,8 +130,8 @@ public class BidirectedPath extends Path{
 			curDir=!((BidirectedEdge) e).getDir(curNode);
 			curSeq = curDir?curSeq:Alphabet.DNA.complement(curSeq);
 	
-			seq.append(curSeq.subSequence(0, curSeq.length()-(curNode==peekNode()?
-					0:BidirectedGraph.getKmerSize()))); //TODO: consider cases of overlap != kmer
+			seq.append(curSeq.subSequence(0, curSeq.length()+(curNode==peekNode()?
+					0:((BidirectedEdge) e).getLength()))); 
 			
 		}
 	 return seq.toSequence();
@@ -153,7 +153,7 @@ public class BidirectedPath extends Path{
 			LOG.error("Conflict direction from the first node " + newPath.getRoot().getId());
 			return false;
 		}
-		//TODO: need a way to check coverage consistent
+		//TODO: need a way to check coverage consistent (or make change less significant bin?)
 
 			
 		for(Edge e:newPath.getEdgePath()){
@@ -186,6 +186,43 @@ public class BidirectedPath extends Path{
 	}
 	public PopBin getConsensusUniqueBinOfPath(){
 		return uniqueBin;
+	}
+	/*
+	 * Check if a node (to) have a distance to an end (from) that similar to a
+	 * predefined value (distance) 
+	 */
+	public boolean checkDistanceConsistency(Node from, Node to, boolean direction, int distance){
+		boolean retval=false;
+		BidirectedPath ref=null;
+		
+		if(from==getRoot()){
+			ref=this;
+		}else if(from==peekNode()){
+			ref=this.getReversedComplemented();
+		}else{
+			LOG.warn("Node {} couldn't be found as one of the end node in path {}!", from.getId(), getId());
+			return false;
+		}
+		int curDistance=0;
+		
+		boolean dirOfFrom = ((BidirectedEdge) ref.peekEdge()).getDir((BidirectedNode)from);
+		BidirectedNode curNode= (BidirectedNode)from;
+		for(Edge e:ref.getEdgePath()){
+			curNode=(BidirectedNode) e.getOpposite(curNode);
+			curDistance+=((BidirectedEdge) e).getLength();
+			if(GraphUtil.approxCompare(curDistance, distance)==0 && curNode==to){
+				boolean dirOfTo=((BidirectedEdge) e).getDir((BidirectedNode) curNode);
+				if((dirOfFrom && !dirOfTo) == direction)
+					return true;
+				else
+					LOG.info("Inconsistence direction between node {}:{}, node {}:{} and given direction {}",
+							from.getId(), dirOfFrom, to.getId(), dirOfTo, direction);
+			}
+			curDistance+=curNode.getNumber("len");
+		}
+		
+		
+		return retval;
 	}
 //	/**
 //	 * Get the length-weighted coverage of all marker as an approximation for this path's coverage
