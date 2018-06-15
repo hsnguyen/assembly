@@ -125,9 +125,7 @@ public class BidirectedBridge {
 			if(wholePaths.isEmpty())
 				wholePaths=stepPaths;
 			else{
-//				System.out.println("Current paths:");
 				for(BidirectedPath curPath:wholePaths){
-//					System.out.println("\t" + curPath.getId());
 					for(BidirectedPath stepPath:stepPaths){
 						BidirectedPath newPath=curPath.join(stepPath);
 						if(newPath==null)
