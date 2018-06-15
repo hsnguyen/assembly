@@ -532,7 +532,7 @@ public class GraphUtil {
 		if (matcher.find()){
 			retval = new String[2];
 			retval[0]=matcher.group(1)+matcher.group(2);
-			retval[1]=matcher.group(3)+matcher.group(4);
+			retval[1]=matcher.group(3)+(matcher.group(4)=="+"?"-":"+");
 		}
 		return retval;
     }

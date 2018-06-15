@@ -140,27 +140,29 @@ public class BidirectedPath extends Path{
 	  * Add a path to the current path. The path to be added must start with the last node
 	  * of the current path. Return TRUE if the joining valid and succeed.
 	  */
-	public boolean join(BidirectedPath newPath) {
-		if(newPath==null || newPath.size() <=1)
-			return false;//true if want to continue searching sub-path
+	public BidirectedPath join(BidirectedPath newPath) {
+		BidirectedPath retval=new BidirectedPath(this);
+		if(newPath==null || newPath.empty()){
+			LOG.error("Join to empty path!");
+//			return null;//return this path if want to continue searching sub-path
+			return retval; 
+		}
 		
 		if(newPath.getRoot() != peekNode()){
-			LOG.error("Cannot join path with disagreed first node: " + newPath.getRoot().getId() + " != " + peekNode().getId());
-			return false;
+			LOG.error("Cannot join path {} to path {} with disagreed first node: {} != {}", newPath.getId(), this.getId(), newPath.getRoot().getId() ,peekNode().getId());
+			return null;
 		}
 		if(((BidirectedEdge) newPath.getEdgePath().get(0)).getDir((AbstractNode) newPath.getRoot())
 			== ((BidirectedEdge) peekEdge()).getDir((AbstractNode) peekNode())){
 			LOG.error("Conflict direction from the first node " + newPath.getRoot().getId());
-			return false;
+			return null;
 		}
-		//TODO: need a way to check coverage consistent (or make change less significant bin?)
-
-			
+		//TODO: need a way to check coverage consistent (or make change less significant bin?)			
 		for(Edge e:newPath.getEdgePath()){
-			add(e);
+			retval.add(e);
 		}
 		
-		return true;
+		return retval;
 	}
 	
 	public int getDeviation(){
@@ -192,7 +194,7 @@ public class BidirectedPath extends Path{
 	 * predefined value (distance) 
 	 */
 	public boolean checkDistanceConsistency(Node from, Node to, boolean direction, int distance){
-		boolean retval=false;
+		boolean retval=false, dirOfFrom, dirOfTo;
 		BidirectedPath ref=null;
 		
 		if(from==getRoot()){
@@ -204,19 +206,23 @@ public class BidirectedPath extends Path{
 			return false;
 		}
 		int curDistance=0;
-		
-		boolean dirOfFrom = ((BidirectedEdge) ref.peekEdge()).getDir((BidirectedNode)from);
+		dirOfFrom = ((BidirectedEdge) ref.getEdgePath().get(0)).getDir((BidirectedNode)from);
+
 		BidirectedNode curNode= (BidirectedNode)from;
 		for(Edge e:ref.getEdgePath()){
 			curNode=(BidirectedNode) e.getOpposite(curNode);
 			curDistance+=((BidirectedEdge) e).getLength();
-			if(GraphUtil.approxCompare(curDistance, distance)==0 && curNode==to){
-				boolean dirOfTo=((BidirectedEdge) e).getDir((BidirectedNode) curNode);
-				if((dirOfFrom && !dirOfTo) == direction)
-					return true;
-				else
-					LOG.info("Inconsistence direction between node {}:{}, node {}:{} and given direction {}",
-							from.getId(), dirOfFrom, to.getId(), dirOfTo, direction);
+			if(curNode==to){
+				if(Math.abs(curDistance-distance) < Math.max(100, .2*Math.max(distance, curDistance))){
+					dirOfTo=!((BidirectedEdge) e).getDir((BidirectedNode) curNode);
+					if((dirOfFrom == dirOfTo) == direction)
+						return true;
+					else
+						LOG.info("inconsistence direction between node {}:{}, node {}:{} and given direction {}",
+								from.getId(), dirOfFrom?"+":"-", to.getId(), dirOfTo?"+":"-", direction);
+				}else
+					LOG.info("inconsistence distance between node {}, node {}: {} and given distance {}",
+							from.getId(), to.getId(), curDistance, distance);
 			}
 			curDistance+=curNode.getNumber("len");
 		}

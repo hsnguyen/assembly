@@ -81,9 +81,11 @@ public class BidirectedBridge {
 		else{
 			ArrayList<BidirectedPath> tobeRemoved = new ArrayList<BidirectedPath>();
 			for(BidirectedPath p:paths){
-				if(brg.agreeWith(p, startNode)) {
+				boolean consistencyChecking=brg.agreeWith(p, startNode);
+				System.out.printf("Checking consistency of bridge %s to path %s: %b\n", getBridgeString(), p.getId(), consistencyChecking);
+				if(consistencyChecking) {
 					p.elected();	
-					System.out.printf("...path % now has %d votes!", p.getId(), p.getVote());
+					System.out.printf("...path %s now has %d votes!", p.getId(), p.getVote());
 				}
 				else
 					tobeRemoved.add(p);
@@ -105,10 +107,10 @@ public class BidirectedBridge {
 					nextAlignment;
 
 		ArrayList<BidirectedPath> 	wholePaths=new ArrayList<>(),
+									tmpPaths=new ArrayList<>(),
 									stepPaths=new ArrayList<>();
 		for(int i=1; i<steps.size();i++){
 			nextAlignment = steps.get(i);
-			
 			int distance = nextAlignment.readAlignmentStart()-curAlignment.readAlignmentEnd();
 			if(distance<BidirectedGraph.D_LIMIT){
 				stepPaths = graph.getClosestPaths(curAlignment, nextAlignment, distance);
@@ -123,14 +125,24 @@ public class BidirectedBridge {
 			if(wholePaths.isEmpty())
 				wholePaths=stepPaths;
 			else{
-				for(BidirectedPath curPath:wholePaths)
-					for(BidirectedPath stepPath:stepPaths)
-						if(!curPath.join(stepPath)) {
+//				System.out.println("Current paths:");
+				for(BidirectedPath curPath:wholePaths){
+//					System.out.println("\t" + curPath.getId());
+					for(BidirectedPath stepPath:stepPaths){
+						BidirectedPath newPath=curPath.join(stepPath);
+						if(newPath==null)
 							return;
+						else{
+							tmpPaths.add(newPath);
 						}
+					}
+				}
+				wholePaths=tmpPaths;
+				tmpPaths=new ArrayList<>();
 			}
+
 			curAlignment=nextAlignment;
-			
+
 		}
 		
 		if(!wholePaths.isEmpty())
@@ -156,9 +168,7 @@ public class BidirectedBridge {
 	private boolean agreeWith(BidirectedPath path, BidirectedNode startingNode){
 		if(steps.size()<2)
 			return false;
-		
 		boolean retval=true;
-		System.out.printf("Checking consistency of bridge %s to path %s...\n", getBridgeString(), path.getId());
 		//1. first check the unique starting point, reverse it if necessary
 		if(path.getRoot()!=startingNode && path.peekNode() != startingNode){
 			System.err.println("Couldn't find " + startingNode.getId() + " from both ends of path " + path.getId());
@@ -181,18 +191,22 @@ public class BidirectedBridge {
 		if(dir){
 			for(int i=1; i < steps.size(); i++){
 				Alignment curAlg = steps.get(i);
-				int distance = curAlg.readStart - root.readEnd+1;
-				boolean direction=root.strand && curAlg.strand;
-				if(!path.checkDistanceConsistency(startingNode, curAlg.node, direction, distance))
+				int distance = curAlg.readAlignmentStart() - root.readAlignmentEnd()+1;
+				boolean direction=root.strand == curAlg.strand;
+				if(!path.checkDistanceConsistency(startingNode, curAlg.node, direction, distance)){
+					
 					return false;
+				}
 			}
 		}else{
 			for(int i=steps.size()-2; i>=0 ; i--){
 				Alignment curAlg = steps.get(i);
-				int distance = root.readStart - curAlg.readEnd+1;
-				boolean direction=root.strand && curAlg.strand;
-				if(!path.checkDistanceConsistency(startingNode, curAlg.node, direction, distance))
+				int distance = root.readAlignmentStart() - curAlg.readAlignmentEnd()+1;
+				boolean direction=root.strand == curAlg.strand;
+				if(!path.checkDistanceConsistency(startingNode, curAlg.node, direction, distance)){
+					
 					return false;
+				}
 			}
 		}		
 		

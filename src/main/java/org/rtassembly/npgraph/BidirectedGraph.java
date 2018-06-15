@@ -288,6 +288,7 @@ public class BidirectedGraph extends MultiGraph{
 //    	}
 //    	
 //    	return retval;
+    	//FIXME: reduce the number of returned paths here (based on the score?)
     	return possiblePaths;
     	
     }
@@ -439,15 +440,16 @@ public class BidirectedGraph extends MultiGraph{
 		// Now we got all possible bridges from chopping the alignments at unique nodes
 		System.out.println("\n=> bridges list: ");
 		for(BidirectedBridge brg:bridges) {
-			System.out.printf("...%s", brg.getEndingsID());
+			System.out.printf("+++%s <=> ", brg.getEndingsID());
 			BidirectedBridge storedBridge=getBridgeFromMap(brg.getEndingsID());
 			if(storedBridge!=null) {
 				if(storedBridge.isSolved){
-					System.out.println(": already processed: ignore!");
+					System.out.println(storedBridge.getEndingsID() + ": already processed: ignore!");
 					continue;
 				}else{
-					System.out.println(": already processed: fortify!");
-					System.out.println( storedBridge.getAllPossiblePathsString());
+					System.out.println(storedBridge.getEndingsID() + ": already processed: fortify!");
+					System.out.println(storedBridge.getAllPossiblePathsString());
+					
 					BidirectedNode startNode=brg.getStartAlignment().node;
 					if(binner.getUniqueBin(startNode)==null)
 						startNode=brg.getEndAlignment().node;
@@ -455,6 +457,7 @@ public class BidirectedGraph extends MultiGraph{
 					if(storedBridge.isSolved){
 						storedBridge.getBestPath().setConsensusUniqueBinOfPath(tmp);
 						retrievedPaths.add(storedBridge.getBestPath());
+						continue;
 					}
 						
 				}
