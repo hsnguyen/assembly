@@ -82,7 +82,7 @@ public class BidirectedBridge {
 			ArrayList<BidirectedPath> tobeRemoved = new ArrayList<BidirectedPath>();
 			for(BidirectedPath p:paths){
 				boolean consistencyChecking=brg.agreeWith(p, startNode);
-				System.out.printf("Checking consistency of bridge %s to path %s: %b\n", getBridgeString(), p.getId(), consistencyChecking);
+				System.out.printf("Checking consistency of bridge %s to path %s: %b\n", brg.getBridgeString(), p.getId(), consistencyChecking);
 				if(consistencyChecking) {
 					p.elected();	
 					System.out.printf("...path %s now has %d votes!", p.getId(), p.getVote());

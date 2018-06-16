@@ -172,7 +172,6 @@ public class BidirectedGraph extends MultiGraph{
 		
 		if(bridgesMap.get(keys[1]) != null)
 			retval=bridgesMap.get(keys[1]);	
-		
     	return retval;
     }
     synchronized public BidirectedBridge getBridgeFromMap(Node unqNode, boolean direction){
@@ -529,8 +528,8 @@ public class BidirectedGraph extends MultiGraph{
     		LOG.info("ADDING EDGE " + reducedEdge.getId()+ " from " + reducedEdge.getNode0().getGraph().getId() + "-" + reducedEdge.getNode1().getGraph().getId());
     		
 			if(reducedEdge!=null){
-//				reducedEdge.setAttribute("ui.label", path.getId());
-//				reducedEdge.setAttribute("ui.style", "text-offset: -10; text-alignment: along;"); 
+				reducedEdge.setAttribute("ui.label", path.getId());
+				reducedEdge.setAttribute("ui.style", "text-offset: -10; text-alignment: along;"); 
 //				reducedEdge.setAttribute("isReducedEdge", true);
 //				reducedEdge.setAttribute("ui.class", "marked");
 //				reducedEdge.addAttribute("layout.weight", 10);
