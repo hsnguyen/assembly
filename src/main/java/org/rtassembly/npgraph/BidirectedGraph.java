@@ -444,7 +444,6 @@ public class BidirectedGraph extends MultiGraph{
 			if(storedBridge!=null) {
 				if(storedBridge.isSolved){
 					System.out.println(storedBridge.getEndingsID() + ": already processed: ignore!");
-					continue;
 				}else{
 					System.out.println(storedBridge.getEndingsID() + ": already processed: fortify!");
 					System.out.println(storedBridge.getAllPossiblePathsString());
@@ -452,14 +451,16 @@ public class BidirectedGraph extends MultiGraph{
 					BidirectedNode startNode=brg.getStartAlignment().node;
 					if(binner.getUniqueBin(startNode)==null)
 						startNode=brg.getEndAlignment().node;
-					storedBridge.merging(brg, startNode);
+					if(storedBridge.checkIfMerge(brg))
+						storedBridge.merging(brg, startNode);
 					if(storedBridge.isSolved){
 						storedBridge.getBestPath().setConsensusUniqueBinOfPath(tmp);
 						retrievedPaths.add(storedBridge.getBestPath());
-						continue;
 					}
 						
 				}
+				continue;
+
 			}
 			System.out.println();
 			
@@ -528,8 +529,8 @@ public class BidirectedGraph extends MultiGraph{
     		LOG.info("ADDING EDGE " + reducedEdge.getId()+ " from " + reducedEdge.getNode0().getGraph().getId() + "-" + reducedEdge.getNode1().getGraph().getId());
     		
 			if(reducedEdge!=null){
-				reducedEdge.setAttribute("ui.label", path.getId());
-				reducedEdge.setAttribute("ui.style", "text-offset: -10; text-alignment: along;"); 
+//				reducedEdge.setAttribute("ui.label", path.getId());
+//				reducedEdge.setAttribute("ui.style", "text-offset: -10; text-alignment: along;"); 
 //				reducedEdge.setAttribute("isReducedEdge", true);
 //				reducedEdge.setAttribute("ui.class", "marked");
 //				reducedEdge.addAttribute("layout.weight", 10);

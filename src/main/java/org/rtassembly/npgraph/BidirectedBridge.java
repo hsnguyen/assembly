@@ -1,6 +1,11 @@
 package org.rtassembly.npgraph;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.TreeSet;
 
 import org.jfree.util.Log;
 
@@ -76,10 +81,10 @@ public class BidirectedBridge {
 	
 	//Using another list of steps to rectify the current bridge's steps
 	public void merging(BidirectedBridge brg, BidirectedNode startNode){
-		if(isSolved)
+		if(isSolved || paths.isEmpty())
 			return;
 		else{
-			ArrayList<BidirectedPath> tobeRemoved = new ArrayList<BidirectedPath>();
+//			ArrayList<BidirectedPath> tobeRemoved = new ArrayList<BidirectedPath>();
 			for(BidirectedPath p:paths){
 				boolean consistencyChecking=brg.agreeWith(p, startNode);
 				System.out.printf("Checking consistency of bridge %s to path %s: %b\n", brg.getBridgeString(), p.getId(), consistencyChecking);
@@ -87,15 +92,21 @@ public class BidirectedBridge {
 					p.elected();	
 					System.out.printf("...path %s now has %d votes!", p.getId(), p.getVote());
 				}
-				else
-					tobeRemoved.add(p);
+//				else
+//					tobeRemoved.add(p);
 			}
-			if(tobeRemoved.size()==paths.size()-1)
+//			if(tobeRemoved.size()==paths.size()-1)
+//				isSolved=true;
+//			
+//			for(BidirectedPath p:tobeRemoved)
+//				paths.remove(p);
+			
+			Collections.sort(paths, (p1,p2)->p2.getVote()-p1.getVote());
+			if(paths.get(0).getVote() > paths.get(1).getVote()+1) {
+				for(int i=1;i<paths.size();i++) 
+					paths.remove(i);
 				isSolved=true;
-			
-			for(BidirectedPath p:tobeRemoved)
-				paths.remove(p);
-			
+			}
 		}
 	}
 
@@ -207,6 +218,35 @@ public class BidirectedBridge {
 				}
 			}
 		}		
+		
+		return retval;
+	}
+	
+	//check if a bridge is worth to merge to this bridge
+	public boolean checkIfMerge(BidirectedBridge brg) {
+		boolean retval=false;
+		if(paths.size() >= 2) {
+			HashSet<String> pathsIntersect = 
+				paths.stream()
+				.map(p->{return new HashSet<String>(Arrays.asList(p.getId().split("[\\+\\-,]")));})
+				.reduce((a,b)->{
+								HashSet<String> intersect = new HashSet<>(a);
+								intersect.remove("");
+								intersect.retainAll(b);
+								return intersect;
+								})
+				.get();
+			
+			HashSet<String> brgStepSet = new HashSet<String>(Arrays.asList(brg.getBridgeString().split("[\\+\\-,]")));
+			brgStepSet.remove("");
+			int oldSize=pathsIntersect.size();
+			pathsIntersect.addAll(brgStepSet);//union
+
+			if(pathsIntersect.size()>oldSize)
+				retval=true;
+			else
+				retval=false;
+		}
 		
 		return retval;
 	}
