@@ -84,33 +84,25 @@ public class BidirectedBridge {
 		if(isSolved || paths.isEmpty())
 			return;
 		else{
-//			ArrayList<BidirectedPath> tobeRemoved = new ArrayList<BidirectedPath>();
+			System.out.printf("Check consistency using bridge %s:\n", brg.getBridgeString());
+
 			for(BidirectedPath p:paths){
-				boolean consistencyChecking=brg.agreeWith(p, startNode);
-				System.out.printf("Checking consistency of bridge %s to path %s: %b\n", brg.getBridgeString(), p.getId(), consistencyChecking);
-				if(consistencyChecking) {
-					p.elected();	
-					System.out.printf("...path %s now has %d votes!", p.getId(), p.getVote());
-				}
-//				else
-//					tobeRemoved.add(p);
+				brg.compareAndVote(p, startNode);
+				System.out.printf("...path %s now has %d votes!\n", p.getId(), p.getVote());
 			}
-//			if(tobeRemoved.size()==paths.size()-1)
-//				isSolved=true;
-//			
-//			for(BidirectedPath p:tobeRemoved)
-//				paths.remove(p);
 			
 			Collections.sort(paths, (p1,p2)->p2.getVote()-p1.getVote());
-			if(paths.get(0).getVote() > paths.get(1).getVote()+1) {
-				for(int i=1;i<paths.size();i++) 
-					paths.remove(i);
+			int currentMaxVote=paths.get(0).getVote();
+			//TODO: more formal
+			paths.removeIf(p->(currentMaxVote-p.getVote() > 1));
+//			paths.removeIf(p->(p.getVote() < (currentMaxVote>10?(currentMaxVote-1):(currentMaxVote-3))));//10*2=(noreads*diff)
+				
+			if(paths.size()==1)
 				isSolved=true;
-			}
 		}
 	}
 
-	public void bridging(BidirectedGraph graph){
+	public void bridging(BidirectedGraph graph, PopBin bin){
 		if(steps.size()<=1) {
 			return;		
 		}
@@ -154,8 +146,10 @@ public class BidirectedBridge {
 
 		}
 		
-		if(!wholePaths.isEmpty())
+		if(!wholePaths.isEmpty()){
 			paths=wholePaths;
+			paths.forEach(p->p.setConsensusUniqueBinOfPath(bin));
+		}
 		if(wholePaths.size()==1)
 			isSolved=true;
 		
@@ -174,14 +168,13 @@ public class BidirectedBridge {
 	
 	//check if the steps case agree with a unique path or not
 	//must start with an unique Node (startdingNode)
-	private boolean agreeWith(BidirectedPath path, BidirectedNode startingNode){
+	private void compareAndVote(BidirectedPath path, BidirectedNode startingNode){
 		if(steps.size()<2)
-			return false;
-		boolean retval=true;
+			return;
 		//1. first check the unique starting point, reverse it if necessary
 		if(path.getRoot()!=startingNode && path.peekNode() != startingNode){
 			System.err.println("Couldn't find " + startingNode.getId() + " from both ends of path " + path.getId());
-			return false;
+			return;
 		}
 		
 		boolean dir=true; //true if bridge starts from left, false if from right
@@ -192,20 +185,19 @@ public class BidirectedBridge {
 		}
 		else if(startingNode!=getStartAlignment().node){
 			System.err.println("Couldn't find " + startingNode.getId() + " from both ends of bridge " + this.getBridgeString());
-			return false;			
+			return;			
 		}
 		//2. then check the distances of nodes to the starting node: 
 		//need a function to calculate the distance from the common unique node in the path!
-		//TODO: check for consistency of the direction between the two also
 		if(dir){
 			for(int i=1; i < steps.size(); i++){
 				Alignment curAlg = steps.get(i);
 				int distance = curAlg.readAlignmentStart() - root.readAlignmentEnd()+1;
 				boolean direction=root.strand == curAlg.strand;
 				if(!path.checkDistanceConsistency(startingNode, curAlg.node, direction, distance)){
-					
-					return false;
-				}
+					path.downVote();
+				}else
+					path.upVote();
 			}
 		}else{
 			for(int i=steps.size()-2; i>=0 ; i--){
@@ -213,15 +205,13 @@ public class BidirectedBridge {
 				int distance = root.readAlignmentStart() - curAlg.readAlignmentEnd()+1;
 				boolean direction=root.strand == curAlg.strand;
 				if(!path.checkDistanceConsistency(startingNode, curAlg.node, direction, distance)){
-					
-					return false;
-				}
+					path.downVote();
+				}else
+					path.upVote();
 			}
 		}		
 		
-		return retval;
 	}
-	
 	//check if a bridge is worth to merge to this bridge
 	public boolean checkIfMerge(BidirectedBridge brg) {
 		boolean retval=false;

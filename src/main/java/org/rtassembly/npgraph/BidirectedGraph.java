@@ -3,6 +3,7 @@ package org.rtassembly.npgraph;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -76,6 +77,15 @@ public class BidirectedGraph extends MultiGraph{
 			}
 		});
 		
+	}
+	public HashSet<BidirectedBridge> getUnsolvedBridges(){
+		HashSet<BidirectedBridge> retval = new HashSet<BidirectedBridge>();
+		for(BidirectedBridge brg:bridgesMap.values()){
+			if(!brg.isSolved)
+				retval.add(brg);
+		}
+		
+		return retval;
 	}
 
 	/**
@@ -161,7 +171,7 @@ public class BidirectedGraph extends MultiGraph{
     	else{
     		//FIXME: should check for uniqueness here???
     		String[] keys=GraphUtil.getHeadOfPathString(brgID);
-    		return bridgesMap.put(keys[0], bridge)==null && bridgesMap.put(keys[1], bridge)==null;
+    		return bridgesMap.putIfAbsent(keys[0], bridge)==null && bridgesMap.putIfAbsent(keys[1], bridge)==null;
     	}
     } 
     synchronized public BidirectedBridge getBridgeFromMap(String brgID){
@@ -451,10 +461,10 @@ public class BidirectedGraph extends MultiGraph{
 					BidirectedNode startNode=brg.getStartAlignment().node;
 					if(binner.getUniqueBin(startNode)==null)
 						startNode=brg.getEndAlignment().node;
-					if(storedBridge.checkIfMerge(brg))
+//					if(storedBridge.checkIfMerge(brg))
 						storedBridge.merging(brg, startNode);
 					if(storedBridge.isSolved){
-						storedBridge.getBestPath().setConsensusUniqueBinOfPath(tmp);
+//						storedBridge.getBestPath().setConsensusUniqueBinOfPath(tmp);
 						retrievedPaths.add(storedBridge.getBestPath());
 					}
 						
@@ -466,13 +476,13 @@ public class BidirectedGraph extends MultiGraph{
 			
 			//check if brg is unique or not (only bridging unique bridge)
 			if(checkUniqueBridge(brg)){				
-				brg.bridging(this);
+				brg.bridging(this, tmp);
 				if(!brg.paths.isEmpty())
 					updateBridgesMap(brg.getEndingsID(), brg);//must be here
 
 				BidirectedPath bestPath=brg.getBestPath();
 				if(bestPath!=null){
-					brg.getBestPath().setConsensusUniqueBinOfPath(tmp);
+//					brg.getBestPath().setConsensusUniqueBinOfPath(tmp);
 					retrievedPaths.add(brg.getBestPath());
 				}
 			}
@@ -510,13 +520,13 @@ public class BidirectedGraph extends MultiGraph{
     			endDir=((BidirectedEdge) path.peekEdge()).getDir(endNode);
 
     	//search for an unique node as the marker. 
-    	ArrayList<BidirectedEdge> 	tobeRemoved = binner.reducedUniquePath(path);
+    	ArrayList<BidirectedEdge> 	potentialRemovedEdges = binner.reducedUniquePath(path);
 		HashMap<PopBin, Integer> oneBin = new HashMap<>();
 		oneBin.put(path.getConsensusUniqueBinOfPath(), 1);
     	
-    	if(tobeRemoved!=null && tobeRemoved.size()>1){
+    	if(potentialRemovedEdges!=null && potentialRemovedEdges.size()>1){
 	    	//remove appropriate edges
-	    	for(BidirectedEdge e:tobeRemoved){
+	    	for(BidirectedEdge e:potentialRemovedEdges){
 	    		LOG.info("REMOVING EDGE " + e.getId() + " from " + e.getNode0().getGraph().getId() + "-" + e.getNode1().getGraph().getId());
 	    		LOG.info("before: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
 	    		removeEdge(e.getId());

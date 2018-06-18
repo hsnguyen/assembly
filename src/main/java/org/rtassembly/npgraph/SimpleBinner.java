@@ -318,7 +318,7 @@ public class SimpleBinner {
 			HashMap<PopBin, Integer> bc = node2BinMap.get(node);
 			ArrayList<PopBin> counts = new ArrayList<PopBin>(bc.keySet());
 			if(counts.size()==1 && bc.get(counts.get(0))==1){ //and should check for any conflict???
-				if(node.getNumber("len") >= 500)
+				if(node.getNumber("len") >= 1000)
 					retval=counts.get(0);
 			}
 		}
@@ -406,10 +406,9 @@ public class SimpleBinner {
 
 
 //			if(ep.getNumber("cov") < 0  && !unresolvedEdges.contains(ep)) //plasmid coverage is different!!!
-			if(ep.getNumber("cov") < 0  && !edge2BinMap.containsKey(ep)) //plasmid coverage is different!!!
-				retval.add((BidirectedEdge) ep);
+//			if(ep.getNumber("cov") < 0  && !edge2BinMap.containsKey(ep)) //plasmid coverage is different!!!
+//				retval.add((BidirectedEdge) ep);
 			
-//			if(getUniqueBin(curNode)==null) {
 			if(curNode!=path.getRoot() && curNode!=path.peekNode()) {
 				if(node2BinMap.containsKey(curNode)) {
 					if(node2BinMap.get(curNode).containsKey(uniqueBin)) {

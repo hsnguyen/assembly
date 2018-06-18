@@ -161,7 +161,7 @@ public class BidirectedPath extends Path{
 		for(Edge e:newPath.getEdgePath()){
 			retval.add(e);
 		}
-		
+		deviation+=newPath.deviation;
 		return retval;
 	}
 	
@@ -172,10 +172,12 @@ public class BidirectedPath extends Path{
 		this.deviation=deviation;
 	}
 
-	public void elected() {
+	public void upVote() {
 		vote++;
 	}
-	
+	public void downVote(){
+		vote--;
+	}
 	public int getVote() {
 		return vote;
 	}

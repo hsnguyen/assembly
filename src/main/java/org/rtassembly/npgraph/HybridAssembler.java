@@ -296,6 +296,12 @@ public class HybridAssembler {
 
 	}
 	
+	public void lastAttempt(){
+		for(BidirectedBridge brg:simGraph.getUnsolvedBridges()){
+			simGraph.reduce(brg.paths.get(0));
+		}
+		GraphExplore.redrawGraphComponents(simGraph);
+	}
     /*
      * Read paths from contigs.path and reduce the graph
      */
