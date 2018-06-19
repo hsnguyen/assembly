@@ -94,7 +94,7 @@ public class BidirectedBridge {
 			Collections.sort(paths, (p1,p2)->p2.getVote()-p1.getVote());
 			int currentMaxVote=paths.get(0).getVote();
 			//TODO: more formal
-			paths.removeIf(p->(currentMaxVote-p.getVote() > 1));
+			paths.removeIf(p->(currentMaxVote-p.getVote() > 2));
 //			paths.removeIf(p->(p.getVote() < (currentMaxVote>10?(currentMaxVote-1):(currentMaxVote-3))));//10*2=(noreads*diff)
 				
 			if(paths.size()==1)

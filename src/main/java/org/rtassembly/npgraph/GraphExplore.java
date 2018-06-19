@@ -150,10 +150,8 @@ public class GraphExplore {
         		  			            "	stroke-width: 2px;");
     	}
     	
-//    	graph.balancing();
-//    	for(Edge e : graph.getEdgeSet()) {
-//    		e.addAttribute("ui.label", (int)(e.getNumber("cov")));
-//    	}
+    	graph.edges().forEach(e->e.setAttribute("ui.label", (int) e.getNumber("cov")));
+
     	
     
     }

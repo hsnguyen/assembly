@@ -446,6 +446,14 @@ public class BidirectedGraph extends MultiGraph{
 			}
 		
 		ArrayList<BidirectedPath> retrievedPaths = new ArrayList<>();
+
+		BidirectedBridge 	startBrg=getBridgeFromMap(bridges.get(0).getEndingsID()),
+							endBrg=getBridgeFromMap(bridges.get(bridges.size()-1).getEndingsID());
+		if((startBrg!=null && startBrg.isSolved) || (endBrg!=null && endBrg.isSolved)){
+			System.out.println("This list belongs to an already-processed bridge: skipped!");
+			return retrievedPaths;
+		}
+		
 		// Now we got all possible bridges from chopping the alignments at unique nodes
 		System.out.println("\n=> bridges list: ");
 		for(BidirectedBridge brg:bridges) {
@@ -454,6 +462,7 @@ public class BidirectedGraph extends MultiGraph{
 			if(storedBridge!=null) {
 				if(storedBridge.isSolved){
 					System.out.println(storedBridge.getEndingsID() + ": already processed: ignore!");
+					break;
 				}else{
 					System.out.println(storedBridge.getEndingsID() + ": already processed: fortify!");
 					System.out.println(storedBridge.getAllPossiblePathsString());
@@ -467,9 +476,9 @@ public class BidirectedGraph extends MultiGraph{
 //						storedBridge.getBestPath().setConsensusUniqueBinOfPath(tmp);
 						retrievedPaths.add(storedBridge.getBestPath());
 					}
-						
+					continue;	
 				}
-				continue;
+				
 
 			}
 			System.out.println();
@@ -539,8 +548,8 @@ public class BidirectedGraph extends MultiGraph{
     		LOG.info("ADDING EDGE " + reducedEdge.getId()+ " from " + reducedEdge.getNode0().getGraph().getId() + "-" + reducedEdge.getNode1().getGraph().getId());
     		
 			if(reducedEdge!=null){
-//				reducedEdge.setAttribute("ui.label", path.getId());
-//				reducedEdge.setAttribute("ui.style", "text-offset: -10; text-alignment: along;"); 
+				reducedEdge.setAttribute("ui.label", path.getId());
+				reducedEdge.setAttribute("ui.style", "text-offset: -10; text-alignment: along;"); 
 //				reducedEdge.setAttribute("isReducedEdge", true);
 //				reducedEdge.setAttribute("ui.class", "marked");
 //				reducedEdge.addAttribute("layout.weight", 10);

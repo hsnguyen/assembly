@@ -406,8 +406,8 @@ public class SimpleBinner {
 
 
 //			if(ep.getNumber("cov") < 0  && !unresolvedEdges.contains(ep)) //plasmid coverage is different!!!
-//			if(ep.getNumber("cov") < 0  && !edge2BinMap.containsKey(ep)) //plasmid coverage is different!!!
-//				retval.add((BidirectedEdge) ep);
+			if(ep.getNumber("cov") < 0  && !edge2BinMap.containsKey(ep)) //plasmid coverage is different!!!
+				retval.add((BidirectedEdge) ep);
 			
 			if(curNode!=path.getRoot() && curNode!=path.peekNode()) {
 				if(node2BinMap.containsKey(curNode)) {
