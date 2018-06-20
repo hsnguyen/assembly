@@ -118,7 +118,7 @@ public class BidirectedBridge {
 			if(distance<BidirectedGraph.D_LIMIT){
 				stepPaths = graph.getClosestPaths(curAlignment, nextAlignment, distance);
 				if(stepPaths==null || stepPaths.isEmpty())
-					continue;
+					return;//must follow the steps
 			}else 
 				return;
 	

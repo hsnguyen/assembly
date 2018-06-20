@@ -150,7 +150,7 @@ public class GraphExplore {
         		  			            "	stroke-width: 2px;");
     	}
     	
-    	graph.edges().forEach(e->e.setAttribute("ui.label", (int) e.getNumber("cov")));
+//    	graph.edges().forEach(e->e.setAttribute("ui.label", (int) e.getNumber("cov")));
 
     	
     
