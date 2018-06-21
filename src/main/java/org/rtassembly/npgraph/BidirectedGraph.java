@@ -399,8 +399,7 @@ public class BidirectedGraph extends MultiGraph{
 
 		Alignment 	curAlignment =allAlignments.get(curRange),
 					nextAlignment;
-		ArrayList<BidirectedBridge> bridges = new ArrayList<>(),
-									existBridges = new ArrayList<>();
+		ArrayList<BidirectedBridge> bridges = new ArrayList<>();
 		BidirectedBridge curBridge=new BidirectedBridge(curAlignment),
 							tmpBridge=null;;
 		PopBin tmp=null;
@@ -409,9 +408,6 @@ public class BidirectedGraph extends MultiGraph{
 		
 		tmp=binner.getUniqueBin(curAlignment.node);
 		if( tmp != null){
-			tmpBridge = getBridgeFromMap(curAlignment.node, curAlignment.strand);
-			if(tmpBridge != null)
-				existBridges.add(tmpBridge);
 			bins2Length.put(tmp, (long)curAlignment.node.getNumber("len"));
 		}
 				
@@ -420,14 +416,6 @@ public class BidirectedGraph extends MultiGraph{
 			nextAlignment = allAlignments.get(nextRanges);
 			tmp=binner.getUniqueBin(nextAlignment.node);
 			if(tmp!=null) {				
-				//scan (left+right) for available bridges
-				tmpBridge=getBridgeFromMap(nextAlignment.node, true);
-				if(tmpBridge != null)
-					existBridges.add(tmpBridge);
-				tmpBridge=getBridgeFromMap(nextAlignment.node, false);
-				if(tmpBridge != null)
-					existBridges.add(tmpBridge);
-				
 				
 				curBridge.append(nextAlignment);
 				bridges.add(curBridge);
@@ -450,8 +438,6 @@ public class BidirectedGraph extends MultiGraph{
 		}
 		if(curBridge.steps.size() > 1)
 			bridges.add(curBridge);
-		
-		//TODO:find intersection of existing bridges and current list of bridges
 		
 		
 		//determine the global unique bin of the whole path

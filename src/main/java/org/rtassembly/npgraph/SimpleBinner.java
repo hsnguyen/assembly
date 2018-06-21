@@ -222,7 +222,7 @@ public class SimpleBinner {
 					node2BinMap.put(tmp, entry);
 				}
 			}
-			if(bin.getNodesList().size() > 0){
+			if(bin.getCoreNodes().size() > 0){
 				binList.add(bin);
 			}
 			
@@ -238,7 +238,7 @@ public class SimpleBinner {
 		//1.First round of assigning unit cov: from binned significant nodes
 		
 		for(PopBin b:binList) {
-			for(Node n:b.getNodesList()) {
+			for(Node n:b.getCoreNodes()) {
 				exploringFromNode(n);
 			}			
 		}
@@ -292,21 +292,6 @@ public class SimpleBinner {
 		}
 		
 	}
-
-//	public boolean isMarker(Node node){
-//		boolean retval = false;
-//		
-//		if(node2BinMap.containsKey(node)){
-//			HashMap<SimpleBin, Integer> bc = node2BinMap.get(node);
-//			ArrayList<Integer> counts = new ArrayList<Integer>(bc.values());
-//			if(counts.size()==1 && counts.get(0)==1){ //and should check for any conflict???
-//				if(node.getNumber("len") >= 1000)
-//					retval=true;
-//			}
-//		}
-//				
-//		return retval;
-//	}
 
 	synchronized public PopBin getUniqueBin(Node node){
 		if(node.getDegree()>2)//instead, check unbinned edges
@@ -485,7 +470,7 @@ public class SimpleBinner {
 		System.out.println("=> number of bin = " + binner.binList.size());
 		for(PopBin b:binner.binList) {
 			System.out.println("Bin " + b.binID + " estCov=" + b.estCov + " totLen=" + b.totLen);
-			for(Node n:b.getNodesList())
+			for(Node n:b.getCoreNodes())
 				System.out.println(n.getAttribute("name"));
 		}
 			

@@ -36,7 +36,7 @@ public class PopBin{
 			System.err.println("Node "+ node.getId() + " not found to remove!");
 		}
 	}
-	public ArrayList<Node> getNodesList(){
+	public ArrayList<Node> getCoreNodes(){
 		return coreNodes;
 		
 	}
