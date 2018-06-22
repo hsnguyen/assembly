@@ -10,7 +10,7 @@ import java.util.TreeSet;
 import org.jfree.util.Log;
 
 public class BidirectedBridge {
-	public static volatile int SAFE_VOTE_DISTANCE=3;
+	public static volatile int SAFE_VOTE_DISTANCE=1;
 	ArrayList<Alignment> steps;
 	ArrayList<BidirectedPath> paths;
 	boolean isSolved=false;
