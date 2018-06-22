@@ -215,7 +215,8 @@ public class SimpleBinner {
 			PopBin bin=new PopBin();
 			for(DoublePoint p:c.getPoints()) {
 				Node tmp = graph.getNode(((int)p.getPoint()[1])+"");
-				if(tmp.getDegree() <= 2){
+				if(Math.max(tmp.getInDegree(), tmp.getOutDegree()) <= 1){
+//					tmp.setAttribute("unique", bin); //assuming that this node is unique (could be changed later!)
 					bin.addCoreNode(tmp);
 					HashMap<PopBin, Integer> entry = new HashMap<PopBin, Integer>();
 					entry.put(bin, 1);
@@ -245,7 +246,8 @@ public class SimpleBinner {
 		HashMap<PopBin, ArrayList<Edge>> highlyPossibleEdges = new HashMap<PopBin, ArrayList<Edge>>();
 
 		for(Edge e:unresolvedEdges){
-			if(e.getNode0().getDegree() <=2 || e.getNode1().getDegree() <=2){
+			if(	Math.max(e.getNode0().getInDegree(), e.getNode0().getOutDegree()) <= 1 
+				|| Math.max(e.getNode1().getInDegree(), e.getNode1().getOutDegree()) <= 1){
 				PopBin tmp = scanAndGuess(e.getNumber("cov"));
 				if(tmp!=null){
 					if(!highlyPossibleEdges.containsKey(tmp))
@@ -291,25 +293,41 @@ public class SimpleBinner {
 			}
 		}
 		
-	}
-
-	synchronized public PopBin getUniqueBin(Node node){
-		if(node.getDegree()>2)//instead, check unbinned edges
-			return null;
-		
-		PopBin retval = null;
-
-		if(node2BinMap.containsKey(node)){
-			HashMap<PopBin, Integer> bc = node2BinMap.get(node);
-			ArrayList<PopBin> counts = new ArrayList<PopBin>(bc.keySet());
-			if(counts.size()==1 && bc.get(counts.get(0))==1){ //and should check for any conflict???
-				if(node.getNumber("len") >= 1000)
-					retval=counts.get(0);
+		//3. Assign unique nodes here: need more tricks
+		for(Node node:graph)
+			if(	node2BinMap.containsKey(node) && node.getNumber("len") > 1000 
+				&& Math.max(node.getInDegree(), node.getOutDegree()) <= 1){
+				HashMap<PopBin, Integer> bc = node2BinMap.get(node);
+				ArrayList<PopBin> counts = new ArrayList<PopBin>(bc.keySet());
+				if(counts.size()==1 && bc.get(counts.get(0))==1){ //and should check for any conflict???
+					node.setAttribute("unique", counts.get(0));
+				}
 			}
-		}
-				
-		return retval;
+		
 	}
+	synchronized public PopBin getUniqueBin(Node node){
+		return (PopBin)node.getAttribute("unique");
+	}
+	
+//	synchronized public PopBin getUniqueBin(Node node){
+//		if(node.getDegree()>2)//instead, check unbinned edges
+//			return null;
+//		
+//		PopBin retval = null;
+//
+//		if(node2BinMap.containsKey(node)){
+//			HashMap<PopBin, Integer> bc = node2BinMap.get(node);
+//			ArrayList<PopBin> counts = new ArrayList<PopBin>(bc.keySet());
+//			if(counts.size()==1 && bc.get(counts.get(0))==1){ //and should check for any conflict???
+//				if(node.getNumber("len") >= 1000)
+//					retval=counts.get(0);
+//			}
+//		}
+//				
+//		return retval;
+//	}
+	
+	
 	//Traversal along a unique path (unique ends) and return list of unique edges
 	//Must only be called from BidirectedGraph.reduce()
 	synchronized public ArrayList<BidirectedEdge> reducedUniquePath(BidirectedPath path) {

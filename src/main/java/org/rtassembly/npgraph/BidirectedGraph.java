@@ -383,7 +383,7 @@ public class BidirectedGraph extends MultiGraph{
 		
 		System.out.println("Step ranges: ");
 	    for(List<Range> group : rangeGroups){
-	    	int maxscore=0;
+	    	int maxscore=-1;
 	    	Range rangeOfBest=null;
 	    	for(Range range:group) { 
 	    		System.out.print(allAlignments.get(range).node.getId() + " "+ binner.getBinsOfNode(allAlignments.get(range).node) + ": " + range + "; ");	    
@@ -400,33 +400,32 @@ public class BidirectedGraph extends MultiGraph{
 		Alignment 	curAlignment =allAlignments.get(curRange),
 					nextAlignment;
 		ArrayList<BidirectedBridge> bridges = new ArrayList<>();
-		BidirectedBridge curBridge=new BidirectedBridge(curAlignment),
-							tmpBridge=null;;
-		PopBin tmp=null;
+		BidirectedBridge 	curBridge=new BidirectedBridge(curAlignment);
+		PopBin tmpBin=null;
 		
 		HashMap<PopBin, Long> bins2Length = new HashMap<PopBin,Long>();
 		
-		tmp=binner.getUniqueBin(curAlignment.node);
-		if( tmp != null){
-			bins2Length.put(tmp, (long)curAlignment.node.getNumber("len"));
+		tmpBin=binner.getUniqueBin(curAlignment.node);
+		if( tmpBin != null){
+			bins2Length.put(tmpBin, (long)curAlignment.node.getNumber("len"));
 		}
 				
 		for(int i=1; i<stepRanges.size();i++){
 			Range nextRanges = stepRanges.get(i);
 			nextAlignment = allAlignments.get(nextRanges);
-			tmp=binner.getUniqueBin(nextAlignment.node);
-			if(tmp!=null) {				
+			tmpBin=binner.getUniqueBin(nextAlignment.node);
+			if(tmpBin!=null) {				
 				
 				curBridge.append(nextAlignment);
 				bridges.add(curBridge);
 				
 				curBridge=new BidirectedBridge(nextAlignment);
 				
-				if(bins2Length.containsKey(tmp)){
-					long newval=bins2Length.get(tmp)+(long)nextAlignment.node.getNumber("len");
-					bins2Length.replace(tmp, newval);
+				if(bins2Length.containsKey(tmpBin)){
+					long newval=bins2Length.get(tmpBin)+(long)nextAlignment.node.getNumber("len");
+					bins2Length.replace(tmpBin, newval);
 				}else
-					bins2Length.put(tmp, (long)nextAlignment.node.getNumber("len"));
+					bins2Length.put(tmpBin, (long)nextAlignment.node.getNumber("len"));
 
 					
 				
@@ -445,7 +444,7 @@ public class BidirectedGraph extends MultiGraph{
 		for(PopBin b:bins2Length.keySet())
 			if(bins2Length.get(b)>ltmp){
 				ltmp=bins2Length.get(b);
-				tmp=b;
+				tmpBin=b;
 			}
 		
 		ArrayList<BidirectedPath> retrievedPaths = new ArrayList<>();
@@ -488,7 +487,7 @@ public class BidirectedGraph extends MultiGraph{
 			
 			//check if brg is unique or not (only bridging unique bridge)
 			if(checkUniqueBridge(brg)){				
-				brg.bridging(this, tmp);
+				brg.bridging(this, tmpBin);
 				if(!brg.paths.isEmpty())
 					updateBridgesMap(brg.getEndingsID(), brg);//must be here
 
@@ -695,8 +694,8 @@ public class BidirectedGraph extends MultiGraph{
     		LOG.info("ADDING EDGE " + reducedEdge.getId()+ " from " + reducedEdge.getNode0().getGraph().getId() + "-" + reducedEdge.getNode1().getGraph().getId());
     		
 			if(reducedEdge!=null){
-				reducedEdge.setAttribute("ui.label", path.getId());
-				reducedEdge.setAttribute("ui.style", "text-offset: -10; text-alignment: along;"); 
+//				reducedEdge.setAttribute("ui.label", path.getId());
+//				reducedEdge.setAttribute("ui.style", "text-offset: -10; text-alignment: along;"); 
 //				reducedEdge.setAttribute("isReducedEdge", true);
 //				reducedEdge.setAttribute("ui.class", "marked");
 //				reducedEdge.addAttribute("layout.weight", 10);

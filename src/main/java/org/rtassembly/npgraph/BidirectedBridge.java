@@ -10,6 +10,7 @@ import java.util.TreeSet;
 import org.jfree.util.Log;
 
 public class BidirectedBridge {
+	public static volatile int SAFE_VOTE_DISTANCE=3;
 	ArrayList<Alignment> steps;
 	ArrayList<BidirectedPath> paths;
 	boolean isSolved=false;
@@ -94,7 +95,7 @@ public class BidirectedBridge {
 			Collections.sort(paths, (p1,p2)->p2.getVote()-p1.getVote());
 			int currentMaxVote=paths.get(0).getVote();
 			//TODO: more formal
-			paths.removeIf(p->(currentMaxVote-p.getVote() > 2));
+			paths.removeIf(p->(currentMaxVote-p.getVote() > SAFE_VOTE_DISTANCE));
 //			paths.removeIf(p->(p.getVote() < (currentMaxVote>10?(currentMaxVote-1):(currentMaxVote-3))));//10*2=(noreads*diff)
 				
 			if(paths.size()==1)
