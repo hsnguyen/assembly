@@ -96,7 +96,7 @@ public class NPGraphCmd extends CommandLine{
         }else {
 	        
 			try {
-				if(hbAss.checkMinimap2() && hbAss.prepareShortReadsProcess() &&	hbAss.prepareLongReadsProcess())
+				if(hbAss.checkMinimap2() && hbAss.prepareShortReadsProcess(true) &&	hbAss.prepareLongReadsProcess())
 					hbAss.assembly();
 				else{
 					System.err.println("Error with pre-processing step! Config and try again!");

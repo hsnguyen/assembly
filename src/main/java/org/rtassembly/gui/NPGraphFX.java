@@ -337,7 +337,7 @@ public class NPGraphFX extends Application{
 			return false;
 		}
 		
-		if(!myass.prepareShortReadsProcess()) {
+		if(!myass.prepareShortReadsProcess(true)) {
 			FxDialogs.showWarning("Warning", "Problems preparing assembly graph file. Check stderr!");
 			return false;
 		}

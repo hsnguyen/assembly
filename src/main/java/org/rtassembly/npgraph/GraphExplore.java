@@ -31,8 +31,8 @@ public class GraphExplore {
     	System.setProperty("org.graphstream.ui", "javafx");
     	//System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer"); 
 //    	String sample="EcK12S-careful";
-    	String sample="Kp2146-careful";
-//    	String sample="Kp13883-careful";
+//    	String sample="Kp2146-careful";
+    	String sample="Kp13883-careful";
     	
     	//memory!!!
 //    	String sample="W303-careful";
@@ -42,7 +42,7 @@ public class GraphExplore {
 		HybridAssembler hbAss = new HybridAssembler();
 		hbAss.setShortReadsInput(spadesFolder+sample+"/assembly_graph.fastg");
 		hbAss.setShortReadsInputFormat("fastg");
-		hbAss.prepareShortReadsProcess();
+		hbAss.prepareShortReadsProcess(true);
 		
     	BidirectedGraph graph= hbAss.simGraph;
 
@@ -86,7 +86,7 @@ public class GraphExplore {
 //        }
         System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
         
-//        hbAss.lastAttempt();
+        hbAss.lastAttempt();
         HybridAssembler.promptEnterKey();
         
         viewer.disableAutoLayout();

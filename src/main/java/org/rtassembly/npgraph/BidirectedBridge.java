@@ -10,7 +10,7 @@ import java.util.TreeSet;
 import org.jfree.util.Log;
 
 public class BidirectedBridge {
-	public static volatile int SAFE_VOTE_DISTANCE=1;
+	public static volatile int SAFE_VOTE_DISTANCE=3;
 	ArrayList<Alignment> steps;
 	ArrayList<BidirectedPath> paths;
 	boolean isSolved=false;
@@ -22,6 +22,12 @@ public class BidirectedBridge {
 		paths = new ArrayList<>();
 	}
 
+	//This is for SPAdes path reader only
+	BidirectedBridge (BidirectedPath path){
+		paths = new ArrayList<>();
+		paths.add(path);
+		isSolved=true;
+	}
 	
 	public boolean append(Alignment alg) {
 		Alignment last=getEndAlignment();
@@ -64,18 +70,26 @@ public class BidirectedBridge {
 	}
 	
 	public String getEndingsID() {
-		if(steps.size()<=1)
-			return null;
-		else {
+		if(steps!=null && steps.size() > 1){
 			//because it really goes from start to end
 			Alignment start = getStartAlignment(), end = getEndAlignment();
 			return BidirectedEdge.createID(start.node, end.node, start.strand, !end.strand);
+		}else{//SPAdes path
+			BidirectedPath repPath=paths.get(0);
+			BidirectedNode 	root = (BidirectedNode) repPath.getRoot(), 
+							end = (BidirectedNode) repPath.peekNode();
+			boolean	 	rootDir=((BidirectedEdge) repPath.getEdgePath().get(0)).getDir(root),
+						endDir=((BidirectedEdge) repPath.peekEdge()).getDir(end);
+			return BidirectedEdge.createID(root, end, rootDir, endDir);
 		}
+		
 	}
 	public String getBridgeString() {
 		String retval="";
-		if(steps.size()>1) {
-			retval=steps.stream().map(a->a.node.getId().concat(a.strand?"+":"-")).reduce("", (a,b) -> a + b);;
+		if(isSolved)
+			retval="solved<"+paths.get(0).getId()+">";
+		else if(steps.size()>1) {
+			retval="unsolved<"+steps.stream().map(a->a.node.getId().concat(a.strand?"+":"-")).reduce("", (a,b) -> a + b)+">";
 		}
 		return retval;
 	}

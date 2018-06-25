@@ -357,7 +357,7 @@ public class CoverageBinner {
 		HybridAssembler hbAss = new HybridAssembler();
 		hbAss.setShortReadsInput(GraphExplore.spadesFolder+"EcK12S-careful/assembly_graph.fastg");
 		hbAss.setShortReadsInputFormat("fastg");
-		hbAss.prepareShortReadsProcess();
+		hbAss.prepareShortReadsProcess(true);
 		
 		BidirectedGraph graph = hbAss.simGraph;		
 		CoverageBinner binner = new CoverageBinner(graph);

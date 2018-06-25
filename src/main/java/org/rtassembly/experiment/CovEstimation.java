@@ -154,7 +154,8 @@ public class CovEstimation {
 		HybridAssembler hbAss = new HybridAssembler();
 		hbAss.setShortReadsInput(GraphExplore.spadesFolder+"W303-careful/assembly_graph.fastg");
 		hbAss.setShortReadsInputFormat("fastg");
-		hbAss.prepareShortReadsProcess();		BidirectedGraph graph = hbAss.simGraph;
+		hbAss.prepareShortReadsProcess(true);		
+		BidirectedGraph graph = hbAss.simGraph;
 		CovEstimation est = new CovEstimation();
 		
 //		est.initialGuess(graph);

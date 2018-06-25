@@ -1,6 +1,7 @@
 package org.rtassembly.npgraph;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -10,6 +11,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.apache.commons.io.FilenameUtils;
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Node;
 import org.graphstream.graph.implementations.AbstractNode;
@@ -38,11 +40,13 @@ public class GraphUtil {
     //TODO: read from ABySS assembly graph (graph of final contigs, not like SPAdes)
 	public static volatile double DISTANCE_THRES=1.0;
     
-    public static void loadFromFASTG(String graphFile, BidirectedGraph graph) throws IOException{
+    public static void loadFromFASTG(String graphFileName, BidirectedGraph graph, boolean spadesBridging) throws IOException{
         graph.setAutoCreate(true);
         graph.setStrict(false);
-		//1. next iterate over again to read the connections
-		SequenceReader reader = new FastaReader(graphFile);
+		/*
+		 * 1. next iterate over again to read the connections
+		 */
+		SequenceReader reader = new FastaReader(graphFileName);
 		Sequence seq;
 		int shortestLen = 10000;
 		ArrayList<EdgeComponents> potentialEdgeSet = new ArrayList<EdgeComponents>();
@@ -143,19 +147,62 @@ public class GraphUtil {
 		}
 		LOG.info("No of nodes= {} No of edges = {} Estimated avg. read coverage = {} Total contigs length = {}", graph.getNodeCount(), graph.getEdgeCount(), BidirectedGraph.RCOV, totContigsLen );
 		
+		
+		/*
+		 * 2. Use a binner to estimate graph multiplicity
+		 */
+		graph.binning();
+		/*
+		 * 3. Now scan for the contigs.path file in SPAdes folder for the paths if specified
+		 */
+		if(spadesBridging){
+			File graphFile = new File(graphFileName);
+			String pathsFile = FilenameUtils.getFullPathNoEndSeparator(graphFile.getAbsolutePath()) + "/contigs.paths";
+			if(! new File(pathsFile).exists()){
+				LOG.warn("Path file {} couldn't be found in SPAdes output! Skipped!", pathsFile);
+				return;
+			}
+			BufferedReader pathReader = new BufferedReader(new FileReader(pathsFile));
+			
+			String s="", curpath="";
+			//Read contigs from contigs.paths
+			boolean flag=false, changed=false;
+			while((s=pathReader.readLine()) != null){
+				if(s.contains("NODE")){
+					if(flag){
+						BidirectedPath path=new BidirectedPath(graph, curpath);
+				    	if(graph.reduce(path))
+				    		changed=true;
+					}
+					flag=s.contains("'")?false:true;
+					curpath=new String();
+					continue;
+				}else if(flag){
+					curpath+=s;
+				}	
+					
+
+			}
+			pathReader.close();
+			if(changed)
+				GraphExplore.redrawGraphComponents(graph);
+		}
     }
     
     
     
-    public static void loadFromGFA(String graphFile, BidirectedGraph graph) throws IOException{
+    public static void loadFromGFA(String graphFile, BidirectedGraph graph, boolean spadesBridging) throws IOException{
         graph.setAutoCreate(true);
         graph.setStrict(false);
-		//1. next iterate over again to read the connections
+		/*
+		 * 1. next iterate over again to read the connections
+		 */
         BufferedReader reader = new BufferedReader(new FileReader(graphFile));
         String line=null;
 		Sequence seq;
 		int shortestLen = 10000;
 		
+		ArrayList<BidirectedPath> spadesPaths = new ArrayList<>();
 		while ((line=reader.readLine()) != null){
 			String[] gfaFields = line.split("\\s");
 			String type = gfaFields[0];
@@ -192,7 +239,6 @@ public class GraphUtil {
 				boolean dir0=gfaFields[2].equals("+")?true:false,
 						dir1=gfaFields[4].equals("+")?false:true;
 				BidirectedEdge e = graph.addEdge(n0, n1, dir0, dir1);
-//				graph.updateGraphMap(e, new BidirectedPath(e));
 				
 				//just do it simple for now when the last field of Links line is xxM (kmer=xx)
 				String cigar=gfaFields[5];
@@ -210,11 +256,11 @@ public class GraphUtil {
 									
 				break;
 			case "P"://path
-//				if(gfaFields.length>3 && gfaFields[2].contains(",")) {
-//					BidirectedPath path=new BidirectedPath(graph, gfaFields[2]);
-//			    	if(graph.reduce(path))
-//			    		GraphExplore.redrawGraphComponents(graph);
-//				}
+				if(spadesBridging){
+					if(gfaFields.length>3 && gfaFields[2].contains(",")) {
+						spadesPaths.add(new BidirectedPath(graph, gfaFields[2]));
+					}
+				}
 				break;
 
 				default:throw new IllegalStateException("Unrecognized GFA field: " + type.toUpperCase().trim());
@@ -265,6 +311,22 @@ public class GraphUtil {
 		}
 		LOG.info("No of nodes= {} No of edges = {} Estimated avg. read coverage = {} Total contigs length = {}", graph.getNodeCount(), graph.getEdgeCount(), BidirectedGraph.RCOV, totContigsLen );
 		
+		/*
+		 * 2. Binning the graph
+		 */
+		graph.binning();
+		
+		/*
+		 * 3. Reduce the SPAdes path if specified
+		 */
+		boolean changed=false;
+		if(spadesBridging){
+			for(BidirectedPath p:spadesPaths)
+				if(graph.reduce(p))
+					changed=true;
+			if(changed)
+				GraphExplore.redrawGraphComponents(graph);
+		}
     }
     
 	public static void gradientDescent(BidirectedGraph graph) {

@@ -138,13 +138,12 @@ public class HybridAssembler {
 	}
 	//Loading the graph, doing preprocessing
 	//binning, ...
-	public boolean prepareShortReadsProcess() {
-		//1. loading graph file
+	public boolean prepareShortReadsProcess(boolean useSPAdesPaths) {
 		try {
 			if(shortReadsInputFormat.toLowerCase().equals("gfa")) 
-				GraphUtil.loadFromGFA(shortReadsInput, simGraph);
+				GraphUtil.loadFromGFA(shortReadsInput, simGraph, useSPAdesPaths);
 			else if(shortReadsInputFormat.toLowerCase().equals("fastg"))
-				GraphUtil.loadFromFASTG(shortReadsInput, simGraph);
+				GraphUtil.loadFromFASTG(shortReadsInput, simGraph, useSPAdesPaths);
 			else 				
 				throw new IOException("assembly graph file must have .gfa or .fastg extension!");
 			
@@ -152,8 +151,6 @@ public class HybridAssembler {
 			System.err.println("Issue when loading pre-assembly: \n" + e.getMessage());
 			return false;
 		}
-		//2. Pre-process the graph: binning + connected componentsap
-		simGraph.binning();
 		rtComponents.init(simGraph);
 		return true;
 	}
@@ -244,7 +241,7 @@ public class HybridAssembler {
 						for(BidirectedPath path:paths) 
 						{
 							//path here is already unique! (2 unique ending nodes)
-					    	if(simGraph.reduce(path)) {
+					    	if(simGraph.reduceUniquePath(path)) {
 
 					    		GraphExplore.redrawGraphComponents(simGraph);
 
@@ -297,8 +294,11 @@ public class HybridAssembler {
 	}
 	
 	public void lastAttempt(){
+		//TODO: traverse for the last time,remove redundant edges, infer the path...
+		//may want to run consensus to determine the final path
 		for(BidirectedBridge brg:simGraph.getUnsolvedBridges()){
-			simGraph.reduce(brg.paths.get(0));
+			System.out.println("Last attempt: reducing " + brg.paths.get(0).getId());
+			simGraph.reduceUniquePath(brg.paths.get(0));
 		}
 		GraphExplore.redrawGraphComponents(simGraph);
 	}
@@ -316,7 +316,7 @@ public class HybridAssembler {
 			if(s.contains("NODE")){
 				if(flag){
 					BidirectedPath path=new BidirectedPath(simGraph, curpath);
-			    	if(simGraph.reduce(path))
+			    	if(simGraph.reduceUniquePath(path))
 			    		GraphExplore.redrawGraphComponents(simGraph);
 //			    	reduce2(path);
 				}
@@ -400,7 +400,7 @@ public class HybridAssembler {
 		
 		hbAss.setShortReadsInput(GraphExplore.spadesFolder+"EcK12S-careful/assembly_graph.fastg");
 		hbAss.setShortReadsInputFormat("fastg");
-		hbAss.prepareShortReadsProcess();
+		hbAss.prepareShortReadsProcess(false);
 		hbAss.setLongReadsInput(GraphExplore.spadesFolder+"EcK12S-careful/assembly_graph.sam");
 		hbAss.setLongReadsInputFormat("sam/bam");
 		hbAss.prepareLongReadsProcess();
