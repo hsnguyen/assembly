@@ -488,7 +488,7 @@ public class BidirectedGraph extends MultiGraph{
 			//check if brg is unique or not (only bridging unique bridge)
 			if(checkUniqueBridge(brg)){				
 				brg.bridging(this, tmpBin);
-				if(!brg.paths.isEmpty())
+				if(!brg.fullPaths.isEmpty())
 					updateBridgesMap(brg.getEndingsID(), brg);//must be here
 
 				BidirectedPath bestPath=brg.getBestPath();

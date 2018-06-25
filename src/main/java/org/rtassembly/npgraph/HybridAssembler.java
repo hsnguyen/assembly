@@ -297,8 +297,8 @@ public class HybridAssembler {
 		//TODO: traverse for the last time,remove redundant edges, infer the path...
 		//may want to run consensus to determine the final path
 		for(BidirectedBridge brg:simGraph.getUnsolvedBridges()){
-			System.out.println("Last attempt: reducing " + brg.paths.get(0).getId());
-			simGraph.reduceUniquePath(brg.paths.get(0));
+			System.out.println("Last attempt: reducing " + brg.fullPaths.get(0).getId());
+			simGraph.reduceUniquePath(brg.fullPaths.get(0));
 		}
 		GraphExplore.redrawGraphComponents(simGraph);
 	}

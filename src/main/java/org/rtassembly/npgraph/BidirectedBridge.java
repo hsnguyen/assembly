@@ -12,20 +12,22 @@ import org.jfree.util.Log;
 public class BidirectedBridge {
 	public static volatile int SAFE_VOTE_DISTANCE=3;
 	ArrayList<Alignment> steps;
-	ArrayList<BidirectedPath> paths;
+	ArrayList<BidirectedPath> fullPaths, halfPaths;
+	ArrayList<BidirectedBridge> halfBridges;
+	
 	boolean isSolved=false;
 	
 	BidirectedBridge(Alignment start){
 		steps=new ArrayList<>();
 		steps.add(start);
 		
-		paths = new ArrayList<>();
+		fullPaths = new ArrayList<>();
 	}
 
 	//This is for SPAdes path reader only
 	BidirectedBridge (BidirectedPath path){
-		paths = new ArrayList<>();
-		paths.add(path);
+		fullPaths = new ArrayList<>();
+		fullPaths.add(path);
 		isSolved=true;
 	}
 	
@@ -62,7 +64,7 @@ public class BidirectedBridge {
 	public BidirectedPath getBestPath() {
 		//return best path (unique path or best voted path); or null if undetermined
 		if(isSolved)
-			return paths.get(0);
+			return fullPaths.get(0);
 		else{
 			//still a list of possible paths to deal with
 			return null;
@@ -75,7 +77,7 @@ public class BidirectedBridge {
 			Alignment start = getStartAlignment(), end = getEndAlignment();
 			return BidirectedEdge.createID(start.node, end.node, start.strand, !end.strand);
 		}else{//SPAdes path
-			BidirectedPath repPath=paths.get(0);
+			BidirectedPath repPath=fullPaths.get(0);
 			BidirectedNode 	root = (BidirectedNode) repPath.getRoot(), 
 							end = (BidirectedNode) repPath.peekNode();
 			boolean	 	rootDir=((BidirectedEdge) repPath.getEdgePath().get(0)).getDir(root),
@@ -87,7 +89,7 @@ public class BidirectedBridge {
 	public String getBridgeString() {
 		String retval="";
 		if(isSolved)
-			retval="solved<"+paths.get(0).getId()+">";
+			retval="solved<"+fullPaths.get(0).getId()+">";
 		else if(steps.size()>1) {
 			retval="unsolved<"+steps.stream().map(a->a.node.getId().concat(a.strand?"+":"-")).reduce("", (a,b) -> a + b)+">";
 		}
@@ -96,23 +98,23 @@ public class BidirectedBridge {
 	
 	//Using another list of steps to rectify the current bridge's steps
 	public void merging(BidirectedBridge brg, BidirectedNode startNode){
-		if(isSolved || paths.isEmpty())
+		if(isSolved || fullPaths.isEmpty())
 			return;
 		else{
 			System.out.printf("Check consistency using bridge %s:\n", brg.getBridgeString());
 
-			for(BidirectedPath p:paths){
+			for(BidirectedPath p:fullPaths){
 				brg.compareAndVote(p, startNode);
 				System.out.printf("...path %s now has %d votes!\n", p.getId(), p.getVote());
 			}
 			
-			Collections.sort(paths, (p1,p2)->p2.getVote()-p1.getVote());
-			int currentMaxVote=paths.get(0).getVote();
+			Collections.sort(fullPaths, (p1,p2)->p2.getVote()-p1.getVote());
+			int currentMaxVote=fullPaths.get(0).getVote();
 			//TODO: more formal
-			paths.removeIf(p->(currentMaxVote-p.getVote() > SAFE_VOTE_DISTANCE));
+			fullPaths.removeIf(p->(currentMaxVote-p.getVote() > SAFE_VOTE_DISTANCE));
 //			paths.removeIf(p->(p.getVote() < (currentMaxVote>10?(currentMaxVote-1):(currentMaxVote-3))));//10*2=(noreads*diff)
 				
-			if(paths.size()==1)
+			if(fullPaths.size()==1)
 				isSolved=true;
 		}
 	}
@@ -162,8 +164,8 @@ public class BidirectedBridge {
 		}
 		
 		if(!wholePaths.isEmpty()){
-			paths=wholePaths;
-			paths.forEach(p->p.setConsensusUniqueBinOfPath(bin));
+			fullPaths=wholePaths;
+			fullPaths.forEach(p->p.setConsensusUniqueBinOfPath(bin));
 		}
 		if(wholePaths.size()==1)
 			isSolved=true;
@@ -172,10 +174,10 @@ public class BidirectedBridge {
 		
 	public String getAllPossiblePathsString(){
 		String retval="";
-		if(paths==null || paths.isEmpty()){
+		if(fullPaths==null || fullPaths.isEmpty()){
 			retval="possible paths not available!";
 		}else{
-			retval+=paths.stream().map(p->p.getId()).reduce((a,b)->a+"\n"+b);
+			retval+=fullPaths.stream().map(p->p.getId()).reduce((a,b)->a+"\n"+b);
 		}
 		
 		return retval;
@@ -230,9 +232,9 @@ public class BidirectedBridge {
 	//check if a bridge is worth to merge to this bridge
 	public boolean checkIfMerge(BidirectedBridge brg) {
 		boolean retval=false;
-		if(paths.size() >= 2) {
+		if(fullPaths.size() >= 2) {
 			HashSet<String> pathsIntersect = 
-				paths.stream()
+				fullPaths.stream()
 				.map(p->{return new HashSet<String>(Arrays.asList(p.getId().split("[\\+\\-,]")));})
 				.reduce((a,b)->{
 								HashSet<String> intersect = new HashSet<>(a);
