@@ -81,7 +81,7 @@ public class BidirectedGraph extends MultiGraph{
 	public HashSet<BidirectedBridge> getUnsolvedBridges(){
 		HashSet<BidirectedBridge> retval = new HashSet<BidirectedBridge>();
 		for(BidirectedBridge brg:bridgesMap.values()){
-			if(brg.getBridgeStatus()<1)
+			if(brg.getBridgeStatus()==0)
 				retval.add(brg);
 		}
 		
@@ -165,9 +165,9 @@ public class BidirectedGraph extends MultiGraph{
      * Adding bridge to the map, return false if entry already exists
      * TODO: conflict inductions of bridges should be solved here
      */
-    synchronized protected boolean updateBridgesMapWithCompleteBridge(String brgID, BidirectedBridge bridge) {
+    synchronized protected void updateBridgesMapWithCompleteBridge(String brgID, BidirectedBridge bridge) {
     	if(brgID==null || bridge==null)
-    		return false;
+    		return;
     	else{
     		//FIXME: should check for uniqueness here???
     		String[] keys=GraphUtil.getHeadOfPathString(brgID);
@@ -175,7 +175,26 @@ public class BidirectedGraph extends MultiGraph{
     							brg1 = bridgesMap.get(keys[1]);
     		bridge.merging(brg0);
     		bridge.merging(brg1);
-    		return bridgesMap.put(keys[0], bridge)==null && bridgesMap.put(keys[1], bridge)==null;
+    		bridgesMap.put(keys[0], bridge);
+    		bridgesMap.put(keys[1], bridge);
+    	}
+    } 
+    synchronized protected void updateBridgesMapWithHalfBridge(String brgID, BidirectedBridge bridge) {
+    	if(brgID==null || bridge==null)
+    		return;
+    	else{
+    		//FIXME: should check for uniqueness here???
+    		String[] keys=GraphUtil.getHeadOfPathString(brgID);
+    		BidirectedBridge 	brg0 = bridgesMap.get(keys[0]), 
+    							brg1 = bridgesMap.get(keys[1]);
+    		if(brg0!=null) {
+    			bridge.merging(brg0);
+    			bridgesMap.put(keys[0], bridge);
+    		}
+    		if(brg1!=null) {
+    			bridge.merging(brg1);
+    			bridgesMap.put(keys[1], bridge);
+    		}
     	}
     } 
     synchronized public BidirectedBridge getBridgeFromMap(String brgID){
@@ -464,14 +483,14 @@ public class BidirectedGraph extends MultiGraph{
 		// Now we got all possible bridges from chopping the alignments at unique nodes
 		System.out.println("\n=> bridges list: ");
 		for(BidirectedBridge brg:bridges) {
-			System.out.printf("+++%s <=> ", brg.getEndingsID());
+			System.out.printf("+++%s <=> \n", brg.getEndingsID());
 			BidirectedBridge storedBridge=getBridgeFromMap(brg.getEndingsID());
 			if(storedBridge!=null) {
 				if(storedBridge.getBridgeStatus()==1){
-					System.out.println(storedBridge.getEndingsID() + ": already processed: ignore!");
+					System.out.println(storedBridge.getEndingsID() + ": already solved: ignore!");
 					break;
-				}else{
-					System.out.println(storedBridge.getEndingsID() + ": already processed: fortify!");
+				}else if(storedBridge.getBridgeStatus()==0){
+					System.out.println(storedBridge.getEndingsID() + ": already built: fortify!");
 					System.out.println(storedBridge.getAllPossiblePathsString());
 					
 //					BidirectedNode startNode=brg.getStartAlignment().node;
@@ -484,25 +503,35 @@ public class BidirectedGraph extends MultiGraph{
 //						storedBridge.getBestPath().setConsensusUniqueBinOfPath(tmp);
 						retrievedPaths.add(storedBridge.getBestPath());
 					}
-					continue;	
+				}else {//a half bridge is there
+					System.out.println(storedBridge.getEndingsID() + ": half built: merging!");
+					updateBridgesMapWithHalfBridge(brg.getEndingsID(), brg);
 				}
 				
 
-			}
-			System.out.println();
-			
-			//check if brg is complete or not (only bridging complete bridge)
-			if(checkCompleteBridge(brg)){				
-				brg.bridging(this, tmpBin);
-				if(!brg.fullPaths.isEmpty())
-					updateBridgesMapWithCompleteBridge(brg.getEndingsID(), brg);//must be here
-
-				BidirectedPath bestPath=brg.getBestPath();
-				if(bestPath!=null){
-//					brg.getBestPath().setConsensusUniqueBinOfPath(tmp);
-					retrievedPaths.add(brg.getBestPath());
+			}else {	
+				//check if brg is complete or not (only bridging complete bridge)
+				if(checkCompleteBridge(brg)){				
+					brg.bridging(this, tmpBin);
+					if(!brg.fullPaths.isEmpty())
+						updateBridgesMapWithCompleteBridge(brg.getEndingsID(), brg);//must be here
+	
+					BidirectedPath bestPath=brg.getBestPath();
+					if(bestPath!=null){
+	//					brg.getBestPath().setConsensusUniqueBinOfPath(tmp);
+						retrievedPaths.add(brg.getBestPath());
+					}
+				}else {
+					String key="";
+					if(binner.getUniqueBin(brg.getStartAlignment().node)!=null)
+						key=brg.getStartAlignment().node.getId() + (brg.getStartAlignment().strand?"o":"i");
+					else 
+						key=brg.getEndAlignment().node.getId() + (brg.getEndAlignment().strand?"i":"o");
+					brg.addHalfBridge(brg);
+					bridgesMap.put(key, brg);
 				}
 			}
+			
 		}
 		return retrievedPaths;
 	}
