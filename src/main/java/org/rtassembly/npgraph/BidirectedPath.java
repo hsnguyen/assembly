@@ -108,7 +108,7 @@ public class BidirectedPath extends Path{
 	}
 	
 	public String toString(){
-		return "(" + getId() + ")";
+		return "path:(" + getId() + ")";
 	}
 	 
 	public Sequence spelling(){

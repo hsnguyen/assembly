@@ -81,7 +81,7 @@ public class BidirectedGraph extends MultiGraph{
 	public HashSet<BidirectedBridge> getUnsolvedBridges(){
 		HashSet<BidirectedBridge> retval = new HashSet<BidirectedBridge>();
 		for(BidirectedBridge brg:bridgesMap.values()){
-			if(!brg.isSolved)
+			if(brg.getBridgeStatus()<1)
 				retval.add(brg);
 		}
 		
@@ -165,13 +165,17 @@ public class BidirectedGraph extends MultiGraph{
      * Adding bridge to the map, return false if entry already exists
      * TODO: conflict inductions of bridges should be solved here
      */
-    synchronized protected boolean updateBridgesMap(String brgID, BidirectedBridge bridge) {
+    synchronized protected boolean updateBridgesMapWithCompleteBridge(String brgID, BidirectedBridge bridge) {
     	if(brgID==null || bridge==null)
     		return false;
     	else{
     		//FIXME: should check for uniqueness here???
     		String[] keys=GraphUtil.getHeadOfPathString(brgID);
-    		return bridgesMap.putIfAbsent(keys[0], bridge)==null && bridgesMap.putIfAbsent(keys[1], bridge)==null;
+    		BidirectedBridge 	brg0 = bridgesMap.get(keys[0]), 
+    							brg1 = bridgesMap.get(keys[1]);
+    		bridge.merging(brg0);
+    		bridge.merging(brg1);
+    		return bridgesMap.put(keys[0], bridge)==null && bridgesMap.put(keys[1], bridge)==null;
     	}
     } 
     synchronized public BidirectedBridge getBridgeFromMap(String brgID){
@@ -184,8 +188,9 @@ public class BidirectedGraph extends MultiGraph{
 			retval=bridgesMap.get(keys[1]);	
     	return retval;
     }
+    
     synchronized public BidirectedBridge getBridgeFromMap(Node unqNode, boolean direction){
-    	String key=unqNode.getId()+(direction?"+":"-");
+    	String key=unqNode.getId()+(direction?"o":"i"); //true:going outward, false:going inward
     	return bridgesMap.get(key);
     }
 //    synchronized protected  BidirectedBridge updateBridgesMap(BidirectedEdge e, BidirectedBridge bridge) {
@@ -451,7 +456,7 @@ public class BidirectedGraph extends MultiGraph{
 
 		BidirectedBridge 	startBrg=getBridgeFromMap(bridges.get(0).getEndingsID()),
 							endBrg=getBridgeFromMap(bridges.get(bridges.size()-1).getEndingsID());
-		if((startBrg!=null && startBrg.isSolved) || (endBrg!=null && endBrg.isSolved)){
+		if((startBrg!=null && startBrg.getBridgeStatus()==1) || (endBrg!=null && endBrg.getBridgeStatus()==1)){
 			System.out.println("This list belongs to an already-processed bridge: skipped!");
 			return retrievedPaths;
 		}
@@ -462,19 +467,20 @@ public class BidirectedGraph extends MultiGraph{
 			System.out.printf("+++%s <=> ", brg.getEndingsID());
 			BidirectedBridge storedBridge=getBridgeFromMap(brg.getEndingsID());
 			if(storedBridge!=null) {
-				if(storedBridge.isSolved){
+				if(storedBridge.getBridgeStatus()==1){
 					System.out.println(storedBridge.getEndingsID() + ": already processed: ignore!");
 					break;
 				}else{
 					System.out.println(storedBridge.getEndingsID() + ": already processed: fortify!");
 					System.out.println(storedBridge.getAllPossiblePathsString());
 					
-					BidirectedNode startNode=brg.getStartAlignment().node;
-					if(binner.getUniqueBin(startNode)==null)
-						startNode=brg.getEndAlignment().node;
+//					BidirectedNode startNode=brg.getStartAlignment().node;
+//					if(binner.getUniqueBin(startNode)==null)
+//						startNode=brg.getEndAlignment().node;
+					
 //					if(storedBridge.checkIfMerge(brg))
-						storedBridge.merging(brg, startNode);
-					if(storedBridge.isSolved){
+						storedBridge.referencingTo(brg);
+					if(storedBridge.getBridgeStatus()==1){
 //						storedBridge.getBestPath().setConsensusUniqueBinOfPath(tmp);
 						retrievedPaths.add(storedBridge.getBestPath());
 					}
@@ -485,11 +491,11 @@ public class BidirectedGraph extends MultiGraph{
 			}
 			System.out.println();
 			
-			//check if brg is unique or not (only bridging unique bridge)
-			if(checkUniqueBridge(brg)){				
+			//check if brg is complete or not (only bridging complete bridge)
+			if(checkCompleteBridge(brg)){				
 				brg.bridging(this, tmpBin);
 				if(!brg.fullPaths.isEmpty())
-					updateBridgesMap(brg.getEndingsID(), brg);//must be here
+					updateBridgesMapWithCompleteBridge(brg.getEndingsID(), brg);//must be here
 
 				BidirectedPath bestPath=brg.getBestPath();
 				if(bestPath!=null){
@@ -503,7 +509,7 @@ public class BidirectedGraph extends MultiGraph{
  	
     //simple check if a bridge connecting 2 unique nodes
     //todo: combine info from bridgesMap also?
-    private boolean checkUniqueBridge(BidirectedBridge brg){
+    private boolean checkCompleteBridge(BidirectedBridge brg){
     	if(brg==null)
     		return false;
     	else return (binner.getUniqueBin(brg.getStartAlignment().node) != null) 
@@ -608,8 +614,8 @@ public class BidirectedGraph extends MultiGraph{
 					BidirectedEdge reducedEdge = new BidirectedEdge(markerNode, curNodeFromSimGraph, markerDir, curDir);
 				
 					tobeAdded.add(reducedEdge);
-					BidirectedBridge brg = new BidirectedBridge(curPath);
-					updateBridgesMap(brg.getEndingsID(), brg);
+					BidirectedBridge brg = new BidirectedBridge(curPath,true);
+					updateBridgesMapWithCompleteBridge(brg.getEndingsID(), brg);
 					
 					curPath.setConsensusUniqueBinOfPath(curUniqueBin);
 					ArrayList<BidirectedEdge> potentialRemovedEdges = binner.reducedUniquePath(curPath);

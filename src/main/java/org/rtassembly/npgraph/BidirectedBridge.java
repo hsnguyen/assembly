@@ -12,10 +12,11 @@ import org.jfree.util.Log;
 public class BidirectedBridge {
 	public static volatile int SAFE_VOTE_DISTANCE=3;
 	ArrayList<Alignment> steps;
-	ArrayList<BidirectedPath> fullPaths, halfPaths;
-	ArrayList<BidirectedBridge> halfBridges;
+	ArrayList<BidirectedPath> 	fullPaths; //paths connect two ends (inducing by graph traversal)
 	
-	boolean isSolved=false;
+	//these variables to store auxillary info
+	BidirectedPath	halfPath; //paths from one end only (if any): from SPAdes
+	ArrayList<BidirectedBridge> halfBridges; //bridges from one end only (if any)
 	
 	BidirectedBridge(Alignment start){
 		steps=new ArrayList<>();
@@ -25,10 +26,26 @@ public class BidirectedBridge {
 	}
 
 	//This is for SPAdes path reader only
-	BidirectedBridge (BidirectedPath path){
-		fullPaths = new ArrayList<>();
-		fullPaths.add(path);
-		isSolved=true;
+	BidirectedBridge (BidirectedPath path, boolean isFullPath){
+		if(isFullPath){
+			fullPaths = new ArrayList<>();
+			fullPaths.add(path);
+		}else{
+			halfPath=path;
+		}
+	}
+	
+	public void setHalfPath(BidirectedPath p){
+		if(halfPath==null)
+			halfPath=p;
+		else{
+			System.out.println("Warning: bridge already have an half path!");
+		}
+	}
+	public void addHalfBridge(BidirectedBridge brg){
+		if(halfBridges==null)
+			halfBridges=new ArrayList<>();
+		halfBridges.add(brg);
 	}
 	
 	public boolean append(Alignment alg) {
@@ -42,17 +59,19 @@ public class BidirectedBridge {
 			return true;
 		}
 	}
-//	public boolean appendAll(BidirectedBridge brg){
-//		if(brg.getStartAlignment()!=getEndAlignment())
-//			return false;
-//		else{
-//			for(int i=1;i<brg.steps.size();i++){
-//				append(brg.steps.get(i));
-//			}
-//			brg=null;
-//			return true;
-//		}
-//	}
+	//Return bridge status:
+	//-1: half bridge, 0: complete bridge, unsolved; 1: solved
+	public int getBridgeStatus(){
+		int retval=-1;
+		if(fullPaths!=null && !fullPaths.isEmpty()){
+			if(fullPaths.size()==1)
+				retval=1;
+			else
+				retval=0;
+		}
+		return retval;
+	}
+	
 	public Alignment getStartAlignment() {
 		return steps.get(0);
 	}
@@ -63,7 +82,7 @@ public class BidirectedBridge {
 	
 	public BidirectedPath getBestPath() {
 		//return best path (unique path or best voted path); or null if undetermined
-		if(isSolved)
+		if(getBridgeStatus()==1)
 			return fullPaths.get(0);
 		else{
 			//still a list of possible paths to deal with
@@ -88,7 +107,7 @@ public class BidirectedBridge {
 	}
 	public String getBridgeString() {
 		String retval="";
-		if(isSolved)
+		if(getBridgeStatus()==1)
 			retval="solved<"+fullPaths.get(0).getId()+">";
 		else if(steps.size()>1) {
 			retval="unsolved<"+steps.stream().map(a->a.node.getId().concat(a.strand?"+":"-")).reduce("", (a,b) -> a + b)+">";
@@ -97,12 +116,18 @@ public class BidirectedBridge {
 	}
 	
 	//Using another list of steps to rectify the current bridge's steps
-	public void merging(BidirectedBridge brg, BidirectedNode startNode){
-		if(isSolved || fullPaths.isEmpty())
+	//This bridge HAS TO BE complete(2 unique ends), 
+	//the reference need not be complete, instead one unique end is enough (half bridge)
+	public void referencingTo(BidirectedBridge brg){
+		if(getBridgeStatus()!=0)
 			return;
 		else{
 			System.out.printf("Check consistency using bridge %s:\n", brg.getBridgeString());
-
+			//look for the common unique node between 2 bridges
+			BidirectedNode startNode=this.getStartAlignment().node;
+			if(startNode!=brg.getStartAlignment().node && startNode!=brg.getEndAlignment().node)
+				startNode=this.getEndAlignment().node;
+			
 			for(BidirectedPath p:fullPaths){
 				brg.compareAndVote(p, startNode);
 				System.out.printf("...path %s now has %d votes!\n", p.getId(), p.getVote());
@@ -112,13 +137,21 @@ public class BidirectedBridge {
 			int currentMaxVote=fullPaths.get(0).getVote();
 			//TODO: more formal
 			fullPaths.removeIf(p->(currentMaxVote-p.getVote() > SAFE_VOTE_DISTANCE));
-//			paths.removeIf(p->(p.getVote() < (currentMaxVote>10?(currentMaxVote-1):(currentMaxVote-3))));//10*2=(noreads*diff)
-				
-			if(fullPaths.size()==1)
-				isSolved=true;
+		}
+	}
+	//Merging with another half bridge, inheriting all info from it
+	public void merging(BidirectedBridge brg){
+		if(brg!=null){
+			if(brg.halfPath!=null)
+				halfPath=brg.halfPath;
+			if(brg.halfBridges!=null)
+				halfBridges=brg.halfBridges;
+			
+			brg=null;
 		}
 	}
 
+	//Start to build bridge (i.e. identify possible paths) when 2 unique ends are determined
 	public void bridging(BidirectedGraph graph, PopBin bin){
 		if(steps.size()<=1) {
 			return;		
@@ -164,12 +197,23 @@ public class BidirectedBridge {
 		}
 		
 		if(!wholePaths.isEmpty()){
-			fullPaths=wholePaths;
-			fullPaths.forEach(p->p.setConsensusUniqueBinOfPath(bin));
+			for(BidirectedPath p:wholePaths){			
+				//now check consistency with halfPath (if any)
+				//FIXME: need more efficient function to determine if one path containing another
+				if(halfPath!=null){
+					if(	p.getId().indexOf(halfPath.getId()) < 0 
+						&& p.getId().indexOf(halfPath.getReversedComplemented().getId()) < 0)
+						continue;
+				}
+				p.setConsensusUniqueBinOfPath(bin);
+				fullPaths.add(p);
+			}
 		}
-		if(wholePaths.size()==1)
-			isSolved=true;
-		
+		if( getBridgeStatus() == 0 && halfBridges!=null){
+			//use the halfBridges to vote...
+			halfBridges.forEach(brg->referencingTo(brg));
+			halfBridges=null;
+		}
 	}
 		
 	public String getAllPossiblePathsString(){
