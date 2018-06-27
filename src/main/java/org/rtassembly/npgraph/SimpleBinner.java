@@ -295,7 +295,7 @@ public class SimpleBinner {
 		
 		//3. Assign unique nodes here: need more tricks
 		for(Node node:graph)
-			if(	node2BinMap.containsKey(node) && node.getNumber("len") > 1000 
+			if(	node2BinMap.containsKey(node) && node.getNumber("len") > 3000 
 				&& Math.max(node.getInDegree(), node.getOutDegree()) <= 1){
 				HashMap<PopBin, Integer> bc = node2BinMap.get(node);
 				ArrayList<PopBin> counts = new ArrayList<PopBin>(bc.keySet());
@@ -409,8 +409,8 @@ public class SimpleBinner {
 
 
 //			if(ep.getNumber("cov") < 0  && !unresolvedEdges.contains(ep)) //plasmid coverage is different!!!
-			if(ep.getNumber("cov") < 0  && !edge2BinMap.containsKey(ep)) //plasmid coverage is different!!!
-				retval.add((BidirectedEdge) ep);
+//			if(ep.getNumber("cov") < 0  && !edge2BinMap.containsKey(ep)) //plasmid coverage is different!!!
+//				retval.add((BidirectedEdge) ep);
 			
 			if(curNode!=path.getRoot() && curNode!=path.peekNode()) {
 				if(node2BinMap.containsKey(curNode)) {

@@ -7,6 +7,8 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.TreeSet;
 
+import javax.swing.text.StyledEditorKit.ForegroundAction;
+
 import org.jfree.util.Log;
 
 public class BidirectedBridge {
@@ -15,7 +17,7 @@ public class BidirectedBridge {
 	ArrayList<BidirectedPath> 	fullPaths; //paths connect two ends (inducing by graph traversal)
 	
 	//these variables to store auxillary info
-	BidirectedPath	halfPath; //paths from one end only (if any): from SPAdes
+	ArrayList<BidirectedPath>	halfPaths; //paths from one end only (if any): from SPAdes
 	ArrayList<BidirectedBridge> halfBridges; //bridges from one end only (if any)
 	
 	BidirectedBridge(Alignment start){
@@ -31,17 +33,12 @@ public class BidirectedBridge {
 			fullPaths = new ArrayList<>();
 			fullPaths.add(path);
 		}else{
-			halfPath=path;
+			halfPaths=new ArrayList<>();
+			halfPaths.add(path);
 		}
 	}
 	
-	public void setHalfPath(BidirectedPath p){
-		if(halfPath==null)
-			halfPath=p;
-		else{
-			System.out.println("Warning: bridge already have an half path!");
-		}
-	}
+
 	public void addHalfBridge(BidirectedBridge brg){
 		if(halfBridges==null)
 			halfBridges=new ArrayList<>();
@@ -96,7 +93,11 @@ public class BidirectedBridge {
 			Alignment start = getStartAlignment(), end = getEndAlignment();
 			return BidirectedEdge.createID(start.node, end.node, start.strand, !end.strand);
 		}else{//SPAdes path
-			BidirectedPath repPath=fullPaths.get(0);
+			BidirectedPath repPath=null;
+			if(fullPaths!=null && !fullPaths.isEmpty())
+				repPath=fullPaths.get(0);
+			else
+				repPath=halfPaths.get(0);
 			BidirectedNode 	root = (BidirectedNode) repPath.getRoot(), 
 							end = (BidirectedNode) repPath.peekNode();
 			boolean	 	rootDir=((BidirectedEdge) repPath.getEdgePath().get(0)).getDir(root),
@@ -106,10 +107,10 @@ public class BidirectedBridge {
 		
 	}
 	public String getBridgeString() {
-		String retval="";
+		String retval="<unknown>";
 		if(getBridgeStatus()==1)
 			retval="solved<"+fullPaths.get(0).getId()+">";
-		else if(steps.size()>1) {
+		else if(steps!=null && steps.size()>1) {
 			retval="unsolved<"+steps.stream().map(a->a.node.getId().concat(a.strand?"+":"-")).reduce("", (a,b) -> a + b)+">";
 		}
 		return retval;
@@ -142,12 +143,33 @@ public class BidirectedBridge {
 	//Merging with another half bridge, inheriting all info from it
 	public void merging(BidirectedBridge brg){
 		if(brg!=null){
-			if(brg.halfPath!=null)
-				halfPath=brg.halfPath;
-			if(brg.halfBridges!=null)
-				halfBridges=brg.halfBridges;
+			System.out.println("Merging half bridge " + brg.getEndingsID());
+			if(brg.halfPaths!=null && !brg.halfPaths.isEmpty()){
+				if(halfPaths==null)
+					halfPaths=brg.halfPaths;
+				else{
+					for(BidirectedPath p:brg.halfPaths)
+						if(!halfPaths.contains(p))
+							halfPaths.add(p);
+				}
+			}
 			
+			halfBridges=new ArrayList<>();
+			if(brg.steps!=null && steps.size()>2)
+				halfBridges.add(brg);
+			if(brg.halfBridges!=null){
+				System.out.println("...taking half bridge");
+				for(BidirectedBridge b:brg.halfBridges){
+					if(b.steps==null||b.steps.size()<3)
+						continue;
+					halfBridges.add(b);
+					System.out.println("\t" + b.getBridgeString());
+				}
+			}
+
 			brg=null;
+			
+			flushInfo();
 		}
 	}
 
@@ -173,8 +195,6 @@ public class BidirectedBridge {
 				return;
 	
 			//join all paths from previous to the new ones
-			//TODO:optimize it
-
 			if(wholePaths.isEmpty())
 				wholePaths=stepPaths;
 			else{
@@ -196,24 +216,12 @@ public class BidirectedBridge {
 
 		}
 		
-		if(!wholePaths.isEmpty()){
-			for(BidirectedPath p:wholePaths){			
-				//now check consistency with halfPath (if any)
-				//FIXME: need more efficient function to determine if one path containing another
-				if(halfPath!=null){
-					if(	p.getId().indexOf(halfPath.getId()) < 0 
-						&& p.getId().indexOf(halfPath.getReversedComplemented().getId()) < 0)
-						continue;
-				}
-				p.setConsensusUniqueBinOfPath(bin);
-				fullPaths.add(p);
-			}
-		}
-		if( getBridgeStatus() == 0 && halfBridges!=null){
-			//use the halfBridges to vote...
-			halfBridges.forEach(brg->referencingTo(brg));
-			halfBridges=null;
-		}
+		if(!wholePaths.isEmpty())
+			fullPaths=wholePaths;
+		fullPaths.forEach(p->p.setConsensusUniqueBinOfPath(bin));
+		flushInfo();
+
+		
 	}
 		
 	public String getAllPossiblePathsString(){
@@ -225,6 +233,25 @@ public class BidirectedBridge {
 		}
 		
 		return retval;
+	}
+	
+	private void flushInfo(){
+		if(getBridgeStatus()==0){
+			if(halfPaths!=null && !halfPaths.isEmpty()){
+				for(BidirectedPath halfPath:halfPaths){
+					System.out.println("bridging with half path " + halfPath.getId());
+	
+					fullPaths.removeIf(p->(	p.getId().indexOf(halfPath.getId()) < 0 
+											&& p.getId().indexOf(halfPath.getReversedComplemented().getId()) < 0));
+				}
+			}
+			
+			if(halfBridges!=null && !halfBridges.isEmpty()){
+				System.out.println("bridging with half bridges " + halfBridges);
+				halfBridges.forEach(brg->referencingTo(brg));
+				halfBridges=null;
+			}
+		}
 	}
 	
 	//check if the steps case agree with a unique path or not
