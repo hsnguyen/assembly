@@ -162,7 +162,7 @@ public class SimpleBinner {
 		for(PopBin b:minuend.keySet()){
 			int _minuend = minuend.get(b),
 				_diff = _minuend - (subtrahend.containsKey(b)?subtrahend.get(b):0);	
-			if(_diff > 0)
+			if(_diff >= 0)
 				difference.put(b, _diff);
 		}
 		
@@ -172,6 +172,8 @@ public class SimpleBinner {
 	private static HashMap<PopBin, Integer> sum(HashMap<PopBin, Integer> augend, HashMap<PopBin, Integer> addend){
 		if(augend==null||addend==null)
 			return null;
+//		if(augend==null) return addend;
+//		if(addend==null) return augend;
 		
 		HashMap<PopBin, Integer> retval = new HashMap<PopBin, Integer>();
 		for(PopBin b:Sets.union(augend.keySet(), addend.keySet()))
@@ -365,40 +367,27 @@ public class SimpleBinner {
 		ArrayList<BidirectedEdge> retval = new ArrayList<BidirectedEdge>();	
 		double aveCov=uniqueBin.estCov;
 	
-		
 		for(Edge ep:path.getEdgePath()){
 			nextNode=ep.getOpposite(curNode);
-			HashMap<PopBin, Integer> edgeBinsCount, bcMinusOne,  
+			HashMap<PopBin, Integer> edgeBinsCount, bcMinusOne=null,  
 										nodeBinsCount;	
-
+			if(getUniqueBin(ep.getNode0())!=null || getUniqueBin(ep.getNode1())!=null)
+				retval.add((BidirectedEdge)ep);
+				
 			if(edge2BinMap.containsKey(ep)) {
 				edgeBinsCount=edge2BinMap.get(ep);
 				if(edgeBinsCount.containsKey(uniqueBin)) {
 					bcMinusOne=substract(edgeBinsCount, oneBin);
-					if(!bcMinusOne.isEmpty()) {
-						edge2BinMap.replace(ep, bcMinusOne);
-						
-					}
-					else {
-						//delete here???
-						edge2BinMap.remove(ep);
-						retval.add((BidirectedEdge) ep);
-					}
+					edge2BinMap.replace(ep, bcMinusOne);
+
 				}else if(edgeBinsCount.containsKey(other)){
 				//E.g. b2 vs b1 =>  b2==b1							//...
 					bcMinusOne=substract(edgeBinsCount, otherBin);
-					if(!bcMinusOne.isEmpty()) {
-						edge2BinMap.replace(ep, bcMinusOne);
-						
-					}
-					else {
-						//delete here???
-						edge2BinMap.remove(ep);
-						retval.add((BidirectedEdge) ep);
-					}
+					edge2BinMap.replace(ep, bcMinusOne);				
+
 				}else {
 					LOG.error("Conflict binning information on path {}, at edge {}: {}!,", path.getId(), ep.getId(), getBinsOfEdge(ep));
-					edge2BinMap.remove(ep);
+//					edge2BinMap.remove(ep);
 				}
 		
 				
@@ -407,7 +396,12 @@ public class SimpleBinner {
 //			LOG.info("--edge {} coverage:{} to {}",ep.getId(),ep.getNumber("cov"),ep.getNumber("cov") - aveCov);
 			ep.setAttribute("cov", ep.getNumber("cov") - aveCov);	
 
-
+			if(bcMinusOne!=null && bcMinusOne.values().stream().mapToInt(Integer::intValue).sum() == 0) {
+//				edge2BinMap.remove(ep);
+				//delete here???
+				retval.add((BidirectedEdge) ep);
+			}
+			
 //			if(ep.getNumber("cov") < 0  && !unresolvedEdges.contains(ep)) //plasmid coverage is different!!!
 //			if(ep.getNumber("cov") < 0  && !edge2BinMap.containsKey(ep)) //plasmid coverage is different!!!
 //				retval.add((BidirectedEdge) ep);
@@ -445,6 +439,23 @@ public class SimpleBinner {
 			curNode=nextNode;
 		}
 		
+		//check again
+		retval.removeIf(e->	getUniqueBin(e.getNode0())==null && getUniqueBin(e.getNode0())==null &&
+							!(checkNodeBalance(e.getNode0()) && checkNodeBalance(e.getNode1())));
+		return retval;
+	}
+	
+	private boolean checkNodeBalance(Node node) {
+		boolean retval=true;
+		HashMap<PopBin, Integer> enterPops=node.enteringEdges().map(e->edge2BinMap.get(e)).filter(x->x!=null).reduce((a,b)->sum(a,b)).orElseGet(null),
+								leavePops=node.leavingEdges().map(e->edge2BinMap.get(e)).filter(x->x!=null).reduce((a,b)->sum(a,b)).orElseGet(null);
+		if(enterPops==null || leavePops==null)
+			return false;
+		for(PopBin b:enterPops.keySet())
+			if(!leavePops.containsKey(b) || leavePops.get(b)!=enterPops.get(b)) {
+				return false;
+				
+			}
 		return retval;
 	}
 	
