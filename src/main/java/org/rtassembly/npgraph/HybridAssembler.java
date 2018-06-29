@@ -10,6 +10,7 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Scanner;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -18,6 +19,8 @@ import org.graphstream.graph.Edge;
 import org.graphstream.graph.Node;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.util.concurrent.AtomicDouble;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordIterator;
@@ -244,38 +247,35 @@ public class HybridAssembler {
 					    	if(simGraph.reduceUniquePath(path)) {
 
 					    		GraphExplore.redrawGraphComponents(simGraph);
+					    		
+//								This is just for fun
+//					    		LOG.info("==========================================================================");
+//					    		LOG.info("\nTotal number of components: {} \ncomponents containing more than 1: {} \nsize of biggest component: {}", 
+//					    					rtComponents.getConnectedComponentsCount(),rtComponents.getConnectedComponentsCount(2),rtComponents.getGiantComponent().size());					    		
+//					    		LOG.info("==========================================================================");    		
+					    		if(currentNumOfComponents != rtComponents.getConnectedComponentsCount()) {
+						    		currentNumOfComponents = rtComponents.getConnectedComponentsCount();
 
-////					    		LOG.info("==========================================================================");
-////					    		LOG.info("\nTotal number of components: {} \ncomponents containing more than 1: {} \nsize of biggest component: {}", 
-////					    					rtComponents.getConnectedComponentsCount(),rtComponents.getConnectedComponentsCount(2),rtComponents.getGiantComponent().size());
-////					    		
-////					    		LOG.info("==========================================================================");    		
-//					    		if(currentNumOfComponents != rtComponents.getConnectedComponentsCount()) {
-//						    		currentNumOfComponents = rtComponents.getConnectedComponentsCount();
-//
-//						    		//Hide components with no markers! Optimize it to work dynamically
-//						    		ArrayList<Node> cleanup = new ArrayList<>();
-//						    		for (Iterator<ConnectedComponents.ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
-//						    			ConnectedComponents.ConnectedComponent comp = compIter.next();
-//	
-//						    			int numOfMarker=0;
-//						    			ArrayList<Node> tmp = new ArrayList<>();
-//						    			for(Node n:comp.getEachNode()) {
-//						    				if(BidirectedGraph.isMarker(n)) 
-//						    					numOfMarker++;
-//						    				tmp.add(n);
-//						    			}
-//						    			if(numOfMarker==0)
-//						    				cleanup.addAll(tmp);
-//						    		}
-//						    		for(Node n:cleanup) {
-//					    				n.addAttribute("ui.hide");
-//						    			for(Edge e:n.getEachEdge())
-//						    				e.addAttribute("ui.hide");
-//	//					    			simGraph.removeNode(n); //this faster but careful here!!!
-//						    		}
-//					    		}
-////					    		promptEnterKey();
+						    		//Hide components with no markers! Optimize it to work dynamically
+						    		ArrayList<Node> cleanup = new ArrayList<>();
+						    		for (Iterator<ConnectedComponents.ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
+						    			ConnectedComponents.ConnectedComponent comp = compIter.next();
+	
+						    			AtomicDouble lengthWeightedCov = new AtomicDouble(0.0);
+						    			ArrayList<Node> tmp = new ArrayList<>();
+						    			comp.nodes().forEach(n->{
+						    				lengthWeightedCov.getAndAdd(n.getNumber("cov")*(n.getNumber("len")-BidirectedGraph.getKmerSize()));
+						    				tmp.add(n);
+						    			});
+						    			if(lengthWeightedCov.get() < 10000*BidirectedGraph.RCOV)
+						    				cleanup.addAll(tmp);
+						    		}
+						    		for(Node n:cleanup) {
+					    				n.setAttribute("ui.hide");
+					    				n.edges().forEach(e->e.setAttribute("ui.hide"));
+////					    			simGraph.removeNode(n); //this faster but careful here!!!
+						    		}
+					    		}
 					    	}
 						}
 				}
@@ -298,7 +298,7 @@ public class HybridAssembler {
 		//may want to run consensus to determine the final path
 		for(BidirectedBridge brg:simGraph.getUnsolvedBridges()){
 			System.out.println("Last attempt: " + brg.getBridgeString());
-			if(brg.fullPaths!=null && !brg.fullPaths.isEmpty())
+			if(brg.getBridgeStatus()==0)
 				simGraph.reduceUniquePath(brg.fullPaths.get(0));
 			else
 				System.out.println("bridge contain no path! ignored");

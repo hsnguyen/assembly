@@ -3,7 +3,6 @@ package org.rtassembly.npgraph;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
@@ -20,12 +19,12 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Sets;
 
-import japsa.seq.Sequence;
 
 
 public class SimpleBinner {
     private static final Logger LOG = LoggerFactory.getLogger(SimpleBinner.class);
-	public static volatile int SIGNIFICANT_CTG_LEN=10000;
+	public static volatile int 	UNQ_CTG_LEN=10000,
+								SIG_CTG_LEN=1000;
 	
 	BidirectedGraph graph;
 	ArrayList<PopBin> binList;
@@ -185,15 +184,19 @@ public class SimpleBinner {
 	
 	private PopBin scanAndGuess(double cov) {
 		PopBin target=null;
-		double tmp=100;
+		double 	tmp=Double.MAX_VALUE,
+				lowestPopAbundance=Double.MAX_VALUE;
 		for(PopBin b:binList) {
 			double distance=GraphUtil.metric(cov, b.estCov);
 			if(distance<tmp) {
 				tmp=distance;
 				target=b;
 			}
+			if(lowestPopAbundance > b.estCov)
+				lowestPopAbundance=b.estCov;
 		}
-		if(tmp>GraphUtil.DISTANCE_THRES) {
+			
+		if(cov > lowestPopAbundance && tmp>GraphUtil.DISTANCE_THRES) {
 			target = null;
 		}
 		
@@ -207,7 +210,7 @@ public class SimpleBinner {
 		List<DoublePoint> points = new ArrayList<DoublePoint>();
 		
 		for(Node n:graph) {
-			if(n.getNumber("len") >= SIGNIFICANT_CTG_LEN) {
+			if(n.getNumber("len") >= UNQ_CTG_LEN && Math.max(n.getInDegree(), n.getOutDegree()) <= 1) {
 				points.add(new DoublePoint(new double[]{n.getNumber("cov"), new Double(n.getId())}));
 			}
 		}
@@ -218,16 +221,17 @@ public class SimpleBinner {
 			PopBin bin=new PopBin();
 			for(DoublePoint p:c.getPoints()) {
 				Node tmp = graph.getNode(((int)p.getPoint()[1])+"");
-				if(Math.max(tmp.getInDegree(), tmp.getOutDegree()) <= 1){
-//					tmp.setAttribute("unique", bin); //assuming that this node is unique (could be changed later!)
-					bin.addCoreNode(tmp);
-					HashMap<PopBin, Integer> entry = new HashMap<PopBin, Integer>();
-					entry.put(bin, 1);
-					node2BinMap.put(tmp, entry);
-				}
+				bin.addCoreNode(tmp);
+				HashMap<PopBin, Integer> entry = new HashMap<PopBin, Integer>();
+				entry.put(bin, 1);
+				node2BinMap.put(tmp, entry);
+				
 			}
 			if(bin.getCoreNodes().size() > 0){
 				binList.add(bin);
+				System.out.println("Bin " + bin.binID + ": " + bin.estCov);
+				for(Node n:bin.getCoreNodes())
+					System.out.println("...core node " + n.getAttribute("name"));
 			}
 			
 		}
@@ -251,14 +255,17 @@ public class SimpleBinner {
 		for(Edge e:unresolvedEdges){
 			if(	Math.max(e.getNode0().getInDegree(), e.getNode0().getOutDegree()) <= 1 
 				|| Math.max(e.getNode1().getInDegree(), e.getNode1().getOutDegree()) <= 1){
+				System.out.print("...scanning edge " + e.getId() + "cov=" + e.getNumber("cov"));
 				PopBin tmp = scanAndGuess(e.getNumber("cov"));
 				if(tmp!=null){
 					if(!highlyPossibleEdges.containsKey(tmp))
 						highlyPossibleEdges.put(tmp, new ArrayList<Edge>());
 					
 					highlyPossibleEdges.get(tmp).add(e);
-
-				}
+					System.out.print(": highly possible!");
+				}else
+					System.out.print(": none!");
+				System.out.println();
 					
 			}
 		}
@@ -298,7 +305,7 @@ public class SimpleBinner {
 		
 		//3. Assign unique nodes here: need more tricks
 		for(Node node:graph)
-			if(	node2BinMap.containsKey(node) && node.getNumber("len") > 3000 
+			if(	node2BinMap.containsKey(node) && node.getNumber("len") > SIG_CTG_LEN 
 				&& Math.max(node.getInDegree(), node.getOutDegree()) <= 1){
 				HashMap<PopBin, Integer> bc = node2BinMap.get(node);
 				ArrayList<PopBin> counts = new ArrayList<PopBin>(bc.keySet());
@@ -308,7 +315,7 @@ public class SimpleBinner {
 			}
 		
 	}
-	synchronized public PopBin getUniqueBin(Node node){
+	static public PopBin getUniqueBin(Node node){
 		return (PopBin)node.getAttribute("unique");
 	}
 	
@@ -372,8 +379,8 @@ public class SimpleBinner {
 			nextNode=ep.getOpposite(curNode);
 			HashMap<PopBin, Integer> edgeBinsCount, bcMinusOne=null,  
 										nodeBinsCount;	
-			if(getUniqueBin(ep.getNode0())!=null || getUniqueBin(ep.getNode1())!=null)
-				retval.add((BidirectedEdge)ep);
+//			if(getUniqueBin(ep.getNode0())!=null || getUniqueBin(ep.getNode1())!=null)
+//				retval.add((BidirectedEdge)ep);
 				
 			if(edge2BinMap.containsKey(ep)) {
 				edgeBinsCount=edge2BinMap.get(ep);
@@ -456,19 +463,21 @@ public class SimpleBinner {
 		double remainCov=0.0;
 		Optional<Double> tmp;
 		System.out.printf("Checking edge " + edge.getId() + ": remainCov=");
-
+		boolean onlyFlag=false;
 		if(getUniqueBin(n0)==null && getUniqueBin(n1)==null){
 			if((dir0?n0.getOutDegree():n0.getInDegree()) == 1){//the only in/out edge for n0
 				tmp=(dir0?n0.enteringEdges():n0.leavingEdges()).map(e->(e.getNumber("cov"))).reduce(Double::sum);
 				if(tmp.isPresent())
 					remainCov+=tmp.get();
+				onlyFlag=true;
 			}
-			if((dir1?n1.getOutDegree():n1.getInDegree()) == 1){//the only in/out edge for n0
+			if((dir1?n1.getOutDegree():n1.getInDegree()) == 1){//the only in/out edge for n1
 				tmp=(dir1?n1.enteringEdges():n1.leavingEdges()).map(e->(e.getNumber("cov"))).reduce(Double::sum);
 				if(tmp.isPresent())
 					remainCov+=tmp.get();			
+				onlyFlag=true;
 			}
-			if(remainCov > edge.getNumber("cov"))
+			if(onlyFlag && remainCov > edge.getNumber("cov"))
 				retval=false;
 		}
 		System.out.println(remainCov + " => " + retval);

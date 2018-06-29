@@ -493,6 +493,7 @@ public class BidirectedGraph extends MultiGraph{
 		
 		ArrayList<BidirectedPath> retrievedPaths = new ArrayList<>();
 
+		//FIXME: there is case when long read covering more than 2 unique nodes!!!
 		BidirectedBridge 	startBrg=getHomoBridgeFromMap(bridges.get(0)),
 							endBrg=getHomoBridgeFromMap(bridges.get(bridges.size()-1));
 		if((startBrg!=null && startBrg.getBridgeStatus()==1) || (endBrg!=null && endBrg.getBridgeStatus()==1)){
