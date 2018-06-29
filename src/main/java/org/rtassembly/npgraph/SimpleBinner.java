@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -394,7 +395,7 @@ public class SimpleBinner {
 			}
 			
 //			LOG.info("--edge {} coverage:{} to {}",ep.getId(),ep.getNumber("cov"),ep.getNumber("cov") - aveCov);
-			ep.setAttribute("cov", ep.getNumber("cov") - aveCov);	
+			ep.setAttribute("cov", ep.getNumber("cov")>aveCov?ep.getNumber("cov")-aveCov:0);	
 
 			if(bcMinusOne!=null && bcMinusOne.values().stream().mapToInt(Integer::intValue).sum() == 0) {
 //				edge2BinMap.remove(ep);
@@ -403,7 +404,7 @@ public class SimpleBinner {
 			}
 			
 //			if(ep.getNumber("cov") < 0  && !unresolvedEdges.contains(ep)) //plasmid coverage is different!!!
-//			if(ep.getNumber("cov") < 0  && !edge2BinMap.containsKey(ep)) //plasmid coverage is different!!!
+//			if(ep.getNumber("cov") <= aveCov*0.5  && !edge2BinMap.containsKey(ep)) //plasmid coverage is different!!!
 //				retval.add((BidirectedEdge) ep);
 			
 			if(curNode!=path.getRoot() && curNode!=path.peekNode()) {
@@ -441,24 +442,38 @@ public class SimpleBinner {
 		
 		//check again
 		retval.removeIf(e->	getUniqueBin(e.getNode0())==null && getUniqueBin(e.getNode0())==null &&
-							!(checkNodeBalance(e.getNode0()) && checkNodeBalance(e.getNode1())));
+							!(checkEdgeSafeToRemove(e)));
 		return retval;
 	}
+
 	
-	private boolean checkNodeBalance(Node node) {
+	private boolean checkEdgeSafeToRemove(BidirectedEdge edge) {
 		boolean retval=true;
-		HashMap<PopBin, Integer> enterPops=node.enteringEdges().map(e->edge2BinMap.get(e)).filter(x->x!=null).reduce((a,b)->sum(a,b)).orElseGet(null),
-								leavePops=node.leavingEdges().map(e->edge2BinMap.get(e)).filter(x->x!=null).reduce((a,b)->sum(a,b)).orElseGet(null);
-		if(enterPops==null || leavePops==null)
-			return false;
-		for(PopBin b:enterPops.keySet())
-			if(!leavePops.containsKey(b) || leavePops.get(b)!=enterPops.get(b)) {
-				return false;
-				
+		BidirectedNode 	n0=(BidirectedNode) edge.getNode0(),
+						n1=(BidirectedNode) edge.getNode1();
+		boolean dir0=edge.getDir0(),
+				dir1=edge.getDir1();
+		double remainCov=0.0;
+		Optional<Double> tmp;
+		System.out.printf("Checking edge " + edge.getId() + ": remainCov=");
+
+		if(getUniqueBin(n0)==null && getUniqueBin(n1)==null){
+			if((dir0?n0.getOutDegree():n0.getInDegree()) == 1){//the only in/out edge for n0
+				tmp=(dir0?n0.enteringEdges():n0.leavingEdges()).map(e->(e.getNumber("cov"))).reduce(Double::sum);
+				if(tmp.isPresent())
+					remainCov+=tmp.get();
 			}
+			if((dir1?n1.getOutDegree():n1.getInDegree()) == 1){//the only in/out edge for n0
+				tmp=(dir1?n1.enteringEdges():n1.leavingEdges()).map(e->(e.getNumber("cov"))).reduce(Double::sum);
+				if(tmp.isPresent())
+					remainCov+=tmp.get();			
+			}
+			if(remainCov > edge.getNumber("cov"))
+				retval=false;
+		}
+		System.out.println(remainCov + " => " + retval);
 		return retval;
 	}
-	
 	public String getBinsOfNode(Node node) {
 		String retval="[";
 		HashMap<PopBin, Integer> binCount=node2BinMap.get(node);
