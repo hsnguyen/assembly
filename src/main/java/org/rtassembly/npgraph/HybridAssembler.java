@@ -102,12 +102,12 @@ public class HybridAssembler {
 	//Operational variables
 //	final BidirectedGraph origGraph;
 	public BidirectedGraph simGraph; //original and simplified graph should be separated, no???
-	public ConnectedComponents rtComponents;
+	public GraphObserver observer;
 	
 	public HybridAssembler(){
 //		origGraph=new BidirectedGraph("batch");
 		simGraph=new BidirectedGraph("real");
-		rtComponents = new ConnectedComponents();
+//		rtComponents = new ConnectedComponents();
 		
 		simGraph.setAttribute("ui.quality");
 		simGraph.setAttribute("ui.antialias");
@@ -154,7 +154,7 @@ public class HybridAssembler {
 			System.err.println("Issue when loading pre-assembly: \n" + e.getMessage());
 			return false;
 		}
-		rtComponents.init(simGraph);
+		observer = new GraphObserver(simGraph);
 		return true;
 	}
 
@@ -211,8 +211,6 @@ public class HybridAssembler {
 		SAMRecordIterator iter = reader.iterator();
 
 		String readID = "";
-		int currentNumOfComponents=rtComponents.getConnectedComponentsCount();
-
 		ArrayList<Alignment> samList =  new ArrayList<Alignment>();// alignment record of the same read;	
 		
 		while (iter.hasNext()) {
@@ -247,35 +245,7 @@ public class HybridAssembler {
 					    	if(simGraph.reduceUniquePath(path)) {
 
 					    		GraphExplore.redrawGraphComponents(simGraph);
-					    		
-//								This is just for fun
-//					    		LOG.info("==========================================================================");
-//					    		LOG.info("\nTotal number of components: {} \ncomponents containing more than 1: {} \nsize of biggest component: {}", 
-//					    					rtComponents.getConnectedComponentsCount(),rtComponents.getConnectedComponentsCount(2),rtComponents.getGiantComponent().size());					    		
-//					    		LOG.info("==========================================================================");    		
-					    		if(currentNumOfComponents != rtComponents.getConnectedComponentsCount()) {
-						    		currentNumOfComponents = rtComponents.getConnectedComponentsCount();
-
-						    		//Hide components with no markers! Optimize it to work dynamically
-						    		ArrayList<Node> cleanup = new ArrayList<>();
-						    		for (Iterator<ConnectedComponents.ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
-						    			ConnectedComponents.ConnectedComponent comp = compIter.next();
-	
-						    			AtomicDouble lengthWeightedCov = new AtomicDouble(0.0);
-						    			ArrayList<Node> tmp = new ArrayList<>();
-						    			comp.nodes().forEach(n->{
-						    				lengthWeightedCov.getAndAdd(n.getNumber("cov")*(n.getNumber("len")-BidirectedGraph.getKmerSize()));
-						    				tmp.add(n);
-						    			});
-						    			if(lengthWeightedCov.get() < 10000*BidirectedGraph.RCOV)
-						    				cleanup.addAll(tmp);
-						    		}
-						    		for(Node n:cleanup) {
-					    				n.setAttribute("ui.hide");
-					    				n.edges().forEach(e->e.setAttribute("ui.hide"));
-////					    			simGraph.removeNode(n); //this faster but careful here!!!
-						    		}
-					    		}
+					    		observer.forFunUpdate();
 					    	}
 						}
 				}

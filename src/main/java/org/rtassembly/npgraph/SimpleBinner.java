@@ -2,6 +2,7 @@ package org.rtassembly.npgraph;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -244,14 +245,19 @@ public class SimpleBinner {
 		nodesClustering();
 		GraphUtil.gradientDescent(graph);
 		//1.First round of assigning unit cov: from binned significant nodes
-		
+		double minCov=Double.MAX_VALUE;
+		PopBin minCovPop=null;
 		for(PopBin b:binList) {
+			if(b.estCov < minCov) {
+				minCov=b.estCov;
+				minCovPop=b;
+			}
 			for(Node n:b.getCoreNodes()) {
 				exploringFromNode(n);
 			}			
 		}
 		HashMap<PopBin, ArrayList<Edge>> highlyPossibleEdges = new HashMap<PopBin, ArrayList<Edge>>();
-
+		unresolvedEdges.sort((a,b)->(int)(-a.getNumber("cov")+b.getNumber("cov")));
 		for(Edge e:unresolvedEdges){
 			if(	Math.max(e.getNode0().getInDegree(), e.getNode0().getOutDegree()) <= 1 
 				|| Math.max(e.getNode1().getInDegree(), e.getNode1().getOutDegree()) <= 1){
@@ -262,36 +268,40 @@ public class SimpleBinner {
 						highlyPossibleEdges.put(tmp, new ArrayList<Edge>());
 					
 					highlyPossibleEdges.get(tmp).add(e);
-					System.out.print(": highly possible!");
+					System.out.printf(": highly possible in bin %d!", tmp.getId());
 				}else
 					System.out.print(": none!");
 				System.out.println();
 					
+			}else if(e.getNumber("cov") < minCov) {
+				if(minCovPop!=null){
+					if(!highlyPossibleEdges.containsKey(minCovPop))
+						highlyPossibleEdges.put(minCovPop, new ArrayList<Edge>());
+				}
+				highlyPossibleEdges.get(minCovPop).add(e);
 			}
 		}
 //		2. Second round of thorough assignment: suck it deep!
 
 		while(!unresolvedEdges.isEmpty()) {
 			LOG.info("Starting assigning " + unresolvedEdges.size() + " unresolved edges");
-			//sort the unresolved edges based on confidence and guess until all gone...
+			//sort the unresolved edges based on abundance and guess until all gone...
 			if(!highlyPossibleEdges.keySet().isEmpty()){
 				for(PopBin b:binList){
-					if(!highlyPossibleEdges.containsKey(b))
-						continue;
-					else if(highlyPossibleEdges.get(b).isEmpty()){
-						highlyPossibleEdges.remove(b);
-						continue;
-					}
-					else{
-						Edge guess = highlyPossibleEdges.get(b).remove(0);
-						if(unresolvedEdges.contains(guess)){
-							HashMap<PopBin, Integer> bc = new HashMap<>();
-							bc.put(b, 1);
-							edge2BinMap.put(guess, bc);
-							exploringFromEdge(guess);
-						}else{
-							//TODO: check consistent here or just take it?
+					if(highlyPossibleEdges.containsKey(b)){
+						while(!highlyPossibleEdges.get(b).isEmpty()) {
+							Edge guess = highlyPossibleEdges.get(b).remove(0);
+							if(unresolvedEdges.contains(guess)){
+								HashMap<PopBin, Integer> bc = new HashMap<>();
+								bc.put(b, 1);
+								edge2BinMap.put(guess, bc);
+								exploringFromEdge(guess);
+							}else{
+								//TODO: check consistent here or just take it?
+							}
+						
 						}
+						highlyPossibleEdges.remove(b);
 					}
 				}
 
@@ -413,19 +423,14 @@ public class SimpleBinner {
 //			if(ep.getNumber("cov") < 0  && !unresolvedEdges.contains(ep)) //plasmid coverage is different!!!
 //			if(ep.getNumber("cov") <= aveCov*0.5  && !edge2BinMap.containsKey(ep)) //plasmid coverage is different!!!
 //				retval.add((BidirectedEdge) ep);
-			
+			bcMinusOne=null;
 			if(curNode!=path.getRoot() && curNode!=path.peekNode()) {
 				if(node2BinMap.containsKey(curNode)) {
 					if(node2BinMap.get(curNode).containsKey(uniqueBin)) {
 						nodeBinsCount=node2BinMap.get(curNode);
 						bcMinusOne=substract(nodeBinsCount, oneBin);
 						node2BinMap.replace(curNode, bcMinusOne);
-//						if(!bcMinusOne.isEmpty()) {
-//							node2BinMap.replace(curNode, bcMinusOne);
-//						}
-//						else {
-//							node2BinMap.remove(curNode);
-//						}
+
 					}else if(node2BinMap.get(curNode).containsKey(other)) {
 						nodeBinsCount=node2BinMap.get(curNode);
 						bcMinusOne=substract(nodeBinsCount, otherBin);
@@ -441,6 +446,9 @@ public class SimpleBinner {
 				}				
 				
 				curNode.setAttribute("cov", curNode.getNumber("cov")>aveCov?curNode.getNumber("cov")-aveCov:0);
+//				if(	(bcMinusOne!=null && bcMinusOne.values().stream().mapToInt(Integer::intValue).sum() == 0)
+//					|| curNode.getNumber("cov") < .1*aveCov) 
+//					curNode.edges().forEach(e->retval.add((BidirectedEdge) e));
 				
 			}
 			

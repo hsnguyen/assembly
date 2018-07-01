@@ -178,12 +178,12 @@ public class BidirectedGraph extends MultiGraph{
     	BidirectedBridge tmp = null;
     	//FIXME: check if worth it!
 //    	bridge.addHalfBridge(bridge);
-    	if(binner.getUniqueBin(startNode)!=null){
+    	if(SimpleBinner.getUniqueBin(startNode)!=null){
     		tmp=getBridgeFromMap(startNode,startNodeDir);
     		bridge.merging(tmp);
     		bridgesMap.put(startNode.getId()+(startNodeDir?"o":"i"), bridge);
     	}
-    	if(binner.getUniqueBin(endNode)!=null){
+    	if(SimpleBinner.getUniqueBin(endNode)!=null){
     		tmp=getBridgeFromMap(endNode,endNodeDir);
     		bridge.merging(tmp);
     		bridgesMap.put(endNode.getId()+(endNodeDir?"o":"i"), bridge);
@@ -199,10 +199,10 @@ public class BidirectedGraph extends MultiGraph{
     	boolean startNodeDir=((BidirectedEdge)path.getEdgePath().get(0)).getDir(startNode),
     			endNodeDir=((BidirectedEdge)path.peekEdge()).getDir(endNode);
     	BidirectedBridge brg = new BidirectedBridge(path,isFullPath);
-    	if(binner.getUniqueBin(startNode)!=null){
+    	if(SimpleBinner.getUniqueBin(startNode)!=null){
     		bridgesMap.put(startNode.getId()+(startNodeDir?"o":"i"), brg);
     	}
-    	if(binner.getUniqueBin(endNode)!=null){
+    	if(SimpleBinner.getUniqueBin(endNode)!=null){
     		bridgesMap.put(endNode.getId()+(endNodeDir?"o":"i"), brg);
     	}
     	
@@ -217,13 +217,13 @@ public class BidirectedGraph extends MultiGraph{
 	    	boolean startNodeDir=bridge.getStartAlignment().strand,
 	    			endNodeDir=!bridge.getEndAlignment().strand;
 	    	
-	    	if(binner.getUniqueBin(startNode)!=null){
+	    	if(SimpleBinner.getUniqueBin(startNode)!=null){
 	    		retval=bridgesMap.get(startNode.getId()+(startNodeDir?"o":"i"));
 	    		if(retval!=null)
 	    			return retval;
 	    	}
 	    	
-	    	if(binner.getUniqueBin(endNode)!=null){
+	    	if(SimpleBinner.getUniqueBin(endNode)!=null){
 	    		retval=bridgesMap.get(endNode.getId()+(endNodeDir?"o":"i"));
 	    	}
 	    	
@@ -316,7 +316,7 @@ public class BidirectedGraph extends MultiGraph{
     		}
     		//if a path couldn't be found between 2 dead-ends but alignments quality are insanely high
     		//FIXME: return a pseudo path having an nanopore edge
-    		else if(binner.getUniqueBin(srcNode)!=null && binner.getUniqueBin(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 &&
+    		else if(SimpleBinner.getUniqueBin(srcNode)!=null && SimpleBinner.getUniqueBin(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 &&
 				Math.min(from.quality, to.quality) >= Alignment.GOOD_QUAL)
     		{
     			BidirectedEdge pseudoEdge = new BidirectedEdge(srcNode, dstNode, from.strand, to.strand);
@@ -449,7 +449,7 @@ public class BidirectedGraph extends MultiGraph{
 		
 		HashMap<PopBin, Long> bins2Length = new HashMap<PopBin,Long>();
 		
-		tmpBin=binner.getUniqueBin(curAlignment.node);
+		tmpBin=SimpleBinner.getUniqueBin(curAlignment.node);
 		if( tmpBin != null){
 			bins2Length.put(tmpBin, (long)curAlignment.node.getNumber("len"));
 		}
@@ -457,7 +457,7 @@ public class BidirectedGraph extends MultiGraph{
 		for(int i=1; i<stepRanges.size();i++){
 			Range nextRanges = stepRanges.get(i);
 			nextAlignment = allAlignments.get(nextRanges);
-			tmpBin=binner.getUniqueBin(nextAlignment.node);
+			tmpBin=SimpleBinner.getUniqueBin(nextAlignment.node);
 			if(tmpBin!=null) {				
 				
 				curBridge.append(nextAlignment);
@@ -493,13 +493,6 @@ public class BidirectedGraph extends MultiGraph{
 		
 		ArrayList<BidirectedPath> retrievedPaths = new ArrayList<>();
 
-		//FIXME: there is case when long read covering more than 2 unique nodes!!!
-		BidirectedBridge 	startBrg=getHomoBridgeFromMap(bridges.get(0)),
-							endBrg=getHomoBridgeFromMap(bridges.get(bridges.size()-1));
-		if((startBrg!=null && startBrg.getBridgeStatus()==1) || (endBrg!=null && endBrg.getBridgeStatus()==1)){
-			System.out.println("This list belongs to an already-processed bridge: skipped!");
-			return retrievedPaths;
-		}
 		
 		// Now we got all possible bridges from chopping the alignments at unique nodes
 		System.out.println("\n=> bridges list: ");
@@ -557,8 +550,8 @@ public class BidirectedGraph extends MultiGraph{
     private boolean checkCompleteBridge(BidirectedBridge brg){
     	if(brg==null)
     		return false;
-    	else return (binner.getUniqueBin(brg.getStartAlignment().node) != null) 
-    				&& (binner.getUniqueBin(brg.getEndAlignment().node) != null);
+    	else return (SimpleBinner.getUniqueBin(brg.getStartAlignment().node) != null) 
+    				&& (SimpleBinner.getUniqueBin(brg.getEndAlignment().node) != null);
     }
     /**
      * Another reduce that doesn't remove the unique nodes
@@ -629,7 +622,7 @@ public class BidirectedGraph extends MultiGraph{
     			curNodeFromSimGraph = (BidirectedNode) path.getRoot();
 	
     	boolean markerDir=true, curDir;
-    	PopBin 	curUniqueBin = binner.getUniqueBin(curNodeFromSimGraph);
+    	PopBin 	curUniqueBin = SimpleBinner.getUniqueBin(curNodeFromSimGraph);
     	if(curUniqueBin!=null){
     		markerNode=curNodeFromSimGraph;
     		markerDir=((BidirectedEdge) path.getEdgePath().get(0)).getDir(markerNode);
@@ -646,7 +639,7 @@ public class BidirectedGraph extends MultiGraph{
     		   		
     		curDir=((BidirectedEdge) edge).getDir(curNodeFromSimGraph);
     		
-    		curUniqueBin = binner.getUniqueBin(curNodeFromSimGraph);
+    		curUniqueBin = SimpleBinner.getUniqueBin(curNodeFromSimGraph);
     		if(curUniqueBin!=null){//only when reach the end of path
         		
 				if(markerNode!=null){
