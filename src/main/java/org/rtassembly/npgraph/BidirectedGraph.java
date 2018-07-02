@@ -22,7 +22,7 @@ import japsa.seq.SequenceOutputStream;
 public class BidirectedGraph extends MultiGraph{
     static int KMER=127;
     static double RCOV=0.0;
-	private SimpleBinner binner;
+	SimpleBinner binner;
 
     volatile static double ILLUMINA_READ_LENGTH=300; //Illumina MiSeq
     

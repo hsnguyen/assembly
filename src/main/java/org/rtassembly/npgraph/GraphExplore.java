@@ -112,7 +112,7 @@ public class GraphExplore {
 //      graph.addAttribute("ui.antialias");
 //    	graph.addAttribute("ui.default.title", "New real-time hybrid assembler");
     	
-    	graph.setAttribute("ui.style", dynamicStyle);
+//    	graph.setAttribute("ui.style", dynamicStyle);
 
     	for (Node node : graph) {
 
@@ -123,16 +123,22 @@ public class GraphExplore {
 			else if(lengthScale>2) lengthScale=2;
 	          
 			int covScale = (int) Math.round(node.getNumber("cov")/BidirectedGraph.RCOV);
+			SimpleBinner binner=graph.binner;
 
 //          Color[] palette= {Color.GRAY,Color.BLUE,Color.YELLOW,Color.ORANGE,Color.GREEN,Color.PINK,Color.MAGENTA,Color.RED};
 //          Color color=null;
 	          
 			String[] palette= {"grey","blue","yellow","orange","green","pink","magenta","red"};
 			String color=null;
-			if(covScale>=palette.length)
-				color=palette[palette.length-1];
-			else
-				color=palette[covScale];
+			
+			if(binner.node2BinMap.containsKey(node)){
+				covScale=binner.node2BinMap.get(node).values().stream().mapToInt(Integer::intValue).sum();
+				if(covScale>=palette.length)
+					color=palette[palette.length-1];
+				else
+					color=palette[covScale];
+			}else
+				color="white";
           
 //          node.addAttribute("ui.color", color);
 //          node.addAttribute("ui.size", lengthScale+"gu");
@@ -189,5 +195,7 @@ public class GraphExplore {
             " 	stroke-mode: plain;" +
             "	stroke-color: black;" +
             "	stroke-width: 2px;" +
-            "}";
+            "}" +
+			"edge { fill-color: rgb(255,50,50); size: 2px; }" +
+			"edge.cut { fill-color: rgba(200,200,200,128); }";
 }
