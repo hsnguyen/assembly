@@ -708,5 +708,21 @@ public class BidirectedGraph extends MultiGraph{
     		return false;
 
     }
-    
+    //return path in the graph that contain only unique nodes
+    synchronized protected BidirectedPath getLongestLinearPathFromNode(BidirectedNode startNode, boolean direction){
+//    	assert (direction?startNode.getOutDegree()<=1:startNode.getInDegree()<=1):" Node " + startNode.getId() + "has more than one possible extending way!";
+    	BidirectedPath retval = new BidirectedPath();
+    	retval.setRoot(startNode);
+    	BidirectedNode currentNode = startNode;
+    	boolean curDirection=direction;
+    	while(curDirection?currentNode.getOutDegree()==1:currentNode.getInDegree()==1){
+    		BidirectedEdge curEdge=curDirection?currentNode.leavingEdges().toArray(BidirectedEdge[]::new)[0]
+    										:currentNode.enteringEdges().toArray(BidirectedEdge[]::new)[0];
+    		retval.add(curEdge);
+    		currentNode=(BidirectedNode) curEdge.getOpposite(currentNode);
+    		curDirection=!curEdge.getDir(currentNode);
+    	}
+    	
+    	return retval;
+    }
 }

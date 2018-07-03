@@ -141,12 +141,11 @@ public class BidirectedPath extends Path{
 	  * of the current path. Return TRUE if the joining valid and succeed.
 	  */
 	public BidirectedPath join(BidirectedPath newPath) {
-		BidirectedPath retval=new BidirectedPath(this);
-		if(newPath==null || newPath.empty()){
-			LOG.error("Join to empty path!");
-//			return null;//return this path if want to continue searching sub-path
-			return retval; 
-		}
+		
+		if(newPath==null || newPath.size() <=1 ){
+			return new BidirectedPath(this); 
+		}else if(this.size() <=1 && this.getRoot() == newPath.getRoot())
+			return new BidirectedPath(newPath);
 		
 		if(newPath.getRoot() != peekNode()){
 			LOG.error("Cannot join path {} to path {} with disagreed first node: {} != {}", newPath.getId(), this.getId(), newPath.getRoot().getId() ,peekNode().getId());
@@ -157,6 +156,7 @@ public class BidirectedPath extends Path{
 			LOG.error("Conflict direction from the first node " + newPath.getRoot().getId());
 			return null;
 		}
+		BidirectedPath retval=new BidirectedPath(this);
 		//TODO: need a way to check coverage consistent (or make change less significant bin?)			
 		for(Edge e:newPath.getEdgePath()){
 			retval.add(e);

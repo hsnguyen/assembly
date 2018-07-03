@@ -31,8 +31,8 @@ public class GraphExplore {
     	System.setProperty("org.graphstream.ui", "javafx");
     	//System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer"); 
 //    	String sample="EcK12S-careful";
-//    	String sample="Kp2146-careful";
-    	String sample="Kp13883-careful";
+    	String sample="Kp2146-careful";
+//    	String sample="Kp13883-careful";
     	
     	//memory!!!
 //    	String sample="W303-careful";
@@ -45,8 +45,9 @@ public class GraphExplore {
 		hbAss.prepareShortReadsProcess(true);
 		
     	BidirectedGraph graph= hbAss.simGraph;
-
+    	
     	redrawGraphComponents(graph);
+    	graph.setAttribute("ui.style", styleSheet);
 
         Viewer viewer=graph.display();
         
@@ -87,8 +88,8 @@ public class GraphExplore {
         System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
         
         hbAss.lastAttempt();
+        hbAss.observer.scanAndUpdate();
         HybridAssembler.promptEnterKey();
-        
         viewer.disableAutoLayout();
 
         /*
@@ -111,8 +112,6 @@ public class GraphExplore {
 //      graph.addAttribute("ui.quality");
 //      graph.addAttribute("ui.antialias");
 //    	graph.addAttribute("ui.default.title", "New real-time hybrid assembler");
-    	
-//    	graph.setAttribute("ui.style", dynamicStyle);
 
     	for (Node node : graph) {
 
@@ -124,9 +123,6 @@ public class GraphExplore {
 	          
 			int covScale = (int) Math.round(node.getNumber("cov")/BidirectedGraph.RCOV);
 			SimpleBinner binner=graph.binner;
-
-//          Color[] palette= {Color.GRAY,Color.BLUE,Color.YELLOW,Color.ORANGE,Color.GREEN,Color.PINK,Color.MAGENTA,Color.RED};
-//          Color color=null;
 	          
 			String[] palette= {"grey","blue","yellow","orange","green","pink","magenta","red"};
 			String color=null;
@@ -177,25 +173,9 @@ public class GraphExplore {
         try { Thread.sleep(1000); } catch (Exception e) {}
     }
 
-    protected String styleSheet =
-        "node {" +
-        "	fill-color: black;" +
-        "}" +
-        "node.marked {" +
-        "	fill-color: red;" +
-        "}" +
-        "edge.marked {" +
-        "	fill-color: red;" +
-        "}";
     	
-    protected static String dynamicStyle =
-            "node {" +
-    		"	fill-mode: dyn-plain;" +
-            "	size-mode: dyn-size;" +
-            " 	stroke-mode: plain;" +
-            "	stroke-color: black;" +
-            "	stroke-width: 2px;" +
-            "}" +
+	protected static String styleSheet =				// 1
+			"node { size: 7px; fill-color: rgb(150,150,150); }" +
 			"edge { fill-color: rgb(255,50,50); size: 2px; }" +
 			"edge.cut { fill-color: rgba(200,200,200,128); }";
 }
