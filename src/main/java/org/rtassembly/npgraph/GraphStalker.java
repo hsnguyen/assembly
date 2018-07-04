@@ -3,6 +3,8 @@ package org.rtassembly.npgraph;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.graphstream.algorithm.ConnectedComponents;
 import org.graphstream.graph.Edge;
@@ -10,13 +12,13 @@ import org.graphstream.graph.Node;
 
 import com.google.common.util.concurrent.AtomicDouble;
 
-public class GraphObserver {
+public class GraphStalker {
 	BidirectedGraph inputGraph, outputGraph;
 	ConnectedComponents rtComponents;
 	HashSet<BidirectedEdge> cutEdges;
 	int numberOfComponents=0;
 	
-	public GraphObserver(BidirectedGraph graph) {
+	public GraphStalker(BidirectedGraph graph) {
 		this.inputGraph=graph;
 		rtComponents = new ConnectedComponents();
 		rtComponents.init(graph);
@@ -86,19 +88,24 @@ public class GraphObserver {
 			 repPath = new BidirectedPath();
 			 Node node = comp.nodes().toArray(Node[]::new)[0];
 			 repPath.setRoot(node);
-			 if(comp.getEdgeCount()>1){
+			 if(comp.getEdgeCount()>=1){
 				 //extend to
 				 Node curNode=node;
 				 boolean curDir=true, isCircular=false;
-				 while(curDir?curNode.getOutDegree()==1:curNode.getInDegree()==1){
-					 Edge e = curDir?curNode.leavingEdges().toArray(Edge[]::new)[0]:curNode.enteringEdges().toArray(Edge[]::new)[0];
-					 repPath.add(e);
-					 curNode=e.getOpposite(curNode);
-					 curDir=!((BidirectedEdge) e).getDir((BidirectedNode)curNode);
+				 List<Edge> ways = (curDir?curNode.leavingEdges():curNode.enteringEdges()).filter(e->!e.hasAttribute("cut")).collect(Collectors.toList());
+				 while(ways.size()==1){
+					 Edge edge = ways.get(0);
+					 repPath.add(edge);
+					 curNode=edge.getOpposite(curNode);
+					 
 					 if(curNode==node){//circular
 						 isCircular=true;
 						 break;
 					 }
+					 
+					 curDir=!((BidirectedEdge) edge).getDir((BidirectedNode)curNode);
+					 ways = (curDir?curNode.leavingEdges():curNode.enteringEdges()).filter(e->!e.hasAttribute("cut")).collect(Collectors.toList());
+
 				 }
 				 
 				 //if linear: reverse
@@ -107,11 +114,15 @@ public class GraphObserver {
 					 //extend in opposite direction
 					 curNode=node;
 					 curDir=false;
-					 while(curDir?curNode.getOutDegree()==1:curNode.getInDegree()==1){
-						 Edge e = curDir?curNode.leavingEdges().toArray(Edge[]::new)[0]:curNode.enteringEdges().toArray(Edge[]::new)[0];
-						 repPath.add(e);
-						 curNode=e.getOpposite(curNode);
-						 curDir=!((BidirectedEdge) e).getDir((BidirectedNode)curNode);
+					 ways = (curDir?curNode.leavingEdges():curNode.enteringEdges()).filter(e->!e.hasAttribute("cut")).collect(Collectors.toList());
+
+					 while(ways.size()==1){
+						 Edge edge = ways.get(0);
+						 repPath.add(edge);
+						 curNode=edge.getOpposite(curNode);
+						 curDir=!((BidirectedEdge) edge).getDir((BidirectedNode)curNode);
+						 ways = (curDir?curNode.leavingEdges():curNode.enteringEdges()).filter(e->!e.hasAttribute("cut")).collect(Collectors.toList());
+
 					 }
 				 }
 				 

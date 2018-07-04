@@ -102,7 +102,7 @@ public class HybridAssembler {
 	//Operational variables
 //	final BidirectedGraph origGraph;
 	public BidirectedGraph simGraph; //original and simplified graph should be separated, no???
-	public GraphObserver observer;
+	public GraphStalker observer;
 	
 	public HybridAssembler(){
 //		origGraph=new BidirectedGraph("batch");
@@ -122,7 +122,7 @@ public class HybridAssembler {
 			File indexFile=new File(prefix+"/assembly_graph.mmi");
 			if(overwrite || !indexFile.exists()) {						
 				try{
-					simGraph.printNodeSequencesToFile(prefix+"/assembly_graph.fasta");
+					simGraph.outputFASTA(prefix+"/assembly_graph.fasta");
 //					if(!checkMinimap2()) {
 //							LOG.error("Dependancy check failed! Please config to the right version of minimap2!");
 //							return false;
@@ -154,7 +154,7 @@ public class HybridAssembler {
 			System.err.println("Issue when loading pre-assembly: \n" + e.getMessage());
 			return false;
 		}
-		observer = new GraphObserver(simGraph);
+		observer = new GraphStalker(simGraph);
 		return true;
 	}
 

@@ -139,17 +139,21 @@ public class BidirectedGraph extends MultiGraph{
 		return retval;		
 	}
 	
-	public void printNodeSequencesToFile(String fileName) throws IOException {
+	public void outputFASTA(String fileName) throws IOException {
 		SequenceOutputStream out = SequenceOutputStream.makeOutputStream(fileName);
 		
 		for(Node node:this) {
 			Sequence seq=(Sequence) node.getAttribute("seq");
+			if((node.getDegree()==0 && (seq.length() < SimpleBinner.SIG_CTG_LEN) || node.getNumber("cov") < RCOV*0.1))//noises
+				continue;
 			seq.writeFasta(out);
 		}
 		
 		out.close();
 	}
-
+	public void outputGFA(String fileName) throws IOException {
+		//TODO: implement it
+	}
     
 	
     public static int getKmerSize(){
@@ -365,7 +369,6 @@ public class BidirectedGraph extends MultiGraph{
 			curDir = !((BidirectedEdge) currentEdge).getDir(currentNode);
 		}
 		ite=curDir?currentNode.leavingEdges().iterator():currentNode.enteringEdges().iterator();
-		//FIXME: use stream directly?
     	while(ite.hasNext()){
     		BidirectedEdge e = (BidirectedEdge) ite.next();
 			path.add(e);
