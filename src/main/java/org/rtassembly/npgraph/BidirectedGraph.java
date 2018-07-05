@@ -28,7 +28,7 @@ public class BidirectedGraph extends MultiGraph{
     
     static final double TOLERATE=.3;//can be interpreted as long read error rate (10-25%)
     static final int D_LIMIT=5000; //distance bigger than this will be ignored
-    static final int S_LIMIT=100;// maximum number of DFS steps
+    static final int S_LIMIT=15;// maximum number of DFS steps
     
     //provide mapping from unique directed node to its corresponding bridge
     //E.g: 103-: <103-82-> also 82+:<82+103+>
@@ -353,7 +353,7 @@ public class BidirectedGraph extends MultiGraph{
     synchronized private void traverse(	BidirectedPath path, BidirectedNode dst, ArrayList<BidirectedPath> curResult, 
     						int distance, int tolerance, boolean srcDir, boolean dstDir, int stepCount)
     {
-    	//stop if it's going too far!
+    	//stop if it's going too deep!
     	if(stepCount >= S_LIMIT)
     		return;
     	
@@ -614,7 +614,7 @@ public class BidirectedGraph extends MultiGraph{
     }
     
     // old reducing. Now use for SPAdes paths only
-    public boolean reduce(BidirectedPath path){
+    public boolean reduceFromSPAdesPath(BidirectedPath path){
     	//do nothing if the path has only one node
     	if(path==null || path.getEdgeCount()<1)
     		return false;

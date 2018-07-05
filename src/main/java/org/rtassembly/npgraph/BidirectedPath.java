@@ -23,8 +23,7 @@ public class BidirectedPath extends Path{
     @Override
     public void add(Edge edge) {
     	super.add(edge);
-    	Node lastNode = peekNode();
-    	
+    	Node lastNode = peekNode();    	
     	len+=((long)lastNode.getNumber("len"))+((BidirectedEdge)edge).getLength();
     	  	
     }
@@ -57,7 +56,7 @@ public class BidirectedPath extends Path{
 	//So no recursive path here (path contains all primitive edges)
 	public BidirectedPath(BidirectedGraph graph, String paths){
 		super();
-		paths=paths.replace(";", ","); //optimized it!
+//		paths=paths.replace(";", ","); //not yet process path with gap!!!
 		String[] comps = paths.split(",");
 		if(comps.length<1)
 			return;
@@ -73,10 +72,14 @@ public class BidirectedPath extends Path{
 			nextNode = (BidirectedNode) graph.getNode(nextID.substring(0,nextID.length()-1));		
 			
 			BidirectedEdge curEdge=(BidirectedEdge) graph.getEdge(BidirectedEdge.createID(curNode, nextNode, curDir, !nextDir));
-
-			add(curEdge);
-			curDir=nextDir;
-			curNode=nextNode;
+			if(curEdge!=null){
+				add(curEdge);
+				curDir=nextDir;
+				curNode=nextNode;
+			}else{
+				System.err.println("Graph " + graph.getId() + " doesn't contain " + BidirectedEdge.createID(curNode, nextNode, curDir, !nextDir));
+				break;
+			}
 		}
 	}
 	public BidirectedPath getReversedComplemented(){

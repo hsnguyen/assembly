@@ -163,8 +163,10 @@ public class SimpleBinner {
 		for(PopBin b:minuend.keySet()){
 			int _minuend = minuend.get(b),
 				_diff = _minuend - (subtrahend.containsKey(b)?subtrahend.get(b):0);	
-			if(_diff >= 0)
+			if(_diff > 0)
 				difference.put(b, _diff);
+			else
+				difference.put(b, 0);
 		}
 		
 		return difference;
@@ -521,7 +523,7 @@ public class SimpleBinner {
 	}
 	public static void main(String[] args) throws IOException {
 		HybridAssembler hbAss = new HybridAssembler();
-		hbAss.setShortReadsInput(GraphExplore.spadesFolder+"EcK12S-careful/assembly_graph.fastg");
+		hbAss.setShortReadsInput(GraphExplore.spadesFolder+"TB-careful/assembly_graph.fastg");
 		hbAss.setShortReadsInputFormat("fastg");
 		hbAss.prepareShortReadsProcess(true);
 		

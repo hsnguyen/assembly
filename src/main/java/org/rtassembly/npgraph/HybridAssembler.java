@@ -154,6 +154,7 @@ public class HybridAssembler {
 			System.err.println("Issue when loading pre-assembly: \n" + e.getMessage());
 			return false;
 		}
+		
 		observer = new GraphStalker(simGraph);
 		return true;
 	}
@@ -275,35 +276,6 @@ public class HybridAssembler {
 		}
 		GraphExplore.redrawGraphComponents(simGraph);
 	}
-    /*
-     * Read paths from contigs.path and reduce the graph
-     */
-    public void reduceFromSPAdesPaths(String paths) throws IOException{
-
-		BufferedReader pathReader = new BufferedReader(new FileReader(paths));
-		
-		String s="", curpath="";
-		//Read contigs from contigs.paths
-		boolean flag=false;
-		while((s=pathReader.readLine()) != null){
-			if(s.contains("NODE")){
-				if(flag){
-					BidirectedPath path=new BidirectedPath(simGraph, curpath);
-			    	if(simGraph.reduceUniquePath(path))
-			    		GraphExplore.redrawGraphComponents(simGraph);
-//			    	reduce2(path);
-				}
-				flag=s.contains("'")?false:true;
-				curpath=new String();
-				continue;
-			}else if(flag){
-				curpath+=s;
-			}	
-				
-
-		}
-		pathReader.close();
-    }
 	
 
 

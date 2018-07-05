@@ -151,6 +151,8 @@ public class GraphUtil {
 		/*
 		 * 2. Use a binner to estimate graph multiplicity
 		 */
+//		graph.nodes().filter(n->n.getNumber("cov") < .2*BidirectedGraph.RCOV).forEach(n->{n.edges().forEach(e->graph.removeEdge(e));});
+
 		graph.binning();
 		/*
 		 * 3. Now scan for the contigs.path file in SPAdes folder for the paths if specified
@@ -170,9 +172,14 @@ public class GraphUtil {
 			while((s=pathReader.readLine()) != null){
 				if(s.contains("NODE")){
 					if(flag){
-						BidirectedPath path=new BidirectedPath(graph, curpath);
-				    	if(graph.reduce(path))
-				    		changed=true;
+						String[] consecutivePaths = curpath.split(";");
+						BidirectedPath path=null;
+						for(int i=0;i<consecutivePaths.length;i++){
+							//TODO: make use of the information about gapped paths (separated by ";")
+							path=new BidirectedPath(graph, consecutivePaths[i]);
+					    	if(graph.reduceFromSPAdesPath(path))
+					    		changed=true;
+						}
 					}
 					flag=s.contains("'")?false:true;
 					curpath=new String();
@@ -322,7 +329,7 @@ public class GraphUtil {
 		boolean changed=false;
 		if(spadesBridging){
 			for(BidirectedPath p:spadesPaths)
-				if(graph.reduce(p))
+				if(graph.reduceFromSPAdesPath(p))
 					changed=true;
 			if(changed)
 				GraphExplore.redrawGraphComponents(graph);
