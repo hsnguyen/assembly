@@ -136,7 +136,7 @@ public class NPGraphFX extends Application{
         });
 	    stage.show();
 			
-		new Thread(new Runnable(){
+	    new Thread(new Runnable(){
 
 			@Override
 			public void run() {
@@ -882,9 +882,10 @@ public class NPGraphFX extends Application{
 		
 		hbAss.setShortReadsInput(GraphExplore.spadesFolder+"EcK12S-careful/assembly_graph.fastg");
 		hbAss.setShortReadsInputFormat("fastg");
-//		hbAss.setLongReadsInput(GraphExplore.spadesFolder+"EcK12S-careful/assembly_graph.sam");
-		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/reads/EcK12S_ONT.fastq");
-		hbAss.setLongReadsInputFormat("fastq");
+		hbAss.setLongReadsInput(GraphExplore.spadesFolder+"EcK12S-careful/assembly_graph.sam");
+		hbAss.setLongReadsInputFormat("sam");
+//		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/reads/EcK12S_ONT.fastq");
+//		hbAss.setLongReadsInputFormat("fastq");
 		 
 		
 		NPGraphFX.setAssembler(hbAss);

@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -235,7 +236,41 @@ public class BidirectedGraph extends MultiGraph{
     	
     	return retval;
     }
-    
+    //If the node was wrongly identified as unique before, do things...
+    synchronized public void destroyFalseBridges(Node node){
+    	node.removeAttribute("unique");
+    	binner.node2BinMap.remove(node);
+    	
+    	BidirectedBridge 	falseBridgeFrom = bridgesMap.get(node.getId()+ "o"),
+    						falseBridgeTo = bridgesMap.get(node.getId() + "i");
+    	if(falseBridgeFrom!=null){
+    		if(falseBridgeFrom.getBridgeStatus()>=0){
+    			if(falseBridgeFrom.getBestPath()!=null)
+    				falseBridgeFrom.getBestPath().revert();
+    			  		
+    			falseBridgeFrom.halfPaths.addAll(falseBridgeFrom.fullPaths);
+    			falseBridgeFrom.fullPaths=new ArrayList<BidirectedPath>();
+    		}else{    		
+    			//destroy the bridge
+        		bridgesMap.remove(node.getId()+ "o");
+    		}
+
+    	}
+    	
+    	if(falseBridgeTo!=null){
+    		if(falseBridgeTo.getBridgeStatus()>=0){
+    			//if(falseBridgeFrom.getBestPath()!=null)
+    			//	falseBridgeFrom.getBestPath().revert();
+    			  		
+    			falseBridgeTo.halfPaths.addAll(falseBridgeTo.fullPaths);
+    			falseBridgeTo.fullPaths=new ArrayList<BidirectedPath>();
+    		}else{    		
+    			//destroy the bridge
+        		bridgesMap.remove(node.getId()+ "i");
+    		}
+    	}
+    		
+    }
 //    synchronized protected  BidirectedBridge updateBridgesMap(BidirectedEdge e, BidirectedBridge bridge) {
 //    	//Get the ending 21-mer of each nodes to find hidden potential edges? 
 //    	//NOPE, only do this if a suspicious alignment appeared!
@@ -442,6 +477,17 @@ public class BidirectedGraph extends MultiGraph{
 	    	System.out.println();
 	    }
 
+	    PopBin leastAbundancePop;
+		Optional<PopBin> aBin=
+				stepRanges.stream()
+	    			.map(r->SimpleBinner.getUniqueBin(allAlignments.get(r).node))
+	    			.filter(b->b!=null)
+	    			.reduce((a,b)->(a.estCov > b.estCov?b:a));
+		if(aBin.isPresent())
+			leastAbundancePop=aBin.get();
+		else 
+			return null;
+	    
 		Range curRange = stepRanges.get(0);
 
 		Alignment 	curAlignment =allAlignments.get(curRange),
@@ -449,8 +495,8 @@ public class BidirectedGraph extends MultiGraph{
 		ArrayList<BidirectedBridge> bridges = new ArrayList<>();
 		BidirectedBridge 	curBridge=new BidirectedBridge(curAlignment);
 		PopBin tmpBin=null;
-		
 		HashMap<PopBin, Long> bins2Length = new HashMap<PopBin,Long>();
+
 		
 		tmpBin=SimpleBinner.getUniqueBin(curAlignment.node);
 		if( tmpBin != null){
@@ -462,18 +508,24 @@ public class BidirectedGraph extends MultiGraph{
 			nextAlignment = allAlignments.get(nextRanges);
 			tmpBin=SimpleBinner.getUniqueBin(nextAlignment.node);
 			if(tmpBin!=null) {				
-				
-				curBridge.append(nextAlignment);
-				bridges.add(curBridge);
-				
-				curBridge=new BidirectedBridge(nextAlignment);
-				
-				if(bins2Length.containsKey(tmpBin)){
-					long newval=bins2Length.get(tmpBin)+(long)nextAlignment.node.getNumber("len");
-					bins2Length.replace(tmpBin, newval);
-				}else
-					bins2Length.put(tmpBin, (long)nextAlignment.node.getNumber("len"));
-
+				if(tmpBin.isCloseTo(leastAbundancePop)){
+					curBridge.append(nextAlignment);
+					bridges.add(curBridge);
+					
+					curBridge=new BidirectedBridge(nextAlignment);
+					
+					if(bins2Length.containsKey(tmpBin)){
+						long newval=bins2Length.get(tmpBin)+(long)nextAlignment.node.getNumber("len");
+						bins2Length.replace(tmpBin, newval);
+					}else
+						bins2Length.put(tmpBin, (long)nextAlignment.node.getNumber("len"));
+				}else{
+					//revert its bridges! (correct later when traverse through induced path)
+					
+					
+					curBridge.append(nextAlignment);
+					continue;
+				}
 					
 				
 			}else{
@@ -577,7 +629,7 @@ public class BidirectedGraph extends MultiGraph{
     	boolean startDir=((BidirectedEdge) path.getEdgePath().get(0)).getDir(startNode),
     			endDir=((BidirectedEdge) path.peekEdge()).getDir(endNode);
 
-    	ArrayList<BidirectedEdge> 	potentialRemovedEdges = binner.reducedUniquePath(path);
+    	ArrayList<BidirectedEdge> 	potentialRemovedEdges = binner.walkAlongUniquePath(path);
 		HashMap<PopBin, Integer> oneBin = new HashMap<>();
 		oneBin.put(path.getConsensusUniqueBinOfPath(), 1);
     	
@@ -653,7 +705,7 @@ public class BidirectedGraph extends MultiGraph{
 					updateBridgesMap(curPath,true);
 					
 					curPath.setConsensusUniqueBinOfPath(curUniqueBin);
-					ArrayList<BidirectedEdge> potentialRemovedEdges = binner.reducedUniquePath(curPath);
+					ArrayList<BidirectedEdge> potentialRemovedEdges = binner.walkAlongUniquePath(curPath);
 					if(potentialRemovedEdges!=null)
 						tobeRemoved.addAll(potentialRemovedEdges);
 					

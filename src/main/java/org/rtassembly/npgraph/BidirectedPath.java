@@ -251,5 +251,9 @@ public class BidirectedPath extends Path{
 //		}
 //		return res/len;
 //	}
+	public void revert() {
+		// TODO Auto-generated method stub
+		
+	}
 	
 }

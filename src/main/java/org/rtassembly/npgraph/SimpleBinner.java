@@ -51,7 +51,8 @@ public class SimpleBinner {
 		ArrayList<Edge> unknownLeavingEdges = new ArrayList<>(),
 						unknownEnteringEdges = new ArrayList<>();
 		HashMap<PopBin,Integer> 	leavingEdgeBinCount=new HashMap<PopBin,Integer>(),
-								enteringEdgeBinCount=new HashMap<PopBin,Integer>();
+									enteringEdgeBinCount=new HashMap<PopBin,Integer>(),
+									induceEdgeBin=new HashMap<PopBin, Integer>();
 		// Leaving edges
 		node.leavingEdges().forEach(e -> 
 		{
@@ -66,9 +67,12 @@ public class SimpleBinner {
 		});
 		if(unknownLeavingEdges.size()==1){
 			Edge e = unknownLeavingEdges.get(0);
-			edge2BinMap.put(e, substract(nbins, leavingEdgeBinCount));
-			System.out.printf("From node %s%s firing edge %s%s\n",node.getId(),getBinsOfNode(node), e.getId(), getBinsOfEdge(e));
-			exploringFromEdge(e);
+			induceEdgeBin=substract(nbins, leavingEdgeBinCount);
+			if(induceEdgeBin.values().stream().mapToInt(Integer::intValue).sum() > 0){
+				edge2BinMap.put(e, induceEdgeBin);
+				System.out.printf("From node %s%s firing edge %s%s\n",node.getId(),getBinsOfNode(node), e.getId(), getBinsOfEdge(e));
+				exploringFromEdge(e);
+			}
 		}
 
 		// Entering edges
@@ -85,9 +89,12 @@ public class SimpleBinner {
 		});
 		if(unknownEnteringEdges.size()==1){
 			Edge e = unknownEnteringEdges.get(0);
-			edge2BinMap.put(e, substract(nbins, enteringEdgeBinCount));
-			System.out.printf("From node %s%s firing edge %s%s\n",node.getId(),getBinsOfNode(node), e.getId(), getBinsOfEdge(e));
-			exploringFromEdge(e);
+			induceEdgeBin=substract(nbins, enteringEdgeBinCount);
+			if(induceEdgeBin.values().stream().mapToInt(Integer::intValue).sum() > 0){
+				edge2BinMap.put(e, induceEdgeBin);
+				System.out.printf("From node %s%s firing edge %s%s\n",node.getId(),getBinsOfNode(node), e.getId(), getBinsOfEdge(e));
+				exploringFromEdge(e);
+			}
 		}
 		
 	}
@@ -245,7 +252,7 @@ public class SimpleBinner {
 	//Now traverse and clustering the edges (+assign cov)
 	public void estimatePathsByCoverage() {
 		nodesClustering();
-		GraphUtil.gradientDescent(graph);
+//		GraphUtil.gradientDescent(graph);
 		//1.First round of assigning unit cov: from binned significant nodes
 		double minCov=Double.MAX_VALUE;
 		PopBin minCovPop=null;
@@ -352,12 +359,12 @@ public class SimpleBinner {
 	
 	//Traversal along a unique path (unique ends) and return list of unique edges
 	//Must only be called from BidirectedGraph.reduce()
-	synchronized public ArrayList<BidirectedEdge> reducedUniquePath(BidirectedPath path) {
+	synchronized public ArrayList<BidirectedEdge> walkAlongUniquePath(BidirectedPath path) {
 		LOG.info("Path {} being processed based on binning info...", path.getId());
 		Node  	curNode = path.getRoot(), nextNode;
 		PopBin 	uniqueBin=path.getConsensusUniqueBinOfPath(),
 				startBin=getUniqueBin(path.getRoot()),
-				endBin=getUniqueBin(path.peekNode());;
+				endBin=getUniqueBin(path.peekNode());
 		if(uniqueBin==null||startBin==null||endBin==null){
 			LOG.info("Ignored: population bin of the path (either at ending node or global) is not known!");
 			return null;
