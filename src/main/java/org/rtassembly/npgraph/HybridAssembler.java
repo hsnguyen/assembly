@@ -123,10 +123,10 @@ public class HybridAssembler {
 			if(overwrite || !indexFile.exists()) {						
 				try{
 					simGraph.outputFASTA(prefix+"/assembly_graph.fasta");
-//					if(!checkMinimap2()) {
-//							LOG.error("Dependancy check failed! Please config to the right version of minimap2!");
-//							return false;
-//					}
+					if(!checkMinimap2()) {
+							LOG.error("Dependancy check failed! Please config to the right version of minimap2!");
+							return false;
+					}
 					ProcessBuilder pb = new ProcessBuilder(mm2Path+"/minimap2", mm2Opt,"-d", prefix+"/assembly_graph.mmi",prefix+"/assembly_graph.fasta");
 					Process indexProcess =  pb.start();
 					indexProcess.waitFor();
@@ -264,7 +264,7 @@ public class HybridAssembler {
 
 	}
 	
-	public void lastAttempt(){
+	public void postProcessGraph() throws IOException{
 		//TODO: traverse for the last time,remove redundant edges, infer the path...
 		//may want to run consensus to determine the final path
 		for(BidirectedBridge brg:simGraph.getUnsolvedBridges()){
@@ -275,6 +275,10 @@ public class HybridAssembler {
 				System.out.println("bridge contain no path! ignored");
 		}
 		GraphExplore.redrawGraphComponents(simGraph);
+		
+        observer.scanAndUpdate();
+		observer.outputFASTA(getPrefix()+"npgraph_assembly.fasta");
+
 	}
 	
 
@@ -291,8 +295,7 @@ public class HybridAssembler {
         try { Thread.sleep(1000); } catch (Exception e) {}
     }
     
-    public boolean checkMinimap2() {
-
+    public boolean checkMinimap2() {    		
 		ProcessBuilder pb = new ProcessBuilder(mm2Path+"/minimap2","-V").redirectErrorStream(true);
 		Process process;
 		try {

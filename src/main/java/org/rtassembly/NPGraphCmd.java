@@ -96,16 +96,19 @@ public class NPGraphCmd extends CommandLine{
         }else {
 	        
 			try {
-				if(hbAss.checkMinimap2() && hbAss.prepareShortReadsProcess(true) &&	hbAss.prepareLongReadsProcess())
+				if(hbAss.prepareShortReadsProcess(true) &&	hbAss.prepareLongReadsProcess()) {
 					hbAss.assembly();
+					hbAss.postProcessGraph();
+				}
 				else{
 					System.err.println("Error with pre-processing step! Config and try again!");
 					System.exit(1);
 				}
 					
-			} catch (InterruptedException e) {
+			} catch (InterruptedException|IOException e) {
 				// TODO Auto-generated catch block
 				System.err.println("Issue when assembly: \n" + e.getMessage());
+				e.printStackTrace();
 				System.exit(1);
 			}
         }
