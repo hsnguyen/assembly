@@ -113,28 +113,63 @@ public class BidirectedPath extends Path{
 	public String toString(){
 		return "path:(" + getId() + ")";
 	}
-	 
+	//Get the norm path of edges and nodes from a recursive path 
+	public BidirectedPath getPrimitivePath() {
+		BidirectedPath retval = new BidirectedPath();
+		BidirectedNode curNode = (BidirectedNode) getRoot(), nextNode=null;
+
+		retval.setRoot(curNode);
+		for(Edge e:getEdgePath()) {
+			nextNode=(BidirectedNode) e.getOpposite(curNode);
+			if(e.hasAttribute("path")) {
+				BidirectedPath subPath=(BidirectedPath) e.getAttribute("path");
+				if(subPath.getRoot()!=curNode)
+					subPath=subPath.getReversedComplemented();
+				retval=retval.join(subPath);
+			}
+			else
+				retval.add(e);
+			
+			curNode=nextNode;
+		}
+		
+		return retval;
+	}
 	public Sequence spelling(){
-	
-		BidirectedNode curNode = (BidirectedNode) getRoot();
+		BidirectedPath realPath=getPrimitivePath();
+		
+		BidirectedNode curNode = (BidirectedNode) realPath.getRoot();
 		Sequence curSeq = (Sequence) curNode.getAttribute("seq");
-	
-		if(getEdgeCount()<1)
+		if(realPath.getEdgeCount()==0)
 			return curSeq;
 		
-		SequenceBuilder seq = new SequenceBuilder(Alphabet.DNA16(), 1024*1024,  this.toString());
-		boolean curDir=((BidirectedEdge) getEdgePath().get(0)).getDir(curNode);
+		SequenceBuilder seq = new SequenceBuilder(Alphabet.DNA16(), 1024*1024, toString());
+		seq.setDesc(realPath.toString());
+		boolean curDir=((BidirectedEdge) realPath.getEdgePath().get(0)).getDir(curNode);
 		curSeq = curDir?curSeq:Alphabet.DNA.complement(curSeq);
-	
-		seq.append(curSeq.subSequence(0, curSeq.length()-BidirectedGraph.getKmerSize()));
-		for(Edge e:getEdgePath()){
-			curNode=(BidirectedNode) e.getOpposite(curNode);
-			curSeq= (Sequence) curNode.getAttribute("seq");
-			curDir=!((BidirectedEdge) e).getDir(curNode);
+		//If path is circular: don't need to duplicate the closing node
+		if(realPath.getRoot() != realPath.peekNode())
+			seq.append(curSeq);
+		BidirectedNode nextNode=null;
+		for(Edge e:realPath.getEdgePath()){
+			nextNode=(BidirectedNode) e.getOpposite(curNode);
+
+			curSeq= (Sequence) nextNode.getAttribute("seq");
+			curDir=!((BidirectedEdge) e).getDir(nextNode);
 			curSeq = curDir?curSeq:Alphabet.DNA.complement(curSeq);
-	
-			seq.append(curSeq.subSequence(0, curSeq.length()+(curNode==peekNode()?
-					0:((BidirectedEdge) e).getLength()))); 
+			
+
+			int overlap=((BidirectedEdge) e).getLength();
+			//if length of edge > 0: should add NNNN...NN to seq
+			if(overlap < 0)
+				seq.append(curSeq.subSequence(-overlap, curSeq.length())); 
+			else {
+				String filler=new String(new char[overlap]).replace("\0", "N");
+				Sequence fillerSeq=new Sequence(Alphabet.DNA5(), filler, "gap");
+				seq.append(fillerSeq.concatenate(curSeq));
+			}
+			
+			curNode=nextNode;
 			
 		}
 	 return seq.toSequence();
@@ -239,18 +274,16 @@ public class BidirectedPath extends Path{
 //	 * Get the length-weighted coverage of all marker as an approximation for this path's coverage
 //	 * @return average depth of this path
 //	 */
-//	public double averageCov(){
-//		int len=0;
-//		double res=0;
-//		for(Node n:getNodePath()){
-//			if(BidirectedGraph.isMarker(n)){
-//				Sequence seq = (Sequence) n.getAttribute("seq");
-//				len+=(n==getRoot())?seq.length():seq.length()-BidirectedGraph.getKmerSize();
-//				res+=seq.length()*n.getNumber("cov");
-//			}
-//		}
-//		return res/len;
-//	}
+	public double averageCov(){
+		int len=0;
+		double res=0;
+		for(Node n:getNodePath()){
+			Sequence seq = (Sequence) n.getAttribute("seq");
+			len+=(n==getRoot())?seq.length():seq.length()-BidirectedGraph.getKmerSize();
+			res+=seq.length()*n.getNumber("cov");
+		}
+		return res/len;
+	}
 	public void revert() {
 		// TODO Auto-generated method stub
 		

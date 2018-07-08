@@ -251,9 +251,12 @@ public class SimpleBinner {
 	
 	//Now traverse and clustering the edges (+assign cov)
 	public void estimatePathsByCoverage() {
+		//1.first clustering the biggest nodes into populations
 		nodesClustering();
-//		GraphUtil.gradientDescent(graph);
-		//1.First round of assigning unit cov: from binned significant nodes
+		//2. assign edges and nodes coverage based on original nodes coverage and graph topo
+		GraphUtil.gradientDescent(graph);
+		
+		//3.1.First round of assigning unit cov: from binned significant nodes
 		double minCov=Double.MAX_VALUE;
 		PopBin minCovPop=null;
 		for(PopBin b:binList) {
@@ -290,7 +293,7 @@ public class SimpleBinner {
 				highlyPossibleEdges.get(minCovPop).add(e);
 			}
 		}
-//		2. Second round of thorough assignment: suck it deep!
+		//3.2. Second round of thorough assignment: suck it deep!
 
 		while(!unresolvedEdges.isEmpty()) {
 			LOG.info("Starting assigning " + unresolvedEdges.size() + " unresolved edges");
@@ -322,7 +325,7 @@ public class SimpleBinner {
 			}
 		}
 		
-		//3. Assign unique nodes here: need more tricks
+		//3.3 Assign unique nodes here: need more tricks
 		for(Node node:graph)
 			if(	node2BinMap.containsKey(node) && node.getNumber("len") > SIG_CTG_LEN 
 				&& Math.max(node.getInDegree(), node.getOutDegree()) <= 1){
@@ -337,24 +340,6 @@ public class SimpleBinner {
 	static public PopBin getUniqueBin(Node node){
 		return (PopBin)node.getAttribute("unique");
 	}
-	
-//	synchronized public PopBin getUniqueBin(Node node){
-//		if(node.getDegree()>2)//instead, check unbinned edges
-//			return null;
-//		
-//		PopBin retval = null;
-//
-//		if(node2BinMap.containsKey(node)){
-//			HashMap<PopBin, Integer> bc = node2BinMap.get(node);
-//			ArrayList<PopBin> counts = new ArrayList<PopBin>(bc.keySet());
-//			if(counts.size()==1 && bc.get(counts.get(0))==1){ //and should check for any conflict???
-//				if(node.getNumber("len") >= 1000)
-//					retval=counts.get(0);
-//			}
-//		}
-//				
-//		return retval;
-//	}
 	
 	
 	//Traversal along a unique path (unique ends) and return list of unique edges

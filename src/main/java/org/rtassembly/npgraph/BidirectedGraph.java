@@ -653,6 +653,7 @@ public class BidirectedGraph extends MultiGraph{
 //				reducedEdge.setAttribute("isReducedEdge", true);
 //				reducedEdge.setAttribute("ui.class", "marked");
 //				reducedEdge.addAttribute("layout.weight", 10);
+				reducedEdge.setAttribute("path", path);
 				binner.edge2BinMap.put(reducedEdge, oneBin);
 //				updateGraphMap(reducedEdge, path);
 			}
@@ -700,7 +701,8 @@ public class BidirectedGraph extends MultiGraph{
 				if(markerNode!=null){
 					//create an edge connect markerNode to curNode with curPath
 					BidirectedEdge reducedEdge = new BidirectedEdge(markerNode, curNodeFromSimGraph, markerDir, curDir);
-				
+					reducedEdge.setAttribute("path", curPath);
+
 					tobeAdded.add(reducedEdge);
 					updateBridgesMap(curPath,true);
 					
@@ -754,6 +756,7 @@ public class BidirectedGraph extends MultiGraph{
 //					reducedEdge.setAttribute("isReducedEdge", true);
 //					reducedEdge.setAttribute("ui.class", "marked");
 	//				reducedEdge.addAttribute("layout.weight", 10);
+//					reducedEdge.setAttribute("path", path);
 				}
 	    		LOG.info("after: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
 	

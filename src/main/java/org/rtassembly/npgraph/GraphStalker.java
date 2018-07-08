@@ -1,5 +1,6 @@
 package org.rtassembly.npgraph;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -11,6 +12,8 @@ import org.graphstream.graph.Edge;
 import org.graphstream.graph.Node;
 
 import com.google.common.util.concurrent.AtomicDouble;
+
+import japsa.seq.Sequence;
 
 public class GraphStalker {
 	BidirectedGraph inputGraph, outputGraph;
@@ -88,10 +91,11 @@ public class GraphStalker {
 			 repPath = new BidirectedPath();
 			 Node node = comp.nodes().toArray(Node[]::new)[0];
 			 repPath.setRoot(node);
+			 boolean isCircular=false;
 			 if(comp.getEdgeCount()>=1){
 				 //extend to
 				 Node curNode=node;
-				 boolean curDir=true, isCircular=false;
+				 boolean curDir=true;
 				 List<Edge> ways = (curDir?curNode.leavingEdges():curNode.enteringEdges()).filter(e->!e.hasAttribute("cut")).collect(Collectors.toList());
 				 while(ways.size()==1){
 					 Edge edge = ways.get(0);
@@ -128,7 +132,37 @@ public class GraphStalker {
 				 
 			 }
 			 //now we have repPath
-			 System.out.println(repPath.getId());
+			 System.out.println(repPath.getId() + " => "+ repPath.getPrimitivePath().getId());
+			 Sequence seq=repPath.spelling();
+			 double cov=repPath.averageCov();
+			 Node n=outputGraph.addNode(Integer.toString(comp.id));
+			 seq.setName("Contig_"+comp.id+"_"+(isCircular?"cicurlar":"linear")+"_length_"+seq.length()+"_cov_"+cov);
+			 n.setAttribute("seq", seq);
+			 n.setAttribute("len", seq.length());
+			 n.setAttribute("cov",cov);
+			 n.setAttribute("path", repPath);
+		}
+		//now set the edge of outputGraph based on the cut edges
+		for(Edge e:cutEdges) {
+			Node n0=e.getNode0(), n1=e.getNode1();
+			//get corresponding grouped nodes in outputGraph
+			Node 	nn0=outputGraph.getNode(Integer.toString(rtComponents.getConnectedComponentOf(n0).id)),
+					nn1=outputGraph.getNode(Integer.toString(rtComponents.getConnectedComponentOf(n1).id));
+			if(nn0!=null && nn1!=null) {
+				boolean dir0=((BidirectedEdge)e).getDir((BidirectedNode)n0),
+						dir1=((BidirectedEdge)e).getDir((BidirectedNode)n1);
+				if(((BidirectedPath)nn0.getAttribute("path")).getNodeCount()>1) 
+					dir0=(n0==((BidirectedPath)nn0.getAttribute("path")).peekNode())?true:false;
+				
+				if(((BidirectedPath)nn1.getAttribute("path")).getNodeCount()>1) 
+					dir1=(n1==((BidirectedPath)nn1.getAttribute("path")).getRoot())?false:true;	
+				
+				outputGraph.addEdge((BidirectedNode)nn0, (BidirectedNode)nn1 , dir0, dir1);
+//				Edge newEdge=outputGraph.addEdge((BidirectedNode)nn0, (BidirectedNode)nn1 , dir0, dir1);
+//				System.out.printf("Cut edge %s == New edge %s (%s=%s and %s=%s)\n", e.getId(), newEdge.getId(), 
+//							nn0.getId(),((BidirectedPath)nn0.getAttribute("path")).getId(),  
+//							nn1.getId(),((BidirectedPath)nn1.getAttribute("path")).getId());
+			}
 		}
 		
 	}
@@ -149,7 +183,7 @@ public class GraphStalker {
 	synchronized void outputGFA() {
 		
 	}
-	synchronized void outputFASTA() {
-		
+	synchronized void outputFASTA(String fileName) throws IOException {
+		outputGraph.outputFASTA(fileName);
 	}
 }
