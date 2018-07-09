@@ -2,7 +2,6 @@
 <classpath>
 	<classpathentry including="**/*.java" kind="src" output="target/test-classes" path="src/test/java"/>
 	<classpathentry kind="src" path="resources/icons"/>
-	<classpathentry excluding="icons/" kind="src" path="resources"/>
 	<classpathentry including="**/*.java" kind="src" path="src/main/java"/>
 	<classpathentry kind="var" path="M2_REPO/javax/json/javax.json-api/1.0/javax.json-api-1.0.jar" sourcepath="M2_REPO/javax/json/javax.json-api/1.0/javax.json-api-1.0-sources.jar">
 		<attributes>

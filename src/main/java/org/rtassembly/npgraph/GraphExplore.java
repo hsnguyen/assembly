@@ -13,11 +13,11 @@ public class GraphExplore {
 	//npscarf
 //	public static String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/"; 	
 	//unicycler
-	public static String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/unicycler/"; 
+//	public static String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/unicycler/"; 
 
-	//	public static String spadesFolder="/home/hoangnguyen/workspace/data/spades/"; //sony
-//	public static String spadesFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/"; //dell FASTG
-//	public static String spadesFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades_v3.10/"; //dell GFA
+	//	public static String dataFolder="/home/hoangnguyen/workspace/data/spades/"; //sony
+//	public static String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/"; //dell FASTG
+	public static String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades_v3.10/"; //dell GFA
 
 
 	public static void main(String args[]) {

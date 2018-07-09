@@ -64,28 +64,46 @@ public class HybridAssembler {
 	
 	
 	public void setShortReadsInput(String srInput) {
-		shortReadsInput=srInput;
-//		String fn = srInput.toLowerCase();
-//		if(	fn.endsWith(".fastg") || fn.endsWith(".gfa") ) 
-//			setShortReadsInputFormat("fastg");
-//		else if(fn.endsWith(".sam") || fn.endsWith(".bam")) 
-//			setShortReadsInputFormat("gfa");
-//		else
-//			setShortReadsInputFormat("");
+		File shortReadsInputFile = new File(srInput);
+		if(shortReadsInputFile.isFile()) {
+			try {
+				shortReadsInput=shortReadsInputFile.getCanonicalPath();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				return;
+			}
+			String fn = srInput.toLowerCase();
+			if(	fn.endsWith(".fastg")) 
+				setShortReadsInputFormat("fastg");
+			else if(fn.endsWith(".gfa"))
+				setShortReadsInputFormat("gfa");
+			else
+				setShortReadsInputFormat("");
+		}
 	}
 	public String getShortReadsInput() {return shortReadsInput;}
 	
 	public void setLongReadsInput(String lrInput) {
-		longReadsInput=lrInput;
-//		String fn = lrInput.toLowerCase();
-//		if(	fn.endsWith(".fasta") || fn.endsWith(".fa") || fn.endsWith("fna")
-//			|| fn.endsWith(".fastq") || fn.endsWith(".fq") 
-//			) 
-//			setLongReadsInputFormat("fasta/fastq");
-//		else if(fn.endsWith(".sam") || fn.endsWith(".bam")) 
-//			setLongReadsInputFormat("sam/bam");
-//		else
-//			setLongReadsInputFormat("");
+		File longReadsInputFile = new File(lrInput);
+		if(longReadsInputFile.isFile()) {
+			try {
+				longReadsInput=longReadsInputFile.getCanonicalPath();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				return;
+			}
+			String fn = lrInput.toLowerCase();
+			if(	fn.endsWith(".fasta") || fn.endsWith(".fa") || fn.endsWith("fna")
+				|| fn.endsWith(".fastq") || fn.endsWith(".fq") 
+				) 
+				setLongReadsInputFormat("fasta/fastq");
+			else if(fn.endsWith(".sam") || fn.endsWith(".bam")) 
+				setLongReadsInputFormat("sam/bam");
+			else
+				setLongReadsInputFormat("");
+		}
 	}
 	public String getLongReadsInput() {return longReadsInput;}
 	

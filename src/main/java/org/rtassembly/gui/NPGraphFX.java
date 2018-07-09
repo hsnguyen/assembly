@@ -34,6 +34,7 @@
 package org.rtassembly.gui;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -154,6 +155,7 @@ public class NPGraphFX extends Application{
 //				updateData();
 				try{
 					myass.assembly();
+					myass.postProcessGraph();
 				}catch (Exception e){
 					System.err.println(e.getMessage());
 					e.getStackTrace();
@@ -436,23 +438,21 @@ public class NPGraphFX extends Application{
     		File defaultFile = new File(shortInputTF.getText());
     		if(defaultFile.isFile())
     			chooser.setInitialFileName(defaultFile.getName());
-    		chooser.setInitialDirectory(defaultFile.getParentFile());
+    		if(defaultFile.getParentFile() !=null && defaultFile.getParentFile().isDirectory())
+    			chooser.setInitialDirectory(defaultFile.getParentFile());
     		chooser.setSelectedExtensionFilter(
     				new ExtensionFilter("Assembly graph", 	"*.fastg", "*.FASTG", "*.gfa", "*.GFA"));
     		File selectedFile = chooser.showOpenDialog(stage);
-    		if(selectedFile != null){
-				myass.setShortReadsInput(selectedFile.getPath());
-				if(selectedFile.getName().endsWith(".fastg") || selectedFile.getName().endsWith(".FASTG")) {
-					myass.setShortReadsInputFormat("fastg");
+    		if(selectedFile != null){				
+				try {
+					myass.setShortReadsInput(selectedFile.getCanonicalPath());
 					shortInputFormatCombo.setValue(myass.getShortReadsInputFormat());
-				}else if(selectedFile.getName().endsWith(".gfa") || selectedFile.getName().endsWith(".GFA")) {
-					myass.setShortReadsInputFormat("gfa");
-					shortInputFormatCombo.setValue(myass.getShortReadsInputFormat());
-				}
-				else
-					shortInputFormatCombo.setValue("");
-				
-				shortInputTF.setText(myass.getShortReadsInput());	
+					
+					shortInputTF.setText(myass.getShortReadsInput());
+				} catch (IOException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}	
 
     		}
         });
@@ -503,26 +503,21 @@ public class NPGraphFX extends Application{
     		File defaultFile = new File(longInputTF.getText());
     		if(defaultFile.isFile())
     			chooser.setInitialFileName(defaultFile.getName());
-    		chooser.setInitialDirectory(defaultFile.getParentFile());
+    		if(defaultFile.getParentFile()!=null && defaultFile.getParentFile().isDirectory())
+    			chooser.setInitialDirectory(defaultFile.getParentFile());
     		chooser.setSelectedExtensionFilter(
     				new ExtensionFilter("Long-reads data", 	"*.fastq", "*.fasta", "*.fq", "*.fa", "*.fna", "*.sam", "*.bam" , 
     														"*.FASTQ", "*.FASTA", "*.FQ", "*.FA", "*.FNA", "*.SAM", "*.BAM"));
     		File selectedFile = chooser.showOpenDialog(stage);
     		if(selectedFile != null){
-				myass.setLongReadsInput(selectedFile.getPath());
-				String fn = selectedFile.getName().toLowerCase();
-				if(	fn.endsWith(".fasta") || fn.endsWith(".fa") || fn.endsWith("fna")
-					|| fn.endsWith(".fastq") || fn.endsWith(".fq") 
-					) {
-					myass.setLongReadsInputFormat("fasta/fastq");
+				try {
+					myass.setLongReadsInput(selectedFile.getCanonicalPath());
 					longInputFormatCombo.setValue(myass.getLongReadsInputFormat());
-				}else if(fn.endsWith(".sam") || fn.endsWith(".bam")) {
-					myass.setLongReadsInputFormat("sam/bam");
-					longInputFormatCombo.setValue(myass.getLongReadsInputFormat());
-				}else
-					longInputFormatCombo.setValue("");
-				
-				longInputTF.setText(myass.getLongReadsInput());	
+					longInputTF.setText(myass.getLongReadsInput());	
+				} catch (IOException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
 
     		}
         });
@@ -880,11 +875,11 @@ public class NPGraphFX extends Application{
 	public static void main(String[] args) {
 		HybridAssembler hbAss = new HybridAssembler();
 		
-		hbAss.setShortReadsInput(GraphExplore.dataFolder+"EcK12S-careful/assembly_graph.fastg");
-		hbAss.setShortReadsInputFormat("fastg");
-		hbAss.setLongReadsInput(GraphExplore.dataFolder+"EcK12S-careful/assembly_graph.sam");
-		hbAss.setLongReadsInputFormat("sam");
-//		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/reads/EcK12S_ONT.fastq");
+		hbAss.setShortReadsInput(GraphExplore.dataFolder+"EcK12S-careful/assembly_graph.gfa");
+//		hbAss.setShortReadsInputFormat("fastg");
+//		hbAss.setLongReadsInput(GraphExplore.dataFolder+"EcK12S-careful/assembly_graph.sam");
+//		hbAss.setLongReadsInputFormat("sam");
+		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/reads/EcK12S_ONT.fastq");
 //		hbAss.setLongReadsInputFormat("fastq");
 		 
 		
