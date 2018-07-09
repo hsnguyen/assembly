@@ -29,7 +29,7 @@ public class BidirectedGraph extends MultiGraph{
     
     static final double TOLERATE=.3;//can be interpreted as long read error rate (10-25%)
     static final int D_LIMIT=5000; //distance bigger than this will be ignored
-    static final int S_LIMIT=15;// maximum number of DFS steps
+    public static int S_LIMIT=15;// maximum number of DFS steps
     
     //provide mapping from unique directed node to its corresponding bridge
     //E.g: 103-: <103-82-> also 82+:<82+103+>
@@ -300,8 +300,8 @@ public class BidirectedGraph extends MultiGraph{
     	tmp.setRoot(srcNode);  	
     	
     	//TODO: set tolerance dynamically based on distance
-//    	traverse(tmp, dstNode, possiblePaths, distance, distance>200?(int) (TOLERATE*distance):200, from.strand, to.strand, 0);
-    	traverse(tmp, dstNode, possiblePaths, distance, 500, from.strand, to.strand, 0);
+    	traverse(tmp, dstNode, possiblePaths, distance, distance>200?(int) (TOLERATE*distance):200, from.strand, to.strand, 0);
+//    	traverse(tmp, dstNode, possiblePaths, distance, 500, from.strand, to.strand, 0);
 
     	/**************************************************************************************
     	 * To cover the missing edges due to big k-mer of DBG
@@ -423,9 +423,10 @@ public class BidirectedGraph extends MultiGraph{
 				int newDistance = distance - ((Sequence) e.getOpposite(currentNode).getAttribute("seq")).length() - e.getLength();
 //				System.out.println("adding edge: " + e.getId() + " length=" + e.getLength() +" -> distance=" + newDistance);
 				if (newDistance - e.getLength() < -tolerance){
-					System.out.println("Stop go to edge " + e.getId() + " from path with distance "+newDistance+" already! : "+path.getId());
+//					System.out.println("Stop go to edge " + e.getId() + " from path with distance "+newDistance+" already! : "+path.getId());
 				}else
-					traverse(path, dst, curResult, newDistance, tolerance, srcDir, dstDir, stepCount++);
+					traverse(path, dst, curResult, newDistance, tolerance, srcDir, dstDir, stepCount+1);
+
 			}
 			path.popNode();
     	
@@ -557,7 +558,7 @@ public class BidirectedGraph extends MultiGraph{
 			if(storedBridge!=null) {
 				if(storedBridge.getBridgeStatus()==1){
 					System.out.println(storedBridge.getEndingsID() + ": already solved: ignore!");
-					break;
+					continue;
 				}else if(storedBridge.getBridgeStatus()==0){
 					System.out.println(storedBridge.getEndingsID() + ": already built: fortify!");
 					System.out.println(storedBridge.getAllPossiblePathsString());

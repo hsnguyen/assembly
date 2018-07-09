@@ -355,7 +355,7 @@ public class CoverageBinner {
 
 	public static void main(String[] args) throws IOException {
 		HybridAssembler hbAss = new HybridAssembler();
-		hbAss.setShortReadsInput(GraphExplore.spadesFolder+"EcK12S-careful/assembly_graph.fastg");
+		hbAss.setShortReadsInput(GraphExplore.dataFolder+"EcK12S-careful/assembly_graph.fastg");
 		hbAss.setShortReadsInputFormat("fastg");
 		hbAss.prepareShortReadsProcess(true);
 		

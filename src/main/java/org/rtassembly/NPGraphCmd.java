@@ -36,7 +36,8 @@ public class NPGraphCmd extends CommandLine{
 		addString("mm2Opt", "-t4 -x map-ont", "Preset used by minimap2 to align long reads to the contigs");
 		
 		addInt("qual", 1, "Minimum quality of alignment to considered");
- 
+		addInt("dfs", 15, "Number of DFS steps to search");
+
 		addBoolean("gui", false, "Whether using GUI or not.");
 		
 		addStdHelp();
@@ -58,7 +59,7 @@ public class NPGraphCmd extends CommandLine{
 				gui = cmdLine.getBooleanVal("gui");
 			
 		Alignment.MIN_QUAL = cmdLine.getIntVal("qual");
-		
+		BidirectedGraph.S_LIMIT=cmdLine.getIntVal("dfs");
 		//Default output dir 
 		if(outputDir == null) {
 			outputDir = new File(shortReadsAssembly).getAbsoluteFile().getParent();

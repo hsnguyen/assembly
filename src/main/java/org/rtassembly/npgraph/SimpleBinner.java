@@ -255,7 +255,7 @@ public class SimpleBinner {
 		nodesClustering();
 		//2. assign edges and nodes coverage based on original nodes coverage and graph topo
 		GraphUtil.gradientDescent(graph);
-		
+		graph.edges().forEach(e->System.out.println("Edge " + e.getId() + " cov=" + e.getNumber("cov")));
 		//3.1.First round of assigning unit cov: from binned significant nodes
 		double minCov=Double.MAX_VALUE;
 		PopBin minCovPop=null;
@@ -269,7 +269,9 @@ public class SimpleBinner {
 			}			
 		}
 		HashMap<PopBin, ArrayList<Edge>> highlyPossibleEdges = new HashMap<PopBin, ArrayList<Edge>>();
-		unresolvedEdges.sort((a,b)->(int)(-a.getNumber("cov")+b.getNumber("cov")));
+		unresolvedEdges.sort((a,b)->Double.compare(a.getNumber("cov"),b.getNumber("cov")));
+//		unresolvedEdges.sort((a,b)->(int)(a.getNumber("cov")-b.getNumber("cov")));
+
 		for(Edge e:unresolvedEdges){
 			if(	Math.max(e.getNode0().getInDegree(), e.getNode0().getOutDegree()) <= 1 
 				|| Math.max(e.getNode1().getInDegree(), e.getNode1().getOutDegree()) <= 1){
@@ -331,7 +333,8 @@ public class SimpleBinner {
 				&& Math.max(node.getInDegree(), node.getOutDegree()) <= 1){
 				HashMap<PopBin, Integer> bc = node2BinMap.get(node);
 				ArrayList<PopBin> counts = new ArrayList<PopBin>(bc.keySet());
-				if(counts.size()==1 && bc.get(counts.get(0))==1){ //and should check for any conflict???
+//				if(counts.size()==1 && bc.get(counts.get(0))==1){ //and should check for any conflict???
+				if(bc.values().stream().mapToInt(Integer::intValue).sum()==1){ //and should check for any conflict???
 					node.setAttribute("unique", counts.get(0));
 				}
 			}
@@ -383,8 +386,8 @@ public class SimpleBinner {
 			nextNode=ep.getOpposite(curNode);
 			HashMap<PopBin, Integer> edgeBinsCount, bcMinusOne=null,  
 										nodeBinsCount;	
-//			if(getUniqueBin(ep.getNode0())!=null || getUniqueBin(ep.getNode1())!=null)
-//				retval.add((BidirectedEdge)ep);
+			if(getUniqueBin(ep.getNode0())!=null || getUniqueBin(ep.getNode1())!=null)
+				retval.add((BidirectedEdge)ep);
 				
 			if(edge2BinMap.containsKey(ep)) {
 				edgeBinsCount=edge2BinMap.get(ep);
@@ -515,7 +518,7 @@ public class SimpleBinner {
 	}
 	public static void main(String[] args) throws IOException {
 		HybridAssembler hbAss = new HybridAssembler();
-		hbAss.setShortReadsInput(GraphExplore.spadesFolder+"TB-careful/assembly_graph.fastg");
+		hbAss.setShortReadsInput(GraphExplore.dataFolder+"TB-careful/assembly_graph.fastg");
 		hbAss.setShortReadsInputFormat("fastg");
 		hbAss.prepareShortReadsProcess(true);
 		

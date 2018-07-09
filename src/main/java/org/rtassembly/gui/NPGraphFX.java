@@ -880,9 +880,9 @@ public class NPGraphFX extends Application{
 	public static void main(String[] args) {
 		HybridAssembler hbAss = new HybridAssembler();
 		
-		hbAss.setShortReadsInput(GraphExplore.spadesFolder+"EcK12S-careful/assembly_graph.fastg");
+		hbAss.setShortReadsInput(GraphExplore.dataFolder+"EcK12S-careful/assembly_graph.fastg");
 		hbAss.setShortReadsInputFormat("fastg");
-		hbAss.setLongReadsInput(GraphExplore.spadesFolder+"EcK12S-careful/assembly_graph.sam");
+		hbAss.setLongReadsInput(GraphExplore.dataFolder+"EcK12S-careful/assembly_graph.sam");
 		hbAss.setLongReadsInputFormat("sam");
 //		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/reads/EcK12S_ONT.fastq");
 //		hbAss.setLongReadsInputFormat("fastq");

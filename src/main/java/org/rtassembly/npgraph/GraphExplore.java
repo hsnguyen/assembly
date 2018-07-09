@@ -9,10 +9,14 @@ import japsa.seq.Sequence;
 
 
 public class GraphExplore {
+	//imb desktop
+	//npscarf
+//	public static String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/"; 	
+	//unicycler
+	public static String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/unicycler/"; 
 
-//	public static String spadesFolder="/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/"; //imb desktop
-//	public static String spadesFolder="/home/hoangnguyen/workspace/data/spades/"; //sony
-	public static String spadesFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/"; //dell FASTG
+	//	public static String spadesFolder="/home/hoangnguyen/workspace/data/spades/"; //sony
+//	public static String spadesFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/"; //dell FASTG
 //	public static String spadesFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades_v3.10/"; //dell GFA
 
 
@@ -30,18 +34,50 @@ public class GraphExplore {
     public GraphExplore() throws IOException{
     	System.setProperty("org.graphstream.ui", "javafx");
     	//System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer"); 
-    	String sample="EcK12S-careful";
+    	
+    	//npscarf
+//    	String sample="EcK12S-careful";
 //    	String sample="Kp2146-careful";
 //    	String sample="Kp13883-careful";
-    	
-    	//memory!!!
+ 
 //    	String sample="W303-careful";
 //    	String sample="meta-careful";
 //    	String sample="cp_S5";
 
+    	//unicycler
+//    	String sample="Acinetobacter_A1/";
+    	String sample="Acinetobacter_AB30/";
+//    	String sample="E_coli_K-12_MG1655/";
+//    	String sample="E_coli_O25b_H4-ST131/";
+//    	String sample="Klebsiella_30660_NJST258_1/";
+//    	String sample="Klebsiella_MGH_78578/";
+//    	String sample="Klebsiella_NTUH-K2044/";
+//    	String sample="Mycobacterium_tuberculosis_H37Rv/";
+//    	String sample="random_sequences_many_repeats/";
+//    	String sample="random_sequences_no_repeats/";
+//    	String sample="random_sequences_some_repeats/";
+//    	String sample="Saccharomyces_cerevisiae_S288c/";
+//    	String sample="Shigella_dysenteriae_Sd197/";
+//    	String sample="Shigella_sonnei_53G/";
+//    	String sample="Streptococcus_suis_BM407/";
+    	
+    	
+//    	String quality="bad/";
+//    	String quality="medium/";
+    	String quality="good/";
+
+    	
 		HybridAssembler hbAss = new HybridAssembler();
-		hbAss.setShortReadsInput(spadesFolder+sample+"/assembly_graph.fastg");
-		hbAss.setPrefix(spadesFolder+sample+"/");
+		
+		//npscarf
+//		hbAss.setShortReadsInput(dataFolder+sample+"/assembly_graph.fastg");
+//		hbAss.setPrefix(dataFolder+sample+"/");
+//		hbAss.setShortReadsInputFormat("fastg");
+//		hbAss.prepareShortReadsProcess(true);
+		
+		//unicycler
+		hbAss.setShortReadsInput(dataFolder+sample+quality+"spades/assembly_graph.fastg");
+		hbAss.setPrefix(dataFolder+sample+quality);
 		hbAss.setShortReadsInputFormat("fastg");
 		hbAss.prepareShortReadsProcess(true);
 		
@@ -58,10 +94,10 @@ public class GraphExplore {
          * Testing reduce function
          */
         try {
-//        	HybridAssembler.promptEnterKey();
-//			hbAss.reduceFromSPAdesPaths(spadesFolder+sample+"/contigs.paths");
-//			HybridAssembler.promptEnterKey();
-        	hbAss.setLongReadsInput(spadesFolder+sample+"/assembly_graph.sam");
+        	//npscarf
+//        	hbAss.setLongReadsInput(dataFolder+sample+"/assembly_graph.sam");
+        	//unicycler
+        	hbAss.setLongReadsInput(dataFolder+sample+quality+"bwa.sam");
         	hbAss.setLongReadsInputFormat("sam");
         	hbAss.prepareLongReadsProcess();
         	
@@ -88,11 +124,10 @@ public class GraphExplore {
 //        }
         System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
         
-        hbAss.lastAttempt();
-        hbAss.observer.scanAndUpdate();
         HybridAssembler.promptEnterKey();
+        hbAss.postProcessGraph();
+
         viewer.disableAutoLayout();
-        hbAss.observer.outputFASTA(hbAss.getPrefix()+"npgraph_assembly.fasta");
         /*
          * Testing BidirectedEdge id pattern
          */

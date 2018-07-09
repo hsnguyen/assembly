@@ -346,10 +346,10 @@ public class HybridAssembler {
 	public static void main(String[] argv) throws IOException, InterruptedException{
 		HybridAssembler hbAss = new HybridAssembler();
 		
-		hbAss.setShortReadsInput(GraphExplore.spadesFolder+"EcK12S-careful/assembly_graph.fastg");
+		hbAss.setShortReadsInput(GraphExplore.dataFolder+"EcK12S-careful/assembly_graph.fastg");
 		hbAss.setShortReadsInputFormat("fastg");
 		hbAss.prepareShortReadsProcess(false);
-		hbAss.setLongReadsInput(GraphExplore.spadesFolder+"EcK12S-careful/assembly_graph.sam");
+		hbAss.setLongReadsInput(GraphExplore.dataFolder+"EcK12S-careful/assembly_graph.sam");
 		hbAss.setLongReadsInputFormat("sam/bam");
 		hbAss.prepareLongReadsProcess();
 		hbAss.assembly();
