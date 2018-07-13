@@ -60,9 +60,9 @@ public class GraphStalker {
 		}
 	}
 	
-	synchronized void scanAndUpdate() {
+	synchronized void linearComponentsDecomposition() {
 		//1. clean it first
-		
+		cleanGraphByTraversal();
 		//2. then decompose it (using cut attribute instead of removing edges)
 		//reset
 		cutEdges = new HashSet<BidirectedEdge>();
@@ -167,6 +167,10 @@ public class GraphStalker {
 		
 	}
 
+	//Traverse graph to find longest linear path possible, remove redundant paths on the way...
+	private void cleanGraphByTraversal(){
+		
+	}
 
 	synchronized int getNumberOfSequences() {
 		

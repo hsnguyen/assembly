@@ -294,7 +294,7 @@ public class HybridAssembler {
 		}
 		GraphExplore.redrawGraphComponents(simGraph);
 		
-        observer.scanAndUpdate();
+        observer.linearComponentsDecomposition();
 		observer.outputFASTA(getPrefix()+"npgraph_assembly.fasta");
 
 	}
