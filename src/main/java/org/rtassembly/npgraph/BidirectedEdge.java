@@ -184,9 +184,9 @@ public class BidirectedEdge extends AbstractEdge{
 				dstDes = dst.getId();
 		if(srcDes.compareTo(dstDes) == 0) { // loop
 			if(dir0 == dir1)
-				return String.format("%s%s,%s%s", srcDes, "+", dstDes, "+");
+				return String.format("%s%s,%s%s", srcDes, dir0?"+":"-", dstDes, dir1?"-":"+");
 			else
-				return String.format("%s%s,%s%s", srcDes, "+", dstDes, "-");
+				return String.format("%s%s,%s%s", srcDes, "+", dstDes, "+");
 		}
 		else if(srcDes.compareTo(dstDes) < 0)
 			return String.format("%s%s,%s%s", srcDes, (dir0?"+":"-"), dstDes, (dir1?"-":"+"));

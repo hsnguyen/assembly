@@ -11,12 +11,12 @@ import japsa.seq.Sequence;
 public class GraphExplore {
 	//imb desktop
 	//npscarf
-	public static String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/"; 	
+//	public static String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/"; 	
 	//unicycler
 //	public static String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/unicycler/"; 
 
 	//	public static String dataFolder="/home/hoangnguyen/workspace/data/spades/"; //sony
-//	public static String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/"; //dell FASTG
+	public static String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/"; //dell FASTG
 //	public static String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades_v3.10/"; //dell GFA
 
 
@@ -124,8 +124,8 @@ public class GraphExplore {
 //        }
         System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
         
-        HybridAssembler.promptEnterKey();
         hbAss.postProcessGraph();
+        HybridAssembler.promptEnterKey();
 
         viewer.disableAutoLayout();
         /*
