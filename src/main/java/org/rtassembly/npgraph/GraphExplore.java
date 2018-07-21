@@ -16,8 +16,8 @@ public class GraphExplore {
 //	public static String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/unicycler/"; 
 
 	//	public static String dataFolder="/home/hoangnguyen/workspace/data/spades/"; //sony
-//	public static String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/"; //dell FASTG
-	public static String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades_v3.10/"; //dell GFA
+	public static String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/"; //dell FASTG
+//	public static String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades_v3.10/"; //dell GFA
 
 
 	public static void main(String args[]) {
@@ -37,7 +37,7 @@ public class GraphExplore {
     	
     	//npscarf
 //    	String sample="EcK12S-careful";
-//    	String sample="Kp2146-careful";
+    	String sample="Kp2146-careful";
 //    	String sample="Kp13883-careful";
  
 //    	String sample="W303-careful";
@@ -46,7 +46,7 @@ public class GraphExplore {
 
     	//unicycler
 //    	String sample="Acinetobacter_A1/";
-    	String sample="Acinetobacter_AB30/";
+//    	String sample="Acinetobacter_AB30/";
 //    	String sample="E_coli_K-12_MG1655/";
 //    	String sample="E_coli_O25b_H4-ST131/";
 //    	String sample="Klebsiella_30660_NJST258_1/";
@@ -64,22 +64,22 @@ public class GraphExplore {
     	
 //    	String quality="bad/";
 //    	String quality="medium/";
-    	String quality="good/";
+//    	String quality="good/";
 
     	
 		HybridAssembler hbAss = new HybridAssembler();
 		
 		//npscarf
-//		hbAss.setShortReadsInput(dataFolder+sample+"/assembly_graph.fastg");
-//		hbAss.setPrefix(dataFolder+sample+"/");
-//		hbAss.setShortReadsInputFormat("fastg");
-//		hbAss.prepareShortReadsProcess(true);
-		
-		//unicycler
-		hbAss.setShortReadsInput(dataFolder+sample+quality+"spades/assembly_graph.fastg");
-		hbAss.setPrefix(dataFolder+sample+quality);
+		hbAss.setShortReadsInput(dataFolder+sample+"/assembly_graph.fastg");
+		hbAss.setPrefix(dataFolder+sample+"/");
 		hbAss.setShortReadsInputFormat("fastg");
 		hbAss.prepareShortReadsProcess(true);
+		
+		//unicycler
+//		hbAss.setShortReadsInput(dataFolder+sample+quality+"spades/assembly_graph.fastg");
+//		hbAss.setPrefix(dataFolder+sample+quality);
+//		hbAss.setShortReadsInputFormat("fastg");
+//		hbAss.prepareShortReadsProcess(true);
 		
     	BidirectedGraph graph= hbAss.simGraph;
     	
@@ -95,9 +95,9 @@ public class GraphExplore {
          */
         try {
         	//npscarf
-//        	hbAss.setLongReadsInput(dataFolder+sample+"/assembly_graph.sam");
+        	hbAss.setLongReadsInput(dataFolder+sample+"/assembly_graph.sam");
         	//unicycler
-        	hbAss.setLongReadsInput(dataFolder+sample+quality+"bwa.sam");
+//        	hbAss.setLongReadsInput(dataFolder+sample+quality+"bwa.sam");
         	hbAss.setLongReadsInputFormat("sam");
         	hbAss.prepareLongReadsProcess();
         	
@@ -124,8 +124,8 @@ public class GraphExplore {
 //        }
         System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
         
-        HybridAssembler.promptEnterKey();
         hbAss.postProcessGraph();
+        HybridAssembler.promptEnterKey();
 
         viewer.disableAutoLayout();
         /*
