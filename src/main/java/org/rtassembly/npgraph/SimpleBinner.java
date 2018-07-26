@@ -20,6 +20,8 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Sets;
 
+import test.npgraph.gui.GraphExploreDesktop;
+
 
 
 public class SimpleBinner {
@@ -363,12 +365,12 @@ public class SimpleBinner {
 			node2BinMap.remove(path.peekNode());
 			return null;
 		}else if(!uniqueBin.isCloseTo(startBin)){
-			LOG.info("Ignored: consensus bin doesn't agree with one of the endings bin at node {}", path.getRoot());
+			LOG.info("Ignored: consensus bin {} doesn't agree with one of the endings bin {} at node {}", uniqueBin, startBin, path.getRoot());
 			node2BinMap.remove(path.getRoot());
 			//clean from bin map here...
 			return null;
 		}else if(!uniqueBin.isCloseTo(endBin)){
-			LOG.info("Ignored: consensus bin doesn't agree with one of the endings bin at node {}", path.peekNode());
+			LOG.info("Ignored: consensus bin {} doesn't agree with one of the endings bin {} at node {}", uniqueBin, endBin, path.peekNode());
 			node2BinMap.remove(path.peekNode());
 			//clean from bin map here...
 			return null;
@@ -518,7 +520,7 @@ public class SimpleBinner {
 	}
 	public static void main(String[] args) throws IOException {
 		HybridAssembler hbAss = new HybridAssembler();
-		hbAss.setShortReadsInput(GraphExplore.dataFolder+"TB-careful/assembly_graph.fastg");
+		hbAss.setShortReadsInput(GraphExploreDesktop.dataFolder+"TB-careful/assembly_graph.fastg");
 		hbAss.setShortReadsInputFormat("fastg");
 		hbAss.prepareShortReadsProcess(true);
 		
