@@ -11,12 +11,12 @@ import org.graphstream.ui.view.Viewer;
 import org.rtassembly.gui.NPGraphFX;
 import org.rtassembly.npgraph.Alignment;
 import org.rtassembly.npgraph.BidirectedGraph;
-import org.rtassembly.npgraph.GraphExplore;
 import org.rtassembly.npgraph.HybridAssembler;
 
 import japsa.seq.SequenceReader;
 import japsa.util.CommandLine;
 import javafx.application.Application;
+import test.npgraph.gui.GraphExploreDesktop;
 
 
 
@@ -28,7 +28,7 @@ public class NPGraphCmd extends CommandLine{
 		addString("sf", "gfa", "Format of the assembly input file. Accepted format are FASTG, GFA", true);
 		addString("li", "-", "Name of the long-read data input file, - for stdin.", true);
 		addString("lf", "fastq", "Format of the long-read data input file. This may be FASTQ/FASTA (MinION reads) or SAM/BAM (aligned with the assembly graph already)", true);
-		addString("output", null, "Name of the output folder.", true);
+		addString("output", "npgraph", "Name of the output folder.", true);
 		
 		addBoolean("overwrite", false, "Whether to overwrite or reuse the intermediate file");
 		

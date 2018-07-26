@@ -23,8 +23,9 @@ import org.jfree.util.Log;
 import org.rtassembly.npgraph.BidirectedEdge;
 import org.rtassembly.npgraph.BidirectedGraph;
 import org.rtassembly.npgraph.BidirectedNode;
-import org.rtassembly.npgraph.GraphExplore;
 import org.rtassembly.npgraph.HybridAssembler;
+
+import test.npgraph.gui.GraphExploreDesktop;
 
 
 public class CovEstimation {
@@ -152,7 +153,7 @@ public class CovEstimation {
 
 	public static void main(String[] args) throws IOException {
 		HybridAssembler hbAss = new HybridAssembler();
-		hbAss.setShortReadsInput(GraphExplore.dataFolder+"W303-careful/assembly_graph.fastg");
+		hbAss.setShortReadsInput(GraphExploreDesktop.dataFolder+"W303-careful/assembly_graph.fastg");
 		hbAss.setShortReadsInputFormat("fastg");
 		hbAss.prepareShortReadsProcess(true);		
 		BidirectedGraph graph = hbAss.simGraph;
