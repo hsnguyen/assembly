@@ -45,7 +45,7 @@ import org.graphstream.ui.javafx.FxGraphRenderer;
 import org.graphstream.ui.view.Viewer;
 import org.rtassembly.npgraph.Alignment;
 import org.rtassembly.npgraph.BidirectedGraph;
-import org.rtassembly.npgraph.GraphExplore;
+import org.rtassembly.npgraph.GraphUtil;
 import org.rtassembly.npgraph.HybridAssembler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,6 +83,7 @@ import javafx.scene.text.Text;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
+import test.npgraph.gui.GraphExploreDesktop;
 import javafx.stage.Stage;
 
 
@@ -349,7 +350,7 @@ public class NPGraphFX extends Application{
 			return false;
 		}
 
-    	GraphExplore.redrawGraphComponents(myass.simGraph);
+    	GraphUtil.redrawGraphComponents(myass.simGraph);
     	myass.setReady(true);
     	return true;
     }
@@ -875,7 +876,7 @@ public class NPGraphFX extends Application{
 	public static void main(String[] args) {
 		HybridAssembler hbAss = new HybridAssembler();
 		
-		hbAss.setShortReadsInput(GraphExplore.dataFolder+"EcK12S-careful/assembly_graph.gfa");
+		hbAss.setShortReadsInput(GraphExploreDesktop.dataFolder+"EcK12S-careful/assembly_graph.gfa");
 //		hbAss.setShortReadsInputFormat("fastg");
 //		hbAss.setLongReadsInput(GraphExplore.dataFolder+"EcK12S-careful/assembly_graph.sam");
 //		hbAss.setLongReadsInputFormat("sam");

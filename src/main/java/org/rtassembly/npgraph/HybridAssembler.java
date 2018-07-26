@@ -31,6 +31,7 @@ import htsjdk.samtools.ValidationStringency;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceReader;
+import test.npgraph.gui.GraphExploreDesktop;
 
 
 public class HybridAssembler {
@@ -262,9 +263,8 @@ public class HybridAssembler {
 						{
 							//path here is already unique! (2 unique ending nodes)
 					    	if(simGraph.reduceUniquePath(path)) {
-
-					    		GraphExplore.redrawGraphComponents(simGraph);
 					    		observer.forFunUpdate();
+					    		GraphUtil.redrawGraphComponents(simGraph);
 					    	}
 						}
 				}
@@ -292,7 +292,7 @@ public class HybridAssembler {
 			else
 				System.out.println("bridge contain no path! ignored");
 		}
-		GraphExplore.redrawGraphComponents(simGraph);
+		GraphUtil.redrawGraphComponents(simGraph);
 		
         observer.linearComponentsDecomposition();
 		observer.outputFASTA(getPrefix()+"npgraph_assembly.fasta");
@@ -309,9 +309,6 @@ public class HybridAssembler {
     	   scanner.nextLine();
     	}
     
-    protected void sleep() {
-        try { Thread.sleep(1000); } catch (Exception e) {}
-    }
     
     public boolean checkMinimap2() {    		
 		ProcessBuilder pb = new ProcessBuilder(mm2Path+"/minimap2","-V").redirectErrorStream(true);
@@ -364,10 +361,10 @@ public class HybridAssembler {
 	public static void main(String[] argv) throws IOException, InterruptedException{
 		HybridAssembler hbAss = new HybridAssembler();
 		
-		hbAss.setShortReadsInput(GraphExplore.dataFolder+"EcK12S-careful/assembly_graph.fastg");
+		hbAss.setShortReadsInput(GraphExploreDesktop.dataFolder+"EcK12S-careful/assembly_graph.fastg");
 		hbAss.setShortReadsInputFormat("fastg");
 		hbAss.prepareShortReadsProcess(false);
-		hbAss.setLongReadsInput(GraphExplore.dataFolder+"EcK12S-careful/assembly_graph.sam");
+		hbAss.setLongReadsInput(GraphExploreDesktop.dataFolder+"EcK12S-careful/assembly_graph.sam");
 		hbAss.setLongReadsInputFormat("sam/bam");
 		hbAss.prepareLongReadsProcess();
 		hbAss.assembly();
