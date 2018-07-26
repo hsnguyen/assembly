@@ -236,6 +236,11 @@ public class BidirectedGraph extends MultiGraph{
     	
     	return retval;
     }
+    
+    synchronized public void removeBridgesFromNode(Node node){
+    	
+    }
+    
     //If the node was wrongly identified as unique before, do things...
     synchronized public void destroyFalseBridges(Node node){
     	node.removeAttribute("unique");
@@ -250,8 +255,10 @@ public class BidirectedGraph extends MultiGraph{
     			  		
     			falseBridgeFrom.halfPaths.addAll(falseBridgeFrom.fullPaths);
     			falseBridgeFrom.fullPaths=new ArrayList<BidirectedPath>();
+    			//todo: remove 2 entries from bridgeMap here...
+    			
     		}else{    		
-    			//destroy the bridge
+    			//destroy the half bridge
         		bridgesMap.remove(node.getId()+ "o");
     		}
 
@@ -259,13 +266,15 @@ public class BidirectedGraph extends MultiGraph{
     	
     	if(falseBridgeTo!=null){
     		if(falseBridgeTo.getBridgeStatus()>=0){
-    			//if(falseBridgeFrom.getBestPath()!=null)
-    			//	falseBridgeFrom.getBestPath().revert();
+    			if(falseBridgeTo.getBestPath()!=null)
+    				falseBridgeTo.getBestPath().revert();
     			  		
     			falseBridgeTo.halfPaths.addAll(falseBridgeTo.fullPaths);
     			falseBridgeTo.fullPaths=new ArrayList<BidirectedPath>();
+    			//todo: remove 2 entries from bridgeMap here...
+
     		}else{    		
-    			//destroy the bridge
+    			//destroy the half bridge
         		bridgesMap.remove(node.getId()+ "i");
     		}
     	}
