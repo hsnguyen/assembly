@@ -60,9 +60,11 @@ public class GraphStalker {
 		}
 	}
 	
-	synchronized void scanAndUpdate() {
+	synchronized void linearComponentsDecomposition() {
 		//1. clean it first
-		
+		cleanInsignificantNodes();
+		rtComponents.compute();
+
 		//2. then decompose it (using cut attribute instead of removing edges)
 		//reset
 		cutEdges = new HashSet<BidirectedEdge>();
@@ -82,7 +84,6 @@ public class GraphStalker {
 				n.leavingEdges().forEach(e->{e.setAttribute("ui.hide");e.setAttribute("cut");cutEdges.add((BidirectedEdge) e);});
 
 		});
-		
 		outputGraph=new BidirectedGraph();
 		BidirectedPath repPath=null; //representative path of a component
 		for (Iterator<ConnectedComponents.ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
@@ -167,6 +168,21 @@ public class GraphStalker {
 		
 	}
 
+	//Remove nodes with degree <=1 and length || cov low
+	private void cleanInsignificantNodes(){
+		List<Node> badNodes = inputGraph.nodes()
+						.filter(n->((n.getInDegree()==0 || n.getOutDegree()==0) && SimpleBinner.getUniqueBin(n)==null))
+						.collect(Collectors.toList());
+		while(!badNodes.isEmpty()) {
+			Node node = badNodes.remove(0);
+			List<Node> neighbors = node.neighborNodes().collect(Collectors.toList());	
+
+			inputGraph.removeNode(node);
+			neighbors.stream()
+				.filter(n->((n.getInDegree()==0 || n.getOutDegree()==0) && SimpleBinner.getUniqueBin(n)==null))
+				.forEach(n->{if(!badNodes.contains(n)) badNodes.add(n);});
+		}
+	}
 
 	synchronized int getNumberOfSequences() {
 		
