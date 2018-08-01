@@ -31,7 +31,7 @@ import htsjdk.samtools.ValidationStringency;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceReader;
-import test.npgraph.gui.GraphExploreDesktop;
+import npgraph.gui.GraphExploreDesktop;
 
 
 public class HybridAssembler {
