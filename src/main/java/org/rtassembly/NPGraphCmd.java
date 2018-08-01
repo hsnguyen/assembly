@@ -16,7 +16,7 @@ import org.rtassembly.npgraph.HybridAssembler;
 import japsa.seq.SequenceReader;
 import japsa.util.CommandLine;
 import javafx.application.Application;
-import test.npgraph.gui.GraphExploreDesktop;
+import npgraph.gui.GraphExploreDesktop;
 
 
 

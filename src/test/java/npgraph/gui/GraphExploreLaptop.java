@@ -1,4 +1,4 @@
-package test.npgraph.gui;
+package npgraph.gui;
 
 import java.io.IOException;
 import java.util.Iterator;
