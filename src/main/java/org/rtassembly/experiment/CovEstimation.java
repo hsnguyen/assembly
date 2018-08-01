@@ -25,7 +25,7 @@ import org.rtassembly.npgraph.BidirectedGraph;
 import org.rtassembly.npgraph.BidirectedNode;
 import org.rtassembly.npgraph.HybridAssembler;
 
-import test.npgraph.gui.GraphExploreDesktop;
+import npgraph.gui.GraphExploreDesktop;
 
 
 public class CovEstimation {

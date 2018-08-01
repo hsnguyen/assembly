@@ -83,7 +83,7 @@ import javafx.scene.text.Text;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
-import test.npgraph.gui.GraphExploreDesktop;
+import npgraph.gui.GraphExploreDesktop;
 import javafx.stage.Stage;
 
 

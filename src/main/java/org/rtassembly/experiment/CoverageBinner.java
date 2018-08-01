@@ -22,7 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import japsa.seq.Sequence;
-import test.npgraph.gui.GraphExploreDesktop;
+import npgraph.gui.GraphExploreDesktop;
 
 public class CoverageBinner {
     private static final Logger LOG = LoggerFactory.getLogger(CoverageBinner.class);

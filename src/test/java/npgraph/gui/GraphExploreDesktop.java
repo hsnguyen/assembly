@@ -1,4 +1,4 @@
-package test.npgraph.gui;
+package npgraph.gui;
 
 import java.io.IOException;
 import java.util.Iterator;
@@ -73,7 +73,7 @@ public class GraphExploreDesktop {
 		hbAss.setShortReadsInput(dataFolder+sample+"/assembly_graph.fastg");
 		hbAss.setPrefix(dataFolder+sample+"/");
 		hbAss.setShortReadsInputFormat("fastg");
-		hbAss.prepareShortReadsProcess(true);//change true/false to use/not use SPAdes path
+		hbAss.prepareShortReadsProcess(false);//change true/false to use/not use SPAdes path
 		
 		
 		//unicycler
@@ -110,7 +110,7 @@ public class GraphExploreDesktop {
         
         System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
         
-        HybridAssembler.promptEnterKey();
+//        HybridAssembler.promptEnterKey();
         hbAss.postProcessGraph();
 
 //        viewer.disableAutoLayout();
