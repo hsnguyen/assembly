@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Sets;
 
-import test.npgraph.gui.GraphExploreDesktop;
+import npgraph.gui.GraphExploreDesktop;
 
 
 
@@ -125,7 +125,13 @@ public class SimpleBinner {
 					break;
 				}
 			}
-			if(fully){
+			//check if the total cov of inferred pop bins agree with its original coverage or not
+			double covSum=0.0;
+			for(PopBin b:binCounts0.keySet()){
+				covSum+=binCounts0.get(b)*b.estCov;
+			}
+			
+			if(fully && Math.abs(covSum-n0.getNumber("cov"))/n0.getNumber("cov") < .2){
 				node2BinMap.put(n0, binCounts0);
 //				System.out.println("From edge " + edge.getId() + " updating node " + n0.getId());
 				System.out.printf("From edge %s%s completing node %s%s\n", edge.getId(), getBinsOfEdge(edge), n0.getId(),getBinsOfNode(n0));
@@ -154,7 +160,13 @@ public class SimpleBinner {
 					break;
 				}
 			}
-			if(fully){
+			//check if the total cov of inferred pop bins agree with its original coverage or not
+			double covSum=0.0;
+			for(PopBin b:binCounts1.keySet()){
+				covSum+=binCounts1.get(b)*b.estCov;
+			}
+			
+			if(fully && Math.abs(covSum-n1.getNumber("cov"))/n1.getNumber("cov") < .2){				
 				node2BinMap.put(n1, binCounts1);
 				System.out.printf("From edge %s%s completing node %s%s\n", edge.getId(), getBinsOfEdge(edge), n1.getId(),getBinsOfNode(n1));
 				exploringFromNode(n1);
@@ -270,9 +282,10 @@ public class SimpleBinner {
 				exploringFromNode(n);
 			}			
 		}
+
+		//3.2. Second round of thorough assignment: suck it deep!
 		HashMap<PopBin, ArrayList<Edge>> highlyPossibleEdges = new HashMap<PopBin, ArrayList<Edge>>();
 		unresolvedEdges.sort((a,b)->Double.compare(a.getNumber("cov"),b.getNumber("cov")));
-//		unresolvedEdges.sort((a,b)->(int)(a.getNumber("cov")-b.getNumber("cov")));
 
 		for(Edge e:unresolvedEdges){
 			if(	Math.max(e.getNode0().getInDegree(), e.getNode0().getOutDegree()) <= 1 
@@ -297,7 +310,6 @@ public class SimpleBinner {
 				highlyPossibleEdges.get(minCovPop).add(e);
 			}
 		}
-		//3.2. Second round of thorough assignment: suck it deep!
 
 		while(!unresolvedEdges.isEmpty()) {
 			LOG.info("Starting assigning " + unresolvedEdges.size() + " unresolved edges");
@@ -520,13 +532,12 @@ public class SimpleBinner {
 	}
 	public static void main(String[] args) throws IOException {
 		HybridAssembler hbAss = new HybridAssembler();
-		hbAss.setShortReadsInput(GraphExploreDesktop.dataFolder+"TB-careful/assembly_graph.fastg");
+		hbAss.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/Kp13883-careful/assembly_graph.fastg");
 		hbAss.setShortReadsInputFormat("fastg");
 		hbAss.prepareShortReadsProcess(true);
 		
-		BidirectedGraph graph = hbAss.simGraph;		
-		SimpleBinner binner = new SimpleBinner(graph);
-		binner.estimatePathsByCoverage();
+		SimpleBinner binner = hbAss.simGraph.binner;
+		//binner.estimatePathsByCoverage();
 		System.out.println("=> number of bin = " + binner.binList.size());
 		for(PopBin b:binner.binList) {
 			System.out.println("Bin " + b.binID + " estCov=" + b.estCov + " totLen=" + b.totLen);
@@ -535,7 +546,7 @@ public class SimpleBinner {
 		}
 			
 			
-		for(Node n:graph) {
+		for(Node n:hbAss.simGraph) {
 			Iterator<Edge> ite = n.edges().iterator();
 			while(ite.hasNext()) {
 				Edge e = ite.next();
