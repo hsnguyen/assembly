@@ -1,15 +1,11 @@
 package npgraph.gui;
 
 import java.io.IOException;
-import java.util.Iterator;
-import org.graphstream.graph.*;
+
 import org.graphstream.ui.view.Viewer;
 import org.rtassembly.npgraph.BidirectedGraph;
 import org.rtassembly.npgraph.GraphUtil;
 import org.rtassembly.npgraph.HybridAssembler;
-
-import japsa.seq.Sequence;
-
 
 public class GraphExploreDesktop {
 	//imb desktop
@@ -35,7 +31,7 @@ public class GraphExploreDesktop {
     	System.setProperty("org.graphstream.ui", "javafx");
     	//System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer"); 
     	
-    	//npscarf
+//    	npscarf
 //    	String sample="EcK12S-careful";
     	String sample="Kp2146-careful";
 //    	String sample="Kp13883-careful";
