@@ -106,7 +106,7 @@ public class GraphExploreDesktop {
         
         System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
         
-//        HybridAssembler.promptEnterKey();
+        HybridAssembler.promptEnterKey();
         hbAss.postProcessGraph();
 
 //        viewer.disableAutoLayout();

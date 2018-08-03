@@ -22,7 +22,7 @@ import com.google.common.collect.Sets;
 public class SimpleBinner {
     private static final Logger LOG = LoggerFactory.getLogger(SimpleBinner.class);
 	public static volatile int 	UNQ_CTG_LEN=10000,
-								SIG_CTG_LEN=1000;
+								SIG_CTG_LEN=500;
 	
 	BidirectedGraph graph;
 	ArrayList<PopBin> binList;
@@ -214,8 +214,8 @@ public class SimpleBinner {
 			if(lowestPopAbundance > b.estCov)
 				lowestPopAbundance=b.estCov;
 		}
-			
-		if(cov > lowestPopAbundance && tmp>GraphUtil.DISTANCE_THRES) {
+		//TODO: 1.5 is important! need to find a way for more robust guess (+self-correct)!!!	
+		if(cov > 1.5*lowestPopAbundance && tmp>GraphUtil.DISTANCE_THRES) {
 			target = null;
 		}
 		
