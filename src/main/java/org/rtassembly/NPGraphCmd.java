@@ -1,22 +1,13 @@
 package org.rtassembly;
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import org.graphstream.graph.Edge;
-import org.graphstream.graph.Node;
-import org.graphstream.ui.view.Viewer;
 import org.rtassembly.gui.NPGraphFX;
 import org.rtassembly.npgraph.Alignment;
 import org.rtassembly.npgraph.BidirectedGraph;
 import org.rtassembly.npgraph.HybridAssembler;
 
-import japsa.seq.SequenceReader;
 import japsa.util.CommandLine;
 import javafx.application.Application;
-import npgraph.gui.GraphExploreDesktop;
 
 
 
