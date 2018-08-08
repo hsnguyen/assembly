@@ -1,14 +1,11 @@
 package npgraph.gui;
 
 import java.io.IOException;
-import java.util.Iterator;
-import org.graphstream.graph.*;
+
 import org.graphstream.ui.view.Viewer;
 import org.rtassembly.npgraph.BidirectedGraph;
 import org.rtassembly.npgraph.GraphUtil;
 import org.rtassembly.npgraph.HybridAssembler;
-
-import japsa.seq.Sequence;
 
 
 public class GraphExploreLaptop {

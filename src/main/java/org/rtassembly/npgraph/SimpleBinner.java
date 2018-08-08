@@ -2,7 +2,6 @@ package org.rtassembly.npgraph;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -20,14 +19,10 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Sets;
 
-import npgraph.gui.GraphExploreDesktop;
-
-
-
 public class SimpleBinner {
     private static final Logger LOG = LoggerFactory.getLogger(SimpleBinner.class);
 	public static volatile int 	UNQ_CTG_LEN=10000,
-								SIG_CTG_LEN=1000;
+								SIG_CTG_LEN=500;
 	
 	BidirectedGraph graph;
 	ArrayList<PopBin> binList;
@@ -219,8 +214,8 @@ public class SimpleBinner {
 			if(lowestPopAbundance > b.estCov)
 				lowestPopAbundance=b.estCov;
 		}
-			
-		if(cov > lowestPopAbundance && tmp>GraphUtil.DISTANCE_THRES) {
+		//TODO: 1.5 is important! need to find a way for more robust guess (+self-correct)!!!	
+		if(cov > 1.5*lowestPopAbundance && tmp>GraphUtil.DISTANCE_THRES) {
 			target = null;
 		}
 		
@@ -271,13 +266,7 @@ public class SimpleBinner {
 		GraphUtil.gradientDescent(graph);
 		graph.edges().forEach(e->System.out.println("Edge " + e.getId() + " cov=" + e.getNumber("cov")));
 		//3.1.First round of assigning unit cov: from binned significant nodes
-		double minCov=Double.MAX_VALUE;
-		PopBin minCovPop=null;
 		for(PopBin b:binList) {
-			if(b.estCov < minCov) {
-				minCov=b.estCov;
-				minCovPop=b;
-			}
 			for(Node n:b.getCoreNodes()) {
 				exploringFromNode(n);
 			}			
@@ -288,8 +277,6 @@ public class SimpleBinner {
 		unresolvedEdges.sort((a,b)->Double.compare(a.getNumber("cov"),b.getNumber("cov")));
 
 		for(Edge e:unresolvedEdges){
-			if(	Math.max(e.getNode0().getInDegree(), e.getNode0().getOutDegree()) <= 1 
-				|| Math.max(e.getNode1().getInDegree(), e.getNode1().getOutDegree()) <= 1){
 				System.out.print("...scanning edge " + e.getId() + "cov=" + e.getNumber("cov"));
 				PopBin tmp = scanAndGuess(e.getNumber("cov"));
 				if(tmp!=null){
@@ -301,14 +288,6 @@ public class SimpleBinner {
 				}else
 					System.out.print(": none!");
 				System.out.println();
-					
-			}else if(e.getNumber("cov") < minCov) {
-				if(minCovPop!=null){
-					if(!highlyPossibleEdges.containsKey(minCovPop))
-						highlyPossibleEdges.put(minCovPop, new ArrayList<Edge>());
-				}
-				highlyPossibleEdges.get(minCovPop).add(e);
-			}
 		}
 
 		while(!unresolvedEdges.isEmpty()) {
