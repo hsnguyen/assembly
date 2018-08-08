@@ -44,7 +44,6 @@ import org.graphstream.ui.fx_viewer.FxViewer;
 import org.graphstream.ui.javafx.FxGraphRenderer;
 import org.graphstream.ui.view.Viewer;
 import org.rtassembly.npgraph.Alignment;
-import org.rtassembly.npgraph.BidirectedGraph;
 import org.rtassembly.npgraph.GraphUtil;
 import org.rtassembly.npgraph.HybridAssembler;
 import org.slf4j.Logger;
@@ -83,10 +82,10 @@ import javafx.scene.text.Text;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
-import npgraph.gui.GraphExploreDesktop;
 import javafx.stage.Stage;
 
 
+@SuppressWarnings("restriction")
 public class NPGraphFX extends Application{
     private static final Logger LOG = LoggerFactory.getLogger(NPGraphFX.class);
 
@@ -876,9 +875,9 @@ public class NPGraphFX extends Application{
 	public static void main(String[] args) {
 		HybridAssembler hbAss = new HybridAssembler();
 		
-		hbAss.setShortReadsInput(GraphExploreDesktop.dataFolder+"EcK12S-careful/assembly_graph.gfa");
+		hbAss.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/EcK12S-careful/assembly_graph.gfa");
 //		hbAss.setShortReadsInputFormat("fastg");
-//		hbAss.setLongReadsInput(GraphExplore.dataFolder+"EcK12S-careful/assembly_graph.sam");
+//		hbAss.setLongReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/EcK12S-careful/assembly_graph.sam");
 //		hbAss.setLongReadsInputFormat("sam");
 		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/reads/EcK12S_ONT.fastq");
 //		hbAss.setLongReadsInputFormat("fastq");
