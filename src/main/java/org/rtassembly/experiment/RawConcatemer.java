@@ -1,9 +1,15 @@
 package org.rtassembly.experiment;
 
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.Arrays;
+
+import org.jtransforms.fft.DoubleFFT_1D;
 
 import ch.systemsx.cisd.hdf5.HDF5Factory;
 import ch.systemsx.cisd.hdf5.IHDF5Reader;
@@ -108,13 +114,83 @@ public class RawConcatemer {
 		writer.close();
 	}
 	
+	
+    void print(String msg, double [] x) {
+        System.out.println(msg);
+        for (double d : x) System.out.println(d);
+    }
+
+    /**
+     * This is a "wrapped" signal processing-style autocorrelation. 
+     * For "true" autocorrelation, the data must be zero padded.  
+     */
+    public void bruteForceAutoCorrelation(double [] x, double [] ac) {
+        Arrays.fill(ac, 0);
+        int n = x.length;
+        for (int j = 0; j < n; j++) {
+            for (int i = 0; i < n; i++) {
+                ac[j] += x[i] * x[(n + i - j) % n];
+            }
+        }
+    }
+
+    private double sqr(double x) {
+        return x * x;
+    }
+
+    public void fftAutoCorrelation(double [] x, double [] ac) {
+        int n = x.length;
+        // Assumes n is even.
+        DoubleFFT_1D fft = new DoubleFFT_1D(n);
+        fft.realForward(x);
+        ac[0] = sqr(x[0]);
+        // ac[0] = 0;  // For statistical convention, zero out the mean 
+        ac[1] = sqr(x[1]);
+        for (int i = 2; i < n-1; i += 2) {
+            ac[i] = sqr(x[i]) + sqr(x[i+1]);
+            ac[i+1] = 0;
+        }
+        DoubleFFT_1D ifft = new DoubleFFT_1D(n); 
+        ifft.realInverse(ac, true);
+        // For statistical convention, normalize by dividing through with variance
+        for (int i = 1; i < n; i++)
+            ac[i] /= ac[0];
+        ac[0] = 1;
+    }
+
+    void test() {
+        double [] data = new double [signal.length];
+        for (int j=0;j<signal.length;j++) {
+            data[j] = (double)signal[j];
+        }
+//        double [] ac1 = new double [data.length];
+        double [] ac2 = new double [data.length];
+//        bruteForceAutoCorrelation(data, ac1);
+        fftAutoCorrelation(data, ac2);
+//        print("fft", ac2);
+        
+        //Print to file
+        try {
+    		PrintWriter writer = new PrintWriter(new FileWriter("/home/sonhoanghguyen/Projects/concatemers/data/raw/concat7_fft.signal")); 
+    		writer.print(name+" ");
+    		for(double value:ac2)
+    			writer.printf("%.5f ",value); //normalized it
+
+    		writer.close();
+        } catch (IOException e) {
+        		throw new RuntimeException(e);
+        } 
+    }
+    
+    
 	public static void main(String[] args){
 		RawConcatemer concat=new RawConcatemer("/home/sonhoanghguyen/Projects/concatemers/data/raw/imb17_013486_20171130__MN17279_sequencing_run_20171130_Ha_BSV_CaMV1_RBarcode_35740_read_17553_ch_455_strand.fast5");
-		try {
-			concat.printCrossCorrelation("/home/sonhoanghguyen/Projects/concatemers/data/raw/concat7.signal");
-		} catch (IOException e) {
-			e.printStackTrace();
-		} 
+//		try {
+//			concat.printCrossCorrelation("/home/sonhoanghguyen/Projects/concatemers/data/raw/concat7.signal");
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		} 
+		concat.test();
 
 	}
 
