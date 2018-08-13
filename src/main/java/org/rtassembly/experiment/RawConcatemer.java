@@ -9,6 +9,7 @@ import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
 import org.jtransforms.fft.DoubleFFT_1D;
 
 import ch.systemsx.cisd.hdf5.HDF5Factory;
@@ -137,7 +138,18 @@ public class RawConcatemer {
     private double sqr(double x) {
         return x * x;
     }
-
+    public void smooth(double[] in, double[] out, int window){
+    	double beg=in[0], end=in[window];
+    	for(int i=0;i<window;i++){
+    		out[0]+=in[i];
+    	}
+    	out[0]/=window;
+    	for(int i=1;i<in.length;i++){
+    		beg=in[i-1];
+    		end=in[(i+window-1)%in.length];
+    		out[i]=out[i-1]+ (end-beg)/window;
+    	}
+    }
     public void fftAutoCorrelation(double [] x, double [] ac) {
         int n = x.length;
         // Assumes n is even.
@@ -160,26 +172,51 @@ public class RawConcatemer {
 
     void test() {
         double [] data = new double [signal.length];
+        SummaryStatistics stats=new SummaryStatistics();
+        long curTime=System.currentTimeMillis();
+
         for (int j=0;j<signal.length;j++) {
             data[j] = (double)signal[j];
+            stats.addValue(signal[j]);
         }
-//        double [] ac1 = new double [data.length];
+        double 	mean=stats.getMean(),
+        		std=stats.getStandardDeviation();
+        for (int j=0;j<data.length;j++) {
+            data[j] = (data[j]-mean)/std;
+        }
+        System.out.printf("Done init arrays in %d secs\n", (System.currentTimeMillis()-curTime)/1000);
+        curTime=System.currentTimeMillis();
+
+        double [] ac1 = new double [data.length];
         double [] ac2 = new double [data.length];
-//        bruteForceAutoCorrelation(data, ac1);
-        fftAutoCorrelation(data, ac2);
-//        print("fft", ac2);
+        bruteForceAutoCorrelation(data, ac1);
+        System.out.printf("Done brute force autocorrelation in  %d secs\n", (System.currentTimeMillis()-curTime)/1000);
+        curTime=System.currentTimeMillis();
         
-        //Print to file
+        fftAutoCorrelation(data, ac2);
+        double [] ac2_smt = new double [data.length];
+        smooth(ac2, ac2_smt, 1000);
+        
+        System.out.printf("Done FFT autocorrelation in  %d secs\n", (System.currentTimeMillis()-curTime)/1000);
+        curTime=System.currentTimeMillis();
+//        Print to file
         try {
-    		PrintWriter writer = new PrintWriter(new FileWriter("/home/sonhoanghguyen/Projects/concatemers/data/raw/concat7_fft.signal")); 
+    		PrintWriter writer = new PrintWriter(new FileWriter("/home/sonhoanghguyen/Projects/concatemers/data/raw/concat7_fft.signal"));
     		writer.print(name+" ");
     		for(double value:ac2)
     			writer.printf("%.5f ",value); //normalized it
-
     		writer.close();
+    		
+    		PrintWriter writer2 = new PrintWriter(new FileWriter("/home/sonhoanghguyen/Projects/concatemers/data/raw/concat7_fft_1kstep.txt")); 
+    		for(double value:ac2_smt)
+    			writer2.printf("%.5f ",value); //normalized it
+    		writer2.close();
         } catch (IOException e) {
         		throw new RuntimeException(e);
         } 
+        
+        System.out.printf("Done writing to files in %d secs\n", (System.currentTimeMillis()-curTime)/1000);
+        curTime=System.currentTimeMillis();
     }
     
     
