@@ -4,17 +4,26 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Set;
+import java.util.TreeSet;
 
-public class BidirectedBridge {
+import javax.swing.text.StyledEditorKit.ForegroundAction;
+
+import org.jfree.util.Log;
+
+public class POGBridge {
 	public static volatile int SAFE_VOTE_DISTANCE=3;
+	BidirectedGraph flowGraph;
+	BidirectedNode source, sink;
+	
 	ArrayList<Alignment> steps;
 	ArrayList<BidirectedPath> 	fullPaths; //paths connect two ends (inducing by graph traversal)
 	
 	//these variables to store auxillary info
 	ArrayList<BidirectedPath>	halfPaths; //paths from one end only (if any): from SPAdes
-	ArrayList<BidirectedBridge> halfBridges; //bridges from one end only (if any)
+	ArrayList<POGBridge> halfBridges; //bridges from one end only (if any)
 	
-	BidirectedBridge(Alignment start){
+	POGBridge(Alignment start){
 		steps=new ArrayList<>();
 		steps.add(start);
 		
@@ -22,7 +31,7 @@ public class BidirectedBridge {
 	}
 
 	//This is for SPAdes path reader only
-	BidirectedBridge (BidirectedPath path, boolean isFullPath){
+	POGBridge (BidirectedPath path, boolean isFullPath){
 		if(isFullPath){
 			fullPaths = new ArrayList<>();
 			fullPaths.add(path);
@@ -33,7 +42,7 @@ public class BidirectedBridge {
 	}
 	
 
-	public void addHalfBridge(BidirectedBridge brg){
+	public void addHalfBridge(POGBridge brg){
 		if(halfBridges==null)
 			halfBridges=new ArrayList<>();
 		halfBridges.add(brg);
@@ -113,7 +122,7 @@ public class BidirectedBridge {
 	//Using another list of steps to rectify the current bridge's steps
 	//This bridge HAS TO BE complete(2 unique ends), 
 	//the reference need not be complete, instead one unique end is enough (half bridge)
-	public void referencingTo(BidirectedBridge brg){
+	public void referencingTo(POGBridge brg){
 		if(getBridgeStatus()!=0)
 			return;
 		else{
@@ -135,7 +144,7 @@ public class BidirectedBridge {
 		}
 	}
 	//Merging with another half bridge, inheriting all info from it
-	public void merging(BidirectedBridge brg){
+	public void merging(POGBridge brg){
 		if(brg!=null){
 			System.out.println("Merging half bridge " + brg.getEndingsID());
 			if(brg.halfPaths!=null && !brg.halfPaths.isEmpty()){
@@ -153,7 +162,7 @@ public class BidirectedBridge {
 				halfBridges.add(brg);
 			if(brg.halfBridges!=null){
 				System.out.println("...taking half bridge");
-				for(BidirectedBridge b:brg.halfBridges){
+				for(POGBridge b:brg.halfBridges){
 					if(b.steps==null||b.steps.size()<3)
 						continue;
 					halfBridges.add(b);
@@ -161,7 +170,7 @@ public class BidirectedBridge {
 				}
 			}
 
-//			brg=null;
+			brg=null;
 			
 			flushInfo();
 		}
@@ -210,20 +219,8 @@ public class BidirectedBridge {
 
 		}
 		
-		if(!wholePaths.isEmpty()){
+		if(!wholePaths.isEmpty())
 			fullPaths=wholePaths;
-			//scan for unexpected unique node in the bridge (missed by alignments) and update the map of bridges
-			wholePaths.forEach(p->{
-									p.nodes().filter(n-> (n!=p.getRoot() && n!=p.peekNode()))
-											.forEach(n->{
-															if(SimpleBinner.getUniqueBin(n)!=null) 
-																graph.updateBridgesMap(n, this)
-																;
-															}
-											);
-									}
-			);
-		}
 		fullPaths.forEach(p->p.setConsensusUniqueBinOfPath(bin));
 		flushInfo();
 
@@ -307,7 +304,7 @@ public class BidirectedBridge {
 		
 	}
 	//check if a bridge is worth to merge to this bridge
-	public boolean checkIfMerge(BidirectedBridge brg) {
+	public boolean checkIfMerge(POGBridge brg) {
 		boolean retval=false;
 		if(fullPaths.size() >= 2) {
 			HashSet<String> pathsIntersect = 
