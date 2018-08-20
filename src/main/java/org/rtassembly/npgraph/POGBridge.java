@@ -1,13 +1,19 @@
 package org.rtassembly.npgraph;
 
+import java.util.ArrayList;
+
+import org.graphstream.graph.Node;
+
+import japsa.seq.Sequence;
+
 public class POGBridge {
 	public static volatile int SAFE_VOTE_DISTANCE=3;
-	BidirectedGraph bridgeGraph; //partial order graph saving possible paths
+	BidirectedGraph graph; //partial order graph saving possible paths
 	BidirectedNode source, sink;
+	ArrayList<BridgeSegment> segments;
 	
-	
-	POGBridge(){
-		bridgeGraph=new BidirectedGraph();
+	POGBridge(BidirectedGraph graph){
+		this.graph=graph;
 	}
 
 	//This is for SPAdes path reader only
@@ -20,7 +26,8 @@ public class POGBridge {
 			source=(BidirectedNode) path.getRoot();
 		if(SimpleBinner.getUniqueBin(path.peekNode())!=null)
 			sink=(BidirectedNode) path.peekNode();
-		
+		segments=new ArrayList<>();
+		segments.add(new BridgeSegment(path));
 		//...
 	}
 	
@@ -89,5 +96,50 @@ public class POGBridge {
 
 		
 		return retval;
+	}
+	
+	/*
+	 * Class to represent a single segment of the whole bridge.
+	 * A bridge consists of >=1 segments.
+	 */
+	public class BridgeSegment{
+		ArrayList<BidirectedPath> connectedPaths;
+		Node start, end;
+		//TODO: scaffold vector??
+		BridgeSegment(){}
+		BridgeSegment(Alignment start, Alignment end, Sequence read){
+			this.start=start.node;
+			this.end=end.node;
+			//invoke findPath()?
+			
+			int distance = start.readAlignmentStart()-end.readAlignmentEnd();
+			
+			if(distance<BidirectedGraph.D_LIMIT)
+				connectedPaths = graph.getClosestPaths(start, end, distance);
+			
+		}
+		BridgeSegment(BidirectedPath path) throws Exception{
+			if(path==null || path.size()<=1)
+				throw new Exception("Invalid path for a bridge segment: " + path.getId());
+			else{
+				start=path.getRoot();
+				end=path.peekNode();
+				connectedPaths=new ArrayList<>();
+				connectedPaths.add(path);
+			}
+		}
+		
+		public int getNumberOfPaths(){
+			if(connectedPaths==null)
+				return 0;
+			else 
+				return connectedPaths.size();
+		}
+		public boolean isConnected(){
+			return getNumberOfPaths()>=1;
+		}
+		public boolean isUnique(){
+			return getNumberOfPaths()==1;
+		}
 	}
 }
