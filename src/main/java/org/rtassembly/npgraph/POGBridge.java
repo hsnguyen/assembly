@@ -9,7 +9,7 @@ import japsa.seq.Sequence;
 public class POGBridge {
 	public static volatile int SAFE_VOTE_DISTANCE=3;
 	BidirectedGraph graph; //partial order graph saving possible paths
-	BidirectedNode source, sink;
+	BidirectedNode source, sink; //must be unique nodes
 	ArrayList<BridgeSegment> segments;
 	
 	POGBridge(BidirectedGraph graph){
@@ -28,7 +28,6 @@ public class POGBridge {
 			sink=(BidirectedNode) path.peekNode();
 		segments=new ArrayList<>();
 		segments.add(new BridgeSegment(path));
-		//...
 	}
 	
 
