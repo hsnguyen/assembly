@@ -2,7 +2,6 @@ package org.rtassembly.npgraph;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -20,12 +19,10 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Sets;
 
-
-
 public class SimpleBinner {
     private static final Logger LOG = LoggerFactory.getLogger(SimpleBinner.class);
 	public static volatile int 	UNQ_CTG_LEN=10000,
-								SIG_CTG_LEN=1000;
+								SIG_CTG_LEN=500;
 	
 	BidirectedGraph graph;
 	ArrayList<PopBin> binList;
@@ -123,7 +120,13 @@ public class SimpleBinner {
 					break;
 				}
 			}
-			if(fully){
+			//check if the total cov of inferred pop bins agree with its original coverage or not
+			double covSum=0.0;
+			for(PopBin b:binCounts0.keySet()){
+				covSum+=binCounts0.get(b)*b.estCov;
+			}
+			
+			if(fully && Math.abs(covSum-n0.getNumber("cov"))/n0.getNumber("cov") < .2){
 				node2BinMap.put(n0, binCounts0);
 //				System.out.println("From edge " + edge.getId() + " updating node " + n0.getId());
 				System.out.printf("From edge %s%s completing node %s%s\n", edge.getId(), getBinsOfEdge(edge), n0.getId(),getBinsOfNode(n0));
@@ -152,7 +155,13 @@ public class SimpleBinner {
 					break;
 				}
 			}
-			if(fully){
+			//check if the total cov of inferred pop bins agree with its original coverage or not
+			double covSum=0.0;
+			for(PopBin b:binCounts1.keySet()){
+				covSum+=binCounts1.get(b)*b.estCov;
+			}
+			
+			if(fully && Math.abs(covSum-n1.getNumber("cov"))/n1.getNumber("cov") < .2){				
 				node2BinMap.put(n1, binCounts1);
 				System.out.printf("From edge %s%s completing node %s%s\n", edge.getId(), getBinsOfEdge(edge), n1.getId(),getBinsOfNode(n1));
 				exploringFromNode(n1);
@@ -205,8 +214,8 @@ public class SimpleBinner {
 			if(lowestPopAbundance > b.estCov)
 				lowestPopAbundance=b.estCov;
 		}
-			
-		if(cov > lowestPopAbundance && tmp>GraphUtil.DISTANCE_THRES) {
+		//TODO: 1.5 is important! need to find a way for more robust guess (+self-correct)!!!	
+		if(cov > 1.5*lowestPopAbundance && tmp>GraphUtil.DISTANCE_THRES) {
 			target = null;
 		}
 		
@@ -257,24 +266,17 @@ public class SimpleBinner {
 		GraphUtil.gradientDescent(graph);
 		graph.edges().forEach(e->System.out.println("Edge " + e.getId() + " cov=" + e.getNumber("cov")));
 		//3.1.First round of assigning unit cov: from binned significant nodes
-		double minCov=Double.MAX_VALUE;
-		PopBin minCovPop=null;
 		for(PopBin b:binList) {
-			if(b.estCov < minCov) {
-				minCov=b.estCov;
-				minCovPop=b;
-			}
 			for(Node n:b.getCoreNodes()) {
 				exploringFromNode(n);
 			}			
 		}
+
+		//3.2. Second round of thorough assignment: suck it deep!
 		HashMap<PopBin, ArrayList<Edge>> highlyPossibleEdges = new HashMap<PopBin, ArrayList<Edge>>();
 		unresolvedEdges.sort((a,b)->Double.compare(a.getNumber("cov"),b.getNumber("cov")));
-//		unresolvedEdges.sort((a,b)->(int)(a.getNumber("cov")-b.getNumber("cov")));
 
 		for(Edge e:unresolvedEdges){
-			if(	Math.max(e.getNode0().getInDegree(), e.getNode0().getOutDegree()) <= 1 
-				|| Math.max(e.getNode1().getInDegree(), e.getNode1().getOutDegree()) <= 1){
 				System.out.print("...scanning edge " + e.getId() + "cov=" + e.getNumber("cov"));
 				PopBin tmp = scanAndGuess(e.getNumber("cov"));
 				if(tmp!=null){
@@ -286,16 +288,7 @@ public class SimpleBinner {
 				}else
 					System.out.print(": none!");
 				System.out.println();
-					
-			}else if(e.getNumber("cov") < minCov) {
-				if(minCovPop!=null){
-					if(!highlyPossibleEdges.containsKey(minCovPop))
-						highlyPossibleEdges.put(minCovPop, new ArrayList<Edge>());
-				}
-				highlyPossibleEdges.get(minCovPop).add(e);
-			}
 		}
-		//3.2. Second round of thorough assignment: suck it deep!
 
 		while(!unresolvedEdges.isEmpty()) {
 			LOG.info("Starting assigning " + unresolvedEdges.size() + " unresolved edges");
@@ -363,12 +356,12 @@ public class SimpleBinner {
 			node2BinMap.remove(path.peekNode());
 			return null;
 		}else if(!uniqueBin.isCloseTo(startBin)){
-			LOG.info("Ignored: consensus bin doesn't agree with one of the endings bin at node {}", path.getRoot());
+			LOG.info("Ignored: consensus bin {} doesn't agree with one of the endings bin {} at node {}", uniqueBin, startBin, path.getRoot());
 			node2BinMap.remove(path.getRoot());
 			//clean from bin map here...
 			return null;
 		}else if(!uniqueBin.isCloseTo(endBin)){
-			LOG.info("Ignored: consensus bin doesn't agree with one of the endings bin at node {}", path.peekNode());
+			LOG.info("Ignored: consensus bin {} doesn't agree with one of the endings bin {} at node {}", uniqueBin, endBin, path.peekNode());
 			node2BinMap.remove(path.peekNode());
 			//clean from bin map here...
 			return null;
@@ -518,13 +511,12 @@ public class SimpleBinner {
 	}
 	public static void main(String[] args) throws IOException {
 		HybridAssembler hbAss = new HybridAssembler();
-		hbAss.setShortReadsInput(GraphExplore.dataFolder+"TB-careful/assembly_graph.fastg");
+		hbAss.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/Kp13883-careful/assembly_graph.fastg");
 		hbAss.setShortReadsInputFormat("fastg");
 		hbAss.prepareShortReadsProcess(true);
 		
-		BidirectedGraph graph = hbAss.simGraph;		
-		SimpleBinner binner = new SimpleBinner(graph);
-		binner.estimatePathsByCoverage();
+		SimpleBinner binner = hbAss.simGraph.binner;
+		//binner.estimatePathsByCoverage();
 		System.out.println("=> number of bin = " + binner.binList.size());
 		for(PopBin b:binner.binList) {
 			System.out.println("Bin " + b.binID + " estCov=" + b.estCov + " totLen=" + b.totLen);
@@ -533,7 +525,7 @@ public class SimpleBinner {
 		}
 			
 			
-		for(Node n:graph) {
+		for(Node n:hbAss.simGraph) {
 			Iterator<Edge> ite = n.edges().iterator();
 			while(ite.hasNext()) {
 				Edge e = ite.next();

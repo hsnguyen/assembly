@@ -2,25 +2,17 @@ package org.rtassembly.npgraph;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.lang.ProcessBuilder.Redirect;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Scanner;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.graphstream.algorithm.ConnectedComponents;
-import org.graphstream.graph.Edge;
-import org.graphstream.graph.Node;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.common.util.concurrent.AtomicDouble;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordIterator;
@@ -28,8 +20,7 @@ import htsjdk.samtools.SamInputResource;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
-import japsa.seq.Alphabet;
-import japsa.seq.Sequence;
+
 import japsa.seq.SequenceReader;
 
 
@@ -39,7 +30,7 @@ public class HybridAssembler {
     private boolean ready=false, overwrite=false;
     private String prefix = "/tmp/";
 	private String 	mm2Path="", 
-					mm2Opt="-t4 -x map-ont";
+					mm2Opt="-t4 -x map-ont -k15 -w5";
 
 	private String shortReadsInput="", longReadsInput="";
 	private String shortReadsInputFormat="", longReadsInputFormat="";
@@ -96,7 +87,9 @@ public class HybridAssembler {
 			}
 			String fn = lrInput.toLowerCase();
 			if(	fn.endsWith(".fasta") || fn.endsWith(".fa") || fn.endsWith("fna")
-				|| fn.endsWith(".fastq") || fn.endsWith(".fq") 
+				|| fn.endsWith(".fastq") || fn.endsWith(".fq")
+				|| fn.endsWith(".fasta.gz") || fn.endsWith(".fa.gz") || fn.endsWith("fna.gz")
+				|| fn.endsWith(".fastq.gz") || fn.endsWith(".fq.gz") 
 				) 
 				setLongReadsInputFormat("fasta/fastq");
 			else if(fn.endsWith(".sam") || fn.endsWith(".bam")) 
@@ -204,7 +197,7 @@ public class HybridAssembler {
 						mm2Opt,
 						"-K",
 						"20000",
-						prefix+"./assembly_graph.mmi",
+						prefix+"/assembly_graph.mmi",
 						"-"
 						).
 						redirectInput(Redirect.INHERIT);
@@ -214,13 +207,13 @@ public class HybridAssembler {
 						mm2Opt,
 						"-K",
 						"20000",
-						prefix+"./assembly_graph.mmi",
+						prefix+"/assembly_graph.mmi",
 						longReadsInput
 						);
 			}
 
-			mm2Process  = pb.redirectError(ProcessBuilder.Redirect.to(new File("/dev/null"))).start();
-//			mm2Process  = pb.redirectError(ProcessBuilder.Redirect.to(new File("mm2.err"))).start();
+//			mm2Process  = pb.redirectError(ProcessBuilder.Redirect.to(new File("/dev/null"))).start();
+			mm2Process  = pb.redirectError(ProcessBuilder.Redirect.to(new File(prefix+"/mm2.log"))).start();
 
 			LOG.info("minimap2 started!");			
 
@@ -262,9 +255,8 @@ public class HybridAssembler {
 						{
 							//path here is already unique! (2 unique ending nodes)
 					    	if(simGraph.reduceUniquePath(path)) {
-
-					    		GraphExplore.redrawGraphComponents(simGraph);
 					    		observer.forFunUpdate();
+					    		GraphUtil.redrawGraphComponents(simGraph);
 					    	}
 						}
 				}
@@ -292,9 +284,9 @@ public class HybridAssembler {
 			else
 				System.out.println("bridge contain no path! ignored");
 		}
-		GraphExplore.redrawGraphComponents(simGraph);
+		GraphUtil.redrawGraphComponents(simGraph);
 		
-        observer.scanAndUpdate();
+        observer.linearComponentsDecomposition();
 		observer.outputFASTA(getPrefix()+"npgraph_assembly.fasta");
 
 	}
@@ -309,9 +301,6 @@ public class HybridAssembler {
     	   scanner.nextLine();
     	}
     
-    protected void sleep() {
-        try { Thread.sleep(1000); } catch (Exception e) {}
-    }
     
     public boolean checkMinimap2() {    		
 		ProcessBuilder pb = new ProcessBuilder(mm2Path+"/minimap2","-V").redirectErrorStream(true);
@@ -364,10 +353,10 @@ public class HybridAssembler {
 	public static void main(String[] argv) throws IOException, InterruptedException{
 		HybridAssembler hbAss = new HybridAssembler();
 		
-		hbAss.setShortReadsInput(GraphExplore.dataFolder+"EcK12S-careful/assembly_graph.fastg");
+		hbAss.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/EcK12S-careful/assembly_graph.fastg");
 		hbAss.setShortReadsInputFormat("fastg");
 		hbAss.prepareShortReadsProcess(false);
-		hbAss.setLongReadsInput(GraphExplore.dataFolder+"EcK12S-careful/assembly_graph.sam");
+		hbAss.setLongReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/EcK12S-careful/assembly_graph.sam");
 		hbAss.setLongReadsInputFormat("sam/bam");
 		hbAss.prepareLongReadsProcess();
 		hbAss.assembly();

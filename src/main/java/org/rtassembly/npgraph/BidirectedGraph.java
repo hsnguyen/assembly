@@ -7,7 +7,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graphstream.graph.*;
@@ -15,7 +14,6 @@ import org.graphstream.graph.implementations.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceOutputStream;
 
@@ -173,6 +171,12 @@ public class BidirectedGraph extends MultiGraph{
     	return bridgesMap.get(key);
     }
     
+    // when this unique node actually contained by a bridge
+    synchronized public void updateBridgesMap(Node unqNode, BidirectedBridge bridge){
+    	bridgesMap.put(unqNode.getId()+"o", bridge);
+    	bridgesMap.put(unqNode.getId()+"i", bridge);
+    }
+    // when there is new unique bridge 
     synchronized protected void updateBridgesMap(BidirectedBridge bridge) {
     	if(bridge==null)
     		return;
@@ -196,6 +200,7 @@ public class BidirectedGraph extends MultiGraph{
     	
     }
     
+    //when there is a path that could represent a bridge (half or full)
     synchronized protected void updateBridgesMap(BidirectedPath path, boolean isFullPath) {
     	if(path==null || path.size() < 2)
     		return;
@@ -215,7 +220,7 @@ public class BidirectedGraph extends MultiGraph{
     
     //Return bridge in the map (if any) that share the same bases (unique end) 
     synchronized public BidirectedBridge getHomoBridgeFromMap(BidirectedBridge bridge){
-    	BidirectedBridge retval = null;
+    	BidirectedBridge retval = null, tmp = null;
     	if(bridge!=null){
 	    	Node 	startNode=bridge.getStartAlignment().node,
 	    			endNode=bridge.getEndAlignment().node;
@@ -223,19 +228,29 @@ public class BidirectedGraph extends MultiGraph{
 	    			endNodeDir=!bridge.getEndAlignment().strand;
 	    	
 	    	if(SimpleBinner.getUniqueBin(startNode)!=null){
-	    		retval=bridgesMap.get(startNode.getId()+(startNodeDir?"o":"i"));
-	    		if(retval!=null)
-	    			return retval;
+	    		tmp=bridgesMap.get(startNode.getId()+(startNodeDir?"o":"i"));
+	    		if(tmp!=null)
+	    			retval=tmp;
 	    	}
 	    	
 	    	if(SimpleBinner.getUniqueBin(endNode)!=null){
-	    		retval=bridgesMap.get(endNode.getId()+(endNodeDir?"o":"i"));
+	    		tmp=bridgesMap.get(endNode.getId()+(endNodeDir?"o":"i"));
+	    		if(tmp!=null){
+	    			if(retval==null || retval.getBridgeStatus()<tmp.getBridgeStatus())
+	    				retval=tmp;
+	    			
+	    		}
 	    	}
 	    	
     	}
     	
     	return retval;
     }
+    
+    synchronized public void removeBridgesFromNode(Node node){
+    	
+    }
+    
     //If the node was wrongly identified as unique before, do things...
     synchronized public void destroyFalseBridges(Node node){
     	node.removeAttribute("unique");
@@ -250,8 +265,10 @@ public class BidirectedGraph extends MultiGraph{
     			  		
     			falseBridgeFrom.halfPaths.addAll(falseBridgeFrom.fullPaths);
     			falseBridgeFrom.fullPaths=new ArrayList<BidirectedPath>();
+    			//todo: remove 2 entries from bridgeMap here...
+    			
     		}else{    		
-    			//destroy the bridge
+    			//destroy the half bridge
         		bridgesMap.remove(node.getId()+ "o");
     		}
 
@@ -259,13 +276,15 @@ public class BidirectedGraph extends MultiGraph{
     	
     	if(falseBridgeTo!=null){
     		if(falseBridgeTo.getBridgeStatus()>=0){
-    			//if(falseBridgeFrom.getBestPath()!=null)
-    			//	falseBridgeFrom.getBestPath().revert();
+    			if(falseBridgeTo.getBestPath()!=null)
+    				falseBridgeTo.getBestPath().revert();
     			  		
     			falseBridgeTo.halfPaths.addAll(falseBridgeTo.fullPaths);
     			falseBridgeTo.fullPaths=new ArrayList<BidirectedPath>();
+    			//todo: remove 2 entries from bridgeMap here...
+
     		}else{    		
-    			//destroy the bridge
+    			//destroy the half bridge
         		bridgesMap.remove(node.getId()+ "i");
     		}
     	}
@@ -306,64 +325,69 @@ public class BidirectedGraph extends MultiGraph{
     	/**************************************************************************************
     	 * To cover the missing edges due to big k-mer of DBG
     	 **************************************************************************************/
-    	if(possiblePaths.isEmpty()){
-    		//try to find an overlap < kmer size (dead-end)
-    		if(distance < 0) {
-    			Sequence seq1, seq2;
-    			BidirectedNode node1, node2;
-    			if(Math.max(from.readStart, from.readEnd) < Math.max(to.readStart, to.readEnd)) {
-    				node1=srcNode;
-    				node2=dstNode;
-        			seq1=(Sequence)(node1.getAttribute("seq"));
-        			seq2=(Sequence)(node2.getAttribute("seq"));
-        			if(!from.strand)
-        				seq1=Alphabet.DNA.complement(seq1);
-        			if(!to.strand)
-        				seq2=Alphabet.DNA.complement(seq2);
-    			}else {
-    				node1=dstNode;
-    				node2=srcNode;
-        			seq1=(Sequence)(node1.getAttribute("seq"));
-        			seq2=(Sequence)(node2.getAttribute("seq"));
-        			if(!from.strand)
-        				seq2=Alphabet.DNA.complement(seq1);
-        			if(!to.strand)
-        				seq1=Alphabet.DNA.complement(seq2);
-        			
-    			}
-    			// stupid scanning for overlap < k
-    			String prev=seq1.toString(), next=seq2.toString();
-    			int index=-1;
-    			for(int i=BidirectedGraph.getKmerSize()-1; i >30; i--) {
-    				if(prev.substring(prev.length()-i, prev.length()).compareTo(next.substring(0,i-1))==0) {
-    					index=i;
-    					break;
-    				}
-    			}
-    			if(index>0) {
-        			BidirectedEdge overlapEdge = new BidirectedEdge(srcNode, dstNode, from.strand, to.strand);
-        			//TODO: save the corresponding content of long reads to this edge
-        			overlapEdge.setAttribute("dist", index);
-        			tmp.add(overlapEdge);
-        			retval.add(tmp);
-        			System.out.println("Overlap path from " + srcNode.getId() + " to " + dstNode.getId() + " d=-" + index);
-        			HybridAssembler.promptEnterKey();
-        			return retval;
-    			}else
-    				return null;
 
-    		}
-    		//if a path couldn't be found between 2 dead-ends but alignments quality are insanely high
-    		//FIXME: return a pseudo path having an nanopore edge
-    		else if(SimpleBinner.getUniqueBin(srcNode)!=null && SimpleBinner.getUniqueBin(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 &&
+    	if(possiblePaths.isEmpty()){
+//        	//didn't work (check by blastn)!!!   		
+//    		//try to find an overlap < kmer size (dead-end)
+//    		if(distance < 0) {
+//    			Sequence seq1, seq2;
+//    			BidirectedNode node1, node2;
+//    			if(Math.max(from.readStart, from.readEnd) < Math.max(to.readStart, to.readEnd)) {
+//    				node1=srcNode;
+//    				node2=dstNode;
+//        			seq1=(Sequence)(node1.getAttribute("seq"));
+//        			seq2=(Sequence)(node2.getAttribute("seq"));
+//        			if(!from.strand)
+//        				seq1=Alphabet.DNA.complement(seq1);
+//        			if(!to.strand)
+//        				seq2=Alphabet.DNA.complement(seq2);
+//    			}else {
+//    				node1=dstNode;
+//    				node2=srcNode;
+//        			seq1=(Sequence)(node1.getAttribute("seq"));
+//        			seq2=(Sequence)(node2.getAttribute("seq"));
+//        			if(!from.strand)
+//        				seq2=Alphabet.DNA.complement(seq1);
+//        			if(!to.strand)
+//        				seq1=Alphabet.DNA.complement(seq2);
+//        			
+//    			}
+//    			// stupid scanning for overlap < k
+//    			String prev=seq1.toString(), next=seq2.toString();
+//    			int index=-1;
+//    			for(int i=BidirectedGraph.getKmerSize()-1; i >30; i--) {
+//    				if(prev.substring(prev.length()-i, prev.length()).compareTo(next.substring(0,i-1))==0) {
+//    					index=i;
+//    					break;
+//    				}
+//    			}
+//    			if(index>0) {
+//        			BidirectedEdge overlapEdge = new BidirectedEdge(srcNode, dstNode, from.strand, to.strand);
+//        			//TODO: save the corresponding content of long reads to this edge
+//        			overlapEdge.setAttribute("dist", index);
+//        			tmp.add(overlapEdge);
+//        			retval.add(tmp);
+//        			System.out.println("Overlap path from " + srcNode.getId() + " to " + dstNode.getId() + " d=-" + index);
+//        			HybridAssembler.promptEnterKey();
+//        			return retval;
+//    			}else
+//    				return null;
+//
+//    		}
+//    		//if a path couldn't be found between 2 dead-ends but alignments quality are insanely high
+//    		else 
+			if(SimpleBinner.getUniqueBin(srcNode)!=null && SimpleBinner.getUniqueBin(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 &&
 				Math.min(from.quality, to.quality) >= Alignment.GOOD_QUAL)
     		{
-    			BidirectedEdge pseudoEdge = new BidirectedEdge(srcNode, dstNode, from.strand, to.strand);
+//    			BidirectedEdge pseudoEdge = new BidirectedEdge(srcNode, dstNode, from.strand, to.strand);
     			//save the corresponding content of long reads to this edge
+	    		//FIXME: save nanopore reads into this pseudo edge to run consensus later
+    			BidirectedEdge pseudoEdge = addEdge(srcNode, dstNode, from.strand, to.strand);
     			pseudoEdge.setAttribute("dist", distance);
     			tmp.add(pseudoEdge);
     			retval.add(tmp);
-    			System.out.println("pseudo path from " + srcNode.getId() + " to " + dstNode.getId());
+    			System.out.println("pseudo path from " + srcNode.getId() + " to " + dstNode.getId() + " distance=" + distance);
+    			
 //    			HybridAssembler.promptEnterKey();
     			return retval;
     		}else
@@ -553,8 +577,8 @@ public class BidirectedGraph extends MultiGraph{
 		// Now we got all possible bridges from chopping the alignments at unique nodes
 		System.out.println("\n=> bridges list: ");
 		for(BidirectedBridge brg:bridges) {
-			System.out.printf("+++%s <=> ", brg.getEndingsID());
 			BidirectedBridge storedBridge=getHomoBridgeFromMap(brg);
+			System.out.printf("+++%s <=> %s\n", brg.getEndingsID(), storedBridge==null?"null":storedBridge.getEndingsID());
 			if(storedBridge!=null) {
 				if(storedBridge.getBridgeStatus()==1){
 					System.out.println(storedBridge.getEndingsID() + ": already solved: ignore!");

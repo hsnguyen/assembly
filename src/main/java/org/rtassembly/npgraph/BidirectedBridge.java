@@ -4,12 +4,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Set;
-import java.util.TreeSet;
-
-import javax.swing.text.StyledEditorKit.ForegroundAction;
-
-import org.jfree.util.Log;
 
 public class BidirectedBridge {
 	public static volatile int SAFE_VOTE_DISTANCE=3;
@@ -167,7 +161,7 @@ public class BidirectedBridge {
 				}
 			}
 
-			brg=null;
+//			brg=null;
 			
 			flushInfo();
 		}
@@ -216,8 +210,20 @@ public class BidirectedBridge {
 
 		}
 		
-		if(!wholePaths.isEmpty())
+		if(!wholePaths.isEmpty()){
 			fullPaths=wholePaths;
+			//scan for unexpected unique node in the bridge (missed by alignments) and update the map of bridges
+			wholePaths.forEach(p->{
+									p.nodes().filter(n-> (n!=p.getRoot() && n!=p.peekNode()))
+											.forEach(n->{
+															if(SimpleBinner.getUniqueBin(n)!=null) 
+																graph.updateBridgesMap(n, this)
+																;
+															}
+											);
+									}
+			);
+		}
 		fullPaths.forEach(p->p.setConsensusUniqueBinOfPath(bin));
 		flushInfo();
 
