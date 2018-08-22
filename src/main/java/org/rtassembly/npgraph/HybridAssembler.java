@@ -30,7 +30,7 @@ public class HybridAssembler {
     private boolean ready=false, overwrite=false;
     private String prefix = "/tmp/";
 	private String 	mm2Path="", 
-					mm2Opt="-t4 -x map-ont";
+					mm2Opt="-t4 -x map-ont -k15 -w5";
 
 	private String shortReadsInput="", longReadsInput="";
 	private String shortReadsInputFormat="", longReadsInputFormat="";
@@ -87,7 +87,9 @@ public class HybridAssembler {
 			}
 			String fn = lrInput.toLowerCase();
 			if(	fn.endsWith(".fasta") || fn.endsWith(".fa") || fn.endsWith("fna")
-				|| fn.endsWith(".fastq") || fn.endsWith(".fq") 
+				|| fn.endsWith(".fastq") || fn.endsWith(".fq")
+				|| fn.endsWith(".fasta.gz") || fn.endsWith(".fa.gz") || fn.endsWith("fna.gz")
+				|| fn.endsWith(".fastq.gz") || fn.endsWith(".fq.gz") 
 				) 
 				setLongReadsInputFormat("fasta/fastq");
 			else if(fn.endsWith(".sam") || fn.endsWith(".bam")) 
@@ -195,7 +197,7 @@ public class HybridAssembler {
 						mm2Opt,
 						"-K",
 						"20000",
-						prefix+"./assembly_graph.mmi",
+						prefix+"/assembly_graph.mmi",
 						"-"
 						).
 						redirectInput(Redirect.INHERIT);
@@ -205,13 +207,13 @@ public class HybridAssembler {
 						mm2Opt,
 						"-K",
 						"20000",
-						prefix+"./assembly_graph.mmi",
+						prefix+"/assembly_graph.mmi",
 						longReadsInput
 						);
 			}
 
-			mm2Process  = pb.redirectError(ProcessBuilder.Redirect.to(new File("/dev/null"))).start();
-//			mm2Process  = pb.redirectError(ProcessBuilder.Redirect.to(new File("mm2.err"))).start();
+//			mm2Process  = pb.redirectError(ProcessBuilder.Redirect.to(new File("/dev/null"))).start();
+			mm2Process  = pb.redirectError(ProcessBuilder.Redirect.to(new File(prefix+"/mm2.log"))).start();
 
 			LOG.info("minimap2 started!");			
 

@@ -231,13 +231,10 @@ public class GraphUtil {
 				node.setAttribute("name", "Node "+nodeID);
 				node.setAttribute("seq", seq);
 				node.setAttribute("len", seq.length());
-				//node.setAttribute("kc", Integer.parseInt(toks[2]));
-				//TODO: replace read cov with kc calculation?
-				//1.kmer count to kmer cov
-				double cov=Double.parseDouble(toks[2])/(seq.length()-BidirectedGraph.getKmerSize()); 
-				//2.kmer cov to read cov
-				cov*=BidirectedGraph.ILLUMINA_READ_LENGTH/(BidirectedGraph.ILLUMINA_READ_LENGTH-BidirectedGraph.getKmerSize());
-				node.setAttribute("cov", cov);		
+				
+				//here is the kmer coverage
+				node.setAttribute("cov", Integer.parseInt(toks[2]));
+	
 				
 				break;
 			case "L"://links
@@ -281,12 +278,18 @@ public class GraphUtil {
 		//rough estimation of kmer used
 		if((shortestLen-1) != BidirectedGraph.getKmerSize()){
 			BidirectedGraph.setKmerSize(shortestLen-1);
-//			for(Edge e:graph.getEdgeSet()){
-//				((BidirectedEdge)e).changeKmerSize(BidirectedGraph.KMER);
-//			}
 			graph.edges().forEach(e -> ((BidirectedEdge)e).changeKmerSize(BidirectedGraph.KMER));
 
 		}
+		
+		graph.nodes().forEach(n->{
+			//1.kmer count to kmer cov
+			double cov=n.getNumber("cov")/(n.getNumber("len")-BidirectedGraph.getKmerSize()); 
+			//2.kmer cov to read cov
+			cov*=BidirectedGraph.ILLUMINA_READ_LENGTH/(BidirectedGraph.ILLUMINA_READ_LENGTH-BidirectedGraph.getKmerSize());
+			n.setAttribute("cov", cov);	
+		});
+
 		
 		double totReadsLen=0, totContigsLen=0;
 
