@@ -1,23 +1,26 @@
 package org.rtassembly.npgraph;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import org.graphstream.graph.Node;
+import org.rtassembly.scaffold.ScaffoldVector;
 
 import japsa.seq.Sequence;
 
-public class POGBridge {
+public class NewBridge {
 	public static volatile int SAFE_VOTE_DISTANCE=3;
 	BidirectedGraph graph; //partial order graph saving possible paths
 	BidirectedNode source, sink; //must be unique nodes
 	ArrayList<BridgeSegment> segments;
+	HashMap<Node, ScaffoldVector> segmentSteps;
 	
-	POGBridge(BidirectedGraph graph){
+	NewBridge(BidirectedGraph graph){
 		this.graph=graph;
 	}
 
 	//This is for SPAdes path reader only
-	POGBridge (BidirectedPath path) throws Exception{
+	NewBridge (BidirectedPath path) throws Exception{
 		if(	path.size()<=1
 		 || (SimpleBinner.getUniqueBin(path.getRoot())==null && SimpleBinner.getUniqueBin(path.peekNode())==null))
 			throw new Exception("Invalid path to build bridge: " + path.getId());
@@ -31,7 +34,7 @@ public class POGBridge {
 	}
 	
 
-	public void addHalfBridge(POGBridge brg){
+	public void addHalfBridge(NewBridge brg){
 
 	}
 	
@@ -67,11 +70,11 @@ public class POGBridge {
 	//Using another list of steps to rectify the current bridge's steps
 	//This bridge HAS TO BE complete(2 unique ends), 
 	//the reference need not be complete, instead one unique end is enough (half bridge)
-	public void referencingTo(POGBridge brg){
+	public void referencingTo(NewBridge brg){
 
 	}
 	//Merging with another half bridge, inheriting all info from it
-	public void merging(POGBridge brg){
+	public void merging(NewBridge brg){
 
 	}
 
@@ -90,7 +93,7 @@ public class POGBridge {
 	
 
 	//check if a bridge is worth to merge to this bridge
-	public boolean checkIfMerge(POGBridge brg) {
+	public boolean checkIfMerge(NewBridge brg) {
 		boolean retval=false;
 
 		
