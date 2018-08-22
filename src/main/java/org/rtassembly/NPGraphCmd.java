@@ -24,7 +24,7 @@ public class NPGraphCmd extends CommandLine{
 		addBoolean("overwrite", false, "Whether to overwrite or reuse the intermediate file");
 		
 		addString("mm2Path","","Absolute path to the folder containing binary minimap2");
-		addString("mm2Opt", "-t4 -x map-ont", "Preset used by minimap2 to align long reads to the contigs");
+		addString("mm2Opt", "-t4 -x map-ont -k15 -w5", "Preset used by minimap2 to align long reads to the contigs");
 		
 		addInt("qual", 1, "Minimum quality of alignment to considered");
 		addInt("dfs", 15, "Number of DFS steps to search");
