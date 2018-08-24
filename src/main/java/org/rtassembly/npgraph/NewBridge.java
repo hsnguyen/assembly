@@ -9,7 +9,9 @@ import org.rtassembly.scaffold.ScaffoldVector;
 import japsa.seq.Sequence;
 
 public class NewBridge {
-	public static volatile int SAFE_VOTE_DISTANCE=3;
+	public static volatile int MAX_DIFF=3;
+	private static HashMap<String,NewBridge> bridgesMap = new HashMap<>();
+	
 	BidirectedGraph graph; //partial order graph saving possible paths
 	BidirectedNode source, sink; //must be unique nodes
 	ArrayList<BridgeSegment> segments;
@@ -33,13 +35,22 @@ public class NewBridge {
 		segments.add(new BridgeSegment(path));
 	}
 	
-
-	public void addHalfBridge(NewBridge brg){
-
-	}
-	
-	public boolean append(Alignment alg) {
-		return false;
+	/*
+	 * Most important function: to read from a AlignedRead and
+	 * try to build or complete the bridge
+	 */
+	public void buildFrom(AlignedRead alignedRead) {
+		//1.scan the aligned read for the marker and direction to build
+		ArrayList<Alignment> alignments = alignedRead.getAlignmentRecords();
+		
+		for(Alignment alg:alignments){
+			
+		}
+		
+		//2.compare the alignments to this bridge's steps and update & save nanopore read also if necessary
+		
+		
+		
 		
 	}
 	//Return bridge status:
@@ -51,60 +62,14 @@ public class NewBridge {
 	}
 	
 	
-	public BidirectedPath getBestPath() {
-		//return best path (unique path or best voted path); or null if undetermined
-		return null;
-	}
-	
-	public String getEndingsID() {
-		return null;
-		
-		
-	}
-	public String getBridgeString() {
-		String retval="<unknown>";
 
-		return retval;
-	}
-	
-	//Using another list of steps to rectify the current bridge's steps
-	//This bridge HAS TO BE complete(2 unique ends), 
-	//the reference need not be complete, instead one unique end is enough (half bridge)
-	public void referencingTo(NewBridge brg){
-
-	}
-	//Merging with another half bridge, inheriting all info from it
-	public void merging(NewBridge brg){
-
-	}
-
-	//Start to build bridge (i.e. identify possible paths) when 2 unique ends are determined
-	public void bridging(BidirectedGraph graph, PopBin bin){
-
-		
-	}
-		
-	public String getAllPossiblePathsString(){
-		String retval="";
-
-		
-		return retval;
-	}
-	
-
-	//check if a bridge is worth to merge to this bridge
-	public boolean checkIfMerge(NewBridge brg) {
-		boolean retval=false;
-
-		
-		return retval;
-	}
 	
 	/*
 	 * Class to represent a single segment of the whole bridge.
 	 * A bridge consists of >=1 segments.
 	 */
 	public class BridgeSegment{
+		ArrayList<Sequence> nnpReads; // to store nanopore data if needed
 		ArrayList<BidirectedPath> connectedPaths;
 		Node start, end;
 		//TODO: scaffold vector??
