@@ -54,7 +54,11 @@ public class AlignedRead{
 		readSequence = read;
 		alignments = alignmentList;
 	}
-
+	public AlignedRead(Sequence read, Alignment alg){
+		this(read, new ArrayList<Alignment>());
+		append(alg);
+	}
+	
 	public Sequence getReadSequence(){
 		return readSequence;
 	}
@@ -62,8 +66,19 @@ public class AlignedRead{
 	public ArrayList<Alignment> getAlignmentRecords(){
 		return alignments;
 	}
-
-	
+	public void append(Alignment alg){
+		alignments.add(alg);
+	}
+	public Alignment getFirstAlignment(){
+		if(alignments==null || alignments.isEmpty())
+			return null;
+		return alignments.get(0);
+	}
+	public Alignment getLastAlignment(){
+		if(alignments==null || alignments.size() <= 1)
+			return null;
+		return alignments.get(alignments.size()-1);
+	}
 	public AlignedRead reverse(){
 		//return an (conceptually the same) read filling with the a reverse read
 		Sequence revRead = Alphabet.DNA.complement(readSequence);
@@ -81,6 +96,15 @@ public class AlignedRead{
 		if (!sorted){				
 			Collections.sort(alignments);
 			sorted = true;
+		}
+	}
+	public String getEndingsID() {
+		if(alignments==null || alignments.isEmpty())
+			return "-,-";
+		else{
+			BidirectedEdgePrototype tmp = new BidirectedEdgePrototype(getFirstAlignment(),getLastAlignment());
+			return tmp.toString();
+			
 		}
 	}
 }

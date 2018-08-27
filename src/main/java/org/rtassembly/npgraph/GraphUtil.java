@@ -49,7 +49,7 @@ public class GraphUtil {
 		SequenceReader reader = new FastaReader(graphFileName);
 		Sequence seq;
 		int shortestLen = 10000;
-		ArrayList<EdgeComponents> potentialEdgeSet = new ArrayList<EdgeComponents>();
+		ArrayList<BidirectedEdgePrototype> potentialEdgeSet = new ArrayList<BidirectedEdgePrototype>();
 		while ((seq = reader.nextSequence(Alphabet.DNA())) != null){
 			if(seq.length()<shortestLen)
 				shortestLen=seq.length();
@@ -94,7 +94,7 @@ public class GraphUtil {
 					String neighborID = neighbor.split("_")[1];
 					AbstractNode nbr = (AbstractNode) graph.addNode(neighborID); //just need a prototype, attributes can be set later...
 
-					potentialEdgeSet.add(new EdgeComponents(node,nbr,dir0,dir1)); //edges' prototype
+					potentialEdgeSet.add(new BidirectedEdgePrototype(node,nbr,dir0,dir1)); //edges' prototype
 					
 				}
 			}
@@ -103,17 +103,18 @@ public class GraphUtil {
 
 		reader.close();
 		
-		for(EdgeComponents ec:potentialEdgeSet) {
-			BidirectedEdge e = graph.addEdge(ec.n1, ec.n2, ec.dir1, ec.dir2);
-//			System.out.println("...adding edge " + e.getId() + " -> total no of edges = " + graph.getEdgeCount());
-//			graph.updateGraphMap(e, new BidirectedPath(e));
+		for(BidirectedEdgePrototype ec:potentialEdgeSet) {
+			try {
+				graph.addEdge(ec.getNode0(), ec.getNode1(), ec.getDir0(), ec.getDir1());
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				System.exit(1);
+			}
 		}
 		//rough estimation of kmer used
 		if((shortestLen-1) != BidirectedGraph.getKmerSize()){
 			BidirectedGraph.setKmerSize(shortestLen-1);
-//			for(Edge e:graph.getEdgeSet()){
-//				((BidirectedEdge)e).changeKmerSize(BidirectedGraph.KMER);
-//			}
 			graph.edges().forEach(e -> ((BidirectedEdge)e).changeKmerSize(BidirectedGraph.KMER));
 		}
 		
@@ -676,15 +677,4 @@ public class GraphUtil {
 			"edge { fill-color: rgb(255,50,50); size: 2px; }" +
 			"edge.cut { fill-color: rgba(200,200,200,128); }";
     
-}
-class EdgeComponents{
-	AbstractNode n1,n2;
-	boolean dir1,dir2;
-
-	EdgeComponents(AbstractNode n1, AbstractNode n2, boolean dir1, boolean dir2){
-		this.n1=n1;
-		this.n2=n2;
-		this.dir1=dir1;
-		this.dir2=dir2;
-	}
 }

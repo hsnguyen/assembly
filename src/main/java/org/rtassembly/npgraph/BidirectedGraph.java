@@ -31,7 +31,7 @@ public class BidirectedGraph extends MultiGraph{
     
     //provide mapping from unique directed node to its corresponding bridge
     //E.g: 103-: <103-82-> also 82+:<82+103+>
-    private HashMap<String, BidirectedBridge> bridgesMap; 
+    private HashMap<String, NewBridge> bridgesMap; 
     
     private static final Logger LOG = LoggerFactory.getLogger(BidirectedGraph.class);
 
@@ -61,7 +61,7 @@ public class BidirectedGraph extends MultiGraph{
 	public BidirectedGraph(String id, boolean strictChecking, boolean autoCreate,
 			int initialNodeCapacity, int initialEdgeCapacity) {
 		super(id, strictChecking, autoCreate);
-		bridgesMap=new HashMap<String, BidirectedBridge>(initialNodeCapacity*2);
+		bridgesMap=new HashMap<String, NewBridge>(initialNodeCapacity*2);
 		
 		// All we need to do is to change the node & edge factory
 		setNodeFactory(new NodeFactory<BidirectedNode>() {
@@ -77,9 +77,9 @@ public class BidirectedGraph extends MultiGraph{
 		});
 		
 	}
-	public HashSet<BidirectedBridge> getUnsolvedBridges(){
-		HashSet<BidirectedBridge> retval = new HashSet<BidirectedBridge>();
-		for(BidirectedBridge brg:bridgesMap.values()){
+	public HashSet<NewBridge> getUnsolvedBridges(){
+		HashSet<NewBridge> retval = new HashSet<NewBridge>();
+		for(NewBridge brg:bridgesMap.values()){
 			System.out.printf("Bridge %s : status=%d \n", brg.getBridgeString(), brg.getBridgeStatus());
 			if(brg.getBridgeStatus()<1)
 				retval.add(brg);
@@ -166,49 +166,49 @@ public class BidirectedGraph extends MultiGraph{
      ********************** utility functions to serve the assembly algo ****************************** 
      * ***********************************************************************************************/
     
-    synchronized public BidirectedBridge getBridgeFromMap(Node unqNode, boolean direction){
+    synchronized public NewBridge getBridgeFromMap(Node unqNode, boolean direction){
     	String key=unqNode.getId()+(direction?"o":"i"); //true:going outward, false:going inward
     	return bridgesMap.get(key);
     }
     
     // when this unique node actually contained by a bridge
-    synchronized public void updateBridgesMap(Node unqNode, BidirectedBridge bridge){
-    	bridgesMap.put(unqNode.getId()+"o", bridge);
-    	bridgesMap.put(unqNode.getId()+"i", bridge);
+    synchronized public void updateBridgesMap(Node unqNode, NewBridge bidirectedBridge){
+    	bridgesMap.put(unqNode.getId()+"o", bidirectedBridge);
+    	bridgesMap.put(unqNode.getId()+"i", bidirectedBridge);
     }
     // when there is new unique bridge 
-    synchronized protected void updateBridgesMap(BidirectedBridge bridge) {
-    	if(bridge==null)
+    synchronized protected void updateBridgesMap(NewBridge bidirectedBridge) {
+    	if(bidirectedBridge==null)
     		return;
-    	Node 	startNode=bridge.getStartAlignment().node,
-    			endNode=bridge.getEndAlignment().node;
-    	boolean startNodeDir=bridge.getStartAlignment().strand,
-    			endNodeDir=!bridge.getEndAlignment().strand;
-    	BidirectedBridge tmp = null;
+    	Node 	startNode=bidirectedBridge.pBridge.getNode0(),
+    			endNode=bidirectedBridge.pBridge.getNode1();
+    	boolean startNodeDir=bidirectedBridge.pBridge.getDir0(),
+    			endNodeDir=bidirectedBridge.pBridge.getDir1();
+    	NewBridge tmp = null;
     	//FIXME: check if worth it!
 //    	bridge.addHalfBridge(bridge);
     	if(SimpleBinner.getUniqueBin(startNode)!=null){
     		tmp=getBridgeFromMap(startNode,startNodeDir);
-    		bridge.merging(tmp);
-    		bridgesMap.put(startNode.getId()+(startNodeDir?"o":"i"), bridge);
+    		bidirectedBridge.merging(tmp);
+    		bridgesMap.put(startNode.getId()+(startNodeDir?"o":"i"), bidirectedBridge);
     	}
     	if(SimpleBinner.getUniqueBin(endNode)!=null){
     		tmp=getBridgeFromMap(endNode,endNodeDir);
-    		bridge.merging(tmp);
-    		bridgesMap.put(endNode.getId()+(endNodeDir?"o":"i"), bridge);
+    		bidirectedBridge.merging(tmp);
+    		bridgesMap.put(endNode.getId()+(endNodeDir?"o":"i"), bidirectedBridge);
     	}
     	
     }
     
     //when there is a path that could represent a bridge (half or full)
-    synchronized protected void updateBridgesMap(BidirectedPath path, boolean isFullPath) {
+    synchronized protected void updateBridgesMap(BidirectedPath path, boolean isFullPath) throws Exception {
     	if(path==null || path.size() < 2)
     		return;
-    	BidirectedNode 	startNode=(BidirectedNode) path.getRoot(),
-    					endNode=(BidirectedNode) path.peekNode();
-    	boolean startNodeDir=((BidirectedEdge)path.getEdgePath().get(0)).getDir(startNode),
-    			endNodeDir=((BidirectedEdge)path.peekEdge()).getDir(endNode);
-    	BidirectedBridge brg = new BidirectedBridge(path,isFullPath);
+    	BidirectedNode 	startNode=path.getFirstNode(),
+    					endNode=path.getLastNode();
+    	boolean startNodeDir=path.getFirstNodeDirection(),
+    			endNodeDir=path.getLastNodeDirection();
+    	NewBridge brg = new NewBridge(path);
     	if(SimpleBinner.getUniqueBin(startNode)!=null){
     		bridgesMap.put(startNode.getId()+(startNodeDir?"o":"i"), brg);
     	}
@@ -219,13 +219,13 @@ public class BidirectedGraph extends MultiGraph{
     }
     
     //Return bridge in the map (if any) that share the same bases (unique end) 
-    synchronized public BidirectedBridge getHomoBridgeFromMap(BidirectedBridge bridge){
-    	BidirectedBridge retval = null, tmp = null;
-    	if(bridge!=null){
-	    	Node 	startNode=bridge.getStartAlignment().node,
-	    			endNode=bridge.getEndAlignment().node;
-	    	boolean startNodeDir=bridge.getStartAlignment().strand,
-	    			endNodeDir=!bridge.getEndAlignment().strand;
+    synchronized public NewBridge getHomoBridgeFromMap(AlignedRead algRead){
+    	NewBridge retval = null, tmp = null;
+    	if(algRead!=null){
+	    	Node 	startNode=algRead.getFirstAlignment().node,
+	    			endNode=algRead.getLastAlignment().node;
+	    	boolean startNodeDir=algRead.getFirstAlignment().strand,
+	    			endNodeDir=!algRead.getLastAlignment().strand;
 	    	
 	    	if(SimpleBinner.getUniqueBin(startNode)!=null){
 	    		tmp=bridgesMap.get(startNode.getId()+(startNodeDir?"o":"i"));
@@ -253,51 +253,43 @@ public class BidirectedGraph extends MultiGraph{
     
     //If the node was wrongly identified as unique before, do things...
     synchronized public void destroyFalseBridges(Node node){
-    	node.removeAttribute("unique");
-    	binner.node2BinMap.remove(node);
-    	
-    	BidirectedBridge 	falseBridgeFrom = bridgesMap.get(node.getId()+ "o"),
-    						falseBridgeTo = bridgesMap.get(node.getId() + "i");
-    	if(falseBridgeFrom!=null){
-    		if(falseBridgeFrom.getBridgeStatus()>=0){
-    			if(falseBridgeFrom.getBestPath()!=null)
-    				falseBridgeFrom.getBestPath().revert();
-    			  		
-    			falseBridgeFrom.halfPaths.addAll(falseBridgeFrom.fullPaths);
-    			falseBridgeFrom.fullPaths=new ArrayList<BidirectedPath>();
-    			//todo: remove 2 entries from bridgeMap here...
-    			
-    		}else{    		
-    			//destroy the half bridge
-        		bridgesMap.remove(node.getId()+ "o");
-    		}
-
-    	}
-    	
-    	if(falseBridgeTo!=null){
-    		if(falseBridgeTo.getBridgeStatus()>=0){
-    			if(falseBridgeTo.getBestPath()!=null)
-    				falseBridgeTo.getBestPath().revert();
-    			  		
-    			falseBridgeTo.halfPaths.addAll(falseBridgeTo.fullPaths);
-    			falseBridgeTo.fullPaths=new ArrayList<BidirectedPath>();
-    			//todo: remove 2 entries from bridgeMap here...
-
-    		}else{    		
-    			//destroy the half bridge
-        		bridgesMap.remove(node.getId()+ "i");
-    		}
-    	}
+//    	node.removeAttribute("unique");
+//    	binner.node2BinMap.remove(node);
+//    	
+//    	NewBridge 	falseBridgeFrom = bridgesMap.get(node.getId()+ "o"),
+//					falseBridgeTo = bridgesMap.get(node.getId() + "i");
+//    	if(falseBridgeFrom!=null){
+//    		if(falseBridgeFrom.getBridgeStatus()>=0){
+//    			if(falseBridgeFrom.getBestPath()!=null)
+//    				falseBridgeFrom.getBestPath().revert();
+//    			  		
+//    			falseBridgeFrom.halfPaths.addAll(falseBridgeFrom.fullPaths);
+//    			falseBridgeFrom.fullPaths=new ArrayList<BidirectedPath>();
+//    			//todo: remove 2 entries from bridgeMap here...
+//    			
+//    		}else{    		
+//    			//destroy the half bridge
+//        		bridgesMap.remove(node.getId()+ "o");
+//    		}
+//
+//    	}
+//    	
+//    	if(falseBridgeTo!=null){
+//    		if(falseBridgeTo.getBridgeStatus()>=0){
+//    			if(falseBridgeTo.getBestPath()!=null)
+//    				falseBridgeTo.getBestPath().revert();
+//    			  		
+//    			falseBridgeTo.halfPaths.addAll(falseBridgeTo.fullPaths);
+//    			falseBridgeTo.fullPaths=new ArrayList<BidirectedPath>();
+//    			//todo: remove 2 entries from bridgeMap here...
+//
+//    		}else{    		
+//    			//destroy the half bridge
+//        		bridgesMap.remove(node.getId()+ "i");
+//    		}
+//    	}
     		
     }
-//    synchronized protected  BidirectedBridge updateBridgesMap(BidirectedEdge e, BidirectedBridge bridge) {
-//    	//Get the ending 21-mer of each nodes to find hidden potential edges? 
-//    	//NOPE, only do this if a suspicious alignment appeared!
-//    	if(e==null || bridge==null)
-//    		return null;
-//    	else
-//    		return bridgesMap.put(e.getId(), bridge);
-//    }
     
     synchronized public void binning() {
     	binner=new SimpleBinner(this);
@@ -461,7 +453,7 @@ public class BidirectedGraph extends MultiGraph{
      * Find bridges based on list of Alignments.
      * Return list of bridges with endings as markers and alignments of non-markers in-between.
      */
-    synchronized protected List<BidirectedPath> uniqueBridgesFinding(ArrayList<Alignment> alignments) {
+    synchronized protected List<BidirectedPath> uniqueBridgesFinding(Sequence nnpRead, ArrayList<Alignment> alignments) {
 		if(alignments.size()<=1)
 			return null;
 		
@@ -517,8 +509,8 @@ public class BidirectedGraph extends MultiGraph{
 
 		Alignment 	curAlignment =allAlignments.get(curRange),
 					nextAlignment;
-		ArrayList<BidirectedBridge> bridges = new ArrayList<>();
-		BidirectedBridge 	curBridge=new BidirectedBridge(curAlignment);
+		ArrayList<AlignedRead> allBuildingBlocks = new ArrayList<>();
+		AlignedRead	curBuildingBlocks=new AlignedRead(nnpRead, curAlignment);
 		PopBin tmpBin=null;
 		HashMap<PopBin, Long> bins2Length = new HashMap<PopBin,Long>();
 
@@ -534,10 +526,10 @@ public class BidirectedGraph extends MultiGraph{
 			tmpBin=SimpleBinner.getUniqueBin(nextAlignment.node);
 			if(tmpBin!=null) {				
 				if(tmpBin.isCloseTo(leastAbundancePop)){
-					curBridge.append(nextAlignment);
-					bridges.add(curBridge);
+					curBuildingBlocks.append(nextAlignment);
+					allBuildingBlocks.add(curBuildingBlocks);
 					
-					curBridge=new BidirectedBridge(nextAlignment);
+					curBuildingBlocks=new AlignedRead(nnpRead, nextAlignment);
 					
 					if(bins2Length.containsKey(tmpBin)){
 						long newval=bins2Length.get(tmpBin)+(long)nextAlignment.node.getNumber("len");
@@ -548,19 +540,19 @@ public class BidirectedGraph extends MultiGraph{
 					//revert its bridges! (correct later when traverse through induced path)
 					
 					
-					curBridge.append(nextAlignment);
+					curBuildingBlocks.append(nextAlignment);
 					continue;
 				}
 					
 				
 			}else{
-				curBridge.append(nextAlignment);
+				curBuildingBlocks.append(nextAlignment);
 				
 			}	
 			
 		}
-		if(curBridge.steps.size() > 1)
-			bridges.add(curBridge);
+		if(curBuildingBlocks.getAlignmentRecords().size() > 1)
+			allBuildingBlocks.add(curBuildingBlocks);
 		
 		
 		//determine the global unique bin of the whole path
@@ -576,9 +568,9 @@ public class BidirectedGraph extends MultiGraph{
 		
 		// Now we got all possible bridges from chopping the alignments at unique nodes
 		System.out.println("\n=> bridges list: ");
-		for(BidirectedBridge brg:bridges) {
-			BidirectedBridge storedBridge=getHomoBridgeFromMap(brg);
-			System.out.printf("+++%s <=> %s\n", brg.getEndingsID(), storedBridge==null?"null":storedBridge.getEndingsID());
+		for(AlignedRead bb:allBuildingBlocks) {
+			NewBridge storedBridge=getHomoBridgeFromMap(bb);
+			System.out.printf("+++%s <=> %s\n", bb.getEndingsID(), storedBridge==null?"null":storedBridge.getEndingsID());
 			if(storedBridge!=null) {
 				if(storedBridge.getBridgeStatus()==1){
 					System.out.println(storedBridge.getEndingsID() + ": already solved: ignore!");
@@ -592,7 +584,7 @@ public class BidirectedGraph extends MultiGraph{
 //						startNode=brg.getEndAlignment().node;
 					
 //					if(storedBridge.checkIfMerge(brg))
-						storedBridge.referencingTo(brg);
+						storedBridge.referencingTo(bb);
 					if(storedBridge.getBridgeStatus()==1){
 //						storedBridge.getBestPath().setConsensusUniqueBinOfPath(tmp);
 						retrievedPaths.add(storedBridge.getBestPath());
@@ -604,20 +596,20 @@ public class BidirectedGraph extends MultiGraph{
 			}
 			System.out.println();
 			//check if brg is complete or not (only bridging complete bridge)
-			if(checkCompleteBridge(brg)){				
-				brg.bridging(this, tmpBin);
-				if(!brg.fullPaths.isEmpty()){
-					updateBridgesMap(brg);//must be here
+			if(checkCompleteBridge(bb)){				
+				bb.bridging(this, tmpBin);
+				if(!bb.fullPaths.isEmpty()){
+					updateBridgesMap(bb);//must be here
 
-					BidirectedPath bestPath=brg.getBestPath();
+					BidirectedPath bestPath=bb.getBestPath();
 					if(bestPath!=null){
 	//					brg.getBestPath().setConsensusUniqueBinOfPath(tmp);
-						retrievedPaths.add(brg.getBestPath());
+						retrievedPaths.add(bb.getBestPath());
 					}
 				}
 			}else {//a half bridge is already in the map... merge it!
-				System.out.println(brg.getBridgeString() + ": half built: storing!");
-				updateBridgesMap(brg);
+				System.out.println(bb.getBridgeString() + ": half built: storing!");
+				updateBridgesMap(bb);
 			}
 			
 			
@@ -625,14 +617,7 @@ public class BidirectedGraph extends MultiGraph{
 		return retrievedPaths;
 	}
  	
-    //simple check if a bridge connecting 2 unique nodes
-    //todo: combine info from bridgesMap also?
-    private boolean checkCompleteBridge(BidirectedBridge brg){
-    	if(brg==null)
-    		return false;
-    	else return (SimpleBinner.getUniqueBin(brg.getStartAlignment().node) != null) 
-    				&& (SimpleBinner.getUniqueBin(brg.getEndAlignment().node) != null);
-    }
+
     /**
      * Another reduce that doesn't remove the unique nodes
      * Instead redundant edges are removed on a path way

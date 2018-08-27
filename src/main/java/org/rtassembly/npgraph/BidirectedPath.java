@@ -289,4 +289,16 @@ public class BidirectedPath extends Path{
 		
 	}
 	
+	public BidirectedNode getFirstNode(){return (BidirectedNode) getRoot();} 
+	public BidirectedNode getLastNode(){return (BidirectedNode) peekNode();}
+	public boolean getFirstNodeDirection() throws Exception{
+		if(getEdgeCount()<1)
+			throw new Exception("Path has no edge!");
+		return ((BidirectedEdge)getEdgePath().get(0)).getDir(getFirstNode());
+	}
+	public boolean getLastNodeDirection() throws Exception{
+		if(getEdgeCount()<1)
+			throw new Exception("Path has no edge!");
+		return ((BidirectedEdge) peekEdge()).getDir(getLastNode());
+	}
 }

@@ -20,7 +20,8 @@ import htsjdk.samtools.SamInputResource;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
-
+import japsa.seq.Alphabet;
+import japsa.seq.Sequence;
 import japsa.seq.SequenceReader;
 
 
@@ -223,6 +224,7 @@ public class HybridAssembler {
 		SAMRecordIterator iter = reader.iterator();
 
 		String readID = "";
+		Sequence nnpRead = null;
 		ArrayList<Alignment> samList =  new ArrayList<Alignment>();// alignment record of the same read;	
 		
 		while (iter.hasNext()) {
@@ -249,7 +251,7 @@ public class HybridAssembler {
 			//not the first occurrance				
 			if (!readID.equals("") && !readID.equals(myRec.readID)) {	
 				synchronized(simGraph) {
-					List<BidirectedPath> paths=simGraph.uniqueBridgesFinding(samList);
+					List<BidirectedPath> paths=simGraph.uniqueBridgesFinding(nnpRead, samList);
 					if(paths!=null)						
 						for(BidirectedPath path:paths) 
 						{
@@ -261,6 +263,7 @@ public class HybridAssembler {
 						}
 				}
 				samList = new ArrayList<Alignment>();
+				nnpRead = new Sequence(Alphabet.DNA5(), rec.getReadString(), "R" + readID);
 			}	
 			readID = myRec.readID;
 			samList.add(myRec); 
@@ -277,10 +280,10 @@ public class HybridAssembler {
 	public void postProcessGraph() throws IOException{
 		//TODO: traverse for the last time,remove redundant edges, infer the path...
 		//may want to run consensus to determine the final path
-		for(BidirectedBridge brg:simGraph.getUnsolvedBridges()){
+		for(NewBridge brg:simGraph.getUnsolvedBridges()){
 			System.out.println("Last attempt: " + brg.getBridgeString());
 			if(brg.getBridgeStatus()==0)
-				simGraph.reduceUniquePath(brg.fullPaths.get(0));
+				simGraph.reduceUniquePath(brg.getBestPathPossible());
 			else
 				System.out.println("bridge contain no path! ignored");
 		}
