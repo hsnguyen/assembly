@@ -10,7 +10,7 @@ import japsa.seq.Sequence;
 
 public class NewBridge {
 	public static volatile int MAX_DIFF=3;
-	
+	private int status=-1;
 	BidirectedGraph graph; //partial order graph saving possible paths
 	BidirectedEdgePrototype pBridge; //must be unique nodes
 	ArrayList<BridgeSegment> segments;
@@ -20,7 +20,8 @@ public class NewBridge {
 		this.graph=graph;
 	}
 
-	//This is for SPAdes path reader only
+	//This is for SPAdes path reader only. The input path must be elementary unique path
+	//(2 ending nodes are unique and not containing other unique path)
 	NewBridge (BidirectedPath path) throws Exception{
 		if(	path.size()<=1
 		 || (SimpleBinner.getUniqueBin(path.getRoot())==null && SimpleBinner.getUniqueBin(path.peekNode())==null))
@@ -29,8 +30,14 @@ public class NewBridge {
 		segments=new ArrayList<>();
 		segments.add(new BridgeSegment(path));
 		pBridge=segments.get(0).pSegment;
+		
+		status=1;
 	}
 	
+	public NewBridge(AlignedRead bb) {
+		// TODO Auto-generated constructor stub
+	}
+
 	/*
 	 * Most important function: to read from a AlignedRead and
 	 * try to build or complete the bridge
@@ -45,16 +52,13 @@ public class NewBridge {
 		
 		//2.compare the alignments to this bridge's steps and update & save nanopore read also if necessary
 		
-		
-		
+	
 		
 	}
 	//Return bridge status:
-	//-1: half bridge, 0: complete bridge, unsolved; 1: solved
+	//-1: none or half bridge, 0: unsolved full bridge; 1: solved bridge
 	public int getBridgeStatus(){
-		int retval=-1;
-
-		return retval;
+		return status;
 	}
 	
 	public String getEndingsID() {
@@ -63,16 +67,42 @@ public class NewBridge {
 		else
 			return pBridge.toString();
 	}
+	
+	@Override
+	public String toString() {
+		String retval="";
+		//...print all steps
+		
+		return retval;
+	}
 
 	//Return the path on top of the possible list
 	public BidirectedPath getBestPathPossible(){
 		//TODO: implement it!
 		return null;
 	}
-	/*
+	
+
+	public ArrayList<BidirectedPath> getAllPossiblePaths() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public BidirectedPath getBestPath() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public void compareTo(AlignedRead bb) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	
+	/************************************************************************************************
 	 * Class to represent a single segment of the whole bridge.
 	 * A bridge consists of >=1 segments.
-	 */
+	 ************************************************************************************************/
 	public class BridgeSegment{
 		ArrayList<Sequence> nnpReads; // to store nanopore data if needed
 		ArrayList<BidirectedPath> connectedPaths;
@@ -108,8 +138,6 @@ public class NewBridge {
 			return getNumberOfPaths()==1;
 		}
 	}
-
-
 
 
 
