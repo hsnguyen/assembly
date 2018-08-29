@@ -12,7 +12,7 @@ public class NewBridge {
 	public static volatile int MAX_DIFF=3;
 	private int status=-1;
 	BidirectedGraph graph; //partial order graph saving possible paths
-	BidirectedEdgePrototype pBridge; //must be unique nodes
+	BidirectedEdgePrototype pBridge; //note: fist node of the bridge is set unique
 	ArrayList<BridgeSegment> segments;
 	HashMap<Node, ScaffoldVector> segmentSteps;
 	
@@ -22,7 +22,8 @@ public class NewBridge {
 
 	//This is for SPAdes path reader only. The input path must be elementary unique path
 	//(2 ending nodes are unique and not containing other unique path)
-	NewBridge (BidirectedPath path) throws Exception{
+	NewBridge (BidirectedGraph graph, BidirectedPath path) throws Exception{
+		this(graph);
 		if(	path.size()<=1
 		 || (SimpleBinner.getUniqueBin(path.getRoot())==null && SimpleBinner.getUniqueBin(path.peekNode())==null))
 			throw new Exception("Invalid path to build bridge: " + path.getId());
@@ -34,24 +35,42 @@ public class NewBridge {
 		status=1;
 	}
 	
-	public NewBridge(AlignedRead bb) {
-		// TODO Auto-generated constructor stub
+	public NewBridge(BidirectedGraph graph, AlignedRead bb) {
+		this(graph);
+		buildFrom(bb);
 	}
 
 	/*
 	 * Most important function: to read from a AlignedRead and
 	 * try to build or complete the bridge
 	 */
-	public void buildFrom(AlignedRead alignedRead, int from, int to) {
+	public void buildFrom(AlignedRead alignedRead) {
 		//1.scan the aligned read for the marker and direction to build
+		//2.compare the alignments to this bridge's steps and update & save nanopore read also if necessary
 		ArrayList<Alignment> alignments = alignedRead.getAlignmentRecords();
+		if(alignments.size() < 2)
+			return;
 		
-		for(Alignment alg:alignments){
+		// Starting node of the aligned read must be unique
+		if(	SimpleBinner.getUniqueBin(alignedRead.getFirstAlignment().node)==null 
+				&& SimpleBinner.getUniqueBin(alignedRead.getFirstAlignment().node)!=null)
+				alignedRead=alignedRead.reverse();
+		
+		if(status==-1){ // empty bridge: build from beginning	
+			if(SimpleBinner.getUniqueBin(alignedRead.getFirstAlignment().node)==null)
+				return;
+			for(int i=0;i<alignments.size()-1;i++)
+				segments.add(new BridgeSegment(alignments.get(i), alignments.get(i+1), alignedRead.getReadSequence()));
+				
+			
+		}else if(status==0){ // building in progress...
+			 if(alignedRead.getFirstAlignment().node == pBridge.getNode1())
+				 alignedRead=alignedRead.reverse();
+			 
+		}else{ //completed bridge: do nothing?
 			
 		}
-		
-		//2.compare the alignments to this bridge's steps and update & save nanopore read also if necessary
-		
+				
 	
 		
 	}
@@ -93,10 +112,6 @@ public class NewBridge {
 		return null;
 	}
 
-	public void compareTo(AlignedRead bb) {
-		// TODO Auto-generated method stub
-		
-	}
 
 	
 	/************************************************************************************************

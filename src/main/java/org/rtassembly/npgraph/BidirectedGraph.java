@@ -210,7 +210,7 @@ public class BidirectedGraph extends MultiGraph{
 	    					endNode=path.getLastNode();
 	    	boolean startNodeDir=path.getFirstNodeDirection(),
 	    			endNodeDir=path.getLastNodeDirection();
-	    	NewBridge brg = new NewBridge(path);
+	    	NewBridge brg = new NewBridge(this,path);
 	    	if(SimpleBinner.getUniqueBin(startNode)!=null){
 	    		bridgesMap.put(startNode.getId()+(startNodeDir?"o":"i"), brg);
 	    	}
@@ -583,12 +583,12 @@ public class BidirectedGraph extends MultiGraph{
 					System.out.println(storedBridge.getEndingsID() + ": already built: fortify!");
 					System.out.println(storedBridge.getAllPossiblePaths());
 					
-					storedBridge.compareTo(bb);
+					storedBridge.buildFrom(bb);
 
 				}			
 
 			}else{
-				storedBridge=new NewBridge(bb);
+				storedBridge=new NewBridge(this,bb);
 				updateBridgesMap(storedBridge);
 				
 			}

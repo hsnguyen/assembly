@@ -219,7 +219,30 @@ public class RawConcatemer {
         curTime=System.currentTimeMillis();
     }
     
-    
+//    /* Find autocorrelation peaks */
+//    public List<Integer> findPeaks() {
+//        List<Integer> peaks = new ArrayList<>();
+//        int max = 1;
+//        maxACF = 0;
+//        if (correlations.length > 1) {
+//            boolean positive = (correlations[1] > correlations[0]);
+//            for (int i = 2; i < correlations.length; i++) {
+//                if (!positive && correlations[i] > correlations[i - 1]) {
+//                    max = i;
+//                    positive = !positive;
+//                } else if (positive && correlations[i] > correlations[max]) {
+//                    max = i;
+//                } else if (positive && correlations[i] < correlations[i - 1]) {
+//                    if (max > 1 && correlations[max] > ACF_THRESH) {
+//                        peaks.add(max);
+//                        if (correlations[max] > maxACF) { maxACF = correlations[max]; }
+//                    }
+//                    positive = !positive;
+//                }
+//            }
+//        }
+//        return peaks;
+//    }
 	public static void main(String[] args){
 		RawConcatemer concat=new RawConcatemer("/home/sonhoanghguyen/Projects/concatemers/data/raw/imb17_013486_20171130__MN17279_sequencing_run_20171130_Ha_BSV_CaMV1_RBarcode_35740_read_17553_ch_455_strand.fast5");
 //		try {
