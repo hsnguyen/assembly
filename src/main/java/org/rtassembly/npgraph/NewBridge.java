@@ -14,7 +14,7 @@ public class NewBridge {
 	BidirectedGraph graph; //partial order graph saving possible paths
 	BidirectedEdgePrototype pBridge; //note: fist node of the bridge is set unique
 	ArrayList<BridgeSegment> segments;
-	HashMap<Node, ScaffoldVector> segmentSteps;
+	//HashMap<Node, ScaffoldVector> segmentSteps;
 	
 	NewBridge(BidirectedGraph graph){
 		this.graph=graph;
@@ -47,8 +47,7 @@ public class NewBridge {
 	public void buildFrom(AlignedRead alignedRead) {
 		//1.scan the aligned read for the marker and direction to build
 		//2.compare the alignments to this bridge's steps and update & save nanopore read also if necessary
-		ArrayList<Alignment> alignments = alignedRead.getAlignmentRecords();
-		if(alignments.size() < 2)
+		if(alignedRead.getAlignmentRecords().size() < 2)
 			return;
 		
 		// Starting node of the aligned read must be unique
@@ -59,13 +58,44 @@ public class NewBridge {
 		if(status==-1){ // empty bridge: build from beginning	
 			if(SimpleBinner.getUniqueBin(alignedRead.getFirstAlignment().node)==null)
 				return;
-			for(int i=0;i<alignments.size()-1;i++)
-				segments.add(new BridgeSegment(alignments.get(i), alignments.get(i+1), alignedRead.getReadSequence()));
-				
+			for(int i=0;i<alignedRead.getAlignmentRecords().size()-1;i++)
+				segments.add(new BridgeSegment(alignedRead.getAlignmentRecords().get(i), alignedRead.getAlignmentRecords().get(i+1), alignedRead));
+			status=0;	
 			
 		}else if(status==0){ // building in progress...
 			 if(alignedRead.getFirstAlignment().node == pBridge.getNode1())
 				 alignedRead=alignedRead.reverse();
+			 int begCoord = alignedRead.getFirstAlignment().readAlignmentStart();
+			 int startIdx=0;
+			 for(int idx=1; idx<alignedRead.getAlignmentRecords().size(); idx++){
+				 Alignment alg = alignedRead.getAlignmentRecords().get(idx);
+				 //calculate distance to the first alignment
+				 Range algRange = new Range(alg.readAlignmentStart()-begCoord, alg.readAlignmentEnd()-begCoord),
+						 curRange=null, nextRange=null;
+				 //1. locate the segment containing the corresponding alignment
+				 	for(int j=startIdx; j<segments.size();j++){
+				 		BridgeSegment seg = segments.get(j);
+				 		curRange=seg.getRangeOfFirstNode();
+				 		nextRange=seg.getRangeOfLastNode();
+				 		if(algRange.compareTo(curRange) * algRange.compareTo(nextRange) <= 0){
+				 			//check & replace a mis-placed 
+				 			if(algRange.isHomo(curRange)){
+				 			
+				 			}else if(algRange.isHomo(nextRange)){
+				 				
+				 			}else{ // either break the segment into sub-segments or reduce its possible paths
+				 				
+				 			}
+				 				
+				 			
+				 			startIdx=j;
+				 			break;
+				 		}
+				 	}
+				 
+				 
+				 
+			 }
 			 
 		}else{ //completed bridge: do nothing?
 			
@@ -74,6 +104,8 @@ public class NewBridge {
 	
 		
 	}
+
+
 	//Return bridge status:
 	//-1: none or half bridge, 0: unsolved full bridge; 1: solved bridge
 	public int getBridgeStatus(){
@@ -122,10 +154,13 @@ public class NewBridge {
 		ArrayList<Sequence> nnpReads; // to store nanopore data if needed
 		ArrayList<BidirectedPath> connectedPaths;
 		BidirectedEdgePrototype pSegment;
+		Range coverRange;
 		//TODO: scaffold vector??
 		BridgeSegment(){}
-		BridgeSegment(Alignment start, Alignment end, Sequence read){
+		BridgeSegment(Alignment start, Alignment end, AlignedRead read){
 			pSegment=new BidirectedEdgePrototype(start.node, end.node, start.strand, !end.strand);
+			int startCoordinate = read.getFirstAlignment().readAlignmentStart();
+			coverRange=new Range(start.readAlignmentStart()-startCoordinate, end.readAlignmentEnd()-startCoordinate);
 			//invoke findPath()?
 			
 			int distance = start.readAlignmentStart()-end.readAlignmentEnd();
@@ -133,11 +168,14 @@ public class NewBridge {
 				connectedPaths = graph.getClosestPaths(start, end, distance);
 			
 		}
+		
 		BridgeSegment(BidirectedPath path) throws Exception{
 			pSegment=new BidirectedEdgePrototype(path);
 			connectedPaths=new ArrayList<>();
 			connectedPaths.add(path);
 			
+			//only if path cover the whole bridge (1-segment bridge)
+			coverRange=new Range(0,(int) path.getLength());
 		}
 		
 		public int getNumberOfPaths(){
@@ -152,6 +190,17 @@ public class NewBridge {
 		public boolean isUnique(){
 			return getNumberOfPaths()==1;
 		}
+		
+		public Range getRangeOfFirstNode(){
+			return new Range(coverRange.getLeft(), (int) (coverRange.getLeft() + pSegment.getNode0().getNumber("len")-1));
+
+		}
+		
+		public Range getRangeOfLastNode(){
+			return new Range((int)(coverRange.getRight() - pSegment.getNode1().getNumber("len") +1), coverRange.getRight());
+
+		}
+		
 	}
 
 

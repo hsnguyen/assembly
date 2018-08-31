@@ -201,17 +201,17 @@ public class Alignment implements Comparable<Alignment> {
 				+ ", qual=: " + quality;
 	}
 	
-	//scan a group of homo-alignments and return marker if available
-	public static ArrayList<Alignment> scanGroup(ArrayList<Alignment> list){
-		ArrayList<Alignment> retval=new ArrayList<Alignment>();
-		for (Alignment alg:list) {
-			if(alg.quality>=MIN_QUAL) {
-				retval.add(alg);
-			}
-		}
-
-		return (retval.size() > 0)?retval:list;
-	}
+//	//scan a group of homo-alignments and return marker if available
+//	public static ArrayList<Alignment> scanGroup(ArrayList<Alignment> list){
+//		ArrayList<Alignment> retval=new ArrayList<Alignment>();
+//		for (Alignment alg:list) {
+//			if(alg.quality>=MIN_QUAL) {
+//				retval.add(alg);
+//			}
+//		}
+//
+//		return (retval.size() > 0)?retval:list;
+//	}
 	/* (non-Javadoc)
 	 * @see java.lang.Comparable#compareTo(java.lang.Object)
 	 */
