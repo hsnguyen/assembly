@@ -78,14 +78,9 @@ public class NewBridge {
 				 		curRange=seg.getRangeOfFirstNode();
 				 		nextRange=seg.getRangeOfLastNode();
 				 		if(algRange.compareTo(curRange) * algRange.compareTo(nextRange) <= 0){
-				 			//check & replace a mis-placed 
-				 			if(algRange.isHomo(curRange)){
+				 			// check & replace a mis-placed 
+				 			// either break the segment into sub-segments or reduce its possible paths	
 				 			
-				 			}else if(algRange.isHomo(nextRange)){
-				 				
-				 			}else{ // either break the segment into sub-segments or reduce its possible paths
-				 				
-				 			}
 				 				
 				 			
 				 			startIdx=j;
@@ -201,6 +196,13 @@ public class NewBridge {
 
 		}
 		
+		//take information about a node (position+direction) and reduce the number of possible paths 
+		public boolean pathsReducing(Node node, int distance){
+			//true if the hint node is found
+			boolean retval=false;
+			
+			return retval;
+		}
 	}
 
 
