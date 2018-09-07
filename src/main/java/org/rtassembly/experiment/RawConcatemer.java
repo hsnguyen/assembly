@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.stream.DoubleStream;
 
+import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
 import org.jtransforms.fft.DoubleFFT_1D;
 
 import ch.systemsx.cisd.hdf5.HDF5Factory;
@@ -168,7 +169,6 @@ public class RawConcatemer {
         DoubleFFT_1D fft = new DoubleFFT_1D(2*n);
         fft.realForward(x2);
         ac2[0] = sqr(x2[0]);
-        //ac[0] = 0;  // For statistical convention, zero out the mean 
         ac2[1] = sqr(x2[1]);
         for (int i = 2; i < 2*n-1; i += 2) {
             ac2[i] = sqr(x2[i]) + sqr(x2[i+1]);
@@ -201,15 +201,20 @@ public class RawConcatemer {
 
     void test() {
         double [] data = new double [signal.length];
+        SummaryStatistics stats=new SummaryStatistics();
         long curTime=System.currentTimeMillis();
 
         for (int j=0;j<signal.length;j++) {
             data[j] = (double)signal[j];
+            stats.addValue(signal[j]);
         }
-
+        double 	mean=stats.getMean(),
+        		std=stats.getStandardDeviation();
+        for (int j=0;j<data.length;j++) {
+            data[j] = (data[j]-mean)/std;
+        }
         System.out.printf("Done init arrays in %d secs\n", (System.currentTimeMillis()-curTime)/1000);
         curTime=System.currentTimeMillis();
-
 //        double [] ac1 = bruteForceAutoCorrelation(data);
 //        System.out.printf("Done brute force autocorrelation in  %d secs\n", (System.currentTimeMillis()-curTime)/1000);
 //        curTime=System.currentTimeMillis();
@@ -220,28 +225,31 @@ public class RawConcatemer {
         Arrays.parallelSetAll(n, i->2*r[i]/m[i]) ;        
         
         double [] n1k = new double [data.length];
-        smooth(n, n1k, 1000);
+        smooth(n, n1k, 20000);
         
         System.out.printf("Done FFT autocorrelation in  %d secs\n", (System.currentTimeMillis()-curTime)/1000);
         curTime=System.currentTimeMillis();
 //        Print to file
         try {
-    		PrintWriter writer = new PrintWriter(new FileWriter(DATA+"concat7_mpm.signal"));
+    		PrintWriter writer = new PrintWriter(new FileWriter(DATA+"concat7_mpm.signal.xls"));
     		writer.print(name+" ");
     		for(double value:n)
-    			writer.printf("%.5f ",value); //normalized it
+    			writer.printf("%.5f\n",value); //normalized it
     		writer.close();
     		
-    		PrintWriter writer2 = new PrintWriter(new FileWriter(DATA+"concat7_mpm_1kstep.txt")); 
+    		PrintWriter writer2 = new PrintWriter(new FileWriter(DATA+"concat7_mpm_20kstep.xls")); 
     		for(double value:n1k)
-    			writer2.printf("%.5f ",value); //normalized it
+    			writer2.printf("%.5f\n",value); //normalized it
     		writer2.close();
+    		
+            System.out.printf("Done writing to files in %d secs\n", (System.currentTimeMillis()-curTime)/1000);
+            curTime=System.currentTimeMillis();
+            
         } catch (IOException e) {
         		throw new RuntimeException(e);
         } 
         
-        System.out.printf("Done writing to files in %d secs\n", (System.currentTimeMillis()-curTime)/1000);
-        curTime=System.currentTimeMillis();
+
     }
     
 //    /* Find autocorrelation peaks */
@@ -284,12 +292,12 @@ public class RawConcatemer {
     static String DATA="/home/sonhoanghguyen/Projects/concatemers/data/raw/";
 	public static void main(String[] args){
 		RawConcatemer concat=new RawConcatemer(DATA+"imb17_013486_20171130__MN17279_sequencing_run_20171130_Ha_BSV_CaMV1_RBarcode_35740_read_17553_ch_455_strand.fast5");
-		try {
-			concat.printCrossCorrelation(DATA+"concat7.signal");
-		} catch (IOException e) {
-			e.printStackTrace();
-		} 
-		
+//		try {
+//			concat.printCrossCorrelation(DATA+"concat7.signal");
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		} 
+		concat.test();
 
 	}
 
