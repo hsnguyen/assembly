@@ -66,6 +66,7 @@ public class NewBridge {
 			 if(alignedRead.getFirstAlignment().node == pBridge.getNode1())
 				 alignedRead=alignedRead.reverse();
 			 int begCoord = alignedRead.getFirstAlignment().readAlignmentStart();
+			 boolean firstDir = alignedRead.getFirstAlignment().strand;
 			 int startIdx=0;
 			 for(int idx=1; idx<alignedRead.getAlignmentRecords().size(); idx++){
 				 Alignment alg = alignedRead.getAlignmentRecords().get(idx);
@@ -80,7 +81,7 @@ public class NewBridge {
 				 		if(algRange.compareTo(curRange) * algRange.compareTo(nextRange) <= 0){
 				 			// check & replace a mis-placed 
 				 			// either break the segment into sub-segments or reduce its possible paths	
-				 			
+				 			//TODO: use ScaffoldVector instead of Range?
 				 				
 				 			
 				 			startIdx=j;
