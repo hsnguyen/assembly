@@ -67,27 +67,46 @@ public class NewBridge {
 				 alignedRead=alignedRead.reverse();
 			 int begCoord = alignedRead.getFirstAlignment().readAlignmentStart();
 			 boolean firstDir = alignedRead.getFirstAlignment().strand;
-			 int startIdx=0;
+			 int foundCtgIdx=1; //save the index of found record that closest to the current alignment 
+			 
 			 for(int idx=1; idx<alignedRead.getAlignmentRecords().size(); idx++){
 				 Alignment alg = alignedRead.getAlignmentRecords().get(idx);
 				 //calculate distance to the first alignment
-				 Range algRange = new Range(alg.readAlignmentStart()-begCoord, alg.readAlignmentEnd()-begCoord),
-						 curRange=null, nextRange=null;
+				 Range algRange = new Range(alg.readAlignmentStart()-begCoord, alg.readAlignmentEnd()-begCoord);
 				 //1. locate the segment containing the corresponding alignment
-				 	for(int j=startIdx; j<segments.size();j++){
-				 		BridgeSegment seg = segments.get(j);
-				 		curRange=seg.getRangeOfFirstNode();
-				 		nextRange=seg.getRangeOfLastNode();
-				 		if(algRange.compareTo(curRange) * algRange.compareTo(nextRange) <= 0){
-				 			// check & replace a mis-placed 
-				 			// either break the segment into sub-segments or reduce its possible paths	
-				 			//TODO: use ScaffoldVector instead of Range?
-				 				
-				 			
-				 			startIdx=j;
-				 			break;
-				 		}
-				 	}
+				 while(segments.get(foundCtgIdx).getRangeOfLastNode().compareTo(algRange) < 0){
+					 foundCtgIdx++;
+					 if(foundCtgIdx>=segments.size())
+						 break;
+						 
+				 }
+				 if(foundCtgIdx < segments.size()){
+					 BridgeSegment searchSegment = segments.get(foundCtgIdx);
+					 int 	distance = searchSegment.getRangeOfLastNode().getLeft() - algRange.getRight(),
+					 		numOfPathsToSearch = searchSegment.getNumberOfPaths();
+					 
+					 //check if exist path connecting this contig to the ends of this bridge segment
+					 BidirectedNode fromNode = (BidirectedNode) searchSegment.pSegment.getNode1(),
+							 		toNode = alg.node;
+					 
+					 try {
+						boolean fromDir= searchSegment.pSegment.getDir1(),
+								 toDir = alg.strand;//TODO: thorough check again and line 176!!! Jot down explaination somewhere!
+						ArrayList<BidirectedPath> paths = graph.getClosestPaths(fromNode, fromDir, toNode, toDir, distance);
+						//...
+						
+					} catch (Exception e) {
+						System.err.println("Cannot induce components from the found segment!");
+						e.printStackTrace();
+					}
+					 
+					 //if not check the next segment (cause errors from nanopore data)
+					 
+					 
+
+							
+				 }
+				 
 				 
 				 
 				 
@@ -159,9 +178,7 @@ public class NewBridge {
 			coverRange=new Range(start.readAlignmentStart()-startCoordinate, end.readAlignmentEnd()-startCoordinate);
 			//invoke findPath()?
 			
-			int distance = start.readAlignmentStart()-end.readAlignmentEnd();
-			if(distance<BidirectedGraph.D_LIMIT)
-				connectedPaths = graph.getClosestPaths(start, end, distance);
+			connectedPaths = graph.getClosestPaths(start, end);
 			
 		}
 		

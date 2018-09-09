@@ -307,7 +307,13 @@ public class BidirectedGraph extends MultiGraph{
      * This function deduces a full path in this graph between 2 nodes aligned with a long read
      * 
      */
-    synchronized protected ArrayList<BidirectedPath> getClosestPaths(Alignment from, Alignment to, int distance){
+    synchronized protected ArrayList<BidirectedPath> getClosestPaths(Alignment from, Alignment to){
+    	assert from.readID==to.readID && to.compareTo(from)>=0:"Illegal alignment pair to find path!";
+    	
+    	int distance=to.readAlignmentStart()-from.readAlignmentEnd();
+    	if(distance>BidirectedGraph.D_LIMIT)
+    		return null;
+    	
     	BidirectedNode srcNode = from.node,
     					dstNode = to.node;
     	System.out.println("Looking for path between " + srcNode.getId() + " to " + dstNode.getId() + " with distance " + distance);
@@ -316,7 +322,6 @@ public class BidirectedGraph extends MultiGraph{
     								retval = new ArrayList<BidirectedPath>();
     	tmp.setRoot(srcNode);  	
     	
-    	//TODO: set tolerance dynamically based on distance
     	traverse(tmp, dstNode, possiblePaths, distance, distance>200?(int) (TOLERATE*distance):200, from.strand, to.strand, 0);
 //    	traverse(tmp, dstNode, possiblePaths, distance, 500, from.strand, to.strand, 0);
 
@@ -325,55 +330,6 @@ public class BidirectedGraph extends MultiGraph{
     	 **************************************************************************************/
 
     	if(possiblePaths.isEmpty()){
-//        	//didn't work (check by blastn)!!!   		
-//    		//try to find an overlap < kmer size (dead-end)
-//    		if(distance < 0) {
-//    			Sequence seq1, seq2;
-//    			BidirectedNode node1, node2;
-//    			if(Math.max(from.readStart, from.readEnd) < Math.max(to.readStart, to.readEnd)) {
-//    				node1=srcNode;
-//    				node2=dstNode;
-//        			seq1=(Sequence)(node1.getAttribute("seq"));
-//        			seq2=(Sequence)(node2.getAttribute("seq"));
-//        			if(!from.strand)
-//        				seq1=Alphabet.DNA.complement(seq1);
-//        			if(!to.strand)
-//        				seq2=Alphabet.DNA.complement(seq2);
-//    			}else {
-//    				node1=dstNode;
-//    				node2=srcNode;
-//        			seq1=(Sequence)(node1.getAttribute("seq"));
-//        			seq2=(Sequence)(node2.getAttribute("seq"));
-//        			if(!from.strand)
-//        				seq2=Alphabet.DNA.complement(seq1);
-//        			if(!to.strand)
-//        				seq1=Alphabet.DNA.complement(seq2);
-//        			
-//    			}
-//    			// stupid scanning for overlap < k
-//    			String prev=seq1.toString(), next=seq2.toString();
-//    			int index=-1;
-//    			for(int i=BidirectedGraph.getKmerSize()-1; i >30; i--) {
-//    				if(prev.substring(prev.length()-i, prev.length()).compareTo(next.substring(0,i-1))==0) {
-//    					index=i;
-//    					break;
-//    				}
-//    			}
-//    			if(index>0) {
-//        			BidirectedEdge overlapEdge = new BidirectedEdge(srcNode, dstNode, from.strand, to.strand);
-//        			//TODO: save the corresponding content of long reads to this edge
-//        			overlapEdge.setAttribute("dist", index);
-//        			tmp.add(overlapEdge);
-//        			retval.add(tmp);
-//        			System.out.println("Overlap path from " + srcNode.getId() + " to " + dstNode.getId() + " d=-" + index);
-//        			HybridAssembler.promptEnterKey();
-//        			return retval;
-//    			}else
-//    				return null;
-//
-//    		}
-//    		//if a path couldn't be found between 2 dead-ends but alignments quality are insanely high
-//    		else 
 			if(SimpleBinner.getUniqueBin(srcNode)!=null && SimpleBinner.getUniqueBin(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 &&
 				Math.min(from.quality, to.quality) >= Alignment.GOOD_QUAL)
     		{
@@ -405,6 +361,40 @@ public class BidirectedGraph extends MultiGraph{
     	//FIXME: reduce the number of returned paths here (based on the score?)
     	return possiblePaths;
     	
+    }
+    
+    synchronized protected ArrayList<BidirectedPath> getClosestPaths(BidirectedNode srcNode, boolean srcDir, BidirectedNode dstNode, boolean dstDir, int distance){
+    	if(distance>BidirectedGraph.D_LIMIT)
+    		return null;
+    	System.out.println("Looking for path between " + srcNode.getId() + " to " + dstNode.getId() + " with distance " + distance);
+		BidirectedPath 	tmp = new BidirectedPath();
+		ArrayList<BidirectedPath>	possiblePaths = new ArrayList<BidirectedPath>(),
+									retval = new ArrayList<BidirectedPath>();
+		tmp.setRoot(srcNode);  		
+		traverse(tmp, dstNode, possiblePaths, distance, distance>200?(int) (TOLERATE*distance):200, srcDir, dstDir, 0);
+		if(possiblePaths.isEmpty()){
+			//save the corresponding content of long reads to this edge
+			//FIXME: save nanopore reads into this pseudo edge to run consensus later
+			BidirectedEdge pseudoEdge = addEdge(srcNode, dstNode, srcDir, dstDir);
+			pseudoEdge.setAttribute("dist", distance);
+			tmp.add(pseudoEdge);
+			retval.add(tmp);
+			System.out.println("pseudo path from " + srcNode.getId() + " to " + dstNode.getId() + " distance=" + distance);
+			
+			return retval;
+
+		}
+		//double bestScore=possiblePaths.get(0).getDeviation();
+		//for(int i=0;i<possiblePaths.size();i++){
+		//	BidirectedPath p = possiblePaths.get(i);
+		//	if(p.getDeviation()>bestScore*(1+TOLERATE))
+		//		break;
+		//	retval.add(p);
+		//}
+		//
+		//return retval;
+		//FIXME: reduce the number of returned paths here (based on the score?)
+		return possiblePaths;
     }
     
     synchronized private void traverse(	BidirectedPath path, BidirectedNode dst, ArrayList<BidirectedPath> curResult, 

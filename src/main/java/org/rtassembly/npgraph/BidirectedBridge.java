@@ -181,12 +181,11 @@ public class BidirectedBridge {
 		for(int i=1; i<steps.size();i++){
 			nextAlignment = steps.get(i);
 			int distance = nextAlignment.readAlignmentStart()-curAlignment.readAlignmentEnd();
-			if(distance<BidirectedGraph.D_LIMIT){
-				stepPaths = graph.getClosestPaths(curAlignment, nextAlignment, distance);
-				if(stepPaths==null || stepPaths.isEmpty())
-					return;//must follow the steps
-			}else 
-				return;
+
+			stepPaths = graph.getClosestPaths(curAlignment, nextAlignment);
+			if(stepPaths==null || stepPaths.isEmpty())
+				return;//must follow the steps
+
 	
 			//join all paths from previous to the new ones
 			if(wholePaths.isEmpty())
