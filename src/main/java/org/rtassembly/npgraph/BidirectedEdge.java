@@ -3,17 +3,16 @@ package org.rtassembly.npgraph;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.graphstream.graph.Edge;
-import org.graphstream.graph.Node;
 import org.graphstream.graph.implementations.AbstractEdge;
 import org.graphstream.graph.implementations.AbstractNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import japsa.seq.Sequence;
 
 public class BidirectedEdge extends AbstractEdge{
 	protected boolean dir0, dir1;//true: outward, false: inward
+	//note that traversing direction (true: template, false: reverse complement) of destination node is opposite its defined direction (true: outward, false:inward) 
+	
 	private int length=-BidirectedGraph.getKmerSize();//length of the edge (distance between tips of seqs represented by 2 nodes)
 	
 	

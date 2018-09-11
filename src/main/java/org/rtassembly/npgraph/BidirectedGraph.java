@@ -336,7 +336,7 @@ public class BidirectedGraph extends MultiGraph{
 //    			BidirectedEdge pseudoEdge = new BidirectedEdge(srcNode, dstNode, from.strand, to.strand);
     			//save the corresponding content of long reads to this edge
 	    		//FIXME: save nanopore reads into this pseudo edge to run consensus later
-    			BidirectedEdge pseudoEdge = addEdge(srcNode, dstNode, from.strand, to.strand);
+    			BidirectedEdge pseudoEdge = addEdge(srcNode, dstNode, from.strand, !to.strand);
     			pseudoEdge.setAttribute("dist", distance);
     			tmp.add(pseudoEdge);
     			retval.add(tmp);
@@ -371,7 +371,7 @@ public class BidirectedGraph extends MultiGraph{
 		ArrayList<BidirectedPath>	possiblePaths = new ArrayList<BidirectedPath>(),
 									retval = new ArrayList<BidirectedPath>();
 		tmp.setRoot(srcNode);  		
-		traverse(tmp, dstNode, possiblePaths, distance, distance>200?(int) (TOLERATE*distance):200, srcDir, dstDir, 0);
+		traverse(tmp, dstNode, possiblePaths, distance, distance>200?(int) (TOLERATE*distance):200, srcDir, !dstDir, 0);
 		if(possiblePaths.isEmpty()){
 			//save the corresponding content of long reads to this edge
 			//FIXME: save nanopore reads into this pseudo edge to run consensus later
@@ -393,7 +393,7 @@ public class BidirectedGraph extends MultiGraph{
 		//}
 		//
 		//return retval;
-		//FIXME: reduce the number of returned paths here (based on the score?)
+		//FIXME: reduce the number of returned paths here (calculate edit distance with nanopore read: dynamic programming?)
 		return possiblePaths;
     }
     
@@ -421,7 +421,8 @@ public class BidirectedGraph extends MultiGraph{
 			path.add(e);
 			
 			int delta=Math.abs(distance-e.getLength());
-			if(e.getOpposite(currentNode)==dst && e.getDir(dst)!=dstDir && delta < tolerance){
+			//note that traversing direction (true: template, false: reverse complement) of destination node is opposite its defined direction (true: outward, false:inward) 
+			if(e.getOpposite(currentNode)==dst && e.getDir(dst)!=dstDir && delta < tolerance){ 
 		    	BidirectedPath 	curPath=curResult.isEmpty()?new BidirectedPath():curResult.get(0), //the best path saved among all possible paths from the list curResult
 		    					tmpPath=new BidirectedPath(path);
 		    	tmpPath.setDeviation(delta);

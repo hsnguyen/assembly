@@ -39,10 +39,10 @@ public class BidirectedEdgePrototype{
 	public AbstractNode getNode1(){
 		return n1.getNode();
 	}
-	public boolean getDir0() throws Exception{
+	public boolean getDir0(){
 		return n0.getDir();
 	}
-	public boolean getDir1() throws Exception{
+	public boolean getDir1(){
 		return n1.getDir();
 	}
 	
@@ -68,9 +68,8 @@ class DirectedNode{
 	}
 	
 	public AbstractNode getNode(){return node;}
-	public boolean getDir() throws Exception{
-		if(node==null) 
-				throw new Exception("Empty node!");
+	public boolean getDir(){
+		assert node!=null: "Null node doesn't have direction!";
 		return dir;
 	}
 	

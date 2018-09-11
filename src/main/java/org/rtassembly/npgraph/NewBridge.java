@@ -1,11 +1,7 @@
 package org.rtassembly.npgraph;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-
 import org.graphstream.graph.Node;
-import org.rtassembly.scaffold.ScaffoldVector;
-
 import japsa.seq.Sequence;
 
 public class NewBridge {
@@ -63,10 +59,20 @@ public class NewBridge {
 			status=0;	
 			
 		}else if(status==0){ // building in progress...
-			 if(alignedRead.getFirstAlignment().node == pBridge.getNode1())
+			 if(alignedRead.getLastAlignment().node == pBridge.getNode0())
 				 alignedRead=alignedRead.reverse();
+			 else if(alignedRead.getFirstAlignment().node != pBridge.getNode0()) {
+				 System.err.println("Disagree first node of the bridge! Ignore.");
+				 return;
+			 }
+			 boolean firstDirOnRead = alignedRead.getFirstAlignment().strand;
+			 if(firstDirOnRead != pBridge.getDir0()) {
+				 System.err.println("Disagree first node of the bridge! Ignore.");
+				 return;
+			 }
+			 
+			 //now we have an agreement between first node of alignedRead and this bridge (id and direction!)
 			 int begCoord = alignedRead.getFirstAlignment().readAlignmentStart();
-			 boolean firstDir = alignedRead.getFirstAlignment().strand;
 			 int foundCtgIdx=1; //save the index of found record that closest to the current alignment 
 			 
 			 for(int idx=1; idx<alignedRead.getAlignmentRecords().size(); idx++){
@@ -89,16 +95,10 @@ public class NewBridge {
 					 BidirectedNode fromNode = (BidirectedNode) searchSegment.pSegment.getNode1(),
 							 		toNode = alg.node;
 					 
-					 try {
-						boolean fromDir= searchSegment.pSegment.getDir1(),
-								 toDir = alg.strand;//TODO: thorough check again and line 176!!! Jot down explaination somewhere!
-						ArrayList<BidirectedPath> paths = graph.getClosestPaths(fromNode, fromDir, toNode, toDir, distance);
-						//...
-						
-					} catch (Exception e) {
-						System.err.println("Cannot induce components from the found segment!");
-						e.printStackTrace();
-					}
+					 boolean fromDir= searchSegment.pSegment.getDir1(),
+							 toDir = !alg.strand;
+					 ArrayList<BidirectedPath> paths = graph.getClosestPaths(fromNode, fromDir, toNode, toDir, distance);
+					 //	
 					 
 					 //if not check the next segment (cause errors from nanopore data)
 					 
