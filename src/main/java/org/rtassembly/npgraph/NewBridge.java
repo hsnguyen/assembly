@@ -6,7 +6,6 @@ import japsa.seq.Sequence;
 
 public class NewBridge {
 	public static volatile int MAX_DIFF=3;
-	private int status=-1;
 	BidirectedGraph graph; //partial order graph saving possible paths
 	BidirectedEdgePrototype pBridge; //note: fist node of the bridge is set unique
 	ArrayList<BridgeSegment> segments;
@@ -14,6 +13,7 @@ public class NewBridge {
 	
 	NewBridge(BidirectedGraph graph){
 		this.graph=graph;
+		segments=new ArrayList<>();
 	}
 
 	//This is for SPAdes path reader only. The input path must be elementary unique path
@@ -24,11 +24,9 @@ public class NewBridge {
 		 || (SimpleBinner.getUniqueBin(path.getRoot())==null && SimpleBinner.getUniqueBin(path.peekNode())==null))
 			throw new Exception("Invalid path to build bridge: " + path.getId());
 		
-		segments=new ArrayList<>();
 		segments.add(new BridgeSegment(path));
 		pBridge=segments.get(0).pSegment;
 		
-		status=1;
 	}
 	
 	public NewBridge(BidirectedGraph graph, AlignedRead bb) {
@@ -36,6 +34,23 @@ public class NewBridge {
 		buildFrom(bb);
 	}
 
+	public byte getNumberOfAnchors() {
+		byte retval=0;
+		if(pBridge!=null) {
+			if(SimpleBinner.getUniqueBin(pBridge.getNode0())!=null) retval++;
+			if(SimpleBinner.getUniqueBin(pBridge.getNode1())!=null) retval++;
+		}
+		return retval;
+	}
+	
+	public boolean isComplete() {
+		if(getNumberOfAnchors()!=2)
+			return false;
+		for(BridgeSegment seg:segments)
+			if(seg.getNumberOfPaths()!=1)
+				return false;
+		return true;
+	}
 	/*
 	 * Most important function: to read from a AlignedRead and
 	 * try to build or complete the bridge
@@ -51,18 +66,17 @@ public class NewBridge {
 				&& SimpleBinner.getUniqueBin(alignedRead.getFirstAlignment().node)!=null)
 				alignedRead=alignedRead.reverse();
 		
-		if(status==-1){ // empty bridge: build from beginning	
+		if(segments.isEmpty()){ // empty bridge: build from beginning	
 			if(SimpleBinner.getUniqueBin(alignedRead.getFirstAlignment().node)==null)
 				return;
 			for(int i=0;i<alignedRead.getAlignmentRecords().size()-1;i++)
 				segments.add(new BridgeSegment(alignedRead.getAlignmentRecords().get(i), alignedRead.getAlignmentRecords().get(i+1), alignedRead));
-			status=0;	
 			
-		}else if(status==0){ // building in progress...
+		}else{ // building on the existed one
 			 if(alignedRead.getLastAlignment().node == pBridge.getNode0())
 				 alignedRead=alignedRead.reverse();
 			 else if(alignedRead.getFirstAlignment().node != pBridge.getNode0()) {
-				 System.err.println("Disagree first node of the bridge! Ignore.");
+				 System.err.println("Disagree starting points of the alignment to the bridge! Ignored.");
 				 return;
 			 }
 			 boolean firstDirOnRead = alignedRead.getFirstAlignment().strand;
@@ -72,60 +86,66 @@ public class NewBridge {
 			 }
 			 
 			 //now we have an agreement between first node of alignedRead and this bridge (id and direction!)
-			 int begCoord = alignedRead.getFirstAlignment().readAlignmentStart();
-			 int foundCtgIdx=1; //save the index of found record that closest to the current alignment 
-			 
-			 for(int idx=1; idx<alignedRead.getAlignmentRecords().size(); idx++){
+			 int foundSegIdx=1; //save the index of found segment that closest to the current alignment 
+			 int idx;
+			 for(idx=1; idx<alignedRead.getAlignmentRecords().size(); idx++){
 				 Alignment alg = alignedRead.getAlignmentRecords().get(idx);
-				 //calculate distance to the first alignment
-				 Range algRange = new Range(alg.readAlignmentStart()-begCoord, alg.readAlignmentEnd()-begCoord);
-				 //1. locate the segment containing the corresponding alignment
-				 while(segments.get(foundCtgIdx).getRangeOfLastNode().compareTo(algRange) < 0){
-					 foundCtgIdx++;
-					 if(foundCtgIdx>=segments.size())
-						 break;
-						 
+				 ScaffoldVector algVec = alignedRead.getVector(alignedRead.getFirstAlignment(), alg),
+						 		segEndVec = null, segStartVec = null;
+				 //1. locate the segments approximately close by the corresponding aligned contig
+				 int 	curMinDis=Integer.MAX_VALUE,
+						tmpIdx=foundSegIdx;
+				 ArrayList<BidirectedPath> agreePaths = new ArrayList<>();
+				 while(tmpIdx<segments.size()){
+					 BridgeSegment searchSegment = segments.get(tmpIdx);
+					 segEndVec = searchSegment.getEndVector();
+					 segStartVec = searchSegment.getStartVector();
+					 if(	Math.signum(algVec.getMagnitute()-segStartVec.getMagnitute())!=Math.signum(algVec.getMagnitute()-segEndVec.getMagnitute()) 
+						 || GraphUtil.approxCompare(segEndVec.getMagnitute(), algVec.getMagnitute()) == 0) {
+						 //searching...
+						 ScaffoldVector diffVec=ScaffoldVector.composition(algVec, ScaffoldVector.reverse(segStartVec));//seg->alg
+						 for(BidirectedPath path:searchSegment.connectedPaths) {
+							 int dist = diffVec.distance((BidirectedNode) searchSegment.pSegment.getNode0(), alg.node);
+							 if(GraphUtil.approxCompare(curMinDis, dist)==0 && path.checkDistanceConsistency(searchSegment.pSegment.getNode0(), alg.node, searchSegment.pSegment.getDir0()==alg.strand, dist) ) {
+								 //add this path to a candidate list for later consider...
+								 if(!agreePaths.isEmpty() && GraphUtil.approxCompare(curMinDis, dist)==0)
+									 continue; 
+								 else if(Math.abs(curMinDis)>Math.abs(dist)) {
+									 agreePaths = new ArrayList<>();
+									 curMinDis=dist;
+									 foundSegIdx=tmpIdx;//save its segment also?
+								 } 
+								 agreePaths.add(path);
+								 
+							 }
+						 }
+					 }
+					 
+					 
+					 tmpIdx++;
+					 
 				 }
-				 if(foundCtgIdx < segments.size()){
-					 BridgeSegment searchSegment = segments.get(foundCtgIdx);
-					 int 	distance = searchSegment.getRangeOfLastNode().getLeft() - algRange.getRight(),
-					 		numOfPathsToSearch = searchSegment.getNumberOfPaths();
-					 
-					 //check if exist path connecting this contig to the ends of this bridge segment
-					 BidirectedNode fromNode = (BidirectedNode) searchSegment.pSegment.getNode1(),
-							 		toNode = alg.node;
-					 
-					 boolean fromDir= searchSegment.pSegment.getDir1(),
-							 toDir = !alg.strand;
-					 ArrayList<BidirectedPath> paths = graph.getClosestPaths(fromNode, fromDir, toNode, toDir, distance);
-					 //	
-					 
-					 //if not check the next segment (cause errors from nanopore data)
-					 
-					 
-
-							
+				 //reducing possible paths
+				 if(!agreePaths.isEmpty()) {
+					 segments.get(foundSegIdx).connectedPaths=agreePaths;
+				 }else if(tmpIdx==segments.size()-1){ 
+					 break;
 				 }
-				 
-				 
-				 
-				 
-			 }
-			 
-		}else{ //completed bridge: do nothing?
 			
+			 }
+			 //this aligned read is longer and have more information than this bridge
+			 //first connect last node of bridge to first out-of-range node from alignedRead
+			 
+			 //add others
+			 for(int i=idx+1;i<alignedRead.getAlignmentRecords().size()-1;i++)
+				 segments.add(new BridgeSegment(alignedRead.getAlignmentRecords().get(i), alignedRead.getAlignmentRecords().get(i+1), alignedRead));
 		}
-				
+							
 	
 		
 	}
 
 
-	//Return bridge status:
-	//-1: none or half bridge, 0: unsolved full bridge; 1: solved bridge
-	public int getBridgeStatus(){
-		return status;
-	}
 	
 	public String getEndingsID() {
 		if(pBridge==null)
@@ -166,18 +186,18 @@ public class NewBridge {
 	 * A bridge consists of >=1 segments.
 	 ************************************************************************************************/
 	public class BridgeSegment{
-		ArrayList<Sequence> nnpReads; // to store nanopore data if needed
+//		ArrayList<Sequence> nnpReads; // to store nanopore data if needed
 		ArrayList<BidirectedPath> connectedPaths;
 		BidirectedEdgePrototype pSegment;
-		Range coverRange;
+//		Range coverRange;
+		ScaffoldVector startV, endV; // from bridge anchor (always +) to this segment's end
 		//TODO: scaffold vector??
 		BridgeSegment(){}
 		BridgeSegment(Alignment start, Alignment end, AlignedRead read){
 			pSegment=new BidirectedEdgePrototype(start.node, end.node, start.strand, !end.strand);
-			int startCoordinate = read.getFirstAlignment().readAlignmentStart();
-			coverRange=new Range(start.readAlignmentStart()-startCoordinate, end.readAlignmentEnd()-startCoordinate);
 			//invoke findPath()?
-			
+			startV=read.getVector(read.getFirstAlignment(), start);
+			endV=read.getVector(read.getFirstAlignment(), end);
 			connectedPaths = graph.getClosestPaths(start, end);
 			
 		}
@@ -188,7 +208,12 @@ public class NewBridge {
 			connectedPaths.add(path);
 			
 			//only if path cover the whole bridge (1-segment bridge)
-			coverRange=new Range(0,(int) path.getLength());
+			int dist=(int) (path.getLength()
+					-(pSegment.getDir0()?0:pSegment.getNode0().getNumber("len"))
+					-(pSegment.getDir1()?0:pSegment.getNode1().getNumber("len")));
+			
+			startV=new ScaffoldVector(0,1);
+			endV=new ScaffoldVector(pSegment.getDir0()?dist:-dist, pSegment.getDir0()!=pSegment.getDir1()?1:-1);
 		}
 		
 		public int getNumberOfPaths(){
@@ -203,24 +228,13 @@ public class NewBridge {
 		public boolean isUnique(){
 			return getNumberOfPaths()==1;
 		}
-		
-		public Range getRangeOfFirstNode(){
-			return new Range(coverRange.getLeft(), (int) (coverRange.getLeft() + pSegment.getNode0().getNumber("len")-1));
+		public ScaffoldVector getEndVector() {
+			return endV;
+		}
+		public ScaffoldVector getStartVector() {
+			return startV;
+		}
 
-		}
-		
-		public Range getRangeOfLastNode(){
-			return new Range((int)(coverRange.getRight() - pSegment.getNode1().getNumber("len") +1), coverRange.getRight());
-
-		}
-		
-		//take information about a node (position+direction) and reduce the number of possible paths 
-		public boolean pathsReducing(Node node, int distance){
-			//true if the hint node is found
-			boolean retval=false;
-			
-			return retval;
-		}
 	}
 
 

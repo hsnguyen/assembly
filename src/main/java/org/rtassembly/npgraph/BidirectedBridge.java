@@ -216,7 +216,7 @@ public class BidirectedBridge {
 									p.nodes().filter(n-> (n!=p.getRoot() && n!=p.peekNode()))
 											.forEach(n->{
 															if(SimpleBinner.getUniqueBin(n)!=null) 
-																graph.updateBridgesMap(n, this)
+//																graph.updateBridgesMap(n, this)
 																;
 															}
 											);

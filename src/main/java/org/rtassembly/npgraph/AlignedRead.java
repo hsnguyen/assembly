@@ -107,4 +107,20 @@ public class AlignedRead{
 			
 		}
 	}
+	//get ScaffoldVector a->b from two alignments of *this*
+	public ScaffoldVector getVector(Alignment a, Alignment b) {
+		int 	alignedReadLen = Math.abs(a.readEnd - a.readStart) + Math.abs(b.readEnd - b.readStart),
+				alignedRefLen = Math.abs(a.refEnd - a.refStart) + Math.abs(b.refEnd - b.refStart);
+		double rate = 1.0 * alignedRefLen/alignedReadLen;		
+
+		int alignP = (int) ((b.readStart - a.readStart) * rate);
+		int alignD = (a.strand == b.strand)?1:-1;
+
+		//(rough) relative position from ref_b (contig of b) to ref_a (contig of a) in the assembled genome
+		int gP = (alignP + (a.strand ? a.refStart:-a.refStart) - (b.strand?b.refStart:-b.refStart));
+		if (!a.strand)
+			gP = -gP;	
+
+		return new ScaffoldVector(gP, alignD);	
+	}
 }

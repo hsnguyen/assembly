@@ -80,8 +80,8 @@ public class BidirectedGraph extends MultiGraph{
 	public HashSet<NewBridge> getUnsolvedBridges(){
 		HashSet<NewBridge> retval = new HashSet<NewBridge>();
 		for(NewBridge brg:bridgesMap.values()){
-			System.out.printf("Bridge %s : status=%d \n", brg.toString(), brg.getBridgeStatus());
-			if(brg.getBridgeStatus()<1)
+			System.out.printf("Bridge %s : anchors=%d \n", brg.toString(), brg.getNumberOfAnchors());
+			if(!brg.isComplete())
 				retval.add(brg);
 		}
 		
@@ -242,7 +242,7 @@ public class BidirectedGraph extends MultiGraph{
 	    	if(SimpleBinner.getUniqueBin(endNode)!=null){
 	    		tmp=bridgesMap.get(endNode.getId()+(endNodeDir?"o":"i"));
 	    		if(tmp!=null){
-	    			if(retval==null || retval.getBridgeStatus()<tmp.getBridgeStatus())
+	    			if(retval==null || retval.getNumberOfAnchors()<tmp.getNumberOfAnchors())
 	    				retval=tmp;
 	    			
 	    		}
@@ -567,10 +567,10 @@ public class BidirectedGraph extends MultiGraph{
 			System.out.printf("+++%s <=> %s\n", bb.getEndingsID(), storedBridge==null?"null":storedBridge.getEndingsID());
 			
 			if(storedBridge!=null) {
-				if(storedBridge.getBridgeStatus()==1){
+				if(storedBridge.isComplete()){
 					System.out.println(storedBridge.getEndingsID() + ": already solved: ignore!");
 					continue;
-				}else if(storedBridge.getBridgeStatus()==0){
+				}else{
 					System.out.println(storedBridge.getEndingsID() + ": already built: fortify!");
 					System.out.println(storedBridge.getAllPossiblePaths());
 					
@@ -585,7 +585,7 @@ public class BidirectedGraph extends MultiGraph{
 			}
 			
 			//storedBridge.bridging();
-			if(storedBridge.getBridgeStatus()==1){
+			if(storedBridge.isComplete()){
 //				storedBridge.getBestPath().setConsensusUniqueBinOfPath(tmp);
 				retrievedPaths.add(storedBridge.getBestPath());
 			}

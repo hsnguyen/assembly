@@ -301,4 +301,6 @@ public class BidirectedPath extends Path{
 			throw new Exception("Path has no edge!");
 		return ((BidirectedEdge) peekEdge()).getDir(getLastNode());
 	}
+	
+	
 }
