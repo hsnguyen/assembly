@@ -178,7 +178,7 @@ public class BidirectedGraph extends MultiGraph{
     }
     // when there is new unique bridge 
     synchronized protected void updateBridgesMap(NewBridge bidirectedBridge) {
-    	if(bidirectedBridge==null)
+    	if(bidirectedBridge==null || bidirectedBridge.getNumberOfAnchors()==0)
     		return;
 
 		try {
@@ -434,9 +434,9 @@ public class BidirectedGraph extends MultiGraph{
 				System.out.println("Hit added: "+path.getId()+"(candidate deviation: "+delta+")");
 			}else{
 				int newDistance = distance - ((Sequence) e.getOpposite(currentNode).getAttribute("seq")).length() - e.getLength();
-//				System.out.println("adding edge: " + e.getId() + " length=" + e.getLength() +" -> distance=" + newDistance);
+				System.out.println("adding edge: " + e.getId() + " length=" + e.getLength() +" -> distance=" + newDistance);
 				if (newDistance - e.getLength() < -tolerance){
-//					System.out.println("Stop go to edge " + e.getId() + " from path with distance "+newDistance+" already! : "+path.getId());
+					System.out.println("Stop go to edge " + e.getId() + " from path with distance "+newDistance+" already! : "+path.getId());
 				}else
 					traverse(path, dst, curResult, newDistance, tolerance, srcDir, dstDir, stepCount+1);
 
@@ -581,14 +581,13 @@ public class BidirectedGraph extends MultiGraph{
 				}			
 
 			}else{
-				storedBridge=new NewBridge(this,bb);
+				storedBridge=new NewBridge(this,bb,tmpBin);
 				updateBridgesMap(storedBridge);
 				
 			}
 			
 			//storedBridge.bridging();
 			if(storedBridge.isComplete()){
-//				storedBridge.getBestPath().setConsensusUniqueBinOfPath(tmp);
 				retrievedPaths.add(storedBridge.getBestPath());
 			}
 			

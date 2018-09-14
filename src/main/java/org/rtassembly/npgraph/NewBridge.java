@@ -1,37 +1,44 @@
 package org.rtassembly.npgraph;
 
 import java.util.ArrayList;
-import org.graphstream.graph.Node;
-import japsa.seq.Sequence;
+
 
 public class NewBridge {
 	public static volatile int MAX_DIFF=3;
 	BidirectedGraph graph; //partial order graph saving possible paths
+	PopBin bin;
 	BidirectedEdgePrototype pBridge; //note: fist node of the bridge is set unique
 	ArrayList<BridgeSegment> segments;
 	//HashMap<Node, ScaffoldVector> segmentSteps;
 	
-	NewBridge(BidirectedGraph graph){
+	NewBridge(BidirectedGraph graph, PopBin bin){
 		this.graph=graph;
 		segments=new ArrayList<>();
+		this.bin=bin;
 	}
 
 	//This is for SPAdes path reader only. The input path must be elementary unique path
 	//(2 ending nodes are unique and not containing other unique path)
 	NewBridge (BidirectedGraph graph, BidirectedPath path) throws Exception{
-		this(graph);
+		this(graph,path.getConsensusUniqueBinOfPath());
 		if(	path.size()<=1
 		 || (SimpleBinner.getUniqueBin(path.getRoot())==null && SimpleBinner.getUniqueBin(path.peekNode())==null))
 			throw new Exception("Invalid path to build bridge: " + path.getId());
 		
 		segments.add(new BridgeSegment(path));
 		pBridge=segments.get(0).pSegment;
-		
 	}
 	
-	public NewBridge(BidirectedGraph graph, AlignedRead bb) {
-		this(graph);
+	public NewBridge(BidirectedGraph graph, AlignedRead bb, PopBin b) {
+		this(graph,b);
+		if(SimpleBinner.getUniqueBin(bb.getFirstAlignment().node)==null)
+			bb=bb.reverse();
 		buildFrom(bb);
+		if(!segments.isEmpty()){
+			BridgeSegment 	firstSeg = segments.get(0),
+							lastSeg = segments.get(segments.size()-1);
+			pBridge=new BidirectedEdgePrototype(firstSeg.pSegment.getNode0(), lastSeg.pSegment.getNode1(), firstSeg.pSegment.getDir0(), lastSeg.pSegment.getDir1());
+		}
 	}
 
 	public byte getNumberOfAnchors() {
@@ -69,8 +76,13 @@ public class NewBridge {
 		if(segments.isEmpty()){ // empty bridge: build from beginning	
 			if(SimpleBinner.getUniqueBin(alignedRead.getFirstAlignment().node)==null)
 				return;
-			for(int i=0;i<alignedRead.getAlignmentRecords().size()-1;i++)
-				segments.add(new BridgeSegment(alignedRead.getAlignmentRecords().get(i), alignedRead.getAlignmentRecords().get(i+1), alignedRead));
+			for(int i=0;i<alignedRead.getAlignmentRecords().size()-1;i++){
+				BridgeSegment tmp=new BridgeSegment(alignedRead.getAlignmentRecords().get(i), alignedRead.getAlignmentRecords().get(i+1), alignedRead);
+				if(tmp.isConnected())
+					segments.add(tmp);
+				else
+					return;
+			}
 			
 		}else{ // building on the existed one
 			 if(alignedRead.getLastAlignment().node == pBridge.getNode0())
@@ -189,17 +201,20 @@ public class NewBridge {
 	}
 
 	public BidirectedPath getBestPath() {
-		BidirectedPath retval=new BidirectedPath();
+		BidirectedPath retval=null;
 		for(BridgeSegment seg:segments) {
-			if(seg.getNumberOfPaths()>0)
-				retval=retval.join(seg.connectedPaths.get(0));//assuming first path has highest score!!!
-			else
+			if(seg.getNumberOfPaths()>0){
+				if(retval==null)
+					retval=seg.connectedPaths.get(0);
+				else
+					retval=retval.join(seg.connectedPaths.get(0));//assuming first path has highest score!!!
+			}else
 				return null;
 		}
-		
+		if(retval!=null)
+			retval.setConsensusUniqueBinOfPath(bin);
 		return retval;
 	}
-
 
 	
 	/************************************************************************************************
@@ -257,6 +272,8 @@ public class NewBridge {
 		}
 
 	}
+
+
 
 
 
