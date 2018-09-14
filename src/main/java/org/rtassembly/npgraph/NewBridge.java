@@ -106,9 +106,10 @@ public class NewBridge {
 						 ScaffoldVector diffVec=ScaffoldVector.composition(algVec, ScaffoldVector.reverse(segStartVec));//seg->alg
 						 for(BidirectedPath path:searchSegment.connectedPaths) {
 							 int dist = diffVec.distance((BidirectedNode) searchSegment.pSegment.getNode0(), alg.node);
-							 if(GraphUtil.approxCompare(curMinDis, dist)==0 && path.checkDistanceConsistency(searchSegment.pSegment.getNode0(), alg.node, searchSegment.pSegment.getDir0()==alg.strand, dist) ) {
+							 //FIXME: optimize this, use ScaffoldVector instead of distance for checkDistanceConsistency()
+							 if(path.checkDistanceConsistency(searchSegment.pSegment.getNode0(), alg.node, searchSegment.pSegment.getDir0()==alg.strand, dist) ) {
 								 //add this path to a candidate list for later consider...
-								 if(!agreePaths.isEmpty() && GraphUtil.approxCompare(curMinDis, dist)==0)
+								 if(!agreePaths.isEmpty() && GraphUtil.approxCompare(curMinDis, dist)!=0)
 									 continue; 
 								 else if(Math.abs(curMinDis)>Math.abs(dist)) {
 									 agreePaths = new ArrayList<>();
@@ -133,12 +134,25 @@ public class NewBridge {
 				 }
 			
 			 }
-			 //this aligned read is longer and have more information than this bridge
-			 //first connect last node of bridge to first out-of-range node from alignedRead
-			 
-			 //add others
-			 for(int i=idx+1;i<alignedRead.getAlignmentRecords().size()-1;i++)
-				 segments.add(new BridgeSegment(alignedRead.getAlignmentRecords().get(i), alignedRead.getAlignmentRecords().get(i+1), alignedRead));
+			 if(idx < alignedRead.getAlignmentRecords().size()-1) {
+				 //this aligned read is longer and have more information than this bridge
+				 //first connect last node of bridge to first out-of-range node from alignedRead
+				 Alignment lastBrowseAlg = alignedRead.getAlignmentRecords().get(idx);
+				 BridgeSegment cnt = new BridgeSegment();
+				 cnt.pSegment = new BidirectedEdgePrototype(pBridge.getNode1(), lastBrowseAlg.node, !pBridge.getDir1(), !lastBrowseAlg.strand);
+				 cnt.startV = segments.get(segments.size()-1).getEndVector();
+				 cnt.endV = alignedRead.getVector(alignedRead.getFirstAlignment(), lastBrowseAlg);
+				 int d = ScaffoldVector.composition(cnt.endV, ScaffoldVector.reverse(cnt.startV)).distance((BidirectedNode) cnt.pSegment.getNode0(), (BidirectedNode) cnt.pSegment.getNode1());
+				 cnt.connectedPaths = graph.getClosestPaths((BidirectedNode) cnt.pSegment.getNode0(), cnt.pSegment.getDir0(), (BidirectedNode) cnt.pSegment.getNode1(), cnt.pSegment.getDir1(), d);
+				 if(cnt.getNumberOfPaths() > 0) {
+					 segments.add(cnt);
+					 //add others
+					 for(int i=idx;i<alignedRead.getAlignmentRecords().size()-1;i++)
+						 segments.add(new BridgeSegment(alignedRead.getAlignmentRecords().get(i), alignedRead.getAlignmentRecords().get(i+1), alignedRead));
+				 }else
+					 System.out.println("Cannot extend!");
+		
+			 }
 		}
 							
 	
@@ -161,22 +175,29 @@ public class NewBridge {
 		
 		return retval;
 	}
-
-	//Return the path on top of the possible list
-	public BidirectedPath getBestPathPossible(){
-		//TODO: implement it!
-		return null;
-	}
 	
 
-	public ArrayList<BidirectedPath> getAllPossiblePaths() {
-		// TODO Auto-generated method stub
-		return null;
+	public String getAllPossiblePaths() {
+		String retval = "[\n";
+		for(BridgeSegment seg:segments) {
+			for(BidirectedPath path:seg.connectedPaths)
+				retval+=path.getId()+"; ";
+			retval+="\n";
+		}
+		retval+="]";
+		return retval;
 	}
 
 	public BidirectedPath getBestPath() {
-		// TODO Auto-generated method stub
-		return null;
+		BidirectedPath retval=new BidirectedPath();
+		for(BridgeSegment seg:segments) {
+			if(seg.getNumberOfPaths()>0)
+				retval=retval.join(seg.connectedPaths.get(0));//assuming first path has highest score!!!
+			else
+				return null;
+		}
+		
+		return retval;
 	}
 
 

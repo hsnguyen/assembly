@@ -573,8 +573,10 @@ public class BidirectedGraph extends MultiGraph{
 				}else{
 					System.out.println(storedBridge.getEndingsID() + ": already built: fortify!");
 					System.out.println(storedBridge.getAllPossiblePaths());
-					
+					int prevNumOfAnchors = storedBridge.getNumberOfAnchors();
 					storedBridge.buildFrom(bb);
+					if(storedBridge.getNumberOfAnchors() > prevNumOfAnchors)
+						updateBridgesMap(storedBridge);
 
 				}			
 

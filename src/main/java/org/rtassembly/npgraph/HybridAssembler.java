@@ -283,7 +283,7 @@ public class HybridAssembler {
 		for(NewBridge brg:simGraph.getUnsolvedBridges()){
 			System.out.println("Last attempt: " + brg.toString());
 			if(brg.getNumberOfAnchors()==2)
-				simGraph.reduceUniquePath(brg.getBestPathPossible());
+				simGraph.reduceUniquePath(brg.getBestPath());
 			else
 				System.out.println("bridge contain no path! ignored");
 		}
