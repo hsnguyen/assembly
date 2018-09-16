@@ -255,13 +255,16 @@ public class BidirectedPath extends Path{
 			if(curNode==to){
 				if(Math.abs(curDistance-distance) < Math.max(100, .2*Math.max(distance, curDistance))){
 					dirOfTo=!((BidirectedEdge) e).getDir((BidirectedNode) curNode);
-					if((dirOfFrom == dirOfTo) == direction)
+					if((dirOfFrom == dirOfTo) == direction) {
+						System.out.printf("|-> agree distance between node %s, node %s: %d and given distance %d\n",
+								from.getId(), to.getId(), curDistance, distance);
 						return true;
+					}
 					else
-						LOG.info("inconsistence direction between node {}:{}, node {}:{} and given direction {}",
+						LOG.info("!-> inconsistence direction between node {}:{}, node {}:{} and given direction {}",
 								from.getId(), dirOfFrom?"+":"-", to.getId(), dirOfTo?"+":"-", direction);
 				}else
-					LOG.info("inconsistence distance between node {}, node {}: {} and given distance {}",
+					LOG.info("!-> inconsistence distance between node {}, node {}: {} and given distance {}",
 							from.getId(), to.getId(), curDistance, distance);
 			}
 			curDistance+=curNode.getNumber("len");

@@ -86,7 +86,7 @@ public class AlignedRead{
 		ArrayList<Alignment> revAlignments = new ArrayList<Alignment>(); 
 		
 		for (Alignment alignment:alignments)
-			revAlignments.add(alignment.reverseRead());
+			revAlignments.add(0,alignment.reverseRead());
 		
 		AlignedRead revFilling = new AlignedRead(revRead, revAlignments);		
 		return revFilling;
@@ -106,6 +106,15 @@ public class AlignedRead{
 			return tmp.toString();
 			
 		}
+	}
+	public String getCompsString() {
+		String retval = "";
+		if(alignments!=null && !alignments.isEmpty()){
+			for(Alignment alg:alignments)
+				retval+=alg.node.getId()+ (alg.strand?"+":"-");
+			
+		}
+		return retval;
 	}
 	//get ScaffoldVector a->b from two alignments of *this*
 	public ScaffoldVector getVector(Alignment a, Alignment b) {

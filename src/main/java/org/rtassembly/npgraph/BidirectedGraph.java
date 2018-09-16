@@ -363,7 +363,7 @@ public class BidirectedGraph extends MultiGraph{
     	
     }
     
-    synchronized protected ArrayList<BidirectedPath> getClosestPaths(BidirectedNode srcNode, boolean srcDir, BidirectedNode dstNode, boolean dstDir, int distance){
+    synchronized protected ArrayList<BidirectedPath> getClosestPaths(BidirectedNode srcNode, boolean srcDir, BidirectedNode dstNode, boolean dstDir, int distance, boolean force){
     	if(distance>BidirectedGraph.D_LIMIT)
     		return null;
     	System.out.println("Looking for path between " + srcNode.getId() + " to " + dstNode.getId() + " with distance " + distance);
@@ -373,15 +373,18 @@ public class BidirectedGraph extends MultiGraph{
 		tmp.setRoot(srcNode);  		
 		traverse(tmp, dstNode, possiblePaths, distance, distance>200?(int) (TOLERATE*distance):200, srcDir, !dstDir, 0);
 		if(possiblePaths.isEmpty()){
-			//save the corresponding content of long reads to this edge
-			//FIXME: save nanopore reads into this pseudo edge to run consensus later
-			BidirectedEdge pseudoEdge = addEdge(srcNode, dstNode, srcDir, dstDir);
-			pseudoEdge.setAttribute("dist", distance);
-			tmp.add(pseudoEdge);
-			retval.add(tmp);
-			System.out.println("pseudo path from " + srcNode.getId() + " to " + dstNode.getId() + " distance=" + distance);
-			
-			return retval;
+			if(SimpleBinner.getUniqueBin(srcNode)!=null && SimpleBinner.getUniqueBin(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 && force){
+				//save the corresponding content of long reads to this edge
+				//FIXME: save nanopore reads into this pseudo edge to run consensus later
+				BidirectedEdge pseudoEdge = addEdge(srcNode, dstNode, srcDir, dstDir);
+				pseudoEdge.setAttribute("dist", distance);
+				tmp.add(pseudoEdge);
+				retval.add(tmp);
+				System.out.println("pseudo path from " + srcNode.getId() + " to " + dstNode.getId() + " distance=" + distance);
+				
+				return retval;
+    		}else
+    			return null;
 
 		}
 		//double bestScore=possiblePaths.get(0).getDeviation();
@@ -434,9 +437,9 @@ public class BidirectedGraph extends MultiGraph{
 				System.out.println("Hit added: "+path.getId()+"(candidate deviation: "+delta+")");
 			}else{
 				int newDistance = distance - ((Sequence) e.getOpposite(currentNode).getAttribute("seq")).length() - e.getLength();
-				System.out.println("adding edge: " + e.getId() + " length=" + e.getLength() +" -> distance=" + newDistance);
+//				System.out.println("adding edge: " + e.getId() + " length=" + e.getLength() +" -> distance=" + newDistance);
 				if (newDistance - e.getLength() < -tolerance){
-					System.out.println("Stop go to edge " + e.getId() + " from path with distance "+newDistance+" already! : "+path.getId());
+//					System.out.println("Stop go to edge " + e.getId() + " from path with distance "+newDistance+" already! : "+path.getId());
 				}else
 					traverse(path, dst, curResult, newDistance, tolerance, srcDir, dstDir, stepCount+1);
 
@@ -661,7 +664,7 @@ public class BidirectedGraph extends MultiGraph{
     	if(path==null || path.getEdgeCount()<1)
     		return false;
     	else
-    		System.out.println("Reducing path: " + path.getId());
+    		System.out.println("Input SPAdes path: " + path.getId());
     	//loop over the edges of path (like spelling())
     	BidirectedNode 	markerNode = null,
     			curNodeFromSimGraph = (BidirectedNode) path.getRoot();

@@ -590,6 +590,7 @@ public class GraphUtil {
     	if(ratio > BidirectedGraph.TOLERATE)
     		retval=x>y?1:-1;
     	
+//    	System.out.printf("(comparing %.2f vs %.2f: %d)\n", x, y, retval);
     	return retval;
     }
     
