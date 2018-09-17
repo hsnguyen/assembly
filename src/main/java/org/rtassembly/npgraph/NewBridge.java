@@ -29,8 +29,7 @@ public class NewBridge {
 		if(	path.size()>1
 		 && ((SimpleBinner.getUniqueBin(path.getRoot())!=null || SimpleBinner.getUniqueBin(path.peekNode())!=null))
 		 ){
-			segments.add(new BridgeSegment(path));
-			pBridge=segments.get(0).pSegment;
+			addSegment(new BridgeSegment(path));
 		}else
 			LOG.warn("Invalid path to build bridge: " + path.getId());
 		
@@ -42,11 +41,6 @@ public class NewBridge {
 		if(SimpleBinner.getUniqueBin(bb.getFirstAlignment().node)==null)
 			bb=bb.reverse();
 		buildFrom(bb);
-		if(!segments.isEmpty()){
-			BridgeSegment 	firstSeg = segments.get(0),
-							lastSeg = segments.get(segments.size()-1);
-			pBridge=new BidirectedEdgePrototype(firstSeg.pSegment.getNode0(), lastSeg.pSegment.getNode1(), firstSeg.pSegment.getDir0(), lastSeg.pSegment.getDir1());
-		}
 	}
 
 	public byte getNumberOfAnchors() {
@@ -79,28 +73,33 @@ public class NewBridge {
 		
 		// Starting node of the aligned read must be unique
 		if(	SimpleBinner.getUniqueBin(alignedRead.getFirstAlignment().node)==null 
-				&& SimpleBinner.getUniqueBin(alignedRead.getFirstAlignment().node)!=null)
+				&& SimpleBinner.getUniqueBin(alignedRead.getLastAlignment().node)!=null)
 				alignedRead=alignedRead.reverse();
 		
+		if(SimpleBinner.getUniqueBin(alignedRead.getFirstAlignment().node)==null)
+			return;
+		
 		if(segments.isEmpty()){ // empty bridge: build from beginning	
-			if(SimpleBinner.getUniqueBin(alignedRead.getFirstAlignment().node)==null)
-				return;
-			for(int i=0;i<alignedRead.getAlignmentRecords().size()-1;i++){
-				BridgeSegment tmp=new BridgeSegment(alignedRead.getAlignmentRecords().get(i), alignedRead.getAlignmentRecords().get(i+1), alignedRead);
-				if(tmp.isConnected())
-					segments.add(tmp);
-				else
-					return;
-			}
-			
+			addAligments(alignedRead, 0, alignedRead.getAlignmentRecords().size()-1);			
 		}else{ // building on the existed one
-			 if(alignedRead.getLastAlignment().node == pBridge.getNode0()) {
-				 alignedRead=alignedRead.reverse();
+			 if(alignedRead.getFirstAlignment().node == pBridge.getNode1()) {
+				 if(alignedRead.getLastAlignment().node == pBridge.getNode0()) {
+					 System.out.print("Reversing read " + alignedRead.getEndingsID());
+					 alignedRead=alignedRead.reverse();
+					 System.out.println(" to " + alignedRead.getEndingsID());
+				 }
+				 else {
+					 System.out.print("Reversing bridge " + this.getEndingsID());
+					 this.reverse();
+					 System.out.println(" to " + this.getEndingsID());
+
+				 }
 			 }
 			 else if(alignedRead.getFirstAlignment().node != pBridge.getNode0()) {
 				 System.err.println("Disagree starting points of the alignment to the bridge! Ignored.");
 				 return;
 			 }
+			 
 			 boolean firstDirOnRead = alignedRead.getFirstAlignment().strand;
 			 if(firstDirOnRead != pBridge.getDir0()) {
 				 System.err.println("Conflict between alignnment [" + alignedRead.getFirstAlignment().toString() + "] and bridge [" + pBridge.toString() + "]");
@@ -122,7 +121,6 @@ public class NewBridge {
 						tmpIdx=startSearchingIdx;
 				 ArrayList<BidirectedPath> agreePaths = new ArrayList<>();
 				 boolean foundSegmentCandidates = false;
-				 HashMap<Integer, ArrayList<Alignment>> breakpoints = new HashMap<>(); 
 				 while(tmpIdx<segments.size()){
 					 BridgeSegment searchSegment = segments.get(tmpIdx);
 					 segEndVec = searchSegment.getEndVector();
@@ -188,7 +186,7 @@ public class NewBridge {
 				 }
 			
 			 }
-			 if(idx < alignedRead.getAlignmentRecords().size()-1) {
+			 if(idx < alignedRead.getAlignmentRecords().size()) {
 				 //this aligned read is longer and have more information than this bridge
 				 //first connect last node of bridge to first out-of-range node from alignedRead
 				 Alignment lastBrowseAlg = alignedRead.getAlignmentRecords().get(idx);
@@ -200,13 +198,14 @@ public class NewBridge {
 						 							segments.get(segments.size()-1).getEndVector(),
 						 							alignedRead.getVector(alignedRead.getFirstAlignment(), lastBrowseAlg)
 						 							);
-				 if(cnt.getNumberOfPaths() > 0) {//to avoid error reads that give crap alignments???
-					 segments.add(cnt);
+				 if(cnt.isConnected()) {//to avoid error reads that give crap alignments???
+					 addSegment(cnt);
 					 //add others
-					 for(int i=idx;i<alignedRead.getAlignmentRecords().size()-1;i++)
-						 segments.add(new BridgeSegment(alignedRead.getAlignmentRecords().get(i), alignedRead.getAlignmentRecords().get(i+1), alignedRead));
+					 addAligments(alignedRead, idx, alignedRead.getAlignmentRecords().size()-1);
+					 System.out.println("Extend to have " + pBridge.toString());
+
 				 }else
-					 System.out.println("Cannot extend!");
+					 System.out.println("Path not found: cannot extend " + cnt.pSegment.toString());
 		
 			 }
 		}
@@ -215,21 +214,43 @@ public class NewBridge {
 		
 	}
 
-
+	private void addAligments(AlignedRead read, int start, int end) {
+		 for(int i=start;i<end;i++) {
+			 BridgeSegment tmp = new BridgeSegment(read.getAlignmentRecords().get(i), read.getAlignmentRecords().get(i+1), read);
+			 if(tmp.isConnected())
+				 addSegment(tmp);
+			 else return;
+		 }
+	}
+	private void addSegment(BridgeSegment seg) {
+		
+		if(pBridge==null) {
+			segments.add(seg);
+			pBridge=new BidirectedEdgePrototype(seg.pSegment.getNode0(), seg.pSegment.getNode1(), seg.pSegment.getDir0(), seg.pSegment.getDir1());
+		}
+		else if(pBridge.getNode1()==seg.pSegment.getNode0() && pBridge.getDir1()!=seg.pSegment.getDir0()){
+			segments.add(seg);
+			pBridge.n1=seg.pSegment.n1;
+		}
+	}
+	
+	private void reverse() {
+		ArrayList<BridgeSegment> tmp = segments;
+		segments = new ArrayList<>();
+		pBridge=null;
+		if(!tmp.isEmpty()) {
+			ScaffoldVector brgVector=tmp.get(tmp.size()-1).endV;
+			for(int i=tmp.size()-1; i>=0 ;i--)
+				addSegment(tmp.get(i).reverse(brgVector));
+		}
+		
+	}
 	
 	public String getEndingsID() {
 		if(pBridge==null)
 			return "-,-";
 		else
 			return pBridge.toString();
-	}
-	
-	@Override
-	public String toString() {
-		String retval="";
-		//...print all steps
-		
-		return retval;
 	}
 	
 
@@ -277,6 +298,7 @@ public class NewBridge {
 		ScaffoldVector startV, endV; // from bridge anchor (always +) to this segment's end
 		//TODO: scaffold vector??
 		BridgeSegment(){}
+
 		BridgeSegment(Alignment start, Alignment end, AlignedRead read){
 			pSegment=new BidirectedEdgePrototype(start.node, end.node, start.strand, !end.strand);
 			//invoke findPath()?
@@ -285,6 +307,7 @@ public class NewBridge {
 			connectedPaths = graph.getClosestPaths(start, end);
 			
 		}
+		
 		BridgeSegment(AbstractNode node1, AbstractNode node2, boolean dir1, boolean dir2, ScaffoldVector v1, ScaffoldVector v2){
 			assert Math.abs(v1.getMagnitute()) < Math.abs(v2.magnitude): "Illegal order of node position!";
 			pSegment = new BidirectedEdgePrototype(node1,node2,dir1,dir2);
@@ -293,6 +316,7 @@ public class NewBridge {
 			connectedPaths = graph.getClosestPaths((BidirectedNode)node1, dir1, (BidirectedNode)node2, dir2, d, false);
 			
 		}
+		
 		BridgeSegment(BidirectedPath path){
 			try {
 				pSegment=new BidirectedEdgePrototype(path);
@@ -313,12 +337,16 @@ public class NewBridge {
 
 		}
 		
-		public ArrayList<BridgeSegment> breakSegments(ArrayList<Alignment> algs){
-			ArrayList<BridgeSegment> retval = new ArrayList<BridgeSegment>();
-			//break and return list of new segments
-			
+		public BridgeSegment reverse(ScaffoldVector brgVector) {
+			BridgeSegment retval = new BridgeSegment();
+			retval.startV=ScaffoldVector.composition(endV, ScaffoldVector.reverse(brgVector));
+			retval.endV=ScaffoldVector.composition(startV, ScaffoldVector.reverse(brgVector));
+			retval.connectedPaths=new ArrayList<>();
+			for(BidirectedPath p:connectedPaths)
+				retval.connectedPaths.add(p.reverse());
+			retval.pSegment=pSegment.reverse();
 			return retval;
-		} 
+		}
 		
 		public int getNumberOfPaths(){
 			if(connectedPaths==null)

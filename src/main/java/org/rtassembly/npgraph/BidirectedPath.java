@@ -82,7 +82,7 @@ public class BidirectedPath extends Path{
 			}
 		}
 	}
-	public BidirectedPath getReversedComplemented(){
+	public BidirectedPath reverse(){
 		BidirectedPath rcPath = new BidirectedPath();
 		rcPath.setRoot(this.peekNode());
 		List<Edge> edges = this.getEdgePath();
@@ -124,7 +124,7 @@ public class BidirectedPath extends Path{
 			if(e.hasAttribute("path")) {
 				BidirectedPath subPath=(BidirectedPath) e.getAttribute("path");
 				if(subPath.getRoot()!=curNode)
-					subPath=subPath.getReversedComplemented();
+					subPath=subPath.reverse();
 				retval=retval.join(subPath);
 			}
 			else
@@ -240,7 +240,7 @@ public class BidirectedPath extends Path{
 		if(from==getRoot()){
 			ref=this;
 		}else if(from==peekNode()){
-			ref=this.getReversedComplemented();
+			ref=this.reverse();
 		}else{
 			LOG.warn("Node {} couldn't be found as one of the end node in path {}!", from.getId(), getId());
 			return false;

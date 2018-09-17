@@ -80,7 +80,6 @@ public class BidirectedGraph extends MultiGraph{
 	public HashSet<NewBridge> getUnsolvedBridges(){
 		HashSet<NewBridge> retval = new HashSet<NewBridge>();
 		for(NewBridge brg:bridgesMap.values()){
-			System.out.printf("Bridge %s : anchors=%d \n", brg.toString(), brg.getNumberOfAnchors());
 			if(!brg.isComplete())
 				retval.add(brg);
 		}

@@ -247,7 +247,7 @@ public class BidirectedBridge {
 					System.out.println("bridging with half path " + halfPath.getId());
 	
 					fullPaths.removeIf(p->(	p.getId().indexOf(halfPath.getId()) < 0 
-											&& p.getId().indexOf(halfPath.getReversedComplemented().getId()) < 0));
+											&& p.getId().indexOf(halfPath.reverse().getId()) < 0));
 				}
 			}
 			

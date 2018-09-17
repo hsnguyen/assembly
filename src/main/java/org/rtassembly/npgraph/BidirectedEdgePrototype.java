@@ -32,6 +32,9 @@ public class BidirectedEdgePrototype{
 		
 	}
 	
+	public BidirectedEdgePrototype reverse() {
+		return new BidirectedEdgePrototype(n1.getNode(), n0.getNode(), n1.getDir(), n0.getDir());
+	}
 	
 	public AbstractNode getNode0(){
 		return n0.getNode();

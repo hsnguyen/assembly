@@ -115,7 +115,7 @@ public class GraphStalker {
 				 
 				 //if linear: reverse
 				 if(!isCircular){
-					 repPath=repPath.getReversedComplemented();
+					 repPath=repPath.reverse();
 					 //extend in opposite direction
 					 curNode=node;
 					 curDir=false;
