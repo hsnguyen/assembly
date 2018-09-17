@@ -117,49 +117,57 @@ public class NewBridge {
 				 ScaffoldVector algVec = alignedRead.getVector(alignedRead.getFirstAlignment(), alg),
 						 		segEndVec = null, segStartVec = null;
 				 //1. locate the segments approximately close by the corresponding aligned contig
-				 int 	curMinDis=Integer.MAX_VALUE,
+				 int 	minDeviation=Integer.MAX_VALUE,
 						tmpIdx=startSearchingIdx;
 				 ArrayList<BidirectedPath> agreePaths = new ArrayList<>();
 				 boolean foundSegmentCandidates = false;
-				 while(tmpIdx<segments.size()){
+				 while(tmpIdx<segments.size() && agreePaths.isEmpty()){
 					 BridgeSegment searchSegment = segments.get(tmpIdx);
 					 segEndVec = searchSegment.getEndVector();
 					 segStartVec = searchSegment.getStartVector();
 					 System.out.print("-searching alignment on segment " + searchSegment.pSegment.toString());
 
+					 //TODO: review this!!
 					 if(	Math.signum(algVec.getMagnitute()-segStartVec.getMagnitute())!=Math.signum(algVec.getMagnitute()-segEndVec.getMagnitute()) 
 						 || GraphUtil.approxCompare(segStartVec.getMagnitute(), algVec.getMagnitute()) == 0
-						 || GraphUtil.approxCompare(segEndVec.getMagnitute(), algVec.getMagnitute()) == 0) {
+						 || GraphUtil.approxCompare(segEndVec.getMagnitute(), algVec.getMagnitute()) == 0) 
+					 {
 						 foundSegmentCandidates=true;
 						 System.out.println(" : close!");
 						 ScaffoldVector diffVec=ScaffoldVector.composition(algVec, ScaffoldVector.reverse(segStartVec));//seg-0->alg
 						 
-						 if(searchSegment.getNumberOfPaths()==0) {
-							 //identify alignments falling into this segment
-						 }else {
+						 if(searchSegment.isConnected()) {
+							 int score=0;
 							 for(BidirectedPath path:searchSegment.connectedPaths) {
 								 if(!path.contains(alg.node))
 									 continue;
 								 int dist = diffVec.distance((BidirectedNode) searchSegment.pSegment.getNode0(), alg.node);
 								 System.out.printf("...estimate distance between %s and %s is %d\n", searchSegment.pSegment.getNode0().getId(), alg.node.getId(), dist);
 								 //FIXME: optimize this, use ScaffoldVector instead of distance for checkDistanceConsistency()
-								 if(path.checkDistanceConsistency(searchSegment.pSegment.getNode0(), alg.node, searchSegment.pSegment.getDir0()==alg.strand, dist) ) {
+								 int delta=path.checkDistanceConsistency(searchSegment.pSegment.getNode0(), alg.node, searchSegment.pSegment.getDir0()==alg.strand, dist);
+								 if( delta != -1) {
 									 //add this path to a candidate list for later consider...
-									 if(!agreePaths.isEmpty() && GraphUtil.approxCompare(curMinDis, dist)!=0)
+									 if(!agreePaths.isEmpty() && GraphUtil.approxCompare(minDeviation, delta)!=0)
 										 continue; 
-									 else if(Math.abs(curMinDis)>Math.abs(dist)) {
-										 agreePaths = new ArrayList<>();
-										 curMinDis=dist;
-										 startSearchingIdx=tmpIdx;//save its segment also?
-									 } 
-									 agreePaths.add(path);
-									 
+									 else {
+										 //FIXME: voting based on edit distance with the long read instead: deviation voting quite useless here!!!
+										 if(Math.abs(minDeviation)>Math.abs(delta)) {
+											 minDeviation=delta;
+											 path.upVote(++score);
+											 agreePaths.add(0,path);
+										 }else if(Math.abs(minDeviation)==Math.abs(delta)) {
+											 path.upVote(score);
+											 agreePaths.add(0,path);
+										 }else
+											 agreePaths.add(path);
+										 
+										 startSearchingIdx=Math.max(startSearchingIdx, tmpIdx);
+										 
+									 }
 								 }
 							 }
-							 if(agreePaths.isEmpty())
-								 startSearchingIdx++;
-						 }
-						 
+
+						 } 
 					 }else {
 						 System.out.println(": not close!");
 						 if(foundSegmentCandidates){
@@ -167,52 +175,51 @@ public class NewBridge {
 							 break;
 						 }
 					 }
-					 
-					 
+					 				 
 					 tmpIdx++;
 					 
 				 }
 				 //reducing possible paths
 				 if(!agreePaths.isEmpty()) {					 
-					 //TODO: implement vote system here: 195i,76o
+					 //TODO: look at vote score and keep the best(s)
 					 segments.get(startSearchingIdx).connectedPaths=agreePaths;
 				 }else {
-					 //TODO: how about pseudo edge (no path found)
-					 
 					 if(tmpIdx==segments.size()){ 			 
 						 System.out.println("try extend instead!");
-						 break;
+						
+						 //Extending mode:
+						 //this aligned read is longer and have more information than this bridge
+						 //first connect last node of bridge to first out-of-range node from alignedRead
+						 BridgeSegment cnt = new BridgeSegment(
+								 							pBridge.getNode1(), 
+								 							alg.node, 
+								 							!pBridge.getDir1(), 
+								 							!alg.strand,
+								 							segments.get(segments.size()-1).getEndVector(),
+								 							alignedRead.getVector(alignedRead.getFirstAlignment(), alg)
+								 							);
+						 if(cnt.isConnected()) {//to avoid error reads that give crap alignments???
+							 addSegment(cnt);
+							 //add others
+							 addAligments(alignedRead, idx, alignedRead.getAlignmentRecords().size()-1);
+							 System.out.println("Extend to have " + pBridge.toString());
+							 return;
+
+						 }else{
+							 System.out.println("Path not found: cannot extend " + cnt.pSegment.toString());
+							 continue;
+						 }
+					
+						 
+						 
 					 }
 				 }
 			
 			 }
-			 if(idx < alignedRead.getAlignmentRecords().size()) {
-				 //this aligned read is longer and have more information than this bridge
-				 //first connect last node of bridge to first out-of-range node from alignedRead
-				 Alignment lastBrowseAlg = alignedRead.getAlignmentRecords().get(idx);
-				 BridgeSegment cnt = new BridgeSegment(
-						 							pBridge.getNode1(), 
-						 							lastBrowseAlg.node, 
-						 							!pBridge.getDir1(), 
-						 							!lastBrowseAlg.strand,
-						 							segments.get(segments.size()-1).getEndVector(),
-						 							alignedRead.getVector(alignedRead.getFirstAlignment(), lastBrowseAlg)
-						 							);
-				 if(cnt.isConnected()) {//to avoid error reads that give crap alignments???
-					 addSegment(cnt);
-					 //add others
-					 addAligments(alignedRead, idx, alignedRead.getAlignmentRecords().size()-1);
-					 System.out.println("Extend to have " + pBridge.toString());
 
-				 }else
-					 System.out.println("Path not found: cannot extend " + cnt.pSegment.toString());
-		
-			 }
-		}
-							
-	
-		
+		 }
 	}
+							
 
 	private void addAligments(AlignedRead read, int start, int end) {
 		 for(int i=start;i<end;i++) {
@@ -262,7 +269,7 @@ public class NewBridge {
 				retval += "()";
 			else
 				for(BidirectedPath path:seg.connectedPaths)
-					retval+="( "+path.getId()+" )";
+					retval+="( "+path.getId()+ " : " + path.getVote() + " )";
 			retval+="\n";
 		}
 		retval+="}";

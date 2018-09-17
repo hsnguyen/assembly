@@ -50,6 +50,7 @@ public class BidirectedPath extends Path{
 		}
 		deviation=p.deviation;
 		len=p.len;
+		vote=p.vote;
 	}
 	
 	//This constructor is used e.g. to load in contigs.path from SPAdes
@@ -88,6 +89,7 @@ public class BidirectedPath extends Path{
 		List<Edge> edges = this.getEdgePath();
 		for(int i = edges.size()-1; i>=0; i--)
 			rcPath.add(edges.get(i));
+		rcPath.vote=vote;
 		return rcPath;
 	}
 	//It is not really ID because Path doesn't need an ID
@@ -210,11 +212,11 @@ public class BidirectedPath extends Path{
 		this.deviation=deviation;
 	}
 
-	public void upVote() {
-		vote++;
+	public void upVote(int score) {
+		vote+=score;
 	}
-	public void downVote(){
-		vote--;
+	public void downVote(int score){
+		vote-=score;
 	}
 	public int getVote() {
 		return vote;
@@ -233,8 +235,9 @@ public class BidirectedPath extends Path{
 	 * Check if a node (to) have a distance to an end (from) that similar to a
 	 * predefined value (distance) 
 	 */
-	public boolean checkDistanceConsistency(Node from, Node to, boolean direction, int distance){
-		boolean retval=false, dirOfFrom, dirOfTo;
+	public int checkDistanceConsistency(Node from, Node to, boolean direction, int distance){
+		int retval=-1;
+		boolean dirOfFrom, dirOfTo;
 		BidirectedPath ref=null;
 		
 		if(from==getRoot()){
@@ -243,7 +246,7 @@ public class BidirectedPath extends Path{
 			ref=this.reverse();
 		}else{
 			LOG.warn("Node {} couldn't be found as one of the end node in path {}!", from.getId(), getId());
-			return false;
+			return retval;
 		}
 		int curDistance=0;
 		dirOfFrom = ((BidirectedEdge) ref.getEdgePath().get(0)).getDir((BidirectedNode)from);
@@ -253,12 +256,13 @@ public class BidirectedPath extends Path{
 			curNode=(BidirectedNode) e.getOpposite(curNode);
 			curDistance+=((BidirectedEdge) e).getLength();
 			if(curNode==to){
-				if(Math.abs(curDistance-distance) < Math.max(100, .2*Math.max(distance, curDistance))){
+				if(Math.abs(curDistance-distance) < BidirectedGraph.A_TOL || GraphUtil.approxCompare(curDistance, distance)==0){
 					dirOfTo=!((BidirectedEdge) e).getDir((BidirectedNode) curNode);
 					if((dirOfFrom == dirOfTo) == direction) {
 						System.out.printf("|-> agree distance between node %s, node %s: %d and given distance %d\n",
 								from.getId(), to.getId(), curDistance, distance);
-						return true;
+						if(retval<0 || retval > Math.abs(curDistance-distance))
+							retval=Math.abs(curDistance-distance);
 					}
 					else
 						LOG.info("!-> inconsistence direction between node {}:{}, node {}:{} and given direction {}",

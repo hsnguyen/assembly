@@ -77,6 +77,7 @@ public class GraphExploreLaptop {
         
         HybridAssembler.promptEnterKey();
         hbAss.postProcessGraph();
+        HybridAssembler.promptEnterKey();
 
         viewer.disableAutoLayout();
     }
