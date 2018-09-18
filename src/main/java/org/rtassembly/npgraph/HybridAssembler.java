@@ -252,7 +252,7 @@ public class HybridAssembler {
 			if (!readID.equals("") && !readID.equals(myRec.readID)) {	
 				synchronized(simGraph) {
 					List<BidirectedPath> paths=simGraph.uniqueBridgesFinding(nnpRead, samList);
-					if(paths!=null)						
+					if(paths!=null){	
 						for(BidirectedPath path:paths) 
 						{
 							//path here is already unique! (2 unique ending nodes)
@@ -261,6 +261,7 @@ public class HybridAssembler {
 					    		GraphUtil.redrawGraphComponents(simGraph);
 					    	}
 						}
+					}
 				}
 				samList = new ArrayList<Alignment>();
 				nnpRead = new Sequence(Alphabet.DNA5(), rec.getReadString(), "R" + readID);

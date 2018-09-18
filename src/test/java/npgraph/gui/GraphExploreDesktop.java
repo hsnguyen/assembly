@@ -10,9 +10,9 @@ import org.rtassembly.npgraph.HybridAssembler;
 public class GraphExploreDesktop {
 	//imb desktop
 	//npscarf
-	public static String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/"; 	
+//	public static String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/"; 	
 	//unicycler
-//	public static String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/unicycler/"; 
+	public static String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/unicycler/"; 
 
 	//	public static String dataFolder="/home/hoangnguyen/workspace/data/spades/"; //sony
 
@@ -33,7 +33,7 @@ public class GraphExploreDesktop {
     	
 //    	npscarf
 //    	String sample="EcK12S-careful";
-    	String sample="Kp2146-careful";
+//    	String sample="Kp2146-careful";
 //    	String sample="Kp13883-careful";
  
 //    	String sample="W303-careful";
@@ -43,7 +43,7 @@ public class GraphExploreDesktop {
     	//unicycler
 //    	String sample="Acinetobacter_A1/";
 //    	String sample="Acinetobacter_AB30/";
-//    	String sample="E_coli_K-12_MG1655/";
+    	String sample="E_coli_K-12_MG1655/";
 //    	String sample="E_coli_O25b_H4-ST131/";
 //    	String sample="Klebsiella_30660_NJST258_1/";
 //    	String sample="Klebsiella_MGH_78578/";
@@ -60,23 +60,23 @@ public class GraphExploreDesktop {
     	
 //    	String quality="bad/";
 //    	String quality="medium/";
-//    	String quality="good/";
+    	String quality="good/";
 
     	
 		HybridAssembler hbAss = new HybridAssembler();
 		
 		//npscarf
-		hbAss.setShortReadsInput(dataFolder+sample+"/assembly_graph.fastg");
-		hbAss.setPrefix(dataFolder+sample+"/");
-		hbAss.setShortReadsInputFormat("fastg");
-		hbAss.prepareShortReadsProcess(false);//change true/false to use/not use SPAdes path
+//		hbAss.setShortReadsInput(dataFolder+sample+"/assembly_graph.fastg");
+//		hbAss.setPrefix(dataFolder+sample+"/");
+//		hbAss.setShortReadsInputFormat("fastg");
+//		hbAss.prepareShortReadsProcess(false);//change true/false to use/not use SPAdes path
 		
 		
 		//unicycler
-//		hbAss.setShortReadsInput(dataFolder+sample+quality+"spades/assembly_graph.fastg");
-//		hbAss.setPrefix(dataFolder+sample+quality);
-//		hbAss.setShortReadsInputFormat("fastg");
-//		hbAss.prepareShortReadsProcess(true);
+		hbAss.setShortReadsInput(dataFolder+sample+quality+"spades/assembly_graph.fastg");
+		hbAss.setPrefix(dataFolder+sample+quality);
+		hbAss.setShortReadsInputFormat("fastg");
+		hbAss.prepareShortReadsProcess(true);
 		
     	BidirectedGraph graph= hbAss.simGraph;
     	
@@ -92,9 +92,9 @@ public class GraphExploreDesktop {
          */
         try {
         	//npscarf
-        	hbAss.setLongReadsInput(dataFolder+sample+"/assembly_graph.sam");
+//        	hbAss.setLongReadsInput(dataFolder+sample+"/assembly_graph.sam");
         	//unicycler
-//        	hbAss.setLongReadsInput(dataFolder+sample+quality+"bwa.sam");
+        	hbAss.setLongReadsInput(dataFolder+sample+quality+"bwa.sam");
         	hbAss.setLongReadsInputFormat("sam");
         	hbAss.prepareLongReadsProcess();
         	

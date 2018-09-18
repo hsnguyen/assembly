@@ -455,7 +455,7 @@ public class BidirectedGraph extends MultiGraph{
      * Return list of bridges with endings as markers and alignments of non-markers in-between.
      */
     synchronized protected List<BidirectedPath> uniqueBridgesFinding(Sequence nnpRead, ArrayList<Alignment> alignments) {
-		if(alignments.size()<=1)
+		if(nnpRead==null || alignments.size()<=1)
 			return null;
 		
 		System.out.println("=================================================");
