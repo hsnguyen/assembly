@@ -12,6 +12,7 @@ public class GraphExploreLaptop {
 	
 	public static String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/"; //dell FASTG
 //	public static String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades_v3.10/"; //dell GFA
+//	public static String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/unicycler/"; //unicycler synthetic
 
 
 	public static void main(String args[]) {
@@ -31,19 +32,24 @@ public class GraphExploreLaptop {
     	
     	//npscarf
 //    	String sample="EcK12S-careful";
-//    	String sample="Kp2146-careful";
-    	String sample="Kp13883-careful";
+    	String sample="Kp2146-careful";
+//    	String sample="Kp13883-careful";
  
 //    	String sample="W303-careful";
 //    	String sample="meta-careful";
 //    	String sample="cp_S5";
 
-
+//    	String sample="Shigella_dysenteriae_Sd197/good";
+//    	String sample="Shigella_sonnei_53G/good";
     	
 		HybridAssembler hbAss = new HybridAssembler();
 		
 		//npscarf
 		hbAss.setShortReadsInput(dataFolder+sample+"/assembly_graph.fastg");
+		
+		//unicycler
+//		hbAss.setShortReadsInput(dataFolder+sample+"/spades/assembly_graph.fastg");
+		
 		hbAss.setPrefix(dataFolder+sample+"/");
 		hbAss.setShortReadsInputFormat("fastg");
 		hbAss.prepareShortReadsProcess(false);//change true/false to use/not use SPAdes path
@@ -64,6 +70,9 @@ public class GraphExploreLaptop {
         try {
         	//npscarf
         	hbAss.setLongReadsInput(dataFolder+sample+"/assembly_graph.sam");
+        	//unicycler
+//        	hbAss.setLongReadsInput(dataFolder+sample+"/bwa.sam");
+
         	hbAss.setLongReadsInputFormat("sam");
         	hbAss.prepareLongReadsProcess();
         	

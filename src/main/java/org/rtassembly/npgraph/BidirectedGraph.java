@@ -211,12 +211,11 @@ public class BidirectedGraph extends MultiGraph{
 	    					endNode=path.getLastNode();
 	    	boolean startNodeDir=path.getFirstNodeDirection(),
 	    			endNodeDir=path.getLastNodeDirection();
-	    	NewBridge brg = new NewBridge(this,path);
 	    	if(SimpleBinner.getUniqueBin(startNode)!=null){
-	    		bridgesMap.put(startNode.getId()+(startNodeDir?"o":"i"), brg);
+	    		bridgesMap.put(startNode.getId()+(startNodeDir?"o":"i"), new NewBridge(this,path));
 	    	}
 	    	if(SimpleBinner.getUniqueBin(endNode)!=null){
-	    		bridgesMap.put(endNode.getId()+(endNodeDir?"o":"i"), brg);
+	    		bridgesMap.put(endNode.getId()+(endNodeDir?"o":"i"), new NewBridge(this,path));
 	    	}
 		} catch (Exception e) {
 			LOG.error("Invalid path to add to bridge map: " + path.getId());
@@ -690,7 +689,7 @@ public class BidirectedGraph extends MultiGraph{
     		
     		curUniqueBin = SimpleBinner.getUniqueBin(curNodeFromSimGraph);
     		if(curUniqueBin!=null){//only when reach the end of path
-        		
+				curPath.setConsensusUniqueBinOfPath(curUniqueBin);
 				if(markerNode!=null){
 					//create an edge connect markerNode to curNode with curPath
 					BidirectedEdge reducedEdge = new BidirectedEdge(markerNode, curNodeFromSimGraph, markerDir, curDir);
@@ -699,7 +698,6 @@ public class BidirectedGraph extends MultiGraph{
 					tobeAdded.add(reducedEdge);
 					updateBridgesMap(curPath);
 					
-					curPath.setConsensusUniqueBinOfPath(curUniqueBin);
 					ArrayList<BidirectedEdge> potentialRemovedEdges = binner.walkAlongUniquePath(curPath);
 					if(potentialRemovedEdges!=null)
 						tobeRemoved.addAll(potentialRemovedEdges);
@@ -718,6 +716,8 @@ public class BidirectedGraph extends MultiGraph{
         		markerDir=!curDir; //in-out, out-in
 				curPath= new BidirectedPath();
 				curPath.setRoot(curNodeFromSimGraph);
+				curPath.setConsensusUniqueBinOfPath(curUniqueBin);
+
 				
     		}
     		

@@ -7,7 +7,7 @@ import org.graphstream.graph.implementations.AbstractNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
+//A bridge structure that the first node must be unique
 public class NewBridge {
 	private static final Logger LOG = LoggerFactory.getLogger(NewBridge.class);
 	public static volatile int MAX_DIFF=3;
@@ -22,24 +22,25 @@ public class NewBridge {
 		segments=new ArrayList<>();
 		this.bin=bin;
 	}
-	//This is for SPAdes path reader only. The input path must be elementary unique path
-	//(2 ending nodes are unique and not containing other unique path)
+	//This is for SPAdes path reader only. The input path must be have at least one end unique.
+	//This unique ending node will be use as the first anchor of the bridge
 	NewBridge (BidirectedGraph graph, BidirectedPath path){
 		this(graph,path.getConsensusUniqueBinOfPath());
-		if(	path.size()>1
-		 && ((SimpleBinner.getUniqueBin(path.getRoot())!=null || SimpleBinner.getUniqueBin(path.peekNode())!=null))
-		 ){
-			addSegment(new BridgeSegment(path));
-		}else
-			LOG.warn("Invalid path to build bridge: " + path.getId());
+		if(	path.size()>1) {
+			if(SimpleBinner.getUniqueBin(path.getRoot())!=null)
+				addSegment(new BridgeSegment(path));
+			else if(SimpleBinner.getUniqueBin(path.peekNode())!=null)
+				addSegment(new BridgeSegment(path.reverse()));
+			
+		}
+		
 		
 
 	}
 	
 	public NewBridge(BidirectedGraph graph, AlignedRead bb, PopBin b) {
 		this(graph,b);
-		if(SimpleBinner.getUniqueBin(bb.getFirstAlignment().node)==null)
-			bb=bb.reverse();
+
 		buildFrom(bb);
 	}
 
@@ -82,29 +83,18 @@ public class NewBridge {
 		if(segments.isEmpty()){ // empty bridge: build from beginning	
 			addAligments(alignedRead, 0, alignedRead.getAlignmentRecords().size()-1);			
 		}else{ // building on the existed one
-			 if(alignedRead.getFirstAlignment().node == pBridge.getNode1()) {
-				 if(alignedRead.getLastAlignment().node == pBridge.getNode0()) {
-					 System.out.print("Reversing read " + alignedRead.getEndingsID());
-					 alignedRead=alignedRead.reverse();
-					 System.out.println(" to " + alignedRead.getEndingsID());
-				 }
-				 else {
-					 System.out.print("Reversing bridge " + this.getEndingsID());
-					 this.reverse();
-					 System.out.println(" to " + this.getEndingsID());
-
-				 }
-			 }
-			 else if(alignedRead.getFirstAlignment().node != pBridge.getNode0()) {
-				 System.err.println("Disagree starting points of the alignment to the bridge! Ignored.");
-				 return;
-			 }
-			 
-			 boolean firstDirOnRead = alignedRead.getFirstAlignment().strand;
-			 if(firstDirOnRead != pBridge.getDir0()) {
-				 System.err.println("Conflict between alignnment [" + alignedRead.getFirstAlignment().toString() + "] and bridge [" + pBridge.toString() + "]");
-				 return;
-			 }
+			assert SimpleBinner.getUniqueBin(pBridge.getNode0())!=null:"First node must unique: illegal bridge "+ this.getEndingsID();
+			assert SimpleBinner.getUniqueBin(alignedRead.getFirstAlignment().node)!=null:"First node must unique: wrong read "+ alignedRead.getEndingsID();
+			
+			if(pBridge.getNode0()!=alignedRead.getFirstAlignment().node) {
+				if(pBridge.getNode0()==alignedRead.getLastAlignment().node) {
+					alignedRead=alignedRead.reverse();
+				}else{
+					this.reverse();
+					if(pBridge.getNode1()==alignedRead.getLastAlignment().node)
+						alignedRead=alignedRead.reverse();
+				}
+			}
 			 
 			 System.out.println("Applying aligned read on the bridge: " + alignedRead.getCompsString());
 
