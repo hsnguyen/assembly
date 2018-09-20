@@ -32,8 +32,8 @@ public class GraphExploreLaptop {
     	
     	//npscarf
 //    	String sample="EcK12S-careful";
-    	String sample="Kp2146-careful";
-//    	String sample="Kp13883-careful";
+//    	String sample="Kp2146-careful";
+    	String sample="Kp13883-careful";
  
 //    	String sample="W303-careful";
 //    	String sample="meta-careful";
@@ -71,7 +71,7 @@ public class GraphExploreLaptop {
         	//npscarf
         	hbAss.setLongReadsInput(dataFolder+sample+"/assembly_graph.sam");
         	//unicycler
-//        	hbAss.setLongReadsInput(dataFolder+sample+"/bwa.sam");
+//        	hbAss.setLongReadsInput(dataFolder+sample+"/mm2.sam");
 
         	hbAss.setLongReadsInputFormat("sam");
         	hbAss.prepareLongReadsProcess();
@@ -84,7 +84,7 @@ public class GraphExploreLaptop {
 
         System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
         
-        HybridAssembler.promptEnterKey();
+//        HybridAssembler.promptEnterKey();
         hbAss.postProcessGraph();
         HybridAssembler.promptEnterKey();
 

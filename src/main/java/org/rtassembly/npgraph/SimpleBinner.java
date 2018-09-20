@@ -407,7 +407,7 @@ public class SimpleBinner {
 			if(bcMinusOne!=null && bcMinusOne.values().stream().mapToInt(Integer::intValue).sum() == 0) {
 //				edge2BinMap.remove(ep);
 				//delete here???
-				retval.add((BidirectedEdge) ep);
+//				retval.add((BidirectedEdge) ep);
 			}
 			
 //			if(ep.getNumber("cov") < 0  && !unresolvedEdges.contains(ep)) //plasmid coverage is different!!!

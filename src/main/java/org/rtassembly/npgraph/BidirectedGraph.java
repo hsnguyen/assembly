@@ -29,7 +29,7 @@ public class BidirectedGraph extends MultiGraph{
     static final int A_TOL=200;// absolute tolerate: can be interpreted as long read absolute error bases (200bp)
 
     static final int D_LIMIT=5000; //distance bigger than this will be ignored
-    public static int S_LIMIT=15;// maximum number of DFS steps
+    public static int S_LIMIT=30;// maximum number of DFS steps
     
     //provide mapping from unique directed node to its corresponding bridge
     //E.g: 103-: <103-82-> also 82+:<82+103+>
@@ -322,7 +322,7 @@ public class BidirectedGraph extends MultiGraph{
     								retval = new ArrayList<BidirectedPath>();
     	tmp.setRoot(srcNode);  	
     	
-    	traverse(tmp, dstNode, possiblePaths, distance, distance>200?(int) (R_TOL*distance):200, from.strand, to.strand, 0);
+    	traverse(tmp, dstNode, possiblePaths, distance, distance>A_TOL?(int) (R_TOL*distance):A_TOL, from.strand, to.strand, 0);
 //    	traverse(tmp, dstNode, possiblePaths, distance, 500, from.strand, to.strand, 0);
 
     	/**************************************************************************************
@@ -371,7 +371,7 @@ public class BidirectedGraph extends MultiGraph{
 		ArrayList<BidirectedPath>	possiblePaths = new ArrayList<BidirectedPath>(),
 									retval = new ArrayList<BidirectedPath>();
 		tmp.setRoot(srcNode);  		
-		traverse(tmp, dstNode, possiblePaths, distance, distance>200?(int) (R_TOL*distance):200, srcDir, !dstDir, 0);
+		traverse(tmp, dstNode, possiblePaths, distance, distance>A_TOL?(int) (R_TOL*distance):A_TOL, srcDir, !dstDir, 0);
 		if(possiblePaths.isEmpty()){
 			if(SimpleBinner.getUniqueBin(srcNode)!=null && SimpleBinner.getUniqueBin(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 && force){
 				//save the corresponding content of long reads to this edge
@@ -404,8 +404,10 @@ public class BidirectedGraph extends MultiGraph{
     						int distance, int tolerance, boolean srcDir, boolean dstDir, int stepCount)
     {
     	//stop if it's going too deep!
-    	if(stepCount >= S_LIMIT)
+    	if(stepCount >= S_LIMIT) {
+			System.out.println("Stop going too deep with  "+stepCount+" levels already!");
     		return;
+    	}
     	
     	BidirectedNode currentNode=(BidirectedNode) path.peekNode();
     	BidirectedEdge currentEdge;
@@ -439,7 +441,7 @@ public class BidirectedGraph extends MultiGraph{
 				int newDistance = distance - ((Sequence) e.getOpposite(currentNode).getAttribute("seq")).length() - e.getLength();
 //				System.out.println("adding edge: " + e.getId() + " length=" + e.getLength() +" -> distance=" + newDistance);
 				if (newDistance - e.getLength() < -tolerance){
-//					System.out.println("Stop go to edge " + e.getId() + " from path with distance "+newDistance+" already! : "+path.getId());
+					System.out.println("Stop go to edge " + e.getId() + " from path with distance "+newDistance+" already! : "+path.getId());
 				}else
 					traverse(path, dst, curResult, newDistance, tolerance, srcDir, dstDir, stepCount+1);
 
