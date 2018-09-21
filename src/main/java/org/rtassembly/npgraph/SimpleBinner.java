@@ -104,7 +104,7 @@ public class SimpleBinner {
 		unresolvedEdges.remove(edge);
 		Node 	n0 = edge.getNode0(),
 				n1 = edge.getNode1();
-		
+		System.out.printf("From edge %s%s: ", edge.getId(), getBinsOfEdge(edge));
 		if(!node2BinMap.containsKey(n0)){
 			boolean dir0 = ((BidirectedEdge)edge).getDir0();
 			Stream<Edge> edgeSet0 = dir0?n0.leavingEdges():n0.enteringEdges();		
@@ -125,17 +125,16 @@ public class SimpleBinner {
 			for(PopBin b:binCounts0.keySet()){
 				covSum+=binCounts0.get(b)*b.estCov;
 			}
-			
-			if(fully && Math.abs(covSum-n0.getNumber("cov"))/n0.getNumber("cov") < .2){
+			if(fully && GraphUtil.approxCompare(covSum, n0.getNumber("cov"))==0){
 				node2BinMap.put(n0, binCounts0);
 //				System.out.println("From edge " + edge.getId() + " updating node " + n0.getId());
-				System.out.printf("From edge %s%s completing node %s%s\n", edge.getId(), getBinsOfEdge(edge), n0.getId(),getBinsOfNode(n0));
-
+				System.out.printf("completing node %s%s\n", n0.getId(),getBinsOfNode(n0));
 				exploringFromNode(n0);
-			}
+			}else
+				System.out.printf("skip node %s%s\n", n0.getId(),getBinsOfNode(n0));
 		}else{
 			//TODO: check consistent here			
-			System.out.printf("From edge %s%s firing node %s%s\n",edge.getId(), getBinsOfEdge(edge), n0.getId(),getBinsOfNode(n0));
+			System.out.printf("firing node %s%s\n", n0.getId(),getBinsOfNode(n0));
 			exploringFromNode(n0);
 		}
 		
@@ -161,15 +160,16 @@ public class SimpleBinner {
 				covSum+=binCounts1.get(b)*b.estCov;
 			}
 			
-			if(fully && Math.abs(covSum-n1.getNumber("cov"))/n1.getNumber("cov") < .2){				
+			if(fully && GraphUtil.approxCompare(covSum, n1.getNumber("cov"))==0){				
 				node2BinMap.put(n1, binCounts1);
-				System.out.printf("From edge %s%s completing node %s%s\n", edge.getId(), getBinsOfEdge(edge), n1.getId(),getBinsOfNode(n1));
+				System.out.printf("completing node %s%s\n", n1.getId(),getBinsOfNode(n1));
 				exploringFromNode(n1);
-			}
+			}else
+				System.out.printf("skip node %s%s\n", n1.getId(),getBinsOfNode(n1));
 			
 		}else{ 
 			//TODO: check consistent here also
-			System.out.printf("From edge %s%s firing node %s%s\n",edge.getId(), getBinsOfEdge(edge), n1.getId(),getBinsOfNode(n1));
+			System.out.printf("firing node %s%s\n", n1.getId(),getBinsOfNode(n1));
 			exploringFromNode(n1);
 		}
 	}
@@ -291,20 +291,23 @@ public class SimpleBinner {
 		}
 
 		while(!unresolvedEdges.isEmpty()) {
-			LOG.info("Starting assigning " + unresolvedEdges.size() + " unresolved edges");
+			System.out.println("Starting assigning " + unresolvedEdges.size() + " unresolved edges");
 			//sort the unresolved edges based on abundance and guess until all gone...
 			if(!highlyPossibleEdges.keySet().isEmpty()){
 				for(PopBin b:binList){
 					if(highlyPossibleEdges.containsKey(b)){
 						while(!highlyPossibleEdges.get(b).isEmpty()) {
 							Edge guess = highlyPossibleEdges.get(b).remove(0);
+							System.out.print("...assigning " + guess.getId());
 							if(unresolvedEdges.contains(guess)){
 								HashMap<PopBin, Integer> bc = new HashMap<>();
 								bc.put(b, 1);
 								edge2BinMap.put(guess, bc);
+								System.out.println(": start explore");
 								exploringFromEdge(guess);
 							}else{
 								//TODO: check consistent here or just take it?
+								System.out.println(": already in bin " + getBinsOfEdge(guess));
 							}
 						
 						}
