@@ -407,15 +407,14 @@ public class SimpleBinner {
 //			LOG.info("--edge {} coverage:{} to {}",ep.getId(),ep.getNumber("cov"),ep.getNumber("cov") - aveCov);
 			ep.setAttribute("cov", ep.getNumber("cov")>aveCov?ep.getNumber("cov")-aveCov:0);	
 
-			if(bcMinusOne!=null && bcMinusOne.values().stream().mapToInt(Integer::intValue).sum() == 0) {
-//				edge2BinMap.remove(ep);
-				//delete here???
+//			if(bcMinusOne!=null && bcMinusOne.values().stream().mapToInt(Integer::intValue).sum() == 0) {
 //				retval.add((BidirectedEdge) ep);
-			}
+//			}
 			
 //			if(ep.getNumber("cov") < 0  && !unresolvedEdges.contains(ep)) //plasmid coverage is different!!!
 //			if(ep.getNumber("cov") <= aveCov*0.5  && !edge2BinMap.containsKey(ep)) //plasmid coverage is different!!!
 //				retval.add((BidirectedEdge) ep);
+			
 			bcMinusOne=null;
 			if(curNode!=path.getRoot() && curNode!=path.peekNode()) {
 				if(node2BinMap.containsKey(curNode)) {

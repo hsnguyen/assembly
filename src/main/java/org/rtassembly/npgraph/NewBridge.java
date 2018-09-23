@@ -83,8 +83,8 @@ public class NewBridge {
 		if(segments.isEmpty()){ // empty bridge: build from beginning	
 			addAligments(alignedRead, 0, alignedRead.getAlignmentRecords().size()-1);			
 		}else{ // building on the existed one
-			assert SimpleBinner.getUniqueBin(pBridge.getNode0())!=null:"First node must unique: illegal bridge "+ this.getEndingsID();
-			assert SimpleBinner.getUniqueBin(alignedRead.getFirstAlignment().node)!=null:"First node must unique: wrong read "+ alignedRead.getEndingsID();
+//			assert SimpleBinner.getUniqueBin(pBridge.getNode0())!=null:"First node must unique: illegal bridge "+ this.getEndingsID();
+//			assert SimpleBinner.getUniqueBin(alignedRead.getFirstAlignment().node)!=null:"First node must unique: wrong read "+ alignedRead.getEndingsID();
 			
 			if(pBridge.getNode0()!=alignedRead.getFirstAlignment().node) {
 				if(pBridge.getNode0()==alignedRead.getLastAlignment().node) {

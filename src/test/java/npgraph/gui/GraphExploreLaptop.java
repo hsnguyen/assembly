@@ -29,30 +29,28 @@ public class GraphExploreLaptop {
     	/***********************************************************************
     	 * *********************    npscarf    *********************************
     	 ***********************************************************************/
-//    	String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/"; //dell FASTG
-////    	String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades_v3.10/"; //dell GFA
-//
-////    	String sample="EcK12S-careful";
+    	String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/"; //dell FASTG
+//    	String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades_v3.10/"; //dell GFA
+
+//    	String sample="EcK12S-careful";
 //    	String sample="Kp2146-careful";
-////    	String sample="Kp13883-careful";
-////
-////    	String sample="W303-careful";
-////    	String sample="meta-careful";
-////    	String sample="cp_S5";
+    	String sample="Kp13883-careful";
+//
+//    	String sample="W303-careful";
+//    	String sample="meta-careful";
+//    	String sample="cp_S5";
 //    	
-//		String 	sInput=dataFolder+sample+"/assembly_graph.fastg",
-//    			lInput=dataFolder+sample+"/assembly_graph.sam";
+		String 	sInput=dataFolder+sample+"/assembly_graph.fastg",
+    			lInput=dataFolder+sample+"/assembly_graph.sam";
     	
     	/***********************************************************************
     	 * *********************    unicycler    *******************************
     	 ***********************************************************************/
-    	String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/unicycler/"; //unicycler synthetic
-//    	String sample="Shigella_dysenteriae_Sd197/good";
-    	String sample="Shigella_sonnei_53G/good";
-    	
-    	
-    	String 	sInput=dataFolder+sample+"/spades/assembly_graph.fastg",
-    			lInput=dataFolder+sample+"/mm2.sam";
+//    	String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/unicycler/"; //unicycler synthetic
+////    	String sample="Shigella_dysenteriae_Sd197/good";
+//    	String sample="Shigella_sonnei_53G/good";
+//    	String 	sInput=dataFolder+sample+"/spades/assembly_graph.fastg",
+//    			lInput=dataFolder+sample+"/mm2.sam";
 		
 		
 		/**********************************************************************************

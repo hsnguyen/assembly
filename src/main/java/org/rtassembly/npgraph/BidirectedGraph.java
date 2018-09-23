@@ -29,7 +29,7 @@ public class BidirectedGraph extends MultiGraph{
     static final int A_TOL=200;// absolute tolerate: can be interpreted as long read absolute error bases (200bp)
 
     static final int D_LIMIT=5000; //distance bigger than this will be ignored
-    public static int S_LIMIT=30;// maximum number of DFS steps
+    public static int S_LIMIT=40;// maximum number of DFS steps
     
     //provide mapping from unique directed node to its corresponding bridge
     //E.g: 103-: <103-82-> also 82+:<82+103+>
