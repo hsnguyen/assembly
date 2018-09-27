@@ -34,9 +34,9 @@ public class GraphExploreLaptop {
 
 //    	String sample="EcK12S-careful";
 //    	String sample="Kp2146-careful";
-    	String sample="Kp13883-careful";
+//    	String sample="Kp13883-careful";
 //
-//    	String sample="W303-careful";
+    	String sample="W303-careful";
 //    	String sample="meta-careful";
 //    	String sample="cp_S5";
 //    	

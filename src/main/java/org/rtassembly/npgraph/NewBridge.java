@@ -301,7 +301,12 @@ public class NewBridge {
 			//invoke findPath()?
 			startV=read.getVector(read.getFirstAlignment(), start);
 			endV=read.getVector(read.getFirstAlignment(), end);
-			connectedPaths = graph.getClosestPaths(start, end);
+			connectedPaths = graph.DFSAllPaths(start, end);
+			
+//			if(connectedPaths==null || connectedPaths.isEmpty())
+//				connectedPaths = graph.getClosestPaths(start, end);
+
+
 			
 		}
 		
@@ -310,8 +315,10 @@ public class NewBridge {
 			pSegment = new BidirectedEdgePrototype(node1,node2,dir1,dir2);
 			startV = v1; endV = v2;
 			int d = ScaffoldVector.composition(endV, ScaffoldVector.reverse(startV)).distance((BidirectedNode)node1, (BidirectedNode)node2);
-			connectedPaths = graph.getClosestPaths((BidirectedNode)node1, dir1, (BidirectedNode)node2, dir2, d, false);
+			connectedPaths = graph.DFSAllPaths((BidirectedNode)node1, (BidirectedNode)node2, dir1, dir2, d, false);
 			
+//			if(connectedPaths==null || connectedPaths.isEmpty())
+//				connectedPaths = graph.getClosestPaths((BidirectedNode)node1, dir1, (BidirectedNode)node2, dir2, d, false);
 		}
 		
 		BridgeSegment(BidirectedPath path){

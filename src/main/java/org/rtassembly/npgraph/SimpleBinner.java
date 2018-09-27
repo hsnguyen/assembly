@@ -407,6 +407,7 @@ public class SimpleBinner {
 //			LOG.info("--edge {} coverage:{} to {}",ep.getId(),ep.getNumber("cov"),ep.getNumber("cov") - aveCov);
 			ep.setAttribute("cov", ep.getNumber("cov")>aveCov?ep.getNumber("cov")-aveCov:0);	
 
+			//Heuristic attempts:
 //			if(bcMinusOne!=null && bcMinusOne.values().stream().mapToInt(Integer::intValue).sum() == 0) {
 //				retval.add((BidirectedEdge) ep);
 //			}

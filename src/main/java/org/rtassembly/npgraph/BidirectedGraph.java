@@ -7,6 +7,10 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
+import java.util.PriorityQueue;
+import java.util.Stack;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graphstream.graph.*;
@@ -28,8 +32,8 @@ public class BidirectedGraph extends MultiGraph{
     static final double R_TOL=.3;// relative tolerate: can be interpreted as long read error rate (10-25%)
     static final int A_TOL=200;// absolute tolerate: can be interpreted as long read absolute error bases (200bp)
 
-    static final int D_LIMIT=5000; //distance bigger than this will be ignored
-    public static int S_LIMIT=40;// maximum number of DFS steps
+    static final int D_LIMIT=2105; //distance bigger than this will be ignored
+    public static int S_LIMIT=125;// maximum number of DFS steps
     
     //provide mapping from unique directed node to its corresponding bridge
     //E.g: 103-: <103-82-> also 82+:<82+103+>
@@ -303,153 +307,356 @@ public class BidirectedGraph extends MultiGraph{
     }
 
     
-    /*
-     * This function deduces a full path in this graph between 2 nodes aligned with a long read
-     * 
-     */
-    synchronized protected ArrayList<BidirectedPath> getClosestPaths(Alignment from, Alignment to){
-    	assert from.readID==to.readID && to.compareTo(from)>=0:"Illegal alignment pair to find path!";
-    	
-    	int distance=to.readAlignmentStart()-from.readAlignmentEnd();
-    	if(distance>BidirectedGraph.D_LIMIT)
-    		return null;
-    	
-    	BidirectedNode srcNode = from.node,
-    					dstNode = to.node;
-    	System.out.println("Looking for path between " + srcNode.getId() + " to " + dstNode.getId() + " with distance " + distance);
-    	BidirectedPath 	tmp = new BidirectedPath();
-    	ArrayList<BidirectedPath>	possiblePaths = new ArrayList<BidirectedPath>(),
-    								retval = new ArrayList<BidirectedPath>();
-    	tmp.setRoot(srcNode);  	
-    	
-    	traverse(tmp, dstNode, possiblePaths, distance, distance>A_TOL?(int) (R_TOL*distance):A_TOL, from.strand, to.strand, 0);
-//    	traverse(tmp, dstNode, possiblePaths, distance, 500, from.strand, to.strand, 0);
-
-    	/**************************************************************************************
-    	 * To cover the missing edges due to big k-mer of DBG
-    	 **************************************************************************************/
-
-    	if(possiblePaths.isEmpty()){
-			if(SimpleBinner.getUniqueBin(srcNode)!=null && SimpleBinner.getUniqueBin(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 &&
-				Math.min(from.quality, to.quality) >= Alignment.GOOD_QUAL)
-    		{
-//    			BidirectedEdge pseudoEdge = new BidirectedEdge(srcNode, dstNode, from.strand, to.strand);
-    			//save the corresponding content of long reads to this edge
-	    		//FIXME: save nanopore reads into this pseudo edge to run consensus later
-    			BidirectedEdge pseudoEdge = addEdge(srcNode, dstNode, from.strand, !to.strand);
-    			pseudoEdge.setAttribute("dist", distance);
-    			tmp.add(pseudoEdge);
-    			retval.add(tmp);
-    			System.out.println("pseudo path from " + srcNode.getId() + " to " + dstNode.getId() + " distance=" + distance);
-    			
-//    			HybridAssembler.promptEnterKey();
-    			return retval;
-    		}else
-    			return null;
-    	}
-    	/*****************************************************************************************/
-    	
-//    	double bestScore=possiblePaths.get(0).getDeviation();
-//    	for(int i=0;i<possiblePaths.size();i++){
-//    		BidirectedPath p = possiblePaths.get(i);
-//    		if(p.getDeviation()>bestScore*(1+R_TOL))
-//    			break;
-//    		retval.add(p);
+//    /*
+//     * This function deduces a full path in this graph between 2 nodes aligned with a long read
+//     * 
+//     */
+//    synchronized protected ArrayList<BidirectedPath> getClosestPaths(Alignment from, Alignment to){
+//    	assert from.readID==to.readID && to.compareTo(from)>=0:"Illegal alignment pair to find path!";
+//    	
+//    	int distance=to.readAlignmentStart()-from.readAlignmentEnd();
+//    	if(distance>BidirectedGraph.D_LIMIT)
+//    		return null;
+//    	
+//    	BidirectedNode srcNode = from.node,
+//    					dstNode = to.node;
+//    	System.out.println("Looking for path between " + srcNode.getId() + " to " + dstNode.getId() + " with distance " + distance);
+//    	BidirectedPath 	tmp = new BidirectedPath();
+//    	ArrayList<BidirectedPath>	possiblePaths = new ArrayList<BidirectedPath>(),
+//    								retval = new ArrayList<BidirectedPath>();
+//    	tmp.setRoot(srcNode);  	
+//   
+//    	traverse(tmp, dstNode, possiblePaths, distance, distance>A_TOL?(int) (R_TOL*distance):A_TOL, from.strand, to.strand, 0);
+////    	traverse(tmp, dstNode, possiblePaths, distance, 500, from.strand, to.strand, 0);
+//
+//    	/**************************************************************************************
+//    	 * To cover the missing edges due to big k-mer of DBG
+//    	 **************************************************************************************/
+//
+//    	if(possiblePaths.isEmpty()){
+//			if(SimpleBinner.getUniqueBin(srcNode)!=null && SimpleBinner.getUniqueBin(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 &&
+//				Math.min(from.quality, to.quality) >= Alignment.GOOD_QUAL)
+//    		{
+////    			BidirectedEdge pseudoEdge = new BidirectedEdge(srcNode, dstNode, from.strand, to.strand);
+//    			//save the corresponding content of long reads to this edge
+//	    		//FIXME: save nanopore reads into this pseudo edge to run consensus later
+//    			BidirectedEdge pseudoEdge = addEdge(srcNode, dstNode, from.strand, !to.strand);
+//    			pseudoEdge.setAttribute("dist", distance);
+//    			tmp.add(pseudoEdge);
+//    			retval.add(tmp);
+//    			System.out.println("pseudo path from " + srcNode.getId() + " to " + dstNode.getId() + " distance=" + distance);
+//    			
+////    			HybridAssembler.promptEnterKey();
+//    			return retval;
+//    		}else
+//    			return null;
+//    	}
+//    	/*****************************************************************************************/
+//    	
+////    	double bestScore=possiblePaths.get(0).getDeviation();
+////    	for(int i=0;i<possiblePaths.size();i++){
+////    		BidirectedPath p = possiblePaths.get(i);
+////    		if(p.getDeviation()>bestScore*(1+R_TOL))
+////    			break;
+////    		retval.add(p);
+////    	}
+////    	
+////    	return retval;
+//    	//FIXME: reduce the number of returned paths here (based on the score?)
+//    	return possiblePaths;
+//    	
+//    }
+//    
+//    synchronized protected ArrayList<BidirectedPath> getClosestPaths(BidirectedNode srcNode, boolean srcDir, BidirectedNode dstNode, boolean dstDir, int distance, boolean force){
+//    	if(distance>BidirectedGraph.D_LIMIT)
+//    		return null;
+//    	System.out.println("Looking for path between " + srcNode.getId() + " to " + dstNode.getId() + " with distance " + distance);
+//		BidirectedPath 	tmp = new BidirectedPath();
+//		ArrayList<BidirectedPath>	possiblePaths = new ArrayList<BidirectedPath>(),
+//									retval = new ArrayList<BidirectedPath>();
+//		tmp.setRoot(srcNode);  		
+////		DFSAllPaths(srcNode, dstNode, srcDir, dstDir, distance, true);
+//		traverse(tmp, dstNode, possiblePaths, distance, distance>A_TOL?(int) (R_TOL*distance):A_TOL, srcDir, !dstDir, 0);
+//		if(possiblePaths.isEmpty()){
+//			if(SimpleBinner.getUniqueBin(srcNode)!=null && SimpleBinner.getUniqueBin(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 && force){
+//				//save the corresponding content of long reads to this edge
+//				//FIXME: save nanopore reads into this pseudo edge to run consensus later
+//				BidirectedEdge pseudoEdge = addEdge(srcNode, dstNode, srcDir, dstDir);
+//				pseudoEdge.setAttribute("dist", distance);
+//				tmp.add(pseudoEdge);
+//				retval.add(tmp);
+//				System.out.println("pseudo path from " + srcNode.getId() + " to " + dstNode.getId() + " distance=" + distance);
+//				
+//				return retval;
+//    		}else
+//    			return null;
+//
+//		}
+//		//double bestScore=possiblePaths.get(0).getDeviation();
+//		//for(int i=0;i<possiblePaths.size();i++){
+//		//	BidirectedPath p = possiblePaths.get(i);
+//		//	if(p.getDeviation()>bestScore*(1+R_TOL))
+//		//		break;
+//		//	retval.add(p);
+//		//}
+//		//
+//		//return retval;
+//		//FIXME: reduce the number of returned paths here (calculate edit distance with nanopore read: dynamic programming?)
+//		return possiblePaths;
+//    }
+//    
+//    synchronized private void traverse(	BidirectedPath path, BidirectedNode dst, ArrayList<BidirectedPath> curResult, 
+//    						int distance, int tolerance, boolean srcDir, boolean dstDir, int stepCount)
+//    {
+//    	//stop if it's going too deep!
+//    	if(stepCount >= S_LIMIT) {
+//			System.out.println("Stop going too deep with  "+stepCount+" levels already!");
+//    		return;
 //    	}
 //    	
-//    	return retval;
-    	//FIXME: reduce the number of returned paths here (based on the score?)
-    	return possiblePaths;
-    	
+//    	BidirectedNode currentNode=(BidirectedNode) path.peekNode();
+//    	BidirectedEdge currentEdge;
+//    	boolean curDir;//direction to the next node, = ! previous'
+//    	
+//    	Iterator<Edge> ite;
+//    	if(path.size() <= 1) //only root
+//			curDir=srcDir;//re-check
+//		else{
+//			currentEdge = (BidirectedEdge) path.peekEdge();
+//			curDir = !((BidirectedEdge) currentEdge).getDir(currentNode);
+//		}
+//		ite=curDir?currentNode.leavingEdges().iterator():currentNode.enteringEdges().iterator();
+//    	while(ite.hasNext()){
+//    		BidirectedEdge e = (BidirectedEdge) ite.next();
+//			path.add(e);
+//			
+//			int delta=Math.abs(distance-e.getLength());
+//			//note that traversing direction (true: template, false: reverse complement) of destination node is opposite its defined direction (true: outward, false:inward) 
+//			if(e.getOpposite(currentNode)==dst && e.getDir(dst)!=dstDir && delta < tolerance){ 
+//		    	BidirectedPath 	curPath=curResult.isEmpty()?new BidirectedPath():curResult.get(0), //the best path saved among all possible paths from the list curResult
+//		    					tmpPath=new BidirectedPath(path);
+//		    	tmpPath.setDeviation(delta);
+//		    	if(	delta < curPath.getDeviation() )
+//		    		curResult.add(0, tmpPath);
+//		    	else
+//		    		curResult.add(tmpPath);
+//				
+//				System.out.println("Hit added: "+path.getId()+"(candidate deviation: "+delta+")");
+//			}else{
+//				int newDistance = distance - ((Sequence) e.getOpposite(currentNode).getAttribute("seq")).length() - e.getLength();
+////				System.out.println("adding edge: " + e.getId() + " length=" + e.getLength() +" -> distance=" + newDistance);
+//				if (newDistance - e.getLength() < -tolerance){
+//					System.out.println("Stop go to edge " + e.getId() + " from path with distance "+newDistance+" already! : "+path.getId());
+//				}else
+//					traverse(path, dst, curResult, newDistance, tolerance, srcDir, dstDir, stepCount+1);
+//
+//			}
+//			path.popNode();
+//    	
+//    	}
+//    }
+    
+    synchronized ArrayList<BidirectedPath> DFSAllPaths(Alignment from, Alignment to){
+    	assert from.readID==to.readID && to.compareTo(from)>=0:"Illegal alignment pair to find path!"; 	
+    	int distance=to.readAlignmentStart()-from.readAlignmentEnd();
+    	BidirectedNode srcNode = from.node,
+						dstNode = to.node;
+    	boolean srcDir = from.strand, dstDir = !to.strand;
+    	return DFSAllPaths(srcNode, dstNode, srcDir, dstDir, distance, Math.min(from.quality, to.quality) >= Alignment.GOOD_QUAL);
     }
     
-    synchronized protected ArrayList<BidirectedPath> getClosestPaths(BidirectedNode srcNode, boolean srcDir, BidirectedNode dstNode, boolean dstDir, int distance, boolean force){
+	synchronized ArrayList<BidirectedPath> DFSAllPaths(BidirectedNode srcNode, BidirectedNode dstNode, boolean srcDir, boolean dstDir, int distance, boolean assureFlag)
+	{
     	if(distance>BidirectedGraph.D_LIMIT)
     		return null;
-    	System.out.println("Looking for path between " + srcNode.getId() + " to " + dstNode.getId() + " with distance " + distance);
-		BidirectedPath 	tmp = new BidirectedPath();
-		ArrayList<BidirectedPath>	possiblePaths = new ArrayList<BidirectedPath>(),
-									retval = new ArrayList<BidirectedPath>();
-		tmp.setRoot(srcNode);  		
-		traverse(tmp, dstNode, possiblePaths, distance, distance>A_TOL?(int) (R_TOL*distance):A_TOL, srcDir, !dstDir, 0);
+    	System.out.println("Looking for DFS path between " + srcNode.getId() + " to " + dstNode.getId() + " with distance " + distance);
+		ArrayList<BidirectedPath> possiblePaths = new ArrayList<BidirectedPath>(), 
+									retval=new ArrayList<BidirectedPath>();
+		//1. First build shortest tree from dstNode 		
+		HashMap<String,Integer> shortestMap = getShortestTreeFromNode(dstNode, dstDir, distance);
+		BidirectedPath 	path = new BidirectedPath();
+		path.setRoot(srcNode);  		
+
+		//2. DFS from srcNode with the distance info above
+		NodeState curNodeState = new NodeState(srcNode, !srcDir); // first node is special
+		if(shortestMap.containsKey(curNodeState.toString())) {
+			
+			Stack<List<Edge>> stack = new Stack<>();
+			List<Edge> curList = (curNodeState.getDir()?curNodeState.getNode().enteringEdges():curNodeState.getNode().leavingEdges()).collect(Collectors.toList());
+			stack.push(curList);
+			
+			int shortestDist2Dest = shortestMap.get(curNodeState.toString());
+			int tolerance = A_TOL, 
+				delta;
+			BidirectedEdge curEdge = null;
+			System.out.println("Found " + curNodeState.toString() + " with shortest distance=" + shortestDist2Dest);
+			
+			while(true) {
+//				System.out.println("\nCurrent stack: ");
+//				for(List<Edge> l:stack) {
+//					System.out.print("[");
+//					for(Edge e:l)
+//							System.out.printf("%s; ", e.getId());
+//					System.out.println("]");
+//				}
+//				System.out.println("Current path: " + path.getId());
+//				System.out.println("Current distance: " + distance);
+
+				curList=stack.peek();
+				
+				if(curList.isEmpty()) {
+					if(path.size() <= 1)
+						break;
+					stack.pop();
+//					System.out.print("removing edge " + path.peekEdge().getId());
+					distance += (int)path.peekNode().getNumber("len") + ((BidirectedEdge) path.popEdge()).getLength();
+//					System.out.println(" -> distance = " + distance);
+				}else {
+					curEdge=(BidirectedEdge) curList.remove(0);
+					BidirectedNode from = (BidirectedNode) path.peekNode(),
+									to = (BidirectedNode) curEdge.getOpposite(from);
+					boolean dir = curEdge.getDir(to);
+//					curNode = new NodeState(to, dir);
+//					if(shortestMap.containsKey(curNode.toString())) {
+//						shortestDist2Dest=shortestMap.get(curNode.toString());
+//						if(shortestDist2Dest > distance+tolerance) { //impossible go this way!
+//							System.out.println("Can't go from " + curNode.toString() + ": " + shortestDist2Dest + " >> " + distance);
+//							continue;
+//						}
+//					}else {
+//						System.out.println("Can't go from " + curNode.toString() + ": shortest path to " + dstNode.getId() + " not found!");
+//						continue;
+//					}
+					AtomicInteger limit = new AtomicInteger(distance + tolerance);
+			    	stack.push(
+			    			(curEdge.getDir(to)?to.enteringEdges():to.leavingEdges())
+			    			.filter(e->{
+			    				BidirectedNode n=(BidirectedNode) e.getOpposite(to);
+			    				NodeState ns = new NodeState(n, ((BidirectedEdge) e).getDir(n));
+			    				
+			    				return shortestMap.containsKey(ns.toString()) && shortestMap.get(ns.toString()) < limit.get();
+			    			})
+			    			.collect(Collectors.toList())			    			
+			    			);
+			    	
+					path.add(curEdge);
+
+					delta=Math.abs(distance-curEdge.getLength());
+					//note that traversing direction (true: template, false: reverse complement) of destination node is opposite its defined direction (true: outward, false:inward) 
+					if(to==dstNode && dir==dstDir && delta < tolerance){ 
+				    	BidirectedPath 	curPath=possiblePaths.isEmpty()?new BidirectedPath():possiblePaths.get(0), //the best path saved among all possible paths from the list curResult
+				    					tmpPath=new BidirectedPath(path);
+				    	tmpPath.setDeviation(delta);
+				    	if(	delta < curPath.getDeviation() )
+				    		possiblePaths.add(0, tmpPath);
+				    	else
+				    		possiblePaths.add(tmpPath);
+						
+						System.out.println("Hit added: "+path.getId()+"(candidate deviation: "+delta + "; depth: " + path.size()+")");
+						
+						if(possiblePaths.size() > S_LIMIT) //not go too far
+							break;
+					}
+					
+					distance -= (int)to.getNumber("len") + curEdge.getLength();
+//					System.out.println("adding edge: " + curEdge.getId() + " length=" + (int)to.getNumber("len") +" -> distance=" + distance);
+
+					
+				}
+				
+			}
+		} 
+		
+//		traverse(tmp, dstNode, possiblePaths, distance, distance>A_TOL?(int) (R_TOL*distance):A_TOL, srcDir, !dstDir, 0);
+		
 		if(possiblePaths.isEmpty()){
-			if(SimpleBinner.getUniqueBin(srcNode)!=null && SimpleBinner.getUniqueBin(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 && force){
+			if(SimpleBinner.getUniqueBin(srcNode)!=null && SimpleBinner.getUniqueBin(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 && assureFlag){
 				//save the corresponding content of long reads to this edge
 				//FIXME: save nanopore reads into this pseudo edge to run consensus later
 				BidirectedEdge pseudoEdge = addEdge(srcNode, dstNode, srcDir, dstDir);
 				pseudoEdge.setAttribute("dist", distance);
-				tmp.add(pseudoEdge);
-				retval.add(tmp);
+				path.add(pseudoEdge);
+				possiblePaths.add(path);
 				System.out.println("pseudo path from " + srcNode.getId() + " to " + dstNode.getId() + " distance=" + distance);
 				
-				return retval;
+				return possiblePaths;
     		}else
     			return null;
 
 		}
-		//double bestScore=possiblePaths.get(0).getDeviation();
-		//for(int i=0;i<possiblePaths.size();i++){
-		//	BidirectedPath p = possiblePaths.get(i);
-		//	if(p.getDeviation()>bestScore*(1+R_TOL))
-		//		break;
-		//	retval.add(p);
-		//}
-		//
-		//return retval;
-		//FIXME: reduce the number of returned paths here (calculate edit distance with nanopore read: dynamic programming?)
-		return possiblePaths;
-    }
-    
-    synchronized private void traverse(	BidirectedPath path, BidirectedNode dst, ArrayList<BidirectedPath> curResult, 
-    						int distance, int tolerance, boolean srcDir, boolean dstDir, int stepCount)
-    {
-    	//stop if it's going too deep!
-    	if(stepCount >= S_LIMIT) {
-			System.out.println("Stop going too deep with  "+stepCount+" levels already!");
-    		return;
-    	}
-    	
-    	BidirectedNode currentNode=(BidirectedNode) path.peekNode();
-    	BidirectedEdge currentEdge;
-    	boolean curDir;//direction to the next node, = ! previous'
-    	
-    	Iterator<Edge> ite;
-    	if(path.size() <= 1) //only root
-			curDir=srcDir;//re-check
-		else{
-			currentEdge = (BidirectedEdge) path.peekEdge();
-			curDir = !((BidirectedEdge) currentEdge).getDir(currentNode);
+		
+		double bestScore=possiblePaths.get(0).getDeviation();
+		int keepMax = 10;//only keep this many possible paths 
+		for(int i=0;i<possiblePaths.size();i++){
+			BidirectedPath p = possiblePaths.get(i);
+			if(p.getDeviation()>bestScore+Math.abs(distance+getKmerSize())*R_TOL || i>=keepMax)
+				break;
+			retval.add(p);
 		}
-		ite=curDir?currentNode.leavingEdges().iterator():currentNode.enteringEdges().iterator();
-    	while(ite.hasNext()){
-    		BidirectedEdge e = (BidirectedEdge) ite.next();
-			path.add(e);
-			
-			int delta=Math.abs(distance-e.getLength());
-			//note that traversing direction (true: template, false: reverse complement) of destination node is opposite its defined direction (true: outward, false:inward) 
-			if(e.getOpposite(currentNode)==dst && e.getDir(dst)!=dstDir && delta < tolerance){ 
-		    	BidirectedPath 	curPath=curResult.isEmpty()?new BidirectedPath():curResult.get(0), //the best path saved among all possible paths from the list curResult
-		    					tmpPath=new BidirectedPath(path);
-		    	tmpPath.setDeviation(delta);
-		    	if(	delta < curPath.getDeviation() )
-		    		curResult.add(0, tmpPath);
-		    	else
-		    		curResult.add(tmpPath);
-				
-				System.out.println("Hit added: "+path.getId()+"(candidate deviation: "+delta+")");
-			}else{
-				int newDistance = distance - ((Sequence) e.getOpposite(currentNode).getAttribute("seq")).length() - e.getLength();
-//				System.out.println("adding edge: " + e.getId() + " length=" + e.getLength() +" -> distance=" + newDistance);
-				if (newDistance - e.getLength() < -tolerance){
-					System.out.println("Stop go to edge " + e.getId() + " from path with distance "+newDistance+" already! : "+path.getId());
-				}else
-					traverse(path, dst, curResult, newDistance, tolerance, srcDir, dstDir, stepCount+1);
+		
+		//FIXME: reduce the number of returned paths here (calculate edit distance with nanopore read: dynamic programming?)
+		return retval;
+	}    
+    
+    /*
+     * Get a map showing shortest distances from surrounding nodes to a *rootNode* expanding to a *direction*, within a *distance*
+     * based on Dijkstra algorithm
+     */
+    private HashMap<String, Integer> getShortestTreeFromNode(BidirectedNode rootNode, boolean expDir, int distance){
+		PriorityQueue<NodeState> pq = new PriorityQueue<>();
+		HashMap<String,Integer> retval = new HashMap<>();
+		
+		int curDistance=(int) -rootNode.getNumber("len"), newDistance=0;
+		NodeState curNS = new NodeState(rootNode, expDir, curDistance);
+		pq.add(curNS);
+		
+		System.out.println("Building shortest tree for " + rootNode.getId());
+		retval.put(curNS.toString(), Integer.MIN_VALUE); // direction from the point of srcNode
+		while(!pq.isEmpty()) {
+//			System.out.println("Current queue: ");
+//			for(NodeState n:pq) {
+//				System.out.printf("%s:%d\t", n.toString(), n.getWeight());
+//			}
+//			System.out.println();
+			curNS=pq.poll();
+			curDistance=curNS.getWeight();
+
+			Iterator<Edge> ite=curNS.getDir()?curNS.getNode().leavingEdges().iterator():curNS.getNode().enteringEdges().iterator();
+			while(ite.hasNext()) {
+	    		BidirectedEdge edge = (BidirectedEdge) ite.next();
+	    		BidirectedNode nextNode = (BidirectedNode) edge.getOpposite(curNS.getNode());
+	    		boolean direction =  !edge.getDir(nextNode);
+	    		newDistance=curDistance+edge.getLength()+(int)curNS.getNode().getNumber("len");
+	    		if(newDistance > distance+A_TOL)
+	    			continue;
+	    		
+	    		NodeState nextNS = new NodeState(nextNode, direction, newDistance);
+	    		String key=nextNS.toString();
+	    		if(retval.containsKey(key)) {
+	    			if(retval.get(key) > newDistance) {
+	    				//update the map
+	    				retval.put(key, newDistance);
+	    				//update the queue
+	    				pq.remove(nextNS);
+	    				pq.add(nextNS);
+	    			}
+	    		}else {
+	    			retval.put(key, newDistance);
+    				pq.add(nextNS);
+	    		}
 
 			}
-			path.popNode();
-    	
-    	}
+			
+		}
+		
+		System.out.println("Shortest tree from " + rootNode.getId() + (expDir?"o":"i"));
+		for(String str:retval.keySet()) {
+			System.out.printf("%s:%d; ", str, retval.get(str));
+		}
+		System.out.println();
+		return retval;
     }
+    
     
     /*
      * Find bridges based on list of Alignments.

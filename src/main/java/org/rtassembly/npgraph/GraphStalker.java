@@ -137,7 +137,7 @@ public class GraphStalker {
 			 Sequence seq=repPath.spelling();
 			 double cov=repPath.averageCov();
 			 Node n=outputGraph.addNode(Integer.toString(comp.id));
-			 seq.setName("Contig_"+comp.id+"_"+(isCircular?"cicurlar":"linear")+"_length_"+seq.length()+"_cov_"+cov);
+			 seq.setName("Contig_"+comp.id+"_"+(isCircular?"circular":"linear")+"_length_"+seq.length()+"_cov_"+cov);
 			 n.setAttribute("seq", seq);
 			 n.setAttribute("len", seq.length());
 			 n.setAttribute("cov",cov);
