@@ -8,11 +8,7 @@ import org.rtassembly.npgraph.GraphUtil;
 import org.rtassembly.npgraph.HybridAssembler;
 
 public class GraphExploreDesktop {
-	//imb desktop
-	//npscarf
-//	public static String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/"; 	
-	//unicycler
-	public static String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/unicycler/"; 
+
 
 	//	public static String dataFolder="/home/hoangnguyen/workspace/data/spades/"; //sony
 
@@ -31,19 +27,38 @@ public class GraphExploreDesktop {
     	System.setProperty("org.graphstream.ui", "javafx");
     	//System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer"); 
     	
-//    	npscarf
+    	/*
+    	 * npScarf data set
+    	 */
+//    	String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/";
+//    	
 //    	String sample="EcK12S-careful";
-//    	String sample="Kp2146-careful";
-//    	String sample="Kp13883-careful";
- 
-//    	String sample="W303-careful";
-//    	String sample="meta-careful";
-//    	String sample="cp_S5";
-
-    	//unicycler
+////    	String sample="Kp2146-careful";
+////    	String sample="Kp13883-careful";
+// 
+////    	String sample="W303-careful";
+////    	String sample="meta-careful";
+////    	String sample="cp_S5";
+//    	String sInput=dataFolder+sample+"/assembly_graph.fastg",
+//    			output=dataFolder+sample+"/",
+//    			lInput=dataFolder+sample+"/assembly_graph.sam";
+    	
+    	
+    	
+    	
+    	
+    	
+    	
+    	
+    	/*
+    	 * unicycler data set
+    	 */
+    	String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/unicycler/";
+    	
+    	
 //    	String sample="Acinetobacter_A1/";
 //    	String sample="Acinetobacter_AB30/";
-    	String sample="E_coli_K-12_MG1655/";
+//    	String sample="E_coli_K-12_MG1655/";
 //    	String sample="E_coli_O25b_H4-ST131/";
 //    	String sample="Klebsiella_30660_NJST258_1/";
 //    	String sample="Klebsiella_MGH_78578/";
@@ -52,7 +67,7 @@ public class GraphExploreDesktop {
 //    	String sample="random_sequences_many_repeats/";
 //    	String sample="random_sequences_no_repeats/";
 //    	String sample="random_sequences_some_repeats/";
-//    	String sample="Saccharomyces_cerevisiae_S288c/";
+    	String sample="Saccharomyces_cerevisiae_S288c/";
 //    	String sample="Shigella_dysenteriae_Sd197/";
 //    	String sample="Shigella_sonnei_53G/";
 //    	String sample="Streptococcus_suis_BM407/";
@@ -62,21 +77,19 @@ public class GraphExploreDesktop {
 //    	String quality="medium/";
     	String quality="good/";
 
+    	String sInput=dataFolder+sample+quality+"spades/assembly_graph.fastg",
+    			output=dataFolder+sample+quality+"/",
+    			lInput=dataFolder+sample+quality+"mm2.sam";
     	
+    
+    	/*
+    	 * Share code
+    	 */
 		HybridAssembler hbAss = new HybridAssembler();
-		
-		//npscarf
-//		hbAss.setShortReadsInput(dataFolder+sample+"/assembly_graph.fastg");
-//		hbAss.setPrefix(dataFolder+sample+"/");
-//		hbAss.setShortReadsInputFormat("fastg");
-//		hbAss.prepareShortReadsProcess(false);//change true/false to use/not use SPAdes path
-		
-		
-		//unicycler
-		hbAss.setShortReadsInput(dataFolder+sample+quality+"spades/assembly_graph.fastg");
-		hbAss.setPrefix(dataFolder+sample+quality);
+		hbAss.setShortReadsInput(sInput);
+		hbAss.setPrefix(output);
 		hbAss.setShortReadsInputFormat("fastg");
-		hbAss.prepareShortReadsProcess(true);
+		hbAss.prepareShortReadsProcess(false);
 		
     	BidirectedGraph graph= hbAss.simGraph;
     	
@@ -91,10 +104,7 @@ public class GraphExploreDesktop {
          * Testing reduce function
          */
         try {
-        	//npscarf
-//        	hbAss.setLongReadsInput(dataFolder+sample+"/assembly_graph.sam");
-        	//unicycler
-        	hbAss.setLongReadsInput(dataFolder+sample+quality+"bwa.sam");
+        	hbAss.setLongReadsInput(lInput);
         	hbAss.setLongReadsInputFormat("sam");
         	hbAss.prepareLongReadsProcess();
         	
@@ -106,10 +116,13 @@ public class GraphExploreDesktop {
         
         System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
         
-        HybridAssembler.promptEnterKey();
+//        HybridAssembler.promptEnterKey();
         hbAss.postProcessGraph();
-
-//        viewer.disableAutoLayout();
+        
+        HybridAssembler.promptEnterKey();
+        viewer.disableAutoLayout();
+        
+        
         /*
          * Testing BidirectedEdge id pattern
          */

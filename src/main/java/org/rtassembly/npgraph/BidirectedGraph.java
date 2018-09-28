@@ -516,17 +516,7 @@ public class BidirectedGraph extends MultiGraph{
 					BidirectedNode from = (BidirectedNode) path.peekNode(),
 									to = (BidirectedNode) curEdge.getOpposite(from);
 					boolean dir = curEdge.getDir(to);
-//					curNode = new NodeState(to, dir);
-//					if(shortestMap.containsKey(curNode.toString())) {
-//						shortestDist2Dest=shortestMap.get(curNode.toString());
-//						if(shortestDist2Dest > distance+tolerance) { //impossible go this way!
-//							System.out.println("Can't go from " + curNode.toString() + ": " + shortestDist2Dest + " >> " + distance);
-//							continue;
-//						}
-//					}else {
-//						System.out.println("Can't go from " + curNode.toString() + ": shortest path to " + dstNode.getId() + " not found!");
-//						continue;
-//					}
+
 					AtomicInteger limit = new AtomicInteger(distance + tolerance);
 			    	stack.push(
 			    			(curEdge.getDir(to)?to.enteringEdges():to.leavingEdges())
@@ -611,7 +601,7 @@ public class BidirectedGraph extends MultiGraph{
 		pq.add(curNS);
 		
 		System.out.println("Building shortest tree for " + rootNode.getId());
-		retval.put(curNS.toString(), Integer.MIN_VALUE); // direction from the point of srcNode
+		retval.put(curNS.toString(), curDistance); // direction from the point of srcNode
 		while(!pq.isEmpty()) {
 //			System.out.println("Current queue: ");
 //			for(NodeState n:pq) {
