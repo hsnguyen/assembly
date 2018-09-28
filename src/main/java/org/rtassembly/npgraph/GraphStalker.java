@@ -171,7 +171,7 @@ public class GraphStalker {
 	//Remove nodes with degree <=1 and length || cov low
 	private void cleanInsignificantNodes(){
 		List<Node> badNodes = inputGraph.nodes()
-						.filter(n->((n.getInDegree()==0 || n.getOutDegree()==0) && SimpleBinner.getUniqueBin(n)==null))
+						.filter(n->(inputGraph.binner.checkRemovableNode(n)))
 						.collect(Collectors.toList());
 		while(!badNodes.isEmpty()) {
 			Node node = badNodes.remove(0);
@@ -179,7 +179,7 @@ public class GraphStalker {
 
 			inputGraph.removeNode(node);
 			neighbors.stream()
-				.filter(n->((n.getInDegree()==0 || n.getOutDegree()==0) && SimpleBinner.getUniqueBin(n)==null))
+				.filter(n->(inputGraph.binner.checkRemovableNode(n)))
 				.forEach(n->{if(!badNodes.contains(n)) badNodes.add(n);});
 		}
 	}

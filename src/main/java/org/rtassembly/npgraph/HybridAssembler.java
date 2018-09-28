@@ -279,8 +279,7 @@ public class HybridAssembler {
 	}
 	
 	public void postProcessGraph() throws IOException{
-		//TODO: traverse for the last time,remove redundant edges, infer the path...
-		//may want to run consensus to determine the final path
+		//Take the current best path among the candidate of a bridge and connect the bridge(greedy)
 		for(NewBridge brg:simGraph.getUnsolvedBridges()){
 			System.out.printf("Last attemp on incomplete bridge %s : anchors=%d \n %s \n", brg.getEndingsID(), brg.getNumberOfAnchors(), brg.getAllPossiblePaths());
 			if(brg.getNumberOfAnchors()==2) {
@@ -289,6 +288,11 @@ public class HybridAssembler {
 				System.out.println("bridge contain no path! ignored");
 			}
 		}
+		//TODO: traverse for the last time,remove redundant edges
+		//may want to run consensus to determine the final path
+		
+		
+		//Finally redraw the graph and output
 		GraphUtil.redrawGraphComponents(simGraph);
 		
         observer.linearComponentsDecomposition();

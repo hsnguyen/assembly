@@ -26,6 +26,7 @@ public class SimpleBinner {
 	
 	BidirectedGraph graph;
 	ArrayList<PopBin> binList;
+	double BPOP=Double.MAX_VALUE;
 	HashMap<Edge, HashMap<PopBin,Integer>> edge2BinMap;
 	HashMap<Node, HashMap<PopBin, Integer>> node2BinMap;
 	ArrayList<Edge> unresolvedEdges;
@@ -203,19 +204,17 @@ public class SimpleBinner {
 	
 	private PopBin scanAndGuess(double cov) {
 		PopBin target=null;
-		double 	tmp=Double.MAX_VALUE,
-				lowestPopAbundance=Double.MAX_VALUE;
+		double 	tmp=Double.MAX_VALUE;
 		for(PopBin b:binList) {
 			double distance=GraphUtil.metric(cov, b.estCov);
 			if(distance<tmp) {
 				tmp=distance;
 				target=b;
 			}
-			if(lowestPopAbundance > b.estCov)
-				lowestPopAbundance=b.estCov;
+			
 		}
 		//TODO: 1.5 is important! need to find a way for more robust guess (+self-correct)!!!	
-		if(cov > 1.5*lowestPopAbundance && tmp>GraphUtil.DISTANCE_THRES) {
+		if(cov > 1.5*BPOP && tmp>GraphUtil.DISTANCE_THRES) {
 			target = null;
 		}
 		
@@ -229,7 +228,9 @@ public class SimpleBinner {
 		List<DoublePoint> points = new ArrayList<DoublePoint>();
 		
 		for(Node n:graph) {
-			if(n.getNumber("len") >= UNQ_CTG_LEN && Math.max(n.getInDegree(), n.getOutDegree()) <= 1) {
+			if(	n.getNumber("len") >= UNQ_CTG_LEN 
+				&& Math.max(n.getInDegree(), n.getOutDegree()) <= 1
+				){
 				points.add(new DoublePoint(new double[]{n.getNumber("cov"), new Double(n.getId())}));
 			}
 		}
@@ -253,6 +254,8 @@ public class SimpleBinner {
 					System.out.println("...core node " + n.getAttribute("name"));
 			}
 			
+			if(bin.estCov<BPOP)
+				BPOP=bin.estCov;
 		}
 
 	}
@@ -325,8 +328,10 @@ public class SimpleBinner {
 		
 		//3.3 Assign unique nodes here: need more tricks
 		for(Node node:graph)
-			if(	node2BinMap.containsKey(node) && node.getNumber("len") > SIG_CTG_LEN 
-				&& Math.max(node.getInDegree(), node.getOutDegree()) <= 1){
+			if(	node2BinMap.containsKey(node) 
+				&& node.getNumber("len") > SIG_CTG_LEN 
+				&& Math.max(node.getInDegree(), node.getOutDegree()) <= 1 //not true if e.g. sequencing errors inside unique contig
+				){
 				HashMap<PopBin, Integer> bc = node2BinMap.get(node);
 				ArrayList<PopBin> counts = new ArrayList<PopBin>(bc.keySet());
 //				if(counts.size()==1 && bc.get(counts.get(0))==1){ //and should check for any conflict???
@@ -340,7 +345,20 @@ public class SimpleBinner {
 		return (PopBin)node.getAttribute("unique");
 	}
 	
-	
+	public boolean checkRemovableNode(Node node) {
+		if(node.getInDegree()*node.getOutDegree()!=0 || SimpleBinner.getUniqueBin(node)!=null) {
+			return false;
+		}
+		else if(node2BinMap.containsKey(node)) {
+			if(node2BinMap.get(node).values().stream().mapToInt(Integer::intValue).sum() != 0)
+				return false;
+		}
+		else if(GraphUtil.approxCompare(node.getNumber("cov"),BPOP)<0) {
+			return false;
+		}
+			
+		return true;
+	}
 	//Traversal along a unique path (unique ends) and return list of unique edges
 	//Must only be called from BidirectedGraph.reduce()
 	synchronized public ArrayList<BidirectedEdge> walkAlongUniquePath(BidirectedPath path) {

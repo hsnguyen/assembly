@@ -63,13 +63,15 @@ public class NewBridge {
 	}
 	/*
 	 * Most important function: to read from a AlignedRead and
-	 * try to build or complete the bridge
+	 * try to build or complete the bridge. Return true if the bridge
+	 * is extended successfully to a new anchor
 	 */
-	public void buildFrom(AlignedRead alignedRead) {
+	public boolean buildFrom(AlignedRead alignedRead) {
 		//1.scan the aligned read for the marker and direction to build
 		//2.compare the alignments to this bridge's steps and update & save nanopore read also if necessary
+		
 		if(alignedRead.getAlignmentRecords().size() < 2)
-			return;
+			return false;
 		alignedRead.sortAlignment();
 		
 		// Starting node of the aligned read must be unique
@@ -78,13 +80,15 @@ public class NewBridge {
 				alignedRead=alignedRead.reverse();
 		
 		if(SimpleBinner.getUniqueBin(alignedRead.getFirstAlignment().node)==null)
-			return;
+			return false;
 		
+		BidirectedNode end=null;
 		if(segments.isEmpty()){ // empty bridge: build from beginning	
 			addAligments(alignedRead, 0, alignedRead.getAlignmentRecords().size()-1);			
 		}else{ // building on the existed one
 //			assert SimpleBinner.getUniqueBin(pBridge.getNode0())!=null:"First node must unique: illegal bridge "+ this.getEndingsID();
 //			assert SimpleBinner.getUniqueBin(alignedRead.getFirstAlignment().node)!=null:"First node must unique: wrong read "+ alignedRead.getEndingsID();
+			end=(BidirectedNode) pBridge.getNode1();
 			
 			if(pBridge.getNode0()!=alignedRead.getFirstAlignment().node) {
 				if(pBridge.getNode0()==alignedRead.getLastAlignment().node) {
@@ -104,6 +108,12 @@ public class NewBridge {
 			 for(idx=1; idx<alignedRead.getAlignmentRecords().size(); idx++){
 				 Alignment alg = alignedRead.getAlignmentRecords().get(idx);
 				 System.out.println("Checking alignment of " + alg.node.getId());
+				 //0. Ignore if the node is unique: either this bridge's anchor or hidden anchor
+//				 if(getNumberOfAnchors()==2 && SimpleBinner.getUniqueBin(alg.node)!=null) {
+//					 System.out.println("Stop at unique node!");
+//					 break;
+//				 }
+				 
 				 ScaffoldVector algVec = alignedRead.getVector(alignedRead.getFirstAlignment(), alg),
 						 		segEndVec = null, segStartVec = null;
 				 //1. locate the segments approximately close by the corresponding aligned contig
@@ -133,7 +143,6 @@ public class NewBridge {
 									 continue;
 								 int dist = diffVec.distance((BidirectedNode) searchSegment.pSegment.getNode0(), alg.node);
 								 System.out.printf("...estimate distance between %s and %s is %d\n", searchSegment.pSegment.getNode0().getId(), alg.node.getId(), dist);
-								 //FIXME: optimize this, use ScaffoldVector instead of distance for checkDistanceConsistency()
 								 int delta=path.checkDistanceConsistency(searchSegment.pSegment.getNode0(), alg.node, searchSegment.pSegment.getDir0()==alg.strand, dist);
 								 if( delta != -1) {
 									 //add this path to a candidate list for later consider...
@@ -193,7 +202,7 @@ public class NewBridge {
 							 //add others
 							 addAligments(alignedRead, idx, alignedRead.getAlignmentRecords().size()-1);
 							 System.out.println("Extend to have " + pBridge.toString());
-							 return;
+							 return true;
 
 						 }else{
 							 System.out.println("Path not found: cannot extend " + cnt.pSegment.toString());
@@ -207,7 +216,12 @@ public class NewBridge {
 			
 			 }
 
-		 }
+		}
+		
+		if(getNumberOfAnchors()==2 && pBridge.getNode1()!=end)
+			return true;
+		else 
+			return false;
 	}
 							
 
