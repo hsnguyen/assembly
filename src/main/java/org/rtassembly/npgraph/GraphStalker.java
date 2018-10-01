@@ -60,9 +60,11 @@ public class GraphStalker {
 		}
 	}
 	
-	synchronized void scanAndUpdate() {
+	synchronized void linearComponentsDecomposition() {
 		//1. clean it first
-		
+		cleanInsignificantNodes();
+		rtComponents.compute();
+
 		//2. then decompose it (using cut attribute instead of removing edges)
 		//reset
 		cutEdges = new HashSet<BidirectedEdge>();
@@ -82,7 +84,6 @@ public class GraphStalker {
 				n.leavingEdges().forEach(e->{e.setAttribute("ui.hide");e.setAttribute("cut");cutEdges.add((BidirectedEdge) e);});
 
 		});
-		
 		outputGraph=new BidirectedGraph();
 		BidirectedPath repPath=null; //representative path of a component
 		for (Iterator<ConnectedComponents.ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
@@ -114,7 +115,7 @@ public class GraphStalker {
 				 
 				 //if linear: reverse
 				 if(!isCircular){
-					 repPath=repPath.getReversedComplemented();
+					 repPath=repPath.reverse();
 					 //extend in opposite direction
 					 curNode=node;
 					 curDir=false;
@@ -136,7 +137,7 @@ public class GraphStalker {
 			 Sequence seq=repPath.spelling();
 			 double cov=repPath.averageCov();
 			 Node n=outputGraph.addNode(Integer.toString(comp.id));
-			 seq.setName("Contig_"+comp.id+"_"+(isCircular?"cicurlar":"linear")+"_length_"+seq.length()+"_cov_"+cov);
+			 seq.setName("Contig_"+comp.id+"_"+(isCircular?"circular":"linear")+"_length_"+seq.length()+"_cov_"+cov);
 			 n.setAttribute("seq", seq);
 			 n.setAttribute("len", seq.length());
 			 n.setAttribute("cov",cov);
@@ -167,6 +168,21 @@ public class GraphStalker {
 		
 	}
 
+	//Remove nodes with degree <=1 and length || cov low
+	private void cleanInsignificantNodes(){
+		List<Node> badNodes = inputGraph.nodes()
+						.filter(n->(inputGraph.binner.checkRemovableNode(n)))
+						.collect(Collectors.toList());
+		while(!badNodes.isEmpty()) {
+			Node node = badNodes.remove(0);
+			List<Node> neighbors = node.neighborNodes().collect(Collectors.toList());	
+
+			inputGraph.removeNode(node);
+			neighbors.stream()
+				.filter(n->(inputGraph.binner.checkRemovableNode(n)))
+				.forEach(n->{if(!badNodes.contains(n)) badNodes.add(n);});
+		}
+	}
 
 	synchronized int getNumberOfSequences() {
 		

@@ -49,7 +49,7 @@ public class GraphUtil {
 		SequenceReader reader = new FastaReader(graphFileName);
 		Sequence seq;
 		int shortestLen = 10000;
-		ArrayList<EdgeComponents> potentialEdgeSet = new ArrayList<EdgeComponents>();
+		ArrayList<BidirectedEdgePrototype> potentialEdgeSet = new ArrayList<BidirectedEdgePrototype>();
 		while ((seq = reader.nextSequence(Alphabet.DNA())) != null){
 			if(seq.length()<shortestLen)
 				shortestLen=seq.length();
@@ -94,7 +94,7 @@ public class GraphUtil {
 					String neighborID = neighbor.split("_")[1];
 					AbstractNode nbr = (AbstractNode) graph.addNode(neighborID); //just need a prototype, attributes can be set later...
 
-					potentialEdgeSet.add(new EdgeComponents(node,nbr,dir0,dir1)); //edges' prototype
+					potentialEdgeSet.add(new BidirectedEdgePrototype(node,nbr,dir0,dir1)); //edges' prototype
 					
 				}
 			}
@@ -103,17 +103,18 @@ public class GraphUtil {
 
 		reader.close();
 		
-		for(EdgeComponents ec:potentialEdgeSet) {
-			BidirectedEdge e = graph.addEdge(ec.n1, ec.n2, ec.dir1, ec.dir2);
-//			System.out.println("...adding edge " + e.getId() + " -> total no of edges = " + graph.getEdgeCount());
-//			graph.updateGraphMap(e, new BidirectedPath(e));
+		for(BidirectedEdgePrototype ec:potentialEdgeSet) {
+			try {
+				graph.addEdge(ec.getNode0(), ec.getNode1(), ec.getDir0(), ec.getDir1());
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				System.exit(1);
+			}
 		}
 		//rough estimation of kmer used
 		if((shortestLen-1) != BidirectedGraph.getKmerSize()){
 			BidirectedGraph.setKmerSize(shortestLen-1);
-//			for(Edge e:graph.getEdgeSet()){
-//				((BidirectedEdge)e).changeKmerSize(BidirectedGraph.KMER);
-//			}
 			graph.edges().forEach(e -> ((BidirectedEdge)e).changeKmerSize(BidirectedGraph.KMER));
 		}
 		
@@ -192,7 +193,7 @@ public class GraphUtil {
 			}
 			pathReader.close();
 			if(changed)
-				GraphExplore.redrawGraphComponents(graph);
+				redrawGraphComponents(graph);
 		}
     }
     
@@ -231,13 +232,10 @@ public class GraphUtil {
 				node.setAttribute("name", "Node "+nodeID);
 				node.setAttribute("seq", seq);
 				node.setAttribute("len", seq.length());
-				//node.setAttribute("kc", Integer.parseInt(toks[2]));
-				//TODO: replace read cov with kc calculation?
-				//1.kmer count to kmer cov
-				double cov=Double.parseDouble(toks[2])/(seq.length()-BidirectedGraph.getKmerSize()); 
-				//2.kmer cov to read cov
-				cov*=BidirectedGraph.ILLUMINA_READ_LENGTH/(BidirectedGraph.ILLUMINA_READ_LENGTH-BidirectedGraph.getKmerSize());
-				node.setAttribute("cov", cov);		
+				
+				//here is the kmer coverage
+				node.setAttribute("cov", Integer.parseInt(toks[2]));
+	
 				
 				break;
 			case "L"://links
@@ -281,12 +279,18 @@ public class GraphUtil {
 		//rough estimation of kmer used
 		if((shortestLen-1) != BidirectedGraph.getKmerSize()){
 			BidirectedGraph.setKmerSize(shortestLen-1);
-//			for(Edge e:graph.getEdgeSet()){
-//				((BidirectedEdge)e).changeKmerSize(BidirectedGraph.KMER);
-//			}
 			graph.edges().forEach(e -> ((BidirectedEdge)e).changeKmerSize(BidirectedGraph.KMER));
 
 		}
+		
+		graph.nodes().forEach(n->{
+			//1.kmer count to kmer cov
+			double cov=n.getNumber("cov")/(n.getNumber("len")-BidirectedGraph.getKmerSize()); 
+			//2.kmer cov to read cov
+			cov*=BidirectedGraph.ILLUMINA_READ_LENGTH/(BidirectedGraph.ILLUMINA_READ_LENGTH-BidirectedGraph.getKmerSize());
+			n.setAttribute("cov", cov);	
+		});
+
 		
 		double totReadsLen=0, totContigsLen=0;
 
@@ -332,7 +336,7 @@ public class GraphUtil {
 				if(graph.reduceFromSPAdesPath(p))
 					changed=true;
 			if(changed)
-				GraphExplore.redrawGraphComponents(graph);
+				redrawGraphComponents(graph);
 		}
     }
     
@@ -583,9 +587,10 @@ public class GraphUtil {
     public static int approxCompare(double x, double y) {
     	int retval=0;
     	double ratio=Math.abs(x-y)/(Math.max(Math.abs(x), Math.abs(y)));
-    	if(ratio > .33)
+    	if(ratio > BidirectedGraph.R_TOL)
     		retval=x>y?1:-1;
     	
+//    	System.out.printf("(comparing %.2f vs %.2f: %d)\n", x, y, retval);
     	return retval;
     }
     
@@ -607,15 +612,70 @@ public class GraphUtil {
 		return retval;
     }
     
-}
-class EdgeComponents{
-	AbstractNode n1,n2;
-	boolean dir1,dir2;
+    
+    /***********************************************************************
+     * *********************************************************************
+     */
+    
+    public static void redrawGraphComponents(BidirectedGraph graph) {
+//      graph.addAttribute("ui.quality");
+//      graph.addAttribute("ui.antialias");
+//    	graph.addAttribute("ui.default.title", "New real-time hybrid assembler");
 
-	EdgeComponents(AbstractNode n1, AbstractNode n2, boolean dir1, boolean dir2){
-		this.n1=n1;
-		this.n2=n2;
-		this.dir1=dir1;
-		this.dir2=dir2;
-	}
+    	for (Node node : graph) {
+
+    		Sequence seq = (Sequence) node.getAttribute("seq");
+    		double lengthScale = 1+(Math.log10(seq.length())-2)/3.5; //100->330,000
+          
+			if(lengthScale<1) lengthScale=1;
+			else if(lengthScale>2) lengthScale=2;
+	          
+			int covScale = (int) Math.round(node.getNumber("cov")/BidirectedGraph.RCOV);
+			SimpleBinner binner=graph.binner;
+	          
+			String[] palette= {"grey","blue","yellow","orange","green","pink","magenta","red"};
+			String color=null;
+			
+			if(binner.node2BinMap.containsKey(node)){
+				covScale=binner.node2BinMap.get(node).values().stream().mapToInt(Integer::intValue).sum();
+				if(covScale>=palette.length)
+					color=palette[palette.length-1];
+				else
+					color=palette[covScale];
+			}else
+				color="white";
+          
+//          node.addAttribute("ui.color", color);
+//          node.addAttribute("ui.size", lengthScale+"gu");
+          
+//          node.addAttribute("ui.label", covScale);
+          
+			node.setAttribute("ui.label", node.getId());
+//			node.addAttribute("ui.label", (int)(node.getNumber("cov")));
+
+
+			node.setAttribute("ui.style", "	size: " + lengthScale + "gu;" +
+        		  						"	fill-color: "+color+";" +
+        		  			            " 	stroke-mode: plain;" +
+        		  			            "	stroke-color: black;" +
+        		  			            "	stroke-width: 2px;");
+    	}
+    	
+//    	graph.edges().forEach(e->e.setAttribute("ui.label", (int) e.getNumber("cov")));
+
+    	
+    
+    }
+    
+
+    public static void sleep() {
+        try { Thread.sleep(1000); } catch (Exception e) {}
+    }
+
+    	
+	public static String styleSheet =				// 1
+			"node { size: 7px; fill-color: rgb(150,150,150); }" +
+			"edge { fill-color: rgb(255,50,50); size: 2px; }" +
+			"edge.cut { fill-color: rgba(200,200,200,128); }";
+    
 }

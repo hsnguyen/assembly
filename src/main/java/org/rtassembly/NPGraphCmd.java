@@ -1,20 +1,11 @@
 package org.rtassembly;
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import org.graphstream.graph.Edge;
-import org.graphstream.graph.Node;
-import org.graphstream.ui.view.Viewer;
 import org.rtassembly.gui.NPGraphFX;
 import org.rtassembly.npgraph.Alignment;
 import org.rtassembly.npgraph.BidirectedGraph;
-import org.rtassembly.npgraph.GraphExplore;
 import org.rtassembly.npgraph.HybridAssembler;
 
-import japsa.seq.SequenceReader;
 import japsa.util.CommandLine;
 import javafx.application.Application;
 
@@ -28,12 +19,12 @@ public class NPGraphCmd extends CommandLine{
 		addString("sf", "gfa", "Format of the assembly input file. Accepted format are FASTG, GFA", true);
 		addString("li", "-", "Name of the long-read data input file, - for stdin.", true);
 		addString("lf", "fastq", "Format of the long-read data input file. This may be FASTQ/FASTA (MinION reads) or SAM/BAM (aligned with the assembly graph already)", true);
-		addString("output", null, "Name of the output folder.", true);
+		addString("output", "npgraph", "Name of the output folder.", true);
 		
 		addBoolean("overwrite", false, "Whether to overwrite or reuse the intermediate file");
 		
 		addString("mm2Path","","Absolute path to the folder containing binary minimap2");
-		addString("mm2Opt", "-t4 -x map-ont", "Preset used by minimap2 to align long reads to the contigs");
+		addString("mm2Opt", "-t4 -x map-ont -k15 -w5", "Preset used by minimap2 to align long reads to the contigs");
 		
 		addInt("qual", 1, "Minimum quality of alignment to considered");
 		addInt("dfs", 15, "Number of DFS steps to search");
@@ -97,7 +88,7 @@ public class NPGraphCmd extends CommandLine{
         }else {
 	        
 			try {
-				if(hbAss.prepareShortReadsProcess(true) &&	hbAss.prepareLongReadsProcess()) {
+				if(hbAss.prepareShortReadsProcess(false) &&	hbAss.prepareLongReadsProcess()) {
 					hbAss.assembly();
 					hbAss.postProcessGraph();
 				}
