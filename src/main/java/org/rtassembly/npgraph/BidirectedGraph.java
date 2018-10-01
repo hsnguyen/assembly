@@ -734,8 +734,9 @@ public class BidirectedGraph extends MultiGraph{
 			nextAlignment = allAlignments.get(nextRanges);
 			tmpBin=SimpleBinner.getUniqueBin(nextAlignment.node);
 			if(tmpBin!=null){				
-				
+//				System.out.print("Node " + nextAlignment.node.getId() + " has unique bin " + tmpBin.binID + ": ");
 				if(tmpBin.isCloseTo(leastAbundancePop)){
+//					System.out.println(" close to " + leastAbundancePop.binID);
 					curBuildingBlocks.append(nextAlignment);
 					allBuildingBlocks.add(curBuildingBlocks);
 					
@@ -748,6 +749,7 @@ public class BidirectedGraph extends MultiGraph{
 						bins2Length.put(tmpBin, (long)nextAlignment.node.getNumber("len"));
 				}else{
 					//revert its bridges! (correct later when traverse through induced path)
+//					System.out.println(" not close to " + leastAbundancePop.binID);
 					curBuildingBlocks.append(nextAlignment);
 					continue;
 				}	

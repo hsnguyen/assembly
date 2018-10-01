@@ -327,19 +327,20 @@ public class SimpleBinner {
 		}
 		
 		//3.3 Assign unique nodes here: need more tricks
-		for(Node node:graph)
+		for(Node node:graph) {
 			if(	node2BinMap.containsKey(node) 
 				&& node.getNumber("len") > SIG_CTG_LEN 
 				&& Math.max(node.getInDegree(), node.getOutDegree()) <= 1 //not true if e.g. sequencing errors inside unique contig
-				){
+			){
 				HashMap<PopBin, Integer> bc = node2BinMap.get(node);
 				ArrayList<PopBin> counts = new ArrayList<PopBin>(bc.keySet());
 //				if(counts.size()==1 && bc.get(counts.get(0))==1){ //and should check for any conflict???
-				if(bc.values().stream().mapToInt(Integer::intValue).sum()==1){ //and should check for any conflict???
+				int totOcc = bc.values().stream().mapToInt(Integer::intValue).sum();
+				if(totOcc==1){ //and should check for any conflict???
 					node.setAttribute("unique", counts.get(0));
 				}
 			}
-		
+		}
 	}
 	static public PopBin getUniqueBin(Node node){
 		return (PopBin)node.getAttribute("unique");
@@ -431,7 +432,7 @@ public class SimpleBinner {
 //			}
 			
 //			if(ep.getNumber("cov") < 0  && !unresolvedEdges.contains(ep)) //plasmid coverage is different!!!
-//			if(ep.getNumber("cov") <= aveCov*0.5  && !edge2BinMap.containsKey(ep)) //plasmid coverage is different!!!
+//			if(ep.getNumber("cov") <= BPOP*0.5  && !edge2BinMap.containsKey(ep)) //plasmid coverage is different!!!
 //				retval.add((BidirectedEdge) ep);
 			
 			bcMinusOne=null;

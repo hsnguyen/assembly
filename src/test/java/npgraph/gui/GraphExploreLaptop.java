@@ -32,14 +32,14 @@ public class GraphExploreLaptop {
 //    	String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/"; //dell FASTG
 ////    	String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades_v3.10/"; //dell GFA
 //
-////    	String sample="EcK12S-careful";
-//    	String sample="Kp2146-careful";
+//    	String sample="EcK12S-careful";
+////    	String sample="Kp2146-careful";
 ////    	String sample="Kp13883-careful";
 ////
 ////    	String sample="W303-careful";
 ////    	String sample="meta-careful";
 ////    	String sample="cp_S5";
-////    	
+//    	
 //		String 	sInput=dataFolder+sample+"/assembly_graph.fastg",
 //    			lInput=dataFolder+sample+"/assembly_graph.sam";
     	

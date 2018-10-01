@@ -42,7 +42,7 @@ import japsa.seq.Sequence;
 
 public class Alignment implements Comparable<Alignment> {
 	public final static int OVERHANG_THRES=500; 
-	public final static int GOOD_QUAL=21; 
+	public final static int GOOD_QUAL=60; 
 
 	public static int MIN_QUAL=1; 
 
