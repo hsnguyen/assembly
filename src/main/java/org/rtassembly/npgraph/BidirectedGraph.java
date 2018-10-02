@@ -37,7 +37,7 @@ public class BidirectedGraph extends MultiGraph{
     
     //provide mapping from unique directed node to its corresponding bridge
     //E.g: 103-: <103-82-> also 82+:<82+103+>
-    private HashMap<String, NewBridge> bridgesMap; 
+    private HashMap<String, GoInBetweenBridge> bridgesMap; 
     
     private static final Logger LOG = LoggerFactory.getLogger(BidirectedGraph.class);
 
@@ -67,7 +67,7 @@ public class BidirectedGraph extends MultiGraph{
 	public BidirectedGraph(String id, boolean strictChecking, boolean autoCreate,
 			int initialNodeCapacity, int initialEdgeCapacity) {
 		super(id, strictChecking, autoCreate);
-		bridgesMap=new HashMap<String, NewBridge>(initialNodeCapacity*2);
+		bridgesMap=new HashMap<String, GoInBetweenBridge>(initialNodeCapacity*2);
 		
 		// All we need to do is to change the node & edge factory
 		setNodeFactory(new NodeFactory<BidirectedNode>() {
@@ -83,9 +83,9 @@ public class BidirectedGraph extends MultiGraph{
 		});
 		
 	}
-	public HashSet<NewBridge> getUnsolvedBridges(){
-		HashSet<NewBridge> retval = new HashSet<NewBridge>();
-		for(NewBridge brg:bridgesMap.values()){
+	public HashSet<GoInBetweenBridge> getUnsolvedBridges(){
+		HashSet<GoInBetweenBridge> retval = new HashSet<GoInBetweenBridge>();
+		for(GoInBetweenBridge brg:bridgesMap.values()){
 			if(!brg.isComplete())
 				retval.add(brg);
 		}
@@ -171,18 +171,18 @@ public class BidirectedGraph extends MultiGraph{
      ********************** utility functions to serve the assembly algo ****************************** 
      * ***********************************************************************************************/
     
-    synchronized public NewBridge getBridgeFromMap(Node unqNode, boolean direction){
+    synchronized public GoInBetweenBridge getBridgeFromMap(Node unqNode, boolean direction){
     	String key=unqNode.getId()+(direction?"o":"i"); //true:going outward, false:going inward
     	return bridgesMap.get(key);
     }
     
     // when this unique node actually contained by a bridge
-    synchronized public void updateBridgesMap(Node unqNode, NewBridge bidirectedBridge){
+    synchronized public void updateBridgesMap(Node unqNode, GoInBetweenBridge bidirectedBridge){
     	bridgesMap.put(unqNode.getId()+"o", bidirectedBridge);
     	bridgesMap.put(unqNode.getId()+"i", bidirectedBridge);
     }
     // when there is new unique bridge 
-    synchronized protected void updateBridgesMap(NewBridge bidirectedBridge) {
+    synchronized protected void updateBridgesMap(GoInBetweenBridge bidirectedBridge) {
     	if(bidirectedBridge==null || bidirectedBridge.getNumberOfAnchors()==0)
     		return;
 
@@ -216,10 +216,10 @@ public class BidirectedGraph extends MultiGraph{
 	    	boolean startNodeDir=path.getFirstNodeDirection(),
 	    			endNodeDir=path.getLastNodeDirection();
 	    	if(SimpleBinner.getUniqueBin(startNode)!=null){
-	    		bridgesMap.put(startNode.getId()+(startNodeDir?"o":"i"), new NewBridge(this,path));
+	    		bridgesMap.put(startNode.getId()+(startNodeDir?"o":"i"), new GoInBetweenBridge(this,path));
 	    	}
 	    	if(SimpleBinner.getUniqueBin(endNode)!=null){
-	    		bridgesMap.put(endNode.getId()+(endNodeDir?"o":"i"), new NewBridge(this,path));
+	    		bridgesMap.put(endNode.getId()+(endNodeDir?"o":"i"), new GoInBetweenBridge(this,path));
 	    	}
 		} catch (Exception e) {
 			LOG.error("Invalid path to add to bridge map: " + path.getId());
@@ -229,8 +229,8 @@ public class BidirectedGraph extends MultiGraph{
     }
     
     //Return bridge in the map (if any) that share the same bases (unique end) 
-    synchronized public NewBridge getHomoBridgeFromMap(AlignedRead algRead){
-    	NewBridge retval = null, tmp = null;
+    synchronized public GoInBetweenBridge getHomoBridgeFromMap(AlignedRead algRead){
+    	GoInBetweenBridge retval = null, tmp = null;
     	if(algRead!=null){
 	    	Node 	startNode=algRead.getFirstAlignment().node,
 	    			endNode=algRead.getLastAlignment().node;
@@ -478,7 +478,7 @@ public class BidirectedGraph extends MultiGraph{
 		path.setRoot(srcNode);  		
 
 		//2. DFS from srcNode with the distance info above
-		NodeState curNodeState = new NodeState(srcNode, !srcDir); // first node is special
+		NodeDirection curNodeState = new NodeDirection(srcNode, !srcDir); // first node is special
 		if(shortestMap.containsKey(curNodeState.toString())) {
 			
 			Stack<List<Edge>> stack = new Stack<>();
@@ -522,7 +522,7 @@ public class BidirectedGraph extends MultiGraph{
 			    			(curEdge.getDir(to)?to.enteringEdges():to.leavingEdges())
 			    			.filter(e->{
 			    				BidirectedNode n=(BidirectedNode) e.getOpposite(to);
-			    				NodeState ns = new NodeState(n, ((BidirectedEdge) e).getDir(n));
+			    				NodeDirection ns = new NodeDirection(n, ((BidirectedEdge) e).getDir(n));
 			    				
 			    				return shortestMap.containsKey(ns.toString()) && shortestMap.get(ns.toString()) < limit.get();
 			    			})
@@ -592,12 +592,12 @@ public class BidirectedGraph extends MultiGraph{
      * Get a map showing shortest distances from surrounding nodes to a *rootNode* expanding to a *direction*, within a *distance*
      * based on Dijkstra algorithm
      */
-    private HashMap<String, Integer> getShortestTreeFromNode(BidirectedNode rootNode, boolean expDir, int distance){
-		PriorityQueue<NodeState> pq = new PriorityQueue<>();
+    public HashMap<String, Integer> getShortestTreeFromNode(BidirectedNode rootNode, boolean expDir, int distance){
+		PriorityQueue<NodeDirection> pq = new PriorityQueue<>();
 		HashMap<String,Integer> retval = new HashMap<>();
 		
 		int curDistance=(int) -rootNode.getNumber("len"), newDistance=0;
-		NodeState curNS = new NodeState(rootNode, expDir, curDistance);
+		NodeDirection curNS = new NodeDirection(rootNode, expDir, curDistance);
 		pq.add(curNS);
 		
 		System.out.println("Building shortest tree for " + rootNode.getId());
@@ -620,19 +620,19 @@ public class BidirectedGraph extends MultiGraph{
 	    		if(newDistance > distance+A_TOL)
 	    			continue;
 	    		
-	    		NodeState nextNS = new NodeState(nextNode, direction, newDistance);
-	    		String key=nextNS.toString();
+	    		NodeDirection nextND = new NodeDirection(nextNode, direction, newDistance);
+	    		String key=nextND.toString();
 	    		if(retval.containsKey(key)) {
 	    			if(retval.get(key) > newDistance) {
 	    				//update the map
 	    				retval.put(key, newDistance);
 	    				//update the queue
-	    				pq.remove(nextNS);
-	    				pq.add(nextNS);
+	    				pq.remove(nextND);
+	    				pq.add(nextND);
 	    			}
 	    		}else {
 	    			retval.put(key, newDistance);
-    				pq.add(nextNS);
+    				pq.add(nextND);
 	    		}
 
 			}
@@ -767,12 +767,13 @@ public class BidirectedGraph extends MultiGraph{
 		// Now we got all possible bridges from chopping the alignments at unique nodes
 		System.out.println("\n=> bridges list: ");
 		for(AlignedRead bb:allBuildingBlocks) {
-			NewBridge storedBridge=getHomoBridgeFromMap(bb);
+			GoInBetweenBridge storedBridge=getHomoBridgeFromMap(bb);
 			System.out.printf("+++%s <=> %s\n", bb.getEndingsID(), storedBridge==null?"null":storedBridge.getEndingsID());
 			
 			if(storedBridge!=null) {
 				if(storedBridge.isComplete()){
 					System.out.println(storedBridge.getEndingsID() + ": already solved: ignore!");
+					System.out.print(storedBridge.getAllNodeVector());
 					continue;
 				}else{
 					System.out.println(storedBridge.getEndingsID() + ": already built: fortify!");
@@ -783,15 +784,17 @@ public class BidirectedGraph extends MultiGraph{
 				}			
 
 			}else{
-				storedBridge=new NewBridge(this,bb,tmpBin);
+				storedBridge=new GoInBetweenBridge(this,bb,tmpBin);
 				updateBridgesMap(storedBridge);
 				
 			}
 			
-			//storedBridge.bridging();
+			//storedBridge.bridging()
 			if(storedBridge.isComplete()){
+				System.out.println(storedBridge.getAllNodeVector());
 				retrievedPaths.add(storedBridge.getBestPath());
 			}
+			
 			
 		
 		}
@@ -809,7 +812,7 @@ public class BidirectedGraph extends MultiGraph{
     //This assuming path is surely unique!!!
     public boolean reduceUniquePath(BidirectedPath path){
     	//do nothing if the path has only one node
-    	if(path.getEdgeCount()<2)
+    	if(path==null||path.getEdgeCount()<2)
     		return false;
     	else
     		System.out.println("Reducing path: " + path.getId());

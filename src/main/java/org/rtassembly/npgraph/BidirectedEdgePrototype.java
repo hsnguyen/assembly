@@ -3,14 +3,14 @@ package org.rtassembly.npgraph;
 import org.graphstream.graph.implementations.AbstractNode;
 
 public class BidirectedEdgePrototype{
-	NodeState n0,n1;
+	NodeDirection n0,n1;
 
 	public BidirectedEdgePrototype(AbstractNode node, boolean dir){
-		n0=new NodeState(node, dir);
+		n0=new NodeDirection(node, dir);
 	}
 	public BidirectedEdgePrototype(AbstractNode node1, AbstractNode node2, boolean dir1, boolean dir2){
-		n0=new NodeState(node1, dir1);
-		n1=new NodeState(node2,dir2);
+		n0=new NodeDirection(node1, dir1);
+		n1=new NodeDirection(node2,dir2);
 	}
 	public BidirectedEdgePrototype(BidirectedPath path) throws Exception {
 		if(path==null || path.size()<=1)
@@ -20,15 +20,15 @@ public class BidirectedEdgePrototype{
 							end=(BidirectedNode) path.peekNode();
 			boolean startDir=((BidirectedEdge) path.getEdgePath().get(0)).getDir(start),
 					endDir=((BidirectedEdge) path.peekEdge()).getDir(end);
-			n0=new NodeState(start,startDir);
-			n1=new NodeState(end,endDir);
+			n0=new NodeDirection(start,startDir);
+			n1=new NodeDirection(end,endDir);
 			}
 	}
 	public BidirectedEdgePrototype(Alignment from, Alignment to){
 		if(from!=null)
-			n0=new NodeState(from.node, from.strand);
+			n0=new NodeDirection(from.node, from.strand);
 		if(to!=null)
-			n1=new NodeState(to.node, !to.strand);
+			n1=new NodeDirection(to.node, !to.strand);
 		
 	}
 	
@@ -62,16 +62,16 @@ public class BidirectedEdgePrototype{
 	}
 }
 
-class NodeState implements Comparable<NodeState>{
+class NodeDirection implements Comparable<NodeDirection>{
 	AbstractNode node;
 	boolean dir;
 	int weight;//for shortest path finding
 	
-	NodeState(AbstractNode node, boolean dir){
+	NodeDirection(AbstractNode node, boolean dir){
 		this.node=node;
 		this.dir=dir;
 	}
-	NodeState(AbstractNode node, boolean dir, int weight){
+	NodeDirection(AbstractNode node, boolean dir, int weight){
 		this.node=node;
 		this.dir=dir;
 		this.weight=weight;
@@ -92,7 +92,7 @@ class NodeState implements Comparable<NodeState>{
 	}
 
 	@Override
-	public int compareTo(NodeState o) {
+	public int compareTo(NodeDirection o) {
 		return Integer.compare(weight, o.weight);
 	}
     @Override
@@ -108,7 +108,7 @@ class NodeState implements Comparable<NodeState>{
             return false;
         if (getClass() != obj.getClass())
             return false;
-        final NodeState other = (NodeState) obj;
+        final NodeDirection other = (NodeDirection) obj;
         if (this.toString()==other.toString())   
         	return true;
         else 

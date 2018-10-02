@@ -32,12 +32,12 @@ public class GraphExploreDesktop {
     	 */
 //    	String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/";
 //    	
-//    	String sample="EcK12S-careful";
+////    	String sample="EcK12S-careful";
 ////    	String sample="Kp2146-careful";
 ////    	String sample="Kp13883-careful";
 // 
 ////    	String sample="W303-careful";
-////    	String sample="meta-careful";
+//    	String sample="meta-careful";
 ////    	String sample="cp_S5";
 //    	String sInput=dataFolder+sample+"/assembly_graph.fastg",
 //    			output=dataFolder+sample+"/",
@@ -58,7 +58,7 @@ public class GraphExploreDesktop {
     	
 //    	String sample="Acinetobacter_A1/";
 //    	String sample="Acinetobacter_AB30/";
-//    	String sample="E_coli_K-12_MG1655/";
+    	String sample="E_coli_K-12_MG1655/";
 //    	String sample="E_coli_O25b_H4-ST131/";
 //    	String sample="Klebsiella_30660_NJST258_1/";
 //    	String sample="Klebsiella_MGH_78578/";
@@ -67,7 +67,7 @@ public class GraphExploreDesktop {
 //    	String sample="random_sequences_many_repeats/";
 //    	String sample="random_sequences_no_repeats/";
 //    	String sample="random_sequences_some_repeats/";
-    	String sample="Saccharomyces_cerevisiae_S288c/";
+//    	String sample="Saccharomyces_cerevisiae_S288c/";
 //    	String sample="Shigella_dysenteriae_Sd197/";
 //    	String sample="Shigella_sonnei_53G/";
 //    	String sample="Streptococcus_suis_BM407/";
@@ -93,10 +93,10 @@ public class GraphExploreDesktop {
 		
     	BidirectedGraph graph= hbAss.simGraph;
     	
-    	GraphUtil.redrawGraphComponents(graph);
-    	graph.setAttribute("ui.style", GraphUtil.styleSheet);
-
-        Viewer viewer=graph.display();
+//    	GraphUtil.redrawGraphComponents(graph);
+//    	graph.setAttribute("ui.style", GraphUtil.styleSheet);
+//
+//        Viewer viewer=graph.display();
         
         System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
                 
@@ -116,11 +116,11 @@ public class GraphExploreDesktop {
         
         System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
         
-//        HybridAssembler.promptEnterKey();
+        HybridAssembler.promptEnterKey();
         hbAss.postProcessGraph();
         
-        HybridAssembler.promptEnterKey();
-        viewer.disableAutoLayout();
+//        HybridAssembler.promptEnterKey();
+//        viewer.disableAutoLayout();
         
         
         /*

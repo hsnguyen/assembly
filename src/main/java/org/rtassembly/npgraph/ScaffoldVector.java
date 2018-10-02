@@ -97,6 +97,25 @@ public class ScaffoldVector{
 		return Math.max(fS - tE, tS - fE);
 	}
 
+	//Just interested in the relatively position of the end node
+	public int relDistance(BidirectedNode fNode){
+		
+		int tS = 0, tE = BidirectedGraph.getKmerSize(), //just a random one
+			fS, fE;
+		
+		if (direction > 0){
+			fS = magnitude;
+			fE = magnitude + (int) fNode.getNumber("len");
+		}else{
+			fE = magnitude;
+			fS = magnitude - (int) fNode.getNumber("len");
+		}		
+		//System.out.printf("tS=%d tE=%d fS=%d fE=%d fS-tE=%d tS-fE = %d ret=%d\n",tS, tE, fE, fE, fS-tE,tS-fE,Math.max(fS - tE, tS - fE));
+		
+		//FIXME: not handle the case that contig A contain contigB and via verse		
+		return Math.max(fS - tE, tS - fE);
+	}
+	
 	/**
 	 * Compose two vectors: a -> b is v2, b -> c is v1. returned a -> c is v1 * v2
 	 * Warning: the parameters' order doesn't follow normal intuition. USE WITH CARE!!!
@@ -139,11 +158,9 @@ public class ScaffoldVector{
 	}
 	
 	public boolean consistentWith(ScaffoldVector aVector){
-		int tolerance = 250;
 		return (aVector.direction == direction)
-				&& (((aVector.magnitude * 1.0 / magnitude > 0.75)
-				&& (aVector.magnitude * 1.0 / magnitude < 1.25)) 
-				|| (Math.abs(aVector.magnitude-magnitude) < tolerance)
+				&& (GraphUtil.approxCompare(magnitude, aVector.magnitude)==0 
+				|| (Math.abs(aVector.magnitude-magnitude) < BidirectedGraph.A_TOL)
 				)
 				;
 	}

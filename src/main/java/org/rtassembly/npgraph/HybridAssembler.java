@@ -280,7 +280,7 @@ public class HybridAssembler {
 	
 	public void postProcessGraph() throws IOException{
 		//Take the current best path among the candidate of a bridge and connect the bridge(greedy)
-		for(NewBridge brg:simGraph.getUnsolvedBridges()){
+		for(GoInBetweenBridge brg:simGraph.getUnsolvedBridges()){
 			System.out.printf("Last attemp on incomplete bridge %s : anchors=%d \n %s \n", brg.getEndingsID(), brg.getNumberOfAnchors(), brg.getAllPossiblePaths());
 			if(brg.getNumberOfAnchors()==2) {
 				simGraph.reduceUniquePath(brg.getBestPath());

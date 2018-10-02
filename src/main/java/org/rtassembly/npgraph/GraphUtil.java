@@ -586,6 +586,8 @@ public class GraphUtil {
      */
     public static int approxCompare(double x, double y) {
     	int retval=0;
+    	if(x==0 && y==0)
+    		return 0;
     	double ratio=Math.abs(x-y)/(Math.max(Math.abs(x), Math.abs(y)));
     	if(ratio > BidirectedGraph.R_TOL)
     		retval=x>y?1:-1;
