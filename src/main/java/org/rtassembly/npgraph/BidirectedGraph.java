@@ -469,7 +469,7 @@ public class BidirectedGraph extends MultiGraph{
 	{
     	if(distance>BidirectedGraph.D_LIMIT)
     		return null;
-    	System.out.println("Looking for DFS path between " + srcNode.getId() + " to " + dstNode.getId() + " with distance " + distance);
+    	System.out.printf("Looking for DFS path between %s%s to %s%s with distance=%d\n",srcNode.getId(), srcDir?"o":"i", dstNode.getId(), dstDir?"o":"i" ,distance);
 		ArrayList<BidirectedPath> possiblePaths = new ArrayList<BidirectedPath>(), 
 									retval=new ArrayList<BidirectedPath>();
 		//1. First build shortest tree from dstNode 		
@@ -597,26 +597,26 @@ public class BidirectedGraph extends MultiGraph{
 		HashMap<String,Integer> retval = new HashMap<>();
 		
 		int curDistance=(int) -rootNode.getNumber("len"), newDistance=0;
-		NodeDirection curNS = new NodeDirection(rootNode, expDir, curDistance);
-		pq.add(curNS);
+		NodeDirection curND = new NodeDirection(rootNode, expDir, curDistance);
+		pq.add(curND);
 		
-		System.out.println("Building shortest tree for " + rootNode.getId());
-		retval.put(curNS.toString(), curDistance); // direction from the point of srcNode
+		System.out.println("Building shortest tree for " + rootNode.getId() + " with distance=" + distance);
+		retval.put(curND.toString(), curDistance); // direction from the point of srcNode
 		while(!pq.isEmpty()) {
 //			System.out.println("Current queue: ");
 //			for(NodeState n:pq) {
 //				System.out.printf("%s:%d\t", n.toString(), n.getWeight());
 //			}
 //			System.out.println();
-			curNS=pq.poll();
-			curDistance=curNS.getWeight();
+			curND=pq.poll();
+			curDistance=curND.getWeight();
 
-			Iterator<Edge> ite=curNS.getDir()?curNS.getNode().leavingEdges().iterator():curNS.getNode().enteringEdges().iterator();
+			Iterator<Edge> ite=curND.getDir()?curND.getNode().leavingEdges().iterator():curND.getNode().enteringEdges().iterator();
 			while(ite.hasNext()) {
 	    		BidirectedEdge edge = (BidirectedEdge) ite.next();
-	    		BidirectedNode nextNode = (BidirectedNode) edge.getOpposite(curNS.getNode());
+	    		BidirectedNode nextNode = (BidirectedNode) edge.getOpposite(curND.getNode());
 	    		boolean direction =  !edge.getDir(nextNode);
-	    		newDistance=curDistance+edge.getLength()+(int)curNS.getNode().getNumber("len");
+	    		newDistance=curDistance+edge.getLength()+(int)curND.getNode().getNumber("len");
 	    		if(newDistance > distance+A_TOL)
 	    			continue;
 	    		

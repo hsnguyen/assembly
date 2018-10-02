@@ -4,7 +4,7 @@ public class NodeVector implements Comparable<NodeVector>{
 	
 	BidirectedNode node;
 	ScaffoldVector vector;
-	boolean rootDir; //direction of the marker
+	boolean rootDir; //direction of the marker (out/in==+/-)
 	int score; //alignment score + number of occurences
 	
 	NodeVector(){}
@@ -23,8 +23,10 @@ public class NodeVector implements Comparable<NodeVector>{
 //	public PopBin getUniqueBin(){
 //		return SimpleBinner.getUniqueBin(node);
 //	}
+	
+	//get the direction of a node based on the root direction (not apply for the root itself!!!)
 	public boolean getDirection(){
-		return rootDir&&(vector.getDirection()<0); //in-out not +/-
+		return rootDir!=(vector.getDirection()>0); //XOR: in-out not +/-
 	}
 	@Override
 	public String toString(){
