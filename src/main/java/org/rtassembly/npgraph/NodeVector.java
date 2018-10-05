@@ -1,17 +1,20 @@
 package org.rtassembly.npgraph;
 
+/*
+ * Class represent a node together with its vector in relative to another root node.
+ * Note: the direction here refers to the one of a ScaffoldVector, not bidirected-graph direction (in/out), neither sequence sense/antisense (+/-)
+ * although we can translate into appropriate info
+ */
 public class NodeVector implements Comparable<NodeVector>{
 	
 	BidirectedNode node;
 	ScaffoldVector vector;
-	boolean rootDir; //direction of the marker (out/in==+/-)
-	int score; //alignment score + number of occurences
+	int score; //alignment score + number of occurences?
 	
 	NodeVector(){}
-	NodeVector(BidirectedNode node, ScaffoldVector vector, boolean rootDir){
+	NodeVector(BidirectedNode node, ScaffoldVector vector){
 		this.node=node;
 		this.vector=vector;
-		this.rootDir=rootDir;
 	}
 	
 	public BidirectedNode getNode(){return node;}
@@ -25,7 +28,7 @@ public class NodeVector implements Comparable<NodeVector>{
 //	}
 	
 	//get the direction of a node based on the root direction (not apply for the root itself!!!)
-	public boolean getDirection(){
+	public boolean getDirection(boolean rootDir){
 		return rootDir!=(vector.getDirection()>0); //XOR: in-out not +/-
 	}
 	@Override
@@ -38,9 +41,9 @@ public class NodeVector implements Comparable<NodeVector>{
 	public int compareTo(NodeVector o) {
 		if(equals(o))
 			return 0;
-		else if(vector.magnitude==0&&vector.direction==1)
+		else if(vector.isIdentity())
 			return -1;
-		else if(o.vector.magnitude==0&&o.vector.direction==1)
+		else if(o.vector.isIdentity())
 			return 1;
 		else
 			return Integer.compare(vector.relDistance(node), o.vector.relDistance(o.node));
@@ -63,10 +66,14 @@ public class NodeVector implements Comparable<NodeVector>{
         if (this.getNode()!=other.getNode())   
         	return false;
         else{ 
-        	return this.getVector().consistentWith(other.getVector());
+        	if(SimpleBinner.getUniqueBin(node)!=null)
+        		return true;
+        	else
+        		return this.getVector().consistentWith(other.getVector());
         }
     }
 	public boolean qc() {
 		return score >= 2;
 	}
+
 }

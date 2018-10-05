@@ -157,6 +157,9 @@ public class ScaffoldVector{
 		
 	}
 	
+	public boolean isIdentity() {
+		return magnitude==0&&direction==1;
+	}
 	public boolean consistentWith(ScaffoldVector aVector){
 		return (aVector.direction == direction)
 				&& (GraphUtil.approxCompare(magnitude, aVector.magnitude)==0 
