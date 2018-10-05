@@ -127,6 +127,8 @@ public class GoInBetweenBridge {
 
 	private void reverse() {
 		assert getNumberOfAnchors()==2:"Could only reverse a determined bridge (2 anchors)";
+//		System.out.printf("Reversing the bridge %s:\n%s\n", getEndingsID(), getAllNodeVector());
+
 		ArrayList<BridgeSegment> tmp = segments;
 		segments = new ArrayList<>();
 		pBridge=new BidirectedEdgePrototype(pBridge.getNode1(), pBridge.getNode0(), pBridge.getDir1(), pBridge.getDir0());
@@ -138,6 +140,9 @@ public class GoInBetweenBridge {
 		}
 		//reverse the nodes list
 		steps.reverse();
+		
+//		System.out.printf("Reversed bridge %s:\n%s\n", getEndingsID(), getAllNodeVector());
+
 	}
 	
 	public String getEndingsID() {
@@ -283,6 +288,8 @@ public class GoInBetweenBridge {
 	 */
 	class BridgeSteps{
 		SortedSet<NodeVector> nodes;
+		NodeVector start, end;
+		
 		BridgeSteps(){
 			nodes=new TreeSet<NodeVector>();
 		}
@@ -298,8 +305,16 @@ public class GoInBetweenBridge {
 					}
 				}
 			}else {
-				//TODO: make sure added nodes are lie between 2 ends 
-				nodes.add(nv);
+				//assign end nodes by checking its uniqueness 
+				if(SimpleBinner.getUniqueBin(nv.getNode())!=null){
+					if(nv.getVector().isIdentity())
+						start=nv;
+					else
+						end=nv;
+				}
+				
+				if(!isComplete() || nv.compareTo(start)*nv.compareTo(end)<=0) //opt:loss information here
+					nodes.add(nv);
 			}
 		}
 		
@@ -310,7 +325,8 @@ public class GoInBetweenBridge {
 						curAlg = null;
 			boolean retval=false;
 
-			nodes.add(new NodeVector(firstAlg.node, new ScaffoldVector()));
+			start=new NodeVector(firstAlg.node, new ScaffoldVector());
+			addNode(start);;
 			
 			for(int i=1;i<read.getAlignmentRecords().size();i++) {
 				curAlg = read.getAlignmentRecords().get(i);
@@ -320,6 +336,7 @@ public class GoInBetweenBridge {
 				addNode(new NodeVector(curAlg.node, read.getVector(firstAlg, curAlg)));
 				
 			}
+			
 			if(nodes.size()>1 && getNumberOfAnchors()<2) {
 				pBridge=new BidirectedEdgePrototype(firstAlg.node, nodes.last().getNode(), firstAlg.strand, nodes.last().getDirection(firstAlg.strand));//getDirection doesn't work with self-vector
 			}
@@ -392,14 +409,24 @@ public class GoInBetweenBridge {
 			return retval;
 		}
 		
+		boolean isComplete(){
+			return start!=null && end!=null;
+		}
 		void reverse() {
 			//reverse the nodes list
 			SortedSet<NodeVector> reversedSet = new TreeSet<NodeVector>();
-			ScaffoldVector rev=ScaffoldVector.reverse(nodes.last().getVector());//anchors number = 2 so there exist last()
+			ScaffoldVector rev=ScaffoldVector.reverse(end.getVector());//anchors number = 2 so there exist last()
+			NodeVector tmp = null;
 			for(NodeVector nv:nodes) {
-				reversedSet.add(new NodeVector(nv.getNode(),ScaffoldVector.composition(nv.getVector(), rev)));;
+				tmp=new NodeVector(nv.getNode(), ScaffoldVector.composition(nv.getVector(), rev), nv.score);
+				reversedSet.add(tmp);
+
 			}
 			nodes=reversedSet;
+			//re-assign start and end
+			start=nodes.first();
+			end=nodes.last();
+
 		}
 		
 		public String toString(){

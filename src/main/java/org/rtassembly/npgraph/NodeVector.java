@@ -17,6 +17,10 @@ public class NodeVector implements Comparable<NodeVector>{
 		this.vector=vector;
 	}
 	
+	public NodeVector(BidirectedNode node, ScaffoldVector vector, int score) {
+		this(node, vector);
+		this.score=score;
+	}
 	public BidirectedNode getNode(){return node;}
 	public ScaffoldVector getVector(){return vector;}
 	
