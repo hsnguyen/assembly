@@ -49,13 +49,13 @@ public class GoInBetweenBridge {
 	public byte getNumberOfAnchors() {
 		byte retval=0;
 		if(pBridge!=null) {
-			if(SimpleBinner.getUniqueBin(pBridge.getNode0())!=null) retval++;
-			if(SimpleBinner.getUniqueBin(pBridge.getNode1())!=null) retval++;
+			if(pBridge.getNode0()!=null) retval++;
+			if(pBridge.getNode1()!=null) retval++;
 		}
 		return retval;
 	}
 	
-	public boolean isComplete() {
+	public boolean isPerfect() {
 		if(getNumberOfAnchors()!=2)
 			return false;
 		if(segments==null||segments.isEmpty())
@@ -87,19 +87,31 @@ public class GoInBetweenBridge {
 			return false;
 		//building on existed one
 		if(pBridge!=null){
-			if(pBridge.getNode0()!=alignedRead.getFirstAlignment().node) {		//if the starting points don't agree
-				if(pBridge.getNode0()==alignedRead.getLastAlignment().node) {	//the first unique contig actually located at the end of alignments list
+			BidirectedNode 	bNode0=(BidirectedNode) pBridge.getNode0(),
+							bNode1=(BidirectedNode) pBridge.getNode1(),
+							rNode0=alignedRead.getFirstAlignment().node,
+							rNode1=alignedRead.getLastAlignment().node;
+			boolean found=true;
+			if(bNode0!=rNode0) {							//if the starting points don't agree
+				if(bNode0==rNode1) {						//the first unique contig actually located at the end of alignments list
 					alignedRead=alignedRead.reverse();
-				}else if(getNumberOfAnchors()==2){								//if not: this pBridge must have 2 anchors, the first anchor is not in the alignments list
-					this.reverse();												//flip the first and second anchors: now the second anchor is used as shared maker between pBridge and alignedRead
-					if(pBridge.getNode1()==alignedRead.getLastAlignment().node)	
+				}else if(bNode1!=null){			//if not: this pBridge must have 2 anchors, the first anchor is not in the alignments list
+					this.reverse();							//flip the first and second anchors: now the second anchor is used as shared maker between pBridge and alignedRead
+					if(bNode1==rNode1)	
 						alignedRead=alignedRead.reverse();
+					else if(bNode1!=rNode0)
+						found=false;
 				}else { 
-					System.err.println("Error: bridge " + getEndingsID() + " could not aligned with " + alignedRead.getCompsString());
-					return false;
+					found=false;
 				}
 			}
+			if(!found){
+				System.err.println("Error: bridge " + getEndingsID() + " could not aligned with " + alignedRead.getCompsString());
+				return false;
+			}
+				
 		}		 
+		
 		//FIXME: when segments is connected: vote for paths
 		if(steps.addAlignments(alignedRead)){
 			return steps.connectBridge();
@@ -306,7 +318,7 @@ public class GoInBetweenBridge {
 				}
 			}else {
 				//assign end nodes by checking its uniqueness 
-				if(SimpleBinner.getUniqueBin(nv.getNode())!=null){
+				if(SimpleBinner.getUniqueBin(nv.getNode())!=null && end==null){
 					if(nv.getVector().isIdentity())
 						start=nv;
 					else
@@ -336,10 +348,12 @@ public class GoInBetweenBridge {
 				addNode(new NodeVector(curAlg.node, read.getVector(firstAlg, curAlg)));
 				
 			}
+			//update the pBridge accordingly
+			if(end!=null) {
+				pBridge=new BidirectedEdgePrototype(firstAlg.node, end.getNode(), firstAlg.strand, end.getDirection(firstAlg.strand));//getDirection doesn't work with self-vector
+			}else if(pBridge==null)
+				pBridge=new BidirectedEdgePrototype(firstAlg.node, firstAlg.strand);
 			
-			if(nodes.size()>1 && getNumberOfAnchors()<2) {
-				pBridge=new BidirectedEdgePrototype(firstAlg.node, nodes.last().getNode(), firstAlg.strand, nodes.last().getDirection(firstAlg.strand));//getDirection doesn't work with self-vector
-			}
 			System.out.printf("=> New bridge %s:\n%s\n", getEndingsID(), getAllNodeVector());
 
 			return retval;
@@ -347,20 +361,24 @@ public class GoInBetweenBridge {
 		
 		//Try to make the continuous segments (those that have paths connected 2 ends). Return true if it possible
 		boolean connectBridge(){
-			if(pBridge==null){
-				System.err.println("pBridge must be set before using this function");
+			if(!connectable()){
+				System.err.println("Bridge is not qualified to connect yet!");
 				return false;
 			}
-			if(nodes.size()<2 || SimpleBinner.getUniqueBin(nodes.last().getNode())==null || !nodes.last().qc())
-				return false;
 			System.out.println("Trying to connect bridge " + pBridge.toString() + ":\n" + getAllNodeVector());
 			//First build shortest tree from the end
+			//TODO: optimize finding path by using this list
 			HashMap<String,Integer> shortestMap = 
 					graph.getShortestTreeFromNode(	(BidirectedNode)pBridge.getNode1(), 
 													pBridge.getDir1(), 
 													nodes.last().getVector().distance((BidirectedNode)pBridge.getNode0(), (BidirectedNode)pBridge.getNode1()));
 			if(!shortestMap.containsKey(pBridge.getNode0().getId()+(pBridge.getDir0()?"i":"o"))){ //note the trick: direction BEFORE the path started
 				System.err.println("Shortest tree couldn't reach to the other end!");
+				//remove the the end node since it's unreachable
+				nodes.remove(end);
+				end=null;
+				pBridge=new BidirectedEdgePrototype(pBridge.getNode0(), pBridge.getDir0());
+				
 				return false;
 			}
 			Iterator<NodeVector> iterator = nodes.iterator();
@@ -376,7 +394,7 @@ public class GoInBetweenBridge {
 				
 				current=iterator.next();
 				//need a quality-checking here before including into a segment step
-				if(!current.qc() || shortestMap.containsKey(current.getNode().getId())){
+				if((current!=end && !current.qc()) || shortestMap.containsKey(current.getNode().getId())){
 					continue;
 				}else{
 					BridgeSegment seg = null;
@@ -394,9 +412,9 @@ public class GoInBetweenBridge {
 					System.out.print("...connecting " + seg.getId());
 					if(seg.isConnected()){
 						System.out.println(" :success!");
-						addSegment(seg,false);
+						addSegment(seg,true);
 						prev=current;
-						if(current.equals(nodes.last()))
+						if(current.equals(end))
 							retval=true;						
 					}else
 						System.out.println(" :fail!");
@@ -411,6 +429,16 @@ public class GoInBetweenBridge {
 		
 		boolean isComplete(){
 			return start!=null && end!=null;
+		}
+		
+		boolean connectable(){
+			if(!isComplete())
+				return false;
+			
+			boolean retval=true;
+			//TODO: check NodeVector.qc() & density???
+			
+			return retval;
 		}
 		void reverse() {
 			//reverse the nodes list

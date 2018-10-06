@@ -86,7 +86,7 @@ public class BidirectedGraph extends MultiGraph{
 	public HashSet<GoInBetweenBridge> getUnsolvedBridges(){
 		HashSet<GoInBetweenBridge> retval = new HashSet<GoInBetweenBridge>();
 		for(GoInBetweenBridge brg:bridgesMap.values()){
-			if(!brg.isComplete())
+			if(!brg.isPerfect())
 				retval.add(brg);
 		}
 		
@@ -186,23 +186,12 @@ public class BidirectedGraph extends MultiGraph{
     	if(bidirectedBridge==null || bidirectedBridge.pBridge==null)
     		return;
 
-		try {
-	    	Node 	startNode=bidirectedBridge.pBridge.getNode0(),
-	    			endNode=bidirectedBridge.pBridge.getNode1();
-	    	boolean startNodeDir, endNodeDir;
-			startNodeDir = bidirectedBridge.pBridge.getDir0();
-			endNodeDir = bidirectedBridge.pBridge.getDir1();
-			
+		if(bidirectedBridge.getNumberOfAnchors()==1)
+    		bridgesMap.put(bidirectedBridge.pBridge.n0.toString(), bidirectedBridge);
+    	
+		if(bidirectedBridge.getNumberOfAnchors()==2)
+    		bridgesMap.put(bidirectedBridge.pBridge.n1.toString(), bidirectedBridge);
 
-	    	if(SimpleBinner.getUniqueBin(startNode)!=null)
-	    		bridgesMap.put(startNode.getId()+(startNodeDir?"o":"i"), bidirectedBridge);
-	    	
-	    	if(SimpleBinner.getUniqueBin(endNode)!=null)
-	    		bridgesMap.put(endNode.getId()+(endNodeDir?"o":"i"), bidirectedBridge);
-		} catch (Exception e) {
-			LOG.error("Invalid bridge to add to bridge map: " + bidirectedBridge.getEndingsID());
-			e.printStackTrace();
-		}
     	
     }
     
@@ -623,7 +612,7 @@ public class BidirectedGraph extends MultiGraph{
 			System.out.printf("+++%s <=> %s\n", bb.getEndingsID(), storedBridge==null?"null":storedBridge.getEndingsID());
 			
 			if(storedBridge!=null) {
-				if(storedBridge.isComplete()){
+				if(storedBridge.isPerfect()){
 					System.out.println(storedBridge.getEndingsID() + ": already solved: ignore!");
 					System.out.print(storedBridge.getAllNodeVector());
 					continue;
@@ -642,7 +631,7 @@ public class BidirectedGraph extends MultiGraph{
 			}
 			
 			//storedBridge.bridging()
-			if(storedBridge.isComplete()){
+			if(storedBridge.isPerfect()){
 				System.out.println(storedBridge.getAllNodeVector());
 				retrievedPaths.add(storedBridge.getBestPath());
 			}

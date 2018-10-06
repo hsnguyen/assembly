@@ -37,10 +37,10 @@ public class BidirectedEdgePrototype{
 	}
 	
 	public AbstractNode getNode0(){
-		return n0.getNode();
+		return n0==null?null:n0.getNode();
 	}
 	public AbstractNode getNode1(){
-		return n1.getNode();
+		return n1==null?null:n1.getNode();
 	}
 
 	public boolean getDir0(){
@@ -58,7 +58,12 @@ public class BidirectedEdgePrototype{
 		return retval;
 	}
 	public String toString(){
-		return n0.toString() + "," + n1.toString();
+		String retval=n0.toString();
+		if(n1!=null)
+			retval+=","+n1.toString();
+		else
+			retval+=",-";
+		return retval;
 	}
 }
 
@@ -85,9 +90,6 @@ class NodeDirection implements Comparable<NodeDirection>{
 	public void setWeight(int w) {weight=w;}
 	
 	public String toString(){
-		if(node==null)
-			return "-";
-		
 		return node.getId()+ (dir?"o":"i");
 	}
 
