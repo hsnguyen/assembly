@@ -171,9 +171,8 @@ public class BidirectedGraph extends MultiGraph{
      ********************** utility functions to serve the assembly algo ****************************** 
      * ***********************************************************************************************/
     
-    synchronized public GoInBetweenBridge getBridgeFromMap(Node unqNode, boolean direction){
-    	String key=unqNode.getId()+(direction?"o":"i"); //true:going outward, false:going inward
-    	return bridgesMap.get(key);
+    synchronized public GoInBetweenBridge getBridgeFromMap(NodeDirection nd){
+    	return bridgesMap.get(nd.toString());
     }
     
     // when this unique node actually contained by a bridge
@@ -189,8 +188,17 @@ public class BidirectedGraph extends MultiGraph{
 		if(bidirectedBridge.getNumberOfAnchors()==1)
     		bridgesMap.put(bidirectedBridge.pBridge.n0.toString(), bidirectedBridge);
     	
-		if(bidirectedBridge.getNumberOfAnchors()==2)
+		if(bidirectedBridge.getNumberOfAnchors()==2){
+			GoInBetweenBridge 	brg0=getBridgeFromMap(bidirectedBridge.pBridge.n0),		
+								brg1=getBridgeFromMap(bidirectedBridge.pBridge.n1);
+			if(brg0!=bidirectedBridge)
+				bidirectedBridge.merge(brg0);
+			if(brg1!=bidirectedBridge)
+				bidirectedBridge.merge(brg1);
+				
+    		bridgesMap.put(bidirectedBridge.pBridge.n0.toString(), bidirectedBridge);
     		bridgesMap.put(bidirectedBridge.pBridge.n1.toString(), bidirectedBridge);
+		}
 
     	
     }
@@ -218,7 +226,7 @@ public class BidirectedGraph extends MultiGraph{
     }
     
     //Return bridge in the map (if any) that share the same bases (unique end) 
-    synchronized public GoInBetweenBridge getHomoBridgeFromMap(AlignedRead algRead){
+    synchronized public GoInBetweenBridge getBridgeFromMap(AlignedRead algRead){
     	GoInBetweenBridge retval = null, tmp = null;
     	if(algRead!=null){
 	    	Node 	startNode=algRead.getFirstAlignment().node,
@@ -234,9 +242,9 @@ public class BidirectedGraph extends MultiGraph{
 	    	
 	    	if(SimpleBinner.getUniqueBin(endNode)!=null){
 	    		tmp=bridgesMap.get(endNode.getId()+(endNodeDir?"o":"i"));
-	    		if(tmp!=null){
-	    			if(retval==null || retval.getNumberOfAnchors()<tmp.getNumberOfAnchors())
-	    				retval=tmp;
+	    		if(tmp!=null && retval==null){
+//	    			if(retval.getNumberOfAnchors()<tmp.getNumberOfAnchors())
+    				retval=tmp;
 	    			
 	    		}
 	    	}
@@ -608,7 +616,8 @@ public class BidirectedGraph extends MultiGraph{
 		// Now we got all possible bridges from chopping the alignments at unique nodes
 		System.out.println("\n=> bridges list: ");
 		for(AlignedRead bb:allBuildingBlocks) {
-			GoInBetweenBridge storedBridge=getHomoBridgeFromMap(bb);
+			GoInBetweenBridge 	storedBridge=getBridgeFromMap(bb),
+								newBridge=new GoInBetweenBridge(this,bb,tmpBin);;
 			System.out.printf("+++%s <=> %s\n", bb.getEndingsID(), storedBridge==null?"null":storedBridge.getEndingsID());
 			
 			if(storedBridge!=null) {
@@ -619,18 +628,20 @@ public class BidirectedGraph extends MultiGraph{
 				}else{
 					System.out.println(storedBridge.getEndingsID() + ": already built: fortify!");
 					System.out.println(storedBridge.getAllPossiblePaths());
-					if(storedBridge.buildFrom(bb))
+					
+					if(storedBridge.merge(newBridge))
 						updateBridgesMap(storedBridge);
-
 				}			
 
 			}else{
-				storedBridge=new GoInBetweenBridge(this,bb,tmpBin);
+				storedBridge=newBridge;
 				updateBridgesMap(storedBridge);
 				
 			}
 			
+			//TODO: control when to connect the bridge
 			//storedBridge.bridging()
+			
 			if(storedBridge.isPerfect()){
 				System.out.println(storedBridge.getAllNodeVector());
 				retrievedPaths.add(storedBridge.getBestPath());
