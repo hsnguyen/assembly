@@ -19,7 +19,6 @@ public class GoInBetweenBridge {
 	BidirectedEdgePrototype pBridge; //note: the ending nodes must be unique, or else omitted
 	ArrayList<BridgeSegment> segments;
 	BridgeSteps steps;
-	boolean connected=false;
 	
 	GoInBetweenBridge(BidirectedGraph graph, PopBin bin){
 		this.graph=graph;
@@ -55,82 +54,45 @@ public class GoInBetweenBridge {
 		return retval;
 	}
 	
-	public boolean isPerfect() {
-		if(getNumberOfAnchors()!=2)
-			return false;
-		if(segments==null||segments.isEmpty())
-			return false;
-		for(BridgeSegment seg:segments)
-			if(seg.getNumberOfPaths()!=1)
-				return false;
-		return true;
-	}
+	
 	/*
-	 * Most important function: to read from a AlignedRead and
-	 * try to build or complete the bridge. Return true if the bridge
-	 * is extended successfully to a new anchor
+	 * How complete this bridge is built. Leval of completion is as follow:
+	 * 0: nothing, 1: one anchor, 2: two anchors determined, 3: bridge connected, 4: bridge completed
 	 */
-//	public boolean buildFrom(AlignedRead alignedRead) {
-//		//1.scan the aligned read for the marker and direction to build
-//		//2.compare the alignments to this bridge's steps and update & save nanopore read also if necessary
-//		
-//		if(alignedRead.getAlignmentRecords().size() < 2)
-//			return false;
-//		alignedRead.sortAlignment();
-//		
-//		// Starting node of the aligned read must be unique
-//		if(	SimpleBinner.getUniqueBin(alignedRead.getFirstAlignment().node)==null 
-//			&& SimpleBinner.getUniqueBin(alignedRead.getLastAlignment().node)!=null)
-//			alignedRead=alignedRead.reverse();
-//		
-//		if(SimpleBinner.getUniqueBin(alignedRead.getFirstAlignment().node)==null)
-//			return false;
-//		//building on existed one
-//		if(pBridge!=null){
-//			BidirectedNode 	bNode0=(BidirectedNode) pBridge.getNode0(),
-//							bNode1=(BidirectedNode) pBridge.getNode1(),
-//							rNode0=alignedRead.getFirstAlignment().node,
-//							rNode1=alignedRead.getLastAlignment().node;
-//			boolean found=true;
-//			if(bNode0!=rNode0) {							//if the starting points don't agree
-//				if(bNode0==rNode1) {						//the first unique contig actually located at the end of alignments list
-//					alignedRead=alignedRead.reverse();
-//				}else if(bNode1!=null){			//if not: this pBridge must have 2 anchors, the first anchor is not in the alignments list
-//					this.reverse();							//flip the first and second anchors: now the second anchor is used as shared maker between pBridge and alignedRead
-//					if(bNode1==rNode1)	
-//						alignedRead=alignedRead.reverse();
-//					else if(bNode1!=rNode0)
-//						found=false;
-//				}else { 
-//					found=false;
-//				}
-//			}
-//			if(!found){
-//				System.err.println("Error: bridge " + getEndingsID() + " could not aligned with " + alignedRead.getCompsString());
-//				return false;
-//			}
-//				
-//		}		 
-//		
-//		//FIXME: control when segments is connected or voted for paths
-//		if(steps.addAlignments(alignedRead)){
-//			return steps.connectBridge();
-//		}else
-//			return false;
-//
-//	}
+	
+	public int getCompletionLevel() {
+		int retval=getNumberOfAnchors();
+		boolean isComplete=true;
+		if(retval==2&segments!=null) {
+			retval++;
+			for(BridgeSegment seg:segments)
+				if(seg.getNumberOfPaths()!=1)
+					isComplete=false;
+		}
+		if(isComplete)
+			retval++;
+		return retval;
+	}
+
 							
 	//Merge 2 bridge (must share at least one same unique end-point) together
-	//Return false if impossible to find the common end-point
-	public boolean merge(GoInBetweenBridge qBridge) {
-		boolean retval=true;
-		BidirectedNode 	sNode0=(BidirectedNode) pBridge.getNode0(),
-						sNode1=(BidirectedNode) pBridge.getNode1(),
-						qNode0=(BidirectedNode) pBridge.getNode0(),
-						qNode1=(BidirectedNode) pBridge.getNode1();
-		if(sNode0==null||qNode0==null)
-			return false;
+	GoInBetweenBridge merge(GoInBetweenBridge qBridge) {
+		assert graph==qBridge.graph&&bin==qBridge.bin:"Cannot merge bridges!";
+		GoInBetweenBridge 	subject = this, 
+							query = qBridge;
+		if(subject.getCompletionLevel() < query.getCompletionLevel()) {
+			subject=qBridge;
+			query=this;
+		}
+		if(query.getCompletionLevel()==0 || subject.getCompletionLevel()==4)
+			return subject;
 		
+		BidirectedNode 	sNode0=(BidirectedNode) subject.pBridge.getNode0(),
+						sNode1=(BidirectedNode) subject.pBridge.getNode1(),
+						qNode0=(BidirectedNode) query.pBridge.getNode0(),
+						qNode1=(BidirectedNode) query.pBridge.getNode1();
+
+		boolean found=true;
 		if(sNode0!=qNode0) {							//if the starting points don't agree
 			if(sNode0==qNode1) {						//the first unique contig actually located at the end of alignments list
 				qBridge.reverse();
@@ -139,23 +101,36 @@ public class GoInBetweenBridge {
 				if(sNode1==qNode1)	
 					qBridge.reverse();
 				else if(sNode1!=qNode0)
-					retval=false;
+					found=false;
 			}else { 
-				retval=false;
+				found=false;
 			}
 		}
-		if(!retval)
-			return false;
+		if(!found) {
+			System.err.println("Not found common end point between merging bridges");
+			return subject;
+		}
+		
 		SortedSet<NodeVector> sSteps=getStepsList(), qSteps=qBridge.getStepsList();
 		
 		Iterator<NodeVector> iterator = qSteps.iterator();		
 		NodeVector 	current=null;
+		int lastIdx=0;
 		while(iterator.hasNext()){
 			current=iterator.next();
-			if(connected){
-				if(sSteps.contains(current)){
-					//TODO: voting for paths
-
+			if(subject.getCompletionLevel()==3){
+				if(!sSteps.contains(current)){
+					int prev=-1, cur;
+					for(int i=lastIdx; i<segments.size();i++) {
+						BridgeSegment curSeg=segments.get(i);
+						cur=curSeg.locateAndVote(current);
+						if(cur<prev)
+							break;
+						else {
+							prev=cur;
+							lastIdx=i;
+						}
+					}
 				}
 			}else{
 				//just adding
@@ -164,12 +139,13 @@ public class GoInBetweenBridge {
 			
 		}		
 			
-		return retval;
+		return subject;
 	}
 
 	SortedSet<NodeVector> getStepsList(){
 		return steps.nodes;
 	}
+	
 	//adding new segment with/without update pBridge
 	private void addSegment(BridgeSegment seg, boolean update) {
 		if(segments==null)
@@ -280,8 +256,6 @@ public class GoInBetweenBridge {
 			
 //			if(connectedPaths==null || connectedPaths.isEmpty())
 //				connectedPaths = graph.getClosestPaths(start, end);
-
-
 			
 		}
 		
@@ -327,6 +301,32 @@ public class GoInBetweenBridge {
 			return retval;
 		}
 		
+		/*
+		 * Find a node vector if it appear in one of the paths
+		 * Return -1 if not located within the range of this segment
+		 * Return 1 if found in one of the paths
+		 * Return 0 otherwise
+		 */
+		int locateAndVote(NodeVector nv) {
+			int retval=-1;
+			NodeVector 	start=new NodeVector((BidirectedNode) pSegment.getNode0(), startV),
+						end=new NodeVector((BidirectedNode) pSegment.getNode1(),endV);
+			if(nv.compareTo(start)*nv.compareTo(end)<=0) {
+				retval++;
+				ScaffoldVector start2nv=ScaffoldVector.composition(nv.getVector(), ScaffoldVector.reverse(startV));
+				int d=start2nv.distance((BidirectedNode) pSegment.getNode0(), nv.getNode());
+				for(BidirectedPath p:connectedPaths) {
+					if(p.checkDistanceConsistency(pSegment.getNode0(), nv.getNode(), start2nv.direction>0, d) >= 0) {
+						p.upVote(1);
+						retval++;
+					}
+					else
+						p.downVote(1);
+				}
+			}
+			//TODO: filter out low score paths + check completeness here???
+			return retval;
+		}
 		int getNumberOfPaths(){
 			if(connectedPaths==null)
 				return 0;
@@ -398,7 +398,7 @@ public class GoInBetweenBridge {
 				while(ite.hasNext()){
 					NodeVector tmp=ite.next();
 					if(tmp.equals(nv)){
-						tmp.score++;
+						tmp.score+=nv.score;
 						break;
 					}
 				}
@@ -415,37 +415,7 @@ public class GoInBetweenBridge {
 					nodes.add(nv);
 			}
 		}
-		
-		// Return true if it reachs an unique nodes (good bridge)
-		// read must start with an alignment from a unique node
-//		boolean addAlignments(AlignedRead read) {		
-//			System.out.printf("Applying aligned read %s on the bridge %s:\n%s\n", read.getCompsString(), getEndingsID(), getAllNodeVector());
-//			Alignment 	firstAlg = read.getFirstAlignment(),
-//						curAlg = null;
-//			boolean retval=false;
-//
-//			start=new NodeVector(firstAlg.node, new ScaffoldVector());
-//			addNode(start);;
-//			
-//			for(int i=1;i<read.getAlignmentRecords().size();i++) {
-//				curAlg = read.getAlignmentRecords().get(i);
-//				if(SimpleBinner.getUniqueBin(curAlg.node)!=null){
-//					retval=true;
-//				}
-//				addNode(new NodeVector(curAlg.node, read.getVector(firstAlg, curAlg)));
-//				
-//			}
-//			//update the pBridge accordingly
-//			if(end!=null) {
-//				pBridge=new BidirectedEdgePrototype(firstAlg.node, end.getNode(), firstAlg.strand, end.getDirection(firstAlg.strand));//getDirection doesn't work with self-vector
-//			}else if(pBridge==null)
-//				pBridge=new BidirectedEdgePrototype(firstAlg.node, firstAlg.strand);
-//			
-//			System.out.printf("=> New bridge %s:\n%s\n", getEndingsID(), getAllNodeVector());
-//
-//			return retval;
-//		}
-		
+			
 		
 		//Try to make the continuous segments (those that have paths connected 2 ends). Return true if it possible
 		boolean connectBridgeSteps(){

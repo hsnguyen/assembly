@@ -9,7 +9,7 @@ public class NodeVector implements Comparable<NodeVector>{
 	
 	BidirectedNode node;
 	ScaffoldVector vector;
-	int score; //alignment score + number of occurences?
+	int score=1; //alignment score + number of occurences?
 	
 	NodeVector(){}
 	NodeVector(BidirectedNode node, ScaffoldVector vector){
@@ -77,7 +77,7 @@ public class NodeVector implements Comparable<NodeVector>{
         }
     }
 	public boolean qc() {
-		return score >= 2;
+		return score >= 3;
 	}
 
 }

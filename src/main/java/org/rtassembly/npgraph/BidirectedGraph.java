@@ -86,7 +86,7 @@ public class BidirectedGraph extends MultiGraph{
 	public HashSet<GoInBetweenBridge> getUnsolvedBridges(){
 		HashSet<GoInBetweenBridge> retval = new HashSet<GoInBetweenBridge>();
 		for(GoInBetweenBridge brg:bridgesMap.values()){
-			if(!brg.isPerfect())
+			if(brg.getCompletionLevel()<4)
 				retval.add(brg);
 		}
 		
@@ -621,7 +621,7 @@ public class BidirectedGraph extends MultiGraph{
 			System.out.printf("+++%s <=> %s\n", bb.getEndingsID(), storedBridge==null?"null":storedBridge.getEndingsID());
 			
 			if(storedBridge!=null) {
-				if(storedBridge.isPerfect()){
+				if(storedBridge.getCompletionLevel()==4){
 					System.out.println(storedBridge.getEndingsID() + ": already solved: ignore!");
 					System.out.print(storedBridge.getAllNodeVector());
 					continue;
@@ -629,7 +629,7 @@ public class BidirectedGraph extends MultiGraph{
 					System.out.println(storedBridge.getEndingsID() + ": already built: fortify!");
 					System.out.println(storedBridge.getAllPossiblePaths());
 					
-					if(storedBridge.merge(newBridge))
+					if(storedBridge.merge(newBridge)!=null)
 						updateBridgesMap(storedBridge);
 				}			
 
@@ -642,7 +642,7 @@ public class BidirectedGraph extends MultiGraph{
 			//TODO: control when to connect the bridge
 			//storedBridge.bridging()
 			
-			if(storedBridge.isPerfect()){
+			if(storedBridge.getCompletionLevel()==4){
 				System.out.println(storedBridge.getAllNodeVector());
 				retrievedPaths.add(storedBridge.getBestPath());
 			}
