@@ -45,8 +45,8 @@ public class GoInBetweenBridge {
 		steps=new BridgeSteps(bb);
 	}
 
-	public byte getNumberOfAnchors() {
-		byte retval=0;
+	public int getNumberOfAnchors() {
+		int retval=0;
 		if(pBridge!=null) {
 			if(pBridge.getNode0()!=null) retval++;
 			if(pBridge.getNode1()!=null) retval++;
@@ -56,15 +56,16 @@ public class GoInBetweenBridge {
 	
 	
 	/*
-	 * How complete this bridge is built. Leval of completion is as follow:
+	 * How complete this bridge is built. Level of completion is as follow:
 	 * 0: nothing, 1: one anchor, 2: two anchors determined, 3: bridge connected, 4: bridge completed
 	 */
 	
 	public int getCompletionLevel() {
 		int retval=getNumberOfAnchors();
-		boolean isComplete=true;
-		if(retval==2&segments!=null) {
+		boolean isComplete=false;
+		if(retval==2 && segments!=null) {
 			retval++;
+			isComplete=true;
 			for(BridgeSegment seg:segments)
 				if(seg.getNumberOfPaths()!=1)
 					isComplete=false;
@@ -77,7 +78,9 @@ public class GoInBetweenBridge {
 							
 	//Merge 2 bridge (must share at least one same unique end-point) together
 	GoInBetweenBridge merge(GoInBetweenBridge qBridge) {
-		assert graph==qBridge.graph&&bin==qBridge.bin:"Cannot merge bridges!";
+		if(qBridge==null)
+			return null;
+		
 		GoInBetweenBridge 	subject = this, 
 							query = qBridge;
 		if(subject.getCompletionLevel() < query.getCompletionLevel()) {
@@ -95,11 +98,11 @@ public class GoInBetweenBridge {
 		boolean found=true;
 		if(sNode0!=qNode0) {							//if the starting points don't agree
 			if(sNode0==qNode1) {						//the first unique contig actually located at the end of alignments list
-				qBridge.reverse();
+				query.reverse();
 			}else if(sNode1!=null){						//if not: this pBridge must have 2 anchors, the first anchor is not in the alignments list
-				this.reverse();							//flip the first and second anchors: now the second anchor is used as shared maker between subject and query bridge
+				subject.reverse();							//flip the first and second anchors: now the second anchor is used as shared maker between subject and query bridge
 				if(sNode1==qNode1)	
-					qBridge.reverse();
+					query.reverse();
 				else if(sNode1!=qNode0)
 					found=false;
 			}else { 
@@ -121,8 +124,8 @@ public class GoInBetweenBridge {
 			if(subject.getCompletionLevel()==3){
 				if(!sSteps.contains(current)){
 					int prev=-1, cur;
-					for(int i=lastIdx; i<segments.size();i++) {
-						BridgeSegment curSeg=segments.get(i);
+					for(int i=lastIdx; i<subject.segments.size();i++) {
+						BridgeSegment curSeg=subject.segments.get(i);
 						cur=curSeg.locateAndVote(current);
 						if(cur<prev)
 							break;
@@ -169,14 +172,16 @@ public class GoInBetweenBridge {
 		assert getNumberOfAnchors()==2:"Could only reverse a determined bridge (2 anchors)";
 //		System.out.printf("Reversing the bridge %s:\n%s\n", getEndingsID(), getAllNodeVector());
 
-		ArrayList<BridgeSegment> tmp = segments;
-		segments = new ArrayList<>();
 		pBridge=new BidirectedEdgePrototype(pBridge.getNode1(), pBridge.getNode0(), pBridge.getDir1(), pBridge.getDir0());
 		//reverse the segments
-		if(!tmp.isEmpty()) {
-			ScaffoldVector brgVector=tmp.get(tmp.size()-1).endV;
-			for(int i=tmp.size()-1; i>=0 ;i--)
-				addSegment(tmp.get(i).reverse(brgVector),false);
+		if(segments!=null){
+			ArrayList<BridgeSegment> tmp = segments;
+			segments = new ArrayList<>();
+			if(!tmp.isEmpty()) {
+				ScaffoldVector brgVector=tmp.get(tmp.size()-1).endV;
+				for(int i=tmp.size()-1; i>=0 ;i--)
+					addSegment(tmp.get(i).reverse(brgVector),false);
+			}
 		}
 		//reverse the nodes list
 		steps.reverse();
