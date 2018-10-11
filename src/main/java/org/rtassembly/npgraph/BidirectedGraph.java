@@ -192,9 +192,9 @@ public class BidirectedGraph extends MultiGraph{
 			GoInBetweenBridge 	brg0=getBridgeFromMap(bidirectedBridge.pBridge.n0),		
 								brg1=getBridgeFromMap(bidirectedBridge.pBridge.n1);
 			if(brg0!=bidirectedBridge)
-				bidirectedBridge.merge(brg0);
+				bidirectedBridge=bidirectedBridge.merge(brg0);
 			if(brg1!=bidirectedBridge)
-				bidirectedBridge.merge(brg1);
+				bidirectedBridge=bidirectedBridge.merge(brg1);
 				
     		bridgesMap.put(bidirectedBridge.pBridge.n0.toString(), bidirectedBridge);
     		bridgesMap.put(bidirectedBridge.pBridge.n1.toString(), bidirectedBridge);
@@ -623,13 +623,18 @@ public class BidirectedGraph extends MultiGraph{
 			if(storedBridge!=null) {
 				if(storedBridge.getCompletionLevel()==4){
 					System.out.println(storedBridge.getEndingsID() + ": already solved: ignore!");
-					System.out.print(storedBridge.getAllNodeVector());
 					continue;
 				}else{
 					System.out.println(storedBridge.getEndingsID() + ": already built: fortify!");
-					System.out.println(storedBridge.getAllPossiblePaths());
+					System.out.println("Node vectors before: \n" + storedBridge.getAllNodeVector());
+//					System.out.println("Possible paths: \n" + storedBridge.getAllPossiblePaths());
+					int prevLvl=storedBridge.getNumberOfAnchors();
+					storedBridge=storedBridge.merge(newBridge);
 					
-					if(storedBridge.merge(newBridge)!=null)
+//					System.out.println("Node vectors after: \n" + storedBridge.getAllNodeVector());
+//					System.out.println("Possible paths: \n" + storedBridge.getAllPossiblePaths());
+
+					if(storedBridge.getNumberOfAnchors()>prevLvl)
 						updateBridgesMap(storedBridge);
 				}			
 
@@ -640,7 +645,7 @@ public class BidirectedGraph extends MultiGraph{
 			}
 			
 			//TODO: control when to connect the bridge
-			//storedBridge.bridging()
+			storedBridge.bridging();
 			
 			if(storedBridge.getCompletionLevel()==4){
 				System.out.println(storedBridge.getAllNodeVector());

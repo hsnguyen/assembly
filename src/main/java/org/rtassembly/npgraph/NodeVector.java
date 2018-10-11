@@ -70,9 +70,9 @@ public class NodeVector implements Comparable<NodeVector>{
         if (this.getNode()!=other.getNode())   
         	return false;
         else{ 
-        	if(SimpleBinner.getUniqueBin(node)!=null)
-        		return true;
-        	else
+//        	if(SimpleBinner.getUniqueBin(node)!=null)
+//        		return true;
+//        	else
         		return this.getVector().consistentWith(other.getVector());
         }
     }

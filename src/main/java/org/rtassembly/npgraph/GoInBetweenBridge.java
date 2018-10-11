@@ -62,16 +62,20 @@ public class GoInBetweenBridge {
 	
 	public int getCompletionLevel() {
 		int retval=getNumberOfAnchors();
-		boolean isComplete=false;
-		if(retval==2 && segments!=null) {
-			retval++;
-			isComplete=true;
-			for(BridgeSegment seg:segments)
+		if(retval==2 && segments!=null && !segments.isEmpty()) {
+			boolean isComplete=true, isConnected=true;
+			for(BridgeSegment seg:segments) {
+				if(!seg.isConnected())
+					isConnected=false;;
 				if(seg.getNumberOfPaths()!=1)
 					isComplete=false;
+			}
+			if(isConnected)
+				retval=3;
+			if(isComplete)
+				retval=4;
 		}
-		if(isComplete)
-			retval++;
+
 		return retval;
 	}
 
@@ -94,6 +98,12 @@ public class GoInBetweenBridge {
 						sNode1=(BidirectedNode) subject.pBridge.getNode1(),
 						qNode0=(BidirectedNode) query.pBridge.getNode0(),
 						qNode1=(BidirectedNode) query.pBridge.getNode1();
+
+		System.out.printf("Merging %s lvl=%d \n%s\n\n with %s lvl=%d \n%s\n", subject.getEndingsID(), subject.getCompletionLevel(), subject.getAllNodeVector(), query.getEndingsID(), query.getCompletionLevel(), query.getAllNodeVector());
+		System.out.println("sNode0=" + (sNode0==null?"null":sNode0.getId()));
+		System.out.println("sNode1=" + (sNode1==null?"null":sNode1.getId()));
+		System.out.println("qNode0=" + (qNode0==null?"null":qNode0.getId()));
+		System.out.println("qNode1=" + (qNode1==null?"null":qNode1.getId()));
 
 		boolean found=true;
 		if(sNode0!=qNode0) {							//if the starting points don't agree
@@ -383,7 +393,7 @@ public class GoInBetweenBridge {
 						curAlg = null;				
 					
 			start=new NodeVector(firstAlg.node, new ScaffoldVector());
-			addNode(start);;
+			addNode(start);
 			
 			for(int i=1;i<read.getAlignmentRecords().size();i++) {
 				curAlg = read.getAlignmentRecords().get(i);
@@ -404,20 +414,25 @@ public class GoInBetweenBridge {
 					NodeVector tmp=ite.next();
 					if(tmp.equals(nv)){
 						tmp.score+=nv.score;
+						//assign end node
+						if(!tmp.getVector().isIdentity() && tmp.qc() && SimpleBinner.getUniqueBin(tmp.getNode())!=null) {
+							if(end==null)
+								end=tmp;
+							else
+								System.err.println("Conflict detected on end node: " + nv.toString() + " to " + end.toString());
+							
 						break;
+						}
+
 					}
 				}
 			}else {
-				//assign end nodes by checking its uniqueness 
-				if(SimpleBinner.getUniqueBin(nv.getNode())!=null && end==null){
-					if(nv.getVector().isIdentity())
-						start=nv;
-					else
-						end=nv;
-				}
+				//assign start node
+				if(SimpleBinner.getUniqueBin(nv.getNode())!=null && nv.getVector().isIdentity())
+					start=nv;
 				
-				if(!isComplete() || nv.compareTo(start)*nv.compareTo(end)<=0) //opt:loss information here
-					nodes.add(nv);
+				
+				nodes.add(nv);
 			}
 		}
 			
@@ -479,8 +494,11 @@ public class GoInBetweenBridge {
 						prev=current;
 						if(current.equals(end))
 							retval=true;						
-					}else
+					}else {
+						segments=null;
 						System.out.println(" :fail!");
+						break;
+					}
 
 				}
 					
@@ -499,6 +517,7 @@ public class GoInBetweenBridge {
 				return false;
 			
 			boolean retval=true;
+
 			//TODO: check NodeVector.qc() & density???
 			
 			return retval;
@@ -506,7 +525,7 @@ public class GoInBetweenBridge {
 		void reverse() {
 			//reverse the nodes list
 			SortedSet<NodeVector> reversedSet = new TreeSet<NodeVector>();
-			ScaffoldVector rev=ScaffoldVector.reverse(end.getVector());//anchors number = 2 so there exist last()
+			ScaffoldVector rev=ScaffoldVector.reverse(end.getVector());//anchors number = 2 so there exist end node
 			NodeVector tmp = null;
 			for(NodeVector nv:nodes) {
 				tmp=new NodeVector(nv.getNode(), ScaffoldVector.composition(nv.getVector(), rev), nv.score);
@@ -515,8 +534,9 @@ public class GoInBetweenBridge {
 			}
 			nodes=reversedSet;
 			//re-assign start and end
-			start=nodes.first();
-			end=nodes.last();
+			tmp=start;
+			start=end;
+			end=tmp;
 
 		}
 		
@@ -526,6 +546,11 @@ public class GoInBetweenBridge {
 				retval+=nv.toString() + "\n";
 			return retval;
 		}
+	}
+
+	public void bridging() {
+		// TODO Auto-generated method stub
+		steps.connectBridgeSteps();
 	}
 
 
