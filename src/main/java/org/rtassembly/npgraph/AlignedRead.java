@@ -79,7 +79,7 @@ public class AlignedRead{
 			return null;
 		return alignments.get(alignments.size()-1);
 	}
-	public AlignedRead reverse(){
+	public void reverse(){
 		//return an (conceptually the same) read filling with the a reverse read
 		Sequence revRead = Alphabet.DNA.complement(readSequence);
 		revRead.setName("REV"+readSequence.getName());
@@ -88,8 +88,9 @@ public class AlignedRead{
 		for (Alignment alignment:alignments)
 			revAlignments.add(0,alignment.reverseRead());
 		
-		AlignedRead revFilling = new AlignedRead(revRead, revAlignments);		
-		return revFilling;
+		readSequence=revRead;
+		alignments=revAlignments;
+
 	}
 	
 	public void sortAlignment(){

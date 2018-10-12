@@ -26,16 +26,25 @@ public class GoInBetweenBridge {
 //		steps=new BridgeSteps();
 		this.bin=bin;
 	}
-	//This is for SPAdes path reader only. The input path must be have at least one end unique.
+	//This is for SPAdes path reader only. The input path must have at least one end unique.
 	//This unique ending node will be use as the first anchor of the bridge
 	GoInBetweenBridge (BidirectedGraph graph, BidirectedPath path){
 		this(graph,path.getConsensusUniqueBinOfPath());
 		if(	path.size()>1) {
-			if(SimpleBinner.getUniqueBin(path.getRoot())!=null)
-				addSegment(new BridgeSegment(path),true);
-			else if(SimpleBinner.getUniqueBin(path.peekNode())!=null)
-				addSegment(new BridgeSegment(path.reverse()),true);
+			if(SimpleBinner.getUniqueBin(path.getRoot())!=null) {
+				addSegment(new BridgeSegment(path));
+			}
+			else if(SimpleBinner.getUniqueBin(path.peekNode())!=null) {
+				addSegment(new BridgeSegment(path.reverse()));
+			}
 			
+			try {
+				pBridge=new BidirectedEdgePrototype(path.getFirstNode(), path.getFirstNodeDirection());
+			} catch (Exception e) {
+				System.err.println("Illegal path to construct pBridge: " + path.getId());
+				e.printStackTrace();
+			}
+
 		}
 
 	}
@@ -81,25 +90,18 @@ public class GoInBetweenBridge {
 
 							
 	//Merge 2 bridge (must share at least one same unique end-point) together
-	GoInBetweenBridge merge(GoInBetweenBridge qBridge) {
-		if(qBridge==null)
-			return null;
+	//Return true if merging make the bridge reaching new anchor
+	boolean merge(GoInBetweenBridge qBridge) {
+	
+		if(qBridge==null || qBridge.getCompletionLevel()==0 || getCompletionLevel()==4)
+			return false;
 		
-		GoInBetweenBridge 	subject = this, 
-							query = qBridge;
-		if(subject.getCompletionLevel() < query.getCompletionLevel()) {
-			subject=qBridge;
-			query=this;
-		}
-		if(query.getCompletionLevel()==0 || subject.getCompletionLevel()==4)
-			return subject;
-		
-		BidirectedNode 	sNode0=(BidirectedNode) subject.pBridge.getNode0(),
-						sNode1=(BidirectedNode) subject.pBridge.getNode1(),
-						qNode0=(BidirectedNode) query.pBridge.getNode0(),
-						qNode1=(BidirectedNode) query.pBridge.getNode1();
+		BidirectedNode 	sNode0=(BidirectedNode) pBridge.getNode0(),
+						sNode1=(BidirectedNode) pBridge.getNode1(),
+						qNode0=(BidirectedNode) qBridge.pBridge.getNode0(),
+						qNode1=(BidirectedNode) qBridge.pBridge.getNode1();
 
-		System.out.printf("Merging %s lvl=%d \n%s\n\n with %s lvl=%d \n%s\n", subject.getEndingsID(), subject.getCompletionLevel(), subject.getAllNodeVector(), query.getEndingsID(), query.getCompletionLevel(), query.getAllNodeVector());
+		System.out.printf("Merging Bridge %s lvl=%d \n%s\nwith Bridge %s lvl=%d\n%s\n", getEndingsID(), getCompletionLevel(), getAllNodeVector(), qBridge.getEndingsID(), qBridge.getCompletionLevel(), qBridge.getAllNodeVector());
 		System.out.println("sNode0=" + (sNode0==null?"null":sNode0.getId()));
 		System.out.println("sNode1=" + (sNode1==null?"null":sNode1.getId()));
 		System.out.println("qNode0=" + (qNode0==null?"null":qNode0.getId()));
@@ -108,11 +110,11 @@ public class GoInBetweenBridge {
 		boolean found=true;
 		if(sNode0!=qNode0) {							//if the starting points don't agree
 			if(sNode0==qNode1) {						//the first unique contig actually located at the end of alignments list
-				query.reverse();
+				qBridge.reverse();
 			}else if(sNode1!=null){						//if not: this pBridge must have 2 anchors, the first anchor is not in the alignments list
-				subject.reverse();							//flip the first and second anchors: now the second anchor is used as shared maker between subject and query bridge
+				reverse();							//flip the first and second anchors: now the second anchor is used as shared maker between subject and query bridge
 				if(sNode1==qNode1)	
-					query.reverse();
+					qBridge.reverse();
 				else if(sNode1!=qNode0)
 					found=false;
 			}else { 
@@ -121,21 +123,21 @@ public class GoInBetweenBridge {
 		}
 		if(!found) {
 			System.err.println("Not found common end point between merging bridges");
-			return subject;
+			return false;
 		}
 		
-		SortedSet<NodeVector> sSteps=getStepsList(), qSteps=qBridge.getStepsList();
+		BridgeSteps sSteps=steps, qSteps=qBridge.steps;
 		
-		Iterator<NodeVector> iterator = qSteps.iterator();		
+		Iterator<NodeVector> iterator = qSteps.nodes.iterator();		
 		NodeVector 	current=null;
-		int lastIdx=0;
+		int lastIdx=0, numberOfAnchorsBefore=getNumberOfAnchors();
 		while(iterator.hasNext()){
 			current=iterator.next();
-			if(subject.getCompletionLevel()==3){
-				if(!sSteps.contains(current)){
+			if(getCompletionLevel()==3){
+				if(!sSteps.nodes.contains(current)){
 					int prev=-1, cur;
-					for(int i=lastIdx; i<subject.segments.size();i++) {
-						BridgeSegment curSeg=subject.segments.get(i);
+					for(int i=lastIdx; i<segments.size();i++) {
+						BridgeSegment curSeg=segments.get(i);
 						cur=curSeg.locateAndVote(current);
 						if(cur<prev)
 							break;
@@ -147,32 +149,97 @@ public class GoInBetweenBridge {
 				}
 			}else{
 				//just adding
-				sSteps.add(current);
+				steps.addNode(current);
 			}	
 			
 		}		
-			
-		return subject;
+		if(getCompletionLevel()<3)
+			steps.connectBridgeSteps();	
+		return getNumberOfAnchors()>numberOfAnchorsBefore;
 	}
 
-	SortedSet<NodeVector> getStepsList(){
-		return steps.nodes;
+	//return true if there is change in the number of anchor from the updated bridge
+	boolean merge(AlignedRead read) {
+		
+		if(read==null || read.getAlignmentRecords().size() < 2 || getCompletionLevel()==4)
+			return false;
+		
+		BidirectedNode 	sNode0=(BidirectedNode) pBridge.getNode0(),
+						sNode1=(BidirectedNode) pBridge.getNode1(),
+						qNode0=(BidirectedNode) read.getFirstAlignment().node,
+						qNode1=(BidirectedNode) read.getLastAlignment().node;
+
+		System.out.printf("Merging Bridge %s lvl=%d \n%s\nwith AlignedRead %s\n%s\n", getEndingsID(), getCompletionLevel(), getAllNodeVector(), read.getEndingsID(), read.getCompsString());
+		System.out.println("sNode0=" + (sNode0==null?"null":sNode0.getId()));
+		System.out.println("sNode1=" + (sNode1==null?"null":sNode1.getId()));
+		System.out.println("qNode0=" + (qNode0==null?"null":qNode0.getId()));
+		System.out.println("qNode1=" + (qNode1==null?"null":qNode1.getId()));
+
+		boolean found=true;
+		if(sNode0!=qNode0) {							//if the starting points don't agree
+			if(sNode0==qNode1) {						//the first unique contig actually located at the end of alignments list
+				read.reverse();
+			}else if(sNode1!=null){						//if not: this pBridge must have 2 anchors, the first anchor is not in the alignments list
+				reverse();							//flip the first and second anchors: now the second anchor is used as shared maker between subject and query bridge
+				if(sNode1==qNode1)	
+					read.reverse();
+				else if(sNode1!=qNode0)
+					found=false;
+			}else { 
+				found=false;
+			}
+		}
+		if(!found) {
+			System.err.println("Not found common end point to merge");
+			return false;
+		}
+		
+		Alignment start=read.getFirstAlignment();
+		NodeVector 	current=null;
+		int lastIdx=0, numOfAnchorsBefore=getNumberOfAnchors();
+		for(Alignment alg:read.getAlignmentRecords()) {
+			current=new NodeVector(alg.node, read.getVector(start,alg));
+			if(getCompletionLevel()==3){
+				if(!steps.nodes.contains(current)){
+					int prev=-1, cur;
+					for(int i=lastIdx; i<segments.size();i++) {
+						BridgeSegment curSeg=segments.get(i);
+						cur=curSeg.locateAndVote(current);
+						if(cur<prev)
+							break;
+						else {
+							prev=cur;
+							lastIdx=i;
+						}
+					}
+				}
+			}else{
+				//just adding
+				steps.addNode(current);
+			}
+		}
+		if(getCompletionLevel()<3)
+			steps.connectBridgeSteps();		
+		System.out.println("now="+getNumberOfAnchors() + " before=" +numOfAnchorsBefore);
+		return getNumberOfAnchors()>numOfAnchorsBefore;
+	
 	}
 	
 	//adding new segment with/without update pBridge
-	private void addSegment(BridgeSegment seg, boolean update) {
+	private void addSegment(BridgeSegment seg) {
 		if(segments==null)
 			segments=new ArrayList<>();
-		if(pBridge==null) {
-			segments.add(seg);
-			if(update)
-				pBridge=new BidirectedEdgePrototype(seg.pSegment.getNode0(), seg.pSegment.getNode1(), seg.pSegment.getDir0(), seg.pSegment.getDir1());
-		}
-		else if(pBridge.getNode1()==seg.pSegment.getNode0() && pBridge.getDir1()!=seg.pSegment.getDir0()){
-			segments.add(seg);
-			if(update)
-				pBridge.n1=seg.pSegment.n1;
-		}
+//		if(pBridge==null) {
+//			segments.add(seg);
+//			if(update)
+//				pBridge=new BidirectedEdgePrototype(seg.pSegment.getNode0(), seg.pSegment.getNode1(), seg.pSegment.getDir0(), seg.pSegment.getDir1());
+//		}
+//		else if(pBridge.getNode1()==seg.pSegment.getNode0() && pBridge.getDir1()!=seg.pSegment.getDir0()){
+//			segments.add(seg);
+//			if(update)
+//				pBridge.n1=seg.pSegment.n1;
+//		}
+		segments.add(seg);
 	}
 
 
@@ -190,7 +257,7 @@ public class GoInBetweenBridge {
 			if(!tmp.isEmpty()) {
 				ScaffoldVector brgVector=tmp.get(tmp.size()-1).endV;
 				for(int i=tmp.size()-1; i>=0 ;i--)
-					addSegment(tmp.get(i).reverse(brgVector),false);
+					addSegment(tmp.get(i).reverse(brgVector));
 			}
 		}
 		//reverse the nodes list
@@ -384,7 +451,7 @@ public class GoInBetweenBridge {
 				return;
 			if(SimpleBinner.getUniqueBin(read.getFirstAlignment().node)==null)
 				if(SimpleBinner.getUniqueBin(read.getLastAlignment().node)!=null)
-					read=read.reverse();
+					read.reverse();
 				else
 					return;
 					
@@ -418,7 +485,7 @@ public class GoInBetweenBridge {
 						if(!tmp.getVector().isIdentity() && tmp.qc() && SimpleBinner.getUniqueBin(tmp.getNode())!=null) {
 							if(end==null)
 								end=tmp;
-							else
+							else if(!end.equals(tmp))
 								System.err.println("Conflict detected on end node: " + nv.toString() + " to " + end.toString());
 							
 						break;
@@ -442,7 +509,8 @@ public class GoInBetweenBridge {
 			if(!connectable()){
 				System.err.println("Bridge is not qualified to connect yet!");
 				return false;
-			}
+			}else
+				pBridge.n1=new NodeDirection(end.node, end.getDirection(pBridge.getDir0()));
 			System.out.println("Trying to connect bridge " + pBridge.toString() + ":\n" + getAllNodeVector());
 			//First build shortest tree from the end
 			//TODO: optimize finding path by using this list
@@ -471,10 +539,9 @@ public class GoInBetweenBridge {
 				}
 				
 				current=iterator.next();
+				String key=current.getNode().getId() + (current.getDirection(pBridge.getDir0())?"o":"i");
 				//need a quality-checking here before including into a segment step
-				if((current!=end && !current.qc()) || shortestMap.containsKey(current.getNode().getId())){
-					continue;
-				}else{
+				if(current.qc() && shortestMap.containsKey(key)){
 					BridgeSegment seg = null;
 					if(prev.getVector().isIdentity())
 						seg=new BridgeSegment(	prev.getNode(), current.getNode(), 
@@ -490,13 +557,15 @@ public class GoInBetweenBridge {
 					System.out.print("...connecting " + seg.getId());
 					if(seg.isConnected()){
 						System.out.println(" :success!");
-						addSegment(seg,true);
+						addSegment(seg);
 						prev=current;
-						if(current.equals(end))
-							retval=true;						
+						if(current.equals(end)) {
+							retval=true;	
+							break;
+						}
 					}else {
 						segments=null;
-						System.out.println(" :fail!");
+						System.err.println(" :fail!");
 						break;
 					}
 
@@ -548,10 +617,10 @@ public class GoInBetweenBridge {
 		}
 	}
 
-	public void bridging() {
-		// TODO Auto-generated method stub
-		steps.connectBridgeSteps();
-	}
+//	public void bridging() {
+//		// TODO Auto-generated method stub
+//		steps.connectBridgeSteps();
+//	}
 
 
 

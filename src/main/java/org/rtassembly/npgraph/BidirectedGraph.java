@@ -191,13 +191,15 @@ public class BidirectedGraph extends MultiGraph{
 		if(bidirectedBridge.getNumberOfAnchors()==2){
 			GoInBetweenBridge 	brg0=getBridgeFromMap(bidirectedBridge.pBridge.n0),		
 								brg1=getBridgeFromMap(bidirectedBridge.pBridge.n1);
+			boolean flag=false;
 			if(brg0!=bidirectedBridge)
-				bidirectedBridge=bidirectedBridge.merge(brg0);
+				flag=bidirectedBridge.merge(brg0);
 			if(brg1!=bidirectedBridge)
-				bidirectedBridge=bidirectedBridge.merge(brg1);
-				
-    		bridgesMap.put(bidirectedBridge.pBridge.n0.toString(), bidirectedBridge);
-    		bridgesMap.put(bidirectedBridge.pBridge.n1.toString(), bidirectedBridge);
+				flag=bidirectedBridge.merge(brg1);
+			if(flag||bidirectedBridge.getCompletionLevel()==4) {	
+	    		bridgesMap.put(bidirectedBridge.pBridge.n0.toString(), bidirectedBridge);
+	    		bridgesMap.put(bidirectedBridge.pBridge.n1.toString(), bidirectedBridge);
+			}
 		}
 
     	
@@ -616,10 +618,10 @@ public class BidirectedGraph extends MultiGraph{
 		// Now we got all possible bridges from chopping the alignments at unique nodes
 		System.out.println("\n=> bridges list: ");
 		for(AlignedRead bb:allBuildingBlocks) {
-			GoInBetweenBridge 	storedBridge=getBridgeFromMap(bb),
-								newBridge=new GoInBetweenBridge(this,bb,tmpBin);;
+			GoInBetweenBridge 	storedBridge=getBridgeFromMap(bb);
 			System.out.printf("+++%s <=> %s\n", bb.getEndingsID(), storedBridge==null?"null":storedBridge.getEndingsID());
 			
+			boolean flag=false;
 			if(storedBridge!=null) {
 				if(storedBridge.getCompletionLevel()==4){
 					System.out.println(storedBridge.getEndingsID() + ": already solved: ignore!");
@@ -627,25 +629,20 @@ public class BidirectedGraph extends MultiGraph{
 				}else{
 					System.out.println(storedBridge.getEndingsID() + ": already built: fortify!");
 					System.out.println("Node vectors before: \n" + storedBridge.getAllNodeVector());
-//					System.out.println("Possible paths: \n" + storedBridge.getAllPossiblePaths());
-					int prevLvl=storedBridge.getNumberOfAnchors();
-					storedBridge=storedBridge.merge(newBridge);
-					
-//					System.out.println("Node vectors after: \n" + storedBridge.getAllNodeVector());
-//					System.out.println("Possible paths: \n" + storedBridge.getAllPossiblePaths());
-
-					if(storedBridge.getNumberOfAnchors()>prevLvl)
-						updateBridgesMap(storedBridge);
+					System.out.println("Possible paths: \n" + storedBridge.getAllPossiblePaths());
+					flag=storedBridge.merge(bb);
+					System.out.println("Node vectors after: \n" + storedBridge.getAllNodeVector());
+					System.out.println("Possible paths: \n" + storedBridge.getAllPossiblePaths());			
 				}			
+				
 
 			}else{
-				storedBridge=newBridge;
-				updateBridgesMap(storedBridge);
+				storedBridge=new GoInBetweenBridge(this,bb,tmpBin);
+				flag=true;
 				
 			}
-			
-			//TODO: control when to connect the bridge
-			storedBridge.bridging();
+			if(flag)
+				updateBridgesMap(storedBridge);
 			
 			if(storedBridge.getCompletionLevel()==4){
 				System.out.println(storedBridge.getAllNodeVector());
