@@ -385,16 +385,19 @@ public class GoInBetweenBridge {
 		
 		/*
 		 * Find a node vector if it appear in one of the paths
-		 * Return -1 if not located within the range of this segment
-		 * Return 1 if found in one of the paths
-		 * Return 0 otherwise
+		 * Return retval=-1 if not located within the range of this segment
+		 * Return retval>0 if found in x paths
+		 * Return retval=0 if located in the interval of this segment but not found in any path 
 		 */
 		int locateAndVote(NodeVector nv) {
 			int retval=-1;
+			if(!isConnected())
+				return retval;
+			
 			NodeVector 	start=new NodeVector((BidirectedNode) pSegment.getNode0(), startV),
 						end=new NodeVector((BidirectedNode) pSegment.getNode1(),endV);
 			if(nv.compareTo(start)*nv.compareTo(end)<=0) {
-				retval++;
+				retval=0;
 				ScaffoldVector start2nv=ScaffoldVector.composition(nv.getVector(), ScaffoldVector.reverse(startV));
 				int d=start2nv.distance((BidirectedNode) pSegment.getNode0(), nv.getNode());
 				for(BidirectedPath p:connectedPaths) {
@@ -406,7 +409,11 @@ public class GoInBetweenBridge {
 						p.downVote(1);
 				}
 			}
-			//TODO: filter out low score paths + check completeness here???
+			if(retval>0 && retval<connectedPaths.size()){
+				//TODO: filter out low score paths, need to keep an eye on current best score path???
+				
+
+			}
 			return retval;
 		}
 		int getNumberOfPaths(){
@@ -532,6 +539,7 @@ public class GoInBetweenBridge {
 			NodeVector 	prev=null, 
 						current=null;
 			boolean retval = false;
+			ArrayList<NodeVector> inbetween = new ArrayList<>();
 			while(iterator.hasNext()){
 				if(current==null){
 					prev=current=iterator.next();//first unique node, don't need to check quality
@@ -541,34 +549,43 @@ public class GoInBetweenBridge {
 				current=iterator.next();
 				String key=current.getNode().getId() + (current.getDirection(pBridge.getDir0())?"o":"i");
 				//need a quality-checking here before including into a segment step
-				if(current.qc() && shortestMap.containsKey(key)){
-					BridgeSegment seg = null;
-					if(prev.getVector().isIdentity())
-						seg=new BridgeSegment(	prev.getNode(), current.getNode(), 
-												pBridge.getDir0(), 
-												current.getDirection(pBridge.getDir0()), 
-												prev.getVector(), current.getVector());
-					else
-						seg=new BridgeSegment(	prev.getNode(), current.getNode(), 
-								!prev.getDirection(pBridge.getDir0()), 
-								current.getDirection(pBridge.getDir0()), 
-								prev.getVector(), current.getVector());
-					
-					System.out.print("...connecting " + seg.getId());
-					if(seg.isConnected()){
-						System.out.println(" :success!");
-						addSegment(seg);
-						prev=current;
-						if(current.equals(end)) {
-							retval=true;	
+				if(shortestMap.containsKey(key)){			 
+					if(!current.qc()){
+						inbetween.add(current);
+					}else{
+						BridgeSegment seg = null;
+						if(prev.getVector().isIdentity())
+							seg=new BridgeSegment(	prev.getNode(), current.getNode(), 
+													pBridge.getDir0(), 
+													current.getDirection(pBridge.getDir0()), 
+													prev.getVector(), current.getVector());
+						else
+							seg=new BridgeSegment(	prev.getNode(), current.getNode(), 
+									!prev.getDirection(pBridge.getDir0()), 
+									current.getDirection(pBridge.getDir0()), 
+									prev.getVector(), current.getVector());
+						
+						System.out.print("...connecting " + seg.getId());
+						if(seg.isConnected()){
+							System.out.println(" :success!");
+							addSegment(seg);
+							prev=current;
+							//use qc-failed nodes to vote
+							for(NodeVector nv:inbetween)
+								seg.locateAndVote(nv);
+							
+							if(current.equals(end)) {
+								retval=true;	
+								break;
+							}
+							inbetween=new ArrayList<>();
+							
+						}else {
+							segments=null;
+							System.err.println(" :fail!");
 							break;
 						}
-					}else {
-						segments=null;
-						System.err.println(" :fail!");
-						break;
 					}
-
 				}
 					
 				
@@ -617,10 +634,6 @@ public class GoInBetweenBridge {
 		}
 	}
 
-//	public void bridging() {
-//		// TODO Auto-generated method stub
-//		steps.connectBridgeSteps();
-//	}
 
 
 

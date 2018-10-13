@@ -385,15 +385,19 @@ public class BidirectedGraph extends MultiGraph{
 					delta=Math.abs(distance-curEdge.getLength());
 					//note that traversing direction (true: template, false: reverse complement) of destination node is opposite its defined direction (true: outward, false:inward) 
 					if(to==dstNode && dir==dstDir && delta < tolerance){ 
-				    	BidirectedPath 	curPath=possiblePaths.isEmpty()?new BidirectedPath():possiblePaths.get(0), //the best path saved among all possible paths from the list curResult
-				    					tmpPath=new BidirectedPath(path);
+				    	BidirectedPath 	tmpPath=new BidirectedPath(path);
 				    	tmpPath.setDeviation(delta);
-				    	if(	delta < curPath.getDeviation() )
-				    		possiblePaths.add(0, tmpPath);
-				    	else
+				    	
+				    	//insert to the list with sorting
+				    	if(possiblePaths.isEmpty())
 				    		possiblePaths.add(tmpPath);
+				    	else{
+				    		int idx=0;
+				    		while(idx<possiblePaths.size() && delta>possiblePaths.get(idx++).getDeviation());
+				    		possiblePaths.add(idx-1,tmpPath);
+				    	}
 						
-						System.out.println("Hit added: "+path.getId()+"(candidate deviation: "+delta + "; depth: " + path.size()+")");
+//						System.out.println("Hit added: "+path.getId()+"(candidate deviation: "+delta + "; depth: " + path.size()+")");
 						
 						if(possiblePaths.size() > S_LIMIT) //not go too far
 							break;
@@ -433,6 +437,7 @@ public class BidirectedGraph extends MultiGraph{
 			if(p.getDeviation()>bestScore+Math.abs(distance+getKmerSize())*R_TOL || i>=keepMax)
 				break;
 			retval.add(p);
+			System.out.println("Hit added: "+p.getId()+"(candidate deviation: "+p.getDeviation() + "; depth: " + p.size()+")");
 		}
 		
 		//FIXME: reduce the number of returned paths here (calculate edit distance with nanopore read: dynamic programming?)
