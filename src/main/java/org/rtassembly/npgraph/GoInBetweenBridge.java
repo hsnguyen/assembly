@@ -1,8 +1,10 @@
 package org.rtassembly.npgraph;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
@@ -13,7 +15,7 @@ import org.slf4j.LoggerFactory;
 //A bridge structure that the first node must be unique
 public class GoInBetweenBridge {
 	private static final Logger LOG = LoggerFactory.getLogger(GoInBetweenBridge.class);
-	public static volatile int MAX_DIFF=3;
+	public static volatile int MAX_DIFF=5;
 	BidirectedGraph graph; //partial order graph saving possible paths
 	PopBin bin;
 	BidirectedEdgePrototype pBridge; //note: the ending nodes must be unique, or else omitted
@@ -286,7 +288,7 @@ public class GoInBetweenBridge {
 				retval += "()";
 			else
 				for(BidirectedPath path:seg.connectedPaths)
-					retval+="( "+path.getId()+ " : " + path.getVote() + " )";
+					retval+="( "+path.getId()+ " : vote=" + path.getVote() + " deviation=" + path.getDeviation() + " )";
 			retval+="\n";
 		}
 		retval+="}";
@@ -300,13 +302,18 @@ public class GoInBetweenBridge {
 	}
 
 	public BidirectedPath getBestPath() {
-		BidirectedPath retval=null;
+		BidirectedPath best=null,retval=null;
 		for(BridgeSegment seg:segments) {
 			if(seg.getNumberOfPaths()>0){
+				if(seg.getNumberOfPaths()>1)
+					//FIXME: double-check this
+					seg.connectedPaths.sort(Comparator.comparing(BidirectedPath::getVote, Comparator.reverseOrder()).thenComparing(BidirectedPath::getDeviation));	
+				
+				best=seg.connectedPaths.get(0);
 				if(retval==null)
-					retval=seg.connectedPaths.get(0);
+					retval=best;
 				else
-					retval=retval.join(seg.connectedPaths.get(0));//assuming first path has highest score!!!
+					retval=retval.join(best);//assuming first path has highest score!!!
 			}else
 				return null;
 		}
@@ -324,9 +331,8 @@ public class GoInBetweenBridge {
 //		ArrayList<Sequence> nnpReads; // to store nanopore data if needed
 		ArrayList<BidirectedPath> connectedPaths;
 		BidirectedEdgePrototype pSegment;
-//		Range coverRange;
 		ScaffoldVector startV, endV; // from bridge anchor (always +) to this segment's end
-		
+		int bestElections=0;
 		BridgeSegment(){}
 
 		BridgeSegment(Alignment start, Alignment end, AlignedRead read){
@@ -396,6 +402,7 @@ public class GoInBetweenBridge {
 			
 			NodeVector 	start=new NodeVector((BidirectedNode) pSegment.getNode0(), startV),
 						end=new NodeVector((BidirectedNode) pSegment.getNode1(),endV);
+			List<BidirectedPath> tobeRemoved=new ArrayList<>();
 			if(nv.compareTo(start)*nv.compareTo(end)<=0) {
 				retval=0;
 				ScaffoldVector start2nv=ScaffoldVector.composition(nv.getVector(), ScaffoldVector.reverse(startV));
@@ -403,17 +410,21 @@ public class GoInBetweenBridge {
 				for(BidirectedPath p:connectedPaths) {
 					if(p.checkDistanceConsistency(pSegment.getNode0(), nv.getNode(), start2nv.direction>0, d) >= 0) {
 						p.upVote(1);
+						if(p.getVote() > bestElections)
+							bestElections=p.getVote();
 						retval++;
 					}
-					else
+					else{
 						p.downVote(1);
+						if(p.getVote() < bestElections-GoInBetweenBridge.MAX_DIFF)
+							tobeRemoved.add(p);
+					}
 				}
 			}
-			if(retval>0 && retval<connectedPaths.size()){
-				//TODO: filter out low score paths, need to keep an eye on current best score path???
-				
+			if(retval>0 && retval<connectedPaths.size())
+				connectedPaths.removeAll(tobeRemoved);
 
-			}
+			
 			return retval;
 		}
 		int getNumberOfPaths(){
@@ -504,7 +515,6 @@ public class GoInBetweenBridge {
 				//assign start node
 				if(SimpleBinner.getUniqueBin(nv.getNode())!=null && nv.getVector().isIdentity())
 					start=nv;
-				
 				
 				nodes.add(nv);
 			}

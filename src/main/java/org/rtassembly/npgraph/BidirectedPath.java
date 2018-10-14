@@ -235,6 +235,7 @@ public class BidirectedPath extends Path{
 	 * Check if a node (to) have a distance to an end (from) that similar to a
 	 * predefined value (distance) 
 	 */
+	//TODO: should we update path deviation here???
 	public int checkDistanceConsistency(Node from, Node to, boolean direction, int distance){
 		int retval=-1;
 		boolean dirOfFrom, dirOfTo;

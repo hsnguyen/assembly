@@ -58,7 +58,7 @@ public class GraphExploreDesktop {
     	
 //    	String sample="Acinetobacter_A1/";
 //    	String sample="Acinetobacter_AB30/";
-    	String sample="E_coli_K-12_MG1655/";
+//    	String sample="E_coli_K-12_MG1655/";
 //    	String sample="E_coli_O25b_H4-ST131/";
 //    	String sample="Klebsiella_30660_NJST258_1/";
 //    	String sample="Klebsiella_MGH_78578/";
@@ -69,7 +69,7 @@ public class GraphExploreDesktop {
 //    	String sample="random_sequences_some_repeats/";
 //    	String sample="Saccharomyces_cerevisiae_S288c/";
 //    	String sample="Shigella_dysenteriae_Sd197/";
-//    	String sample="Shigella_sonnei_53G/";
+    	String sample="Shigella_sonnei_53G/";
 //    	String sample="Streptococcus_suis_BM407/";
     	
     	
@@ -93,10 +93,10 @@ public class GraphExploreDesktop {
 		
     	BidirectedGraph graph= hbAss.simGraph;
     	
-//    	GraphUtil.redrawGraphComponents(graph);
-//    	graph.setAttribute("ui.style", GraphUtil.styleSheet);
-//
-//        Viewer viewer=graph.display();
+    	GraphUtil.redrawGraphComponents(graph);
+    	graph.setAttribute("ui.style", GraphUtil.styleSheet);
+
+        Viewer viewer=graph.display();
         
         System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
                 
@@ -119,8 +119,8 @@ public class GraphExploreDesktop {
         HybridAssembler.promptEnterKey();
         hbAss.postProcessGraph();
         
-//        HybridAssembler.promptEnterKey();
-//        viewer.disableAutoLayout();
+        HybridAssembler.promptEnterKey();
+        viewer.disableAutoLayout();
         
         
         /*

@@ -282,12 +282,14 @@ public class HybridAssembler {
 		//Take the current best path among the candidate of a bridge and connect the bridge(greedy)
 		for(GoInBetweenBridge brg:simGraph.getUnsolvedBridges()){
 			System.out.printf("Last attemp on incomplete bridge %s : anchors=%d \n %s \n", brg.getEndingsID(), brg.getNumberOfAnchors(), brg.getAllPossiblePaths());
-			if(brg.getNumberOfAnchors()==2) {
+			if(brg.getCompletionLevel()==3) {
 				simGraph.reduceUniquePath(brg.getBestPath());
 			}else {
+				//TODO: examine bridge with completion level = 2 that unable to connected
 				System.out.println("bridge contain no path! ignored");
 			}
 		}
+		
 		//TODO: traverse for the last time,remove redundant edges
 		//may want to run consensus to determine the final path
 		
