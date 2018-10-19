@@ -70,14 +70,16 @@ public class NodeVector implements Comparable<NodeVector>{
         if (this.getNode()!=other.getNode())   
         	return false;
         else{ 
-//        	if(SimpleBinner.getUniqueBin(node)!=null)
-//        		return true;
-//        	else
+        	if(SimpleBinner.getUniqueBin(node)!=null) {
+        		return ScaffoldVector.composition(ScaffoldVector.reverse(other.getVector()), this.getVector()).distance(node, node) < -BidirectedGraph.getKmerSize();
+        	}
+        	else {
         		return this.getVector().consistentWith(other.getVector());
+        	}
         }
     }
 	public boolean qc() {
-		return score >= 3;
+		return score >= 2;
 	}
 
 }

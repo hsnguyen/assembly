@@ -79,6 +79,16 @@ public class AlignedRead{
 			return null;
 		return alignments.get(alignments.size()-1);
 	}
+	//Return true if the read containing alignments of 2 unique contigs at the ends
+	public boolean isBridgePrototype() {
+		Alignment 	first=getFirstAlignment(),
+					last=getLastAlignment();
+		if(first==null||last==null)
+			return false;
+		else 
+			return SimpleBinner.getUniqueBin(first.node)!=null && SimpleBinner.getUniqueBin(last.node)!=null;
+	}
+	
 	public void reverse(){
 		//return an (conceptually the same) read filling with the a reverse read
 		Sequence revRead = Alphabet.DNA.complement(readSequence);

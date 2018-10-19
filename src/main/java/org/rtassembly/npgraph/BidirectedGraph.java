@@ -384,7 +384,9 @@ public class BidirectedGraph extends MultiGraph{
 
 					delta=Math.abs(distance-curEdge.getLength());
 					//note that traversing direction (true: template, false: reverse complement) of destination node is opposite its defined direction (true: outward, false:inward) 
-					if(to==dstNode && dir==dstDir && delta < tolerance){ 
+//					if(to==dstNode && dir==dstDir && delta < tolerance){ 
+					if(to==dstNode && dir==dstDir){ 
+
 				    	BidirectedPath 	tmpPath=new BidirectedPath(path);
 				    	tmpPath.setDeviation(delta);
 				    	
@@ -636,6 +638,17 @@ public class BidirectedGraph extends MultiGraph{
 					System.out.println("Node vectors before: \n" + storedBridge.getAllNodeVector());
 					System.out.println("Possible paths: \n" + storedBridge.getAllPossiblePaths());
 					flag=storedBridge.merge(bb);
+					//TODO: check if this alignment has 2 anchors+ shortestMap.contain() + getBridgeFromMap 2 ends !=null -> merge this alignments + 2 bridges 
+					if(bb.isBridgePrototype()) {
+						bb.reverse();
+						GoInBetweenBridge anotherBridge = getBridgeFromMap(bb);
+						if(anotherBridge!=storedBridge) {
+							if(anotherBridge.merge(bb))
+								updateBridgesMap(anotherBridge);;
+						}
+					}
+					
+					
 					System.out.println("Node vectors after: \n" + storedBridge.getAllNodeVector());
 					System.out.println("Possible paths: \n" + storedBridge.getAllPossiblePaths());			
 				}			

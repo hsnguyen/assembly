@@ -65,9 +65,9 @@ public class GraphExploreLaptop {
 		
     	BidirectedGraph graph= hbAss.simGraph;
     	
-//    	GraphUtil.redrawGraphComponents(graph);
-//    	graph.setAttribute("ui.style", GraphUtil.styleSheet);
-//        Viewer viewer=graph.display();
+    	GraphUtil.redrawGraphComponents(graph);
+    	graph.setAttribute("ui.style", GraphUtil.styleSheet);
+        Viewer viewer=graph.display();
         System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
                 
         /*
@@ -93,8 +93,8 @@ public class GraphExploreLaptop {
 //    	graph.setAttribute("ui.style", GraphUtil.styleSheet);
 //        Viewer viewer=graph.display();
         
-//        HybridAssembler.promptEnterKey();
-//        viewer.disableAutoLayout();
+        HybridAssembler.promptEnterKey();
+        viewer.disableAutoLayout();
     }
     
 

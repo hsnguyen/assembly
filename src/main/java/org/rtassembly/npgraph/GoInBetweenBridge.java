@@ -161,6 +161,8 @@ public class GoInBetweenBridge {
 	}
 
 	//return true if there is change in the number of anchor from the updated bridge
+	//TODO: calibrate, also implement merge for NodeVector (position calibration among population of same NodeVector)?
+
 	boolean merge(AlignedRead read) {
 		
 		if(read==null || read.getAlignmentRecords().size() < 2 || getCompletionLevel()==4)
@@ -515,7 +517,6 @@ public class GoInBetweenBridge {
 				//assign start node
 				if(SimpleBinner.getUniqueBin(nv.getNode())!=null && nv.getVector().isIdentity())
 					start=nv;
-				
 				nodes.add(nv);
 			}
 		}
@@ -534,7 +535,7 @@ public class GoInBetweenBridge {
 			HashMap<String,Integer> shortestMap = 
 					graph.getShortestTreeFromNode(	(BidirectedNode)pBridge.getNode1(), 
 													pBridge.getDir1(), 
-													nodes.last().getVector().distance((BidirectedNode)pBridge.getNode0(), (BidirectedNode)pBridge.getNode1()));
+													end.getVector().distance((BidirectedNode)pBridge.getNode0(), (BidirectedNode)pBridge.getNode1()));
 			if(!shortestMap.containsKey(pBridge.getNode0().getId()+(pBridge.getDir0()?"i":"o"))){ //note the trick: direction BEFORE the path started
 				System.err.println("Shortest tree couldn't reach to the other end!");
 				//remove the the end node since it's unreachable
@@ -591,16 +592,18 @@ public class GoInBetweenBridge {
 							inbetween=new ArrayList<>();
 							
 						}else {
-							segments=null;
-							System.err.println(" :fail!");
-							break;
+							System.out.println(" :skip!");
 						}
 					}
 				}
 					
 				
 			}
-			
+			if(!retval) {		
+				segments=null;
+				System.out.println("Failed to connect + " + pBridge.toString());
+				
+			}
 			return retval;
 		}
 		
