@@ -79,7 +79,7 @@ public class NodeVector implements Comparable<NodeVector>{
         }
     }
 	public boolean qc() {
-		return score >= 2;
+		return score >= 3;
 	}
 
 }

@@ -170,10 +170,7 @@ public class BidirectedGraph extends MultiGraph{
     /**************************************************************************************************
      ********************** utility functions to serve the assembly algo ****************************** 
      * ***********************************************************************************************/
-    
-    synchronized public GoInBetweenBridge getBridgeFromMap(NodeDirection nd){
-    	return bridgesMap.get(nd.toString());
-    }
+
     
     // when this unique node actually contained by a bridge
     synchronized public void updateBridgesMap(Node unqNode, GoInBetweenBridge bidirectedBridge){
@@ -189,17 +186,34 @@ public class BidirectedGraph extends MultiGraph{
     		bridgesMap.put(bidirectedBridge.pBridge.n0.toString(), bidirectedBridge);
     	
 		if(bidirectedBridge.getNumberOfAnchors()==2){
-			GoInBetweenBridge 	brg0=getBridgeFromMap(bidirectedBridge.pBridge.n0),		
-								brg1=getBridgeFromMap(bidirectedBridge.pBridge.n1);
-			boolean flag=false;
-			if(brg0!=bidirectedBridge)
-				flag=bidirectedBridge.merge(brg0);
-			if(brg1!=bidirectedBridge)
-				flag=bidirectedBridge.merge(brg1);
-			if(flag||bidirectedBridge.getCompletionLevel()==4) {	
-	    		bridgesMap.put(bidirectedBridge.pBridge.n0.toString(), bidirectedBridge);
-	    		bridgesMap.put(bidirectedBridge.pBridge.n1.toString(), bidirectedBridge);
+			String 	end0=bidirectedBridge.pBridge.n0.toString(),
+					end1=bidirectedBridge.pBridge.n1.toString();
+			GoInBetweenBridge 	brg0=bridgesMap.get(end0),		
+								brg1=bridgesMap.get(end1);
+			GoInBetweenBridge ultimateBridge=bidirectedBridge;
+			if(brg0!=null&&brg0!=bidirectedBridge) {
+				if(brg0.getCompletionLevel()>bidirectedBridge.getCompletionLevel()) {
+					brg0.merge(bidirectedBridge);
+					ultimateBridge=brg0;
+				}else {
+					bidirectedBridge.merge(brg0);
+					ultimateBridge=bidirectedBridge;
+				}
 			}
+			
+			if(brg1!=null&&brg1!=bidirectedBridge) {
+				if(brg1.getCompletionLevel()>bidirectedBridge.getCompletionLevel()) {
+					brg1.merge(bidirectedBridge);
+					ultimateBridge=brg1;
+				}else {
+					bidirectedBridge.merge(brg1);
+					ultimateBridge=bidirectedBridge;
+				}
+			}
+			
+			bridgesMap.put(end0, ultimateBridge);
+    		bridgesMap.put(end1, ultimateBridge);
+
 		}
 
     	
