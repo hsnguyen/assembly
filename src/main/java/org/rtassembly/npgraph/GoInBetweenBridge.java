@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory;
 //A bridge structure that the first node must be unique
 public class GoInBetweenBridge {
 	private static final Logger LOG = LoggerFactory.getLogger(GoInBetweenBridge.class);
-	public static volatile int MAX_DIFF=5;
+	
 	BidirectedGraph graph; //partial order graph saving possible paths
 	PopBin bin;
 	BidirectedEdgePrototype pBridge; //note: the ending nodes must be unique, or else omitted
@@ -156,7 +156,7 @@ public class GoInBetweenBridge {
 			
 		}		
 		if(getCompletionLevel()<3)
-			steps.connectBridgeSteps();	
+			steps.connectBridgeSteps(false);	
 		return getNumberOfAnchors()>numberOfAnchorsBefore;
 	}
 
@@ -223,8 +223,8 @@ public class GoInBetweenBridge {
 			}
 		}
 		if(getCompletionLevel()<3)
-			steps.connectBridgeSteps();		
-		System.out.println("now="+getNumberOfAnchors() + " before=" +numOfAnchorsBefore);
+			steps.connectBridgeSteps(false);		
+		System.out.println("now="+getCompletionLevel());
 		return getNumberOfAnchors()>numOfAnchorsBefore;
 	
 	}
@@ -418,7 +418,7 @@ public class GoInBetweenBridge {
 					}
 					else{
 						p.downVote(1);
-						if(p.getVote() < bestElections-GoInBetweenBridge.MAX_DIFF)
+						if(p.getVote() < bestElections-BidirectedGraph.MAX_DIFF)
 							tobeRemoved.add(p);
 					}
 				}
@@ -459,7 +459,8 @@ public class GoInBetweenBridge {
 	 */
 	class BridgeSteps{
 		SortedSet<NodeVector> nodes;
-		NodeVector start, end;
+		//save the two unique nodes at 2 endings of the bridge. When end is covered more than threshold, pBridge is set
+		NodeVector start, end; 
 		
 		BridgeSteps(){
 			nodes=new TreeSet<NodeVector>();
@@ -488,32 +489,44 @@ public class GoInBetweenBridge {
 				
 			}
 			//update the pBridge accordingly
-			if(end!=null) {
+			if(end!=null && end.qc()) {
 				pBridge=new BidirectedEdgePrototype(firstAlg.node, end.getNode(), firstAlg.strand, end.getDirection(firstAlg.strand));//getDirection doesn't work with self-vector
 			}else if(pBridge==null)
 				pBridge=new BidirectedEdgePrototype(firstAlg.node, firstAlg.strand);
 		}
-		//TODO: optimize it!
+		
+	
+		
 		void addNode(NodeVector nv) {
+			//TODO: optimize it! hashmap??? not linear searching like this!
+			//FIXME: acting weird, not call equals() properly for 141o,20o (not symmetric???)
+			System.out.println("Trying to add node vector " + nv);
 			if(nodes.contains(nv)){
+				System.out.println("Found " + nv);
 				Iterator<NodeVector> ite = nodes.iterator();
 				while(ite.hasNext()){
 					NodeVector tmp=ite.next();
 					if(tmp.equals(nv)){
 						tmp.score+=nv.score;
 						//assign end node
-						if(SimpleBinner.getUniqueBin(tmp.getNode())!=null && tmp.qc() && !tmp.getVector().isIdentity()) {
+						if(SimpleBinner.getUniqueBin(tmp.getNode())!=null && !tmp.getVector().isIdentity()) {
 							if(end==null)
 								end=tmp;
-							else if(!end.equals(tmp))
-								System.err.println("Conflict detected on end node: " + nv.toString() + " to " + end.toString());
+							else if(!end.equals(tmp)){
+								if(end.score < tmp.score)
+									end=tmp;
+								else
+									System.out.println("Conflict detected on end node: " + tmp.toString() + " to " + end.toString());
+							}
 							
-						break;
 						}
+						break;
 
 					}
 				}
+				
 			}else {
+				System.out.println("Not Found " + nv);
 				//assign start node
 				if(SimpleBinner.getUniqueBin(nv.getNode())!=null && nv.getVector().isIdentity())
 					start=nv;
@@ -523,12 +536,20 @@ public class GoInBetweenBridge {
 			
 		
 		//Try to make the continuous segments (those that have paths connected 2 ends). Return true if it possible
-		boolean connectBridgeSteps(){
-			if(!connectable()){
-				System.err.println("Bridge is not qualified to connect yet!");
+		boolean connectBridgeSteps(boolean force){
+			if(isComplete()){
+				if(connectable() || force){
+					pBridge.n1=new NodeDirection(end.node, end.getDirection(pBridge.getDir0()));
+				}else{
+					System.err.println("Bridge is not qualified to connect yet!");
+					return false;
+				}
+
+			}else{
+				System.err.println("Bridge is not complete to connect !");
 				return false;
-			}else
-				pBridge.n1=new NodeDirection(end.node, end.getDirection(pBridge.getDir0()));
+			}	
+			
 			System.out.println("Trying to connect bridge " + pBridge.toString() + ":\n" + getAllNodeVector());
 			//First build shortest tree from the end
 			//TODO: optimize finding path by using this list
@@ -536,15 +557,22 @@ public class GoInBetweenBridge {
 					graph.getShortestTreeFromNode(	(BidirectedNode)pBridge.getNode1(), 
 													pBridge.getDir1(), 
 													end.getVector().distance((BidirectedNode)pBridge.getNode0(), (BidirectedNode)pBridge.getNode1()));
-			if(!shortestMap.containsKey(pBridge.getNode0().getId()+(pBridge.getDir0()?"i":"o"))){ //note the trick: direction BEFORE the path started
-				System.err.println("Shortest tree couldn't reach to the other end!");
-				//remove the the end node since it's unreachable
-//				nodes.remove(end);
-				end=null;
-				pBridge=new BidirectedEdgePrototype(pBridge.getNode0(), pBridge.getDir0());
-				
-				return false;
+			String key=pBridge.getNode0().getId()+(pBridge.getDir0()?"i":"o");
+			if(!shortestMap.containsKey(key)){ //note the trick: direction BEFORE the path started
+				System.out.printf("Shortest tree couldn't reach to the other end: ");
+
+				if(!force){
+					pBridge=new BidirectedEdgePrototype(pBridge.getNode0(), pBridge.getDir0());	
+					System.out.println(" ignored!");
+					return false;
+				}else{
+					System.out.println(" proceed for the last attempt!");
+
+				}
+			}else{
+				System.out.printf("Shortest tree contain the other end: %s=%d\n", key, shortestMap.get(key));
 			}
+			
 			Iterator<NodeVector> iterator = nodes.iterator();
 			
 			NodeVector 	prev=null, 
@@ -558,12 +586,10 @@ public class GoInBetweenBridge {
 				}
 				
 				current=iterator.next();
-				String key=current.getNode().getId() + (current.getDirection(pBridge.getDir0())?"o":"i");
+				key=current.getNode().getId() + (current.getDirection(pBridge.getDir0())?"o":"i");
 				//need a quality-checking here before including into a segment step
 				if(shortestMap.containsKey(key)){			 
-					if(!current.qc()){
-						inbetween.add(current);
-					}else{
+					if(force || current.qc()){
 						BridgeSegment seg = null;
 						if(prev.getVector().isIdentity())
 							seg=new BridgeSegment(	prev.getNode(), current.getNode(), 
@@ -578,13 +604,13 @@ public class GoInBetweenBridge {
 						
 						System.out.print("...connecting " + seg.getId());
 						if(seg.isConnected()){
-							System.out.println(" :success!");
-							addSegment(seg);
+							System.out.println(" :success!");		
 							prev=current;
 							//use qc-failed nodes to vote
-							for(NodeVector nv:inbetween)
-								seg.locateAndVote(nv);
-							
+							if(seg.getNumberOfPaths()>1)
+								for(NodeVector nv:inbetween)
+									seg.locateAndVote(nv);
+							addSegment(seg);
 							if(current.equals(end)) {
 								retval=true;	
 								break;
@@ -594,10 +620,11 @@ public class GoInBetweenBridge {
 						}else {
 							System.out.println(" :skip!");
 						}
-					}
+					}else
+						inbetween.add(current);
 				}
 					
-				
+				//141+,148+,264-,77-,76+,7-,9+,167+,145-,146+,218-,216+,98-,100+,234+,181-,140-,20-
 			}
 			if(!retval) {		
 				segments=null;
@@ -615,11 +642,7 @@ public class GoInBetweenBridge {
 			if(!isComplete())
 				return false;
 			
-			boolean retval=true;
-
-			//TODO: check NodeVector.qc() & density???
-			
-			return retval;
+			return start.qc() && end.qc();
 		}
 		void reverse() {
 			//reverse the nodes list
@@ -633,11 +656,12 @@ public class GoInBetweenBridge {
 			}
 			nodes=reversedSet;
 			//re-assign start and end
-			//TODO: change the vector also
 			tmp=start;
 			start=end;
 			end=tmp;
-
+			//change the vector also
+			start.setVector(new ScaffoldVector());
+			end.setVector(rev);
 		}
 		
 		public String toString(){

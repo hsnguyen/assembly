@@ -61,25 +61,28 @@ public class NodeVector implements Comparable<NodeVector>{
     @Override
     public boolean equals(final Object obj) {
         if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        final NodeVector other = (NodeVector) obj;
-        if (this.getNode()!=other.getNode())   
+            return true; 
+
+        if (obj instanceof NodeVector){	        
+	        final NodeVector other = (NodeVector) obj;
+	        BidirectedNode n=other.getNode();
+	        if(this.getNode()!=n){
+	        	return false;
+	        }else{ 
+	        	if(SimpleBinner.getUniqueBin(n)!=null) {
+	        		int dist=ScaffoldVector.composition(ScaffoldVector.reverse(other.getVector()), this.getVector()).distance(n, n);
+	        		boolean retval=(dist < -BidirectedGraph.getKmerSize());
+	        		return retval;
+	        	}
+	        	else {
+	        		return this.getVector().consistentWith(other.getVector());
+	        	}
+	        }     
+        }else 
         	return false;
-        else{ 
-        	if(SimpleBinner.getUniqueBin(node)!=null) {
-        		return ScaffoldVector.composition(ScaffoldVector.reverse(other.getVector()), this.getVector()).distance(node, node) < -BidirectedGraph.getKmerSize();
-        	}
-        	else {
-        		return this.getVector().consistentWith(other.getVector());
-        	}
-        }
     }
 	public boolean qc() {
-		return score >= 3;
+		return score >= BidirectedGraph.MIN_COVER;
 	}
 
 }

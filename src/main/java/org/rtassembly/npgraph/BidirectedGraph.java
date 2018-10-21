@@ -27,14 +27,20 @@ public class BidirectedGraph extends MultiGraph{
     static double RCOV=0.0;
 	SimpleBinner binner;
 
-    volatile static double ILLUMINA_READ_LENGTH=300; //Illumina MiSeq
-    
-    static final double R_TOL=.3;// relative tolerate: can be interpreted as long read error rate (10-25%)
-    static final int A_TOL=200;// absolute tolerate: can be interpreted as long read absolute error bases (200bp)
+	//not gonna change these parameters in other thread
+    public static final double R_TOL=.3;// relative tolerate: can be interpreted as long read error rate (10-25%)
+    public static final int A_TOL=300;// absolute tolerate: can be interpreted as long read absolute error bases (200bp)
 
-    static final int D_LIMIT=2105; //distance bigger than this will be ignored
+    //these should be changed in another thread, e.g. settings from GUI
+	public static volatile double ILLUMINA_READ_LENGTH=300; //Illumina MiSeq
+    
+    public static final int D_LIMIT=2105; //distance bigger than this will be ignored
     public static int S_LIMIT=125;// maximum number of DFS steps
     
+	public static volatile int MAX_DIFF=5;//safe distance between good and bad possible paths so we can discard the bad ones
+	public static volatile int MIN_COVER=10;//number of reads spanning 2 ends of an bridge for it to be considered complete 
+
+	
     //provide mapping from unique directed node to its corresponding bridge
     //E.g: 103-: <103-82-> also 82+:<82+103+>
     private HashMap<String, GoInBetweenBridge> bridgesMap; 
@@ -489,7 +495,8 @@ public class BidirectedGraph extends MultiGraph{
 	    		BidirectedNode nextNode = (BidirectedNode) edge.getOpposite(curND.getNode());
 	    		boolean direction =  !edge.getDir(nextNode);
 	    		newDistance=curDistance+edge.getLength()+(int)curND.getNode().getNumber("len");
-	    		if(newDistance > distance+A_TOL)
+//	    		if(newDistance > distance+A_TOL)
+    			if(newDistance-distance > BidirectedGraph.A_TOL && GraphUtil.approxCompare(newDistance, distance)>0)
 	    			continue;
 	    		
 	    		NodeDirection nextND = new NodeDirection(nextNode, direction, newDistance);
@@ -642,45 +649,44 @@ public class BidirectedGraph extends MultiGraph{
 			GoInBetweenBridge 	storedBridge=getBridgeFromMap(bb);
 			System.out.printf("+++%s <=> %s\n", bb.getEndingsID(), storedBridge==null?"null":storedBridge.getEndingsID());
 			
-			boolean flag=false;
 			if(storedBridge!=null) {
 				if(storedBridge.getCompletionLevel()==4){
 					System.out.println(storedBridge.getEndingsID() + ": already solved: ignore!");
 					continue;
 				}else{
 					System.out.println(storedBridge.getEndingsID() + ": already built: fortify!");
-					System.out.println("Node vectors before: \n" + storedBridge.getAllNodeVector());
-					System.out.println("Possible paths: \n" + storedBridge.getAllPossiblePaths());
-					flag=storedBridge.merge(bb);
-					//TODO: check if this alignment has 2 anchors+ shortestMap.contain() + getBridgeFromMap 2 ends !=null -> merge this alignments + 2 bridges 
+					//update available bridge using alignments
+					if(storedBridge.merge(bb))
+						updateBridgesMap(storedBridge);
+					
+						
+					//also update the reversed bridge
 					if(bb.isBridgePrototype()) {
 						bb.reverse();
 						GoInBetweenBridge anotherBridge = getBridgeFromMap(bb);
 						if(anotherBridge!=storedBridge) {
 							if(anotherBridge.merge(bb))
-								updateBridgesMap(anotherBridge);;
+								updateBridgesMap(anotherBridge);											
+							
+							if(anotherBridge.getCompletionLevel()==4){
+								System.out.printf("=> final path: %s\n ", anotherBridge.getAllPossiblePaths());
+								retrievedPaths.add(anotherBridge.getBestPath());
+							}
 						}
 					}
-					
-					
-					System.out.println("Node vectors after: \n" + storedBridge.getAllNodeVector());
-					System.out.println("Possible paths: \n" + storedBridge.getAllPossiblePaths());			
 				}			
 				
 
 			}else{
 				storedBridge=new GoInBetweenBridge(this,bb,tmpBin);
-				flag=true;
-				
+				updateBridgesMap(storedBridge);		
 			}
-			if(flag)
-				updateBridgesMap(storedBridge);
+			
 			
 			if(storedBridge.getCompletionLevel()==4){
-				System.out.println(storedBridge.getAllNodeVector());
+				System.out.printf("=> final path: %s\n ", storedBridge.getAllPossiblePaths());
 				retrievedPaths.add(storedBridge.getBestPath());
 			}
-			
 			
 		
 		}

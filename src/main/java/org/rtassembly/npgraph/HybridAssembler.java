@@ -281,13 +281,17 @@ public class HybridAssembler {
 	public void postProcessGraph() throws IOException{
 		//Take the current best path among the candidate of a bridge and connect the bridge(greedy)
 		for(GoInBetweenBridge brg:simGraph.getUnsolvedBridges()){
-			System.out.printf("Last attemp on incomplete bridge %s : anchors=%d \n %s \n", brg.getEndingsID(), brg.getNumberOfAnchors(), brg.getAllPossiblePaths());
-			if(brg.getCompletionLevel()==3) {
-				simGraph.reduceUniquePath(brg.getBestPath());
-			}else {
-				//TODO: examine bridge with completion level = 2 that unable to connected
-				System.out.println("bridge contain no path! ignored");
+			System.out.printf("Last attempt on incomplete bridge %s : anchors=%d \n %s \n", brg.getEndingsID(), brg.getNumberOfAnchors(), brg.getAllPossiblePaths());
+			if(brg.getCompletionLevel()<=2) {//examine bridge with completion level = 2 that unable to connected
+				brg.steps.connectBridgeSteps(true);
 			}
+			
+			if(brg.getCompletionLevel()>=3)
+				simGraph.reduceUniquePath(brg.getBestPath());
+			else
+				System.out.printf("Last attempt failed \n");
+
+
 		}
 		
 		//TODO: traverse for the last time,remove redundant edges
