@@ -32,8 +32,8 @@ public class GraphExploreDesktop {
     	 */
     	String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/";
     	
-    	String sample="EcK12S-careful";
-//    	String sample="Kp2146-careful";
+//    	String sample="EcK12S-careful";
+    	String sample="Kp2146-careful";
 //    	String sample="Kp13883-careful";
  
 //    	String sample="W303-careful";
@@ -116,7 +116,7 @@ public class GraphExploreDesktop {
         
         System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
         
-        HybridAssembler.promptEnterKey();
+//        HybridAssembler.promptEnterKey();
         hbAss.postProcessGraph();
         
         HybridAssembler.promptEnterKey();

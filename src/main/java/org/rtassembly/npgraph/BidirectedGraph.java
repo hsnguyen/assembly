@@ -38,7 +38,7 @@ public class BidirectedGraph extends MultiGraph{
     public static int S_LIMIT=125;// maximum number of DFS steps
     
 	public static volatile int MAX_DIFF=5;//safe distance between good and bad possible paths so we can discard the bad ones
-	public static volatile int MIN_COVER=10;//number of reads spanning 2 ends of an bridge for it to be considered complete 
+	public static volatile int MIN_COVER=3;//number of reads spanning 2 ends of an bridge for it to be considered complete 
 
 	
     //provide mapping from unique directed node to its corresponding bridge
