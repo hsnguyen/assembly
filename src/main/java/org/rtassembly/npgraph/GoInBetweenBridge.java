@@ -493,7 +493,7 @@ public class GoInBetweenBridge {
 			}else if(pBridge==null)
 				pBridge=new BidirectedEdgePrototype(firstAlg.node, firstAlg.strand);
 		}
-		
+		//TODO: optimize it!
 		void addNode(NodeVector nv) {
 			if(nodes.contains(nv)){
 				Iterator<NodeVector> ite = nodes.iterator();
@@ -502,7 +502,7 @@ public class GoInBetweenBridge {
 					if(tmp.equals(nv)){
 						tmp.score+=nv.score;
 						//assign end node
-						if(!tmp.getVector().isIdentity() && tmp.qc() && SimpleBinner.getUniqueBin(tmp.getNode())!=null) {
+						if(SimpleBinner.getUniqueBin(tmp.getNode())!=null && tmp.qc() && !tmp.getVector().isIdentity()) {
 							if(end==null)
 								end=tmp;
 							else if(!end.equals(tmp))
@@ -539,7 +539,7 @@ public class GoInBetweenBridge {
 			if(!shortestMap.containsKey(pBridge.getNode0().getId()+(pBridge.getDir0()?"i":"o"))){ //note the trick: direction BEFORE the path started
 				System.err.println("Shortest tree couldn't reach to the other end!");
 				//remove the the end node since it's unreachable
-				nodes.remove(end);
+//				nodes.remove(end);
 				end=null;
 				pBridge=new BidirectedEdgePrototype(pBridge.getNode0(), pBridge.getDir0());
 				
@@ -633,6 +633,7 @@ public class GoInBetweenBridge {
 			}
 			nodes=reversedSet;
 			//re-assign start and end
+			//TODO: change the vector also
 			tmp=start;
 			start=end;
 			end=tmp;
