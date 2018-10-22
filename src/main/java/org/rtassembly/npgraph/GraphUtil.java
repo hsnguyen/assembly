@@ -115,7 +115,6 @@ public class GraphUtil {
 		//rough estimation of kmer used
 		if((shortestLen-1) != BidirectedGraph.getKmerSize()){
 			BidirectedGraph.setKmerSize(shortestLen-1);
-			graph.edges().forEach(e -> ((BidirectedEdge)e).changeKmerSize(BidirectedGraph.KMER));
 		}
 		
 		double totReadsLen=0, totContigsLen=0;
@@ -279,7 +278,6 @@ public class GraphUtil {
 		//rough estimation of kmer used
 		if((shortestLen-1) != BidirectedGraph.getKmerSize()){
 			BidirectedGraph.setKmerSize(shortestLen-1);
-			graph.edges().forEach(e -> ((BidirectedEdge)e).changeKmerSize(BidirectedGraph.KMER));
 
 		}
 		

@@ -286,8 +286,10 @@ public class HybridAssembler {
 				brg.steps.connectBridgeSteps(true);
 			}
 			
-			if(brg.getCompletionLevel()>=3)
-				simGraph.reduceUniquePath(brg.getBestPath());
+			if(brg.getCompletionLevel()>=3) {
+				for(BidirectedPath p:brg.getBestPath().chopPathAtAnchors())
+					simGraph.reduceUniquePath(p);
+			}
 			else
 				System.out.printf("Last attempt failed \n");
 

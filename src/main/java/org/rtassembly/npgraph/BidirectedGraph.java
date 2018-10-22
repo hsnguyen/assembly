@@ -128,7 +128,6 @@ public class BidirectedGraph extends MultiGraph{
 	
     public BidirectedGraph(){
     	this("Assembly graph",true,false, 1000, 10000);
-        setKmerSize(127);//default kmer size used by SPAdes to assembly MiSeq data
     }
 	
 	protected BidirectedEdge addEdge(AbstractNode src, AbstractNode dst, boolean dir0, boolean dir1){
@@ -154,7 +153,7 @@ public class BidirectedGraph extends MultiGraph{
 		
 		for(Node node:this) {
 			Sequence seq=(Sequence) node.getAttribute("seq");
-			if((node.getDegree()==0 && (seq.length() < SimpleBinner.SIG_CTG_LEN) || node.getNumber("cov") < RCOV*0.1))//noises
+			if((node.getDegree()==0 && (seq.length() < SimpleBinner.ANCHOR_CTG_LEN) || node.getNumber("cov") < RCOV*0.1))//noises
 				continue;
 			seq.writeFasta(out);
 		}
@@ -670,7 +669,7 @@ public class BidirectedGraph extends MultiGraph{
 							
 							if(anotherBridge.getCompletionLevel()==4){
 								System.out.printf("=> final path: %s\n ", anotherBridge.getAllPossiblePaths());
-								retrievedPaths.add(anotherBridge.getBestPath());
+								retrievedPaths.addAll(anotherBridge.getBestPath().chopPathAtAnchors());
 							}
 						}
 					}
@@ -685,7 +684,7 @@ public class BidirectedGraph extends MultiGraph{
 			
 			if(storedBridge.getCompletionLevel()==4){
 				System.out.printf("=> final path: %s\n ", storedBridge.getAllPossiblePaths());
-				retrievedPaths.add(storedBridge.getBestPath());
+				retrievedPaths.addAll(storedBridge.getBestPath().chopPathAtAnchors());
 			}
 			
 		
@@ -788,7 +787,14 @@ public class BidirectedGraph extends MultiGraph{
 					//create an edge connect markerNode to curNode with curPath
 					BidirectedEdge reducedEdge = new BidirectedEdge(markerNode, curNodeFromSimGraph, markerDir, curDir);
 					reducedEdge.setAttribute("path", curPath);
-
+				
+//					reducedEdge.setAttribute("ui.label", reducedEdge.getId());
+//					reducedEdge.setAttribute("ui.style", "text-offset: -10; text-alignment: along;"); 
+//					reducedEdge.setAttribute("isReducedEdge", true);
+//					reducedEdge.setAttribute("ui.class", "marked");
+//					reducedEdge.setAttribute("layout.weight", 10);
+					
+					
 					tobeAdded.add(reducedEdge);
 					updateBridgesMap(curPath);
 					
@@ -837,14 +843,6 @@ public class BidirectedGraph extends MultiGraph{
 	    		
 	    		BidirectedEdge reducedEdge = addEdge((BidirectedNode)e.getSourceNode(),(BidirectedNode)e.getTargetNode(),e.getDir0(),e.getDir1());
 	    		
-				if(reducedEdge!=null){
-	//				reducedEdge.addAttribute("ui.label", reducedEdge.getId());
-	//				reducedEdge.setAttribute("ui.style", "text-offset: -10; text-alignment: along;"); 
-//					reducedEdge.setAttribute("isReducedEdge", true);
-//					reducedEdge.setAttribute("ui.class", "marked");
-	//				reducedEdge.addAttribute("layout.weight", 10);
-//					reducedEdge.setAttribute("path", path);
-				}
 	    		LOG.info("after: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
 	
 	    	}

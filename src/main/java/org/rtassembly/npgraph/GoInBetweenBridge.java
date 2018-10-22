@@ -224,7 +224,6 @@ public class GoInBetweenBridge {
 		}
 		if(getCompletionLevel()<3)
 			steps.connectBridgeSteps(false);		
-		System.out.println("now="+getCompletionLevel());
 		return getNumberOfAnchors()>numOfAnchorsBefore;
 	
 	}
@@ -502,23 +501,26 @@ public class GoInBetweenBridge {
 			//FIXME: acting weird, not call equals() properly for 141o,20o: Because TreeSet used compareTo() instead of equals()!!! 
 			//(https://dzone.com/articles/the-hidden-contract-between-equals-and-comparable)
 		
-			if(SimpleBinner.getUniqueBin(nv.getNode())!=null && nv.getVector().isIdentity()) {
-				if(start==null)
-					start=nv;
+			if(SimpleBinner.getUniqueBin(nv.getNode())!=null) {
+				if(nv.getVector().isIdentity()) {
+					if(start==null)
+						start=nv;
+				}
+				else {
+					if(end==null)
+						end=nv;
+				}
 			}
 			
 			Iterator<NodeVector> ite = nodes.iterator();
 			boolean found=false;
 			while(ite.hasNext()){
 				NodeVector tmp=ite.next();
-				System.out.printf("...compare %s to %s \n ", tmp.toString(), nv.toString());
 				if(tmp.equals(nv)){
 					tmp.score+=nv.score;
-					//assign end node
+					//re-assign end node if there is another unique node with higher score
 					if(SimpleBinner.getUniqueBin(tmp.getNode())!=null && !tmp.getVector().isIdentity()) {
-						if(end==null)
-							end=tmp;
-						else if(!end.equals(tmp)){
+						if(!end.equals(tmp)){
 							if(end.score < tmp.score)
 								end=tmp;
 							else
@@ -526,6 +528,7 @@ public class GoInBetweenBridge {
 						}
 						
 					}
+					//nv is already in the set
 					found=true;
 					break;
 

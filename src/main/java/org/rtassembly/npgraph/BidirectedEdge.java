@@ -13,9 +13,6 @@ public class BidirectedEdge extends AbstractEdge{
 	protected boolean dir0, dir1;//true: outward, false: inward
 	//note that traversing direction (true: template, false: reverse complement) of destination node is opposite its defined direction (true: outward, false:inward) 
 	
-	private int length=-BidirectedGraph.getKmerSize();//length of the edge (distance between tips of seqs represented by 2 nodes)
-	
-	
     private static final Logger LOG = LoggerFactory.getLogger(BidirectedEdge.class);
 
 	protected BidirectedEdge(String id, AbstractNode src, AbstractNode dst, boolean dir0, boolean dir1) {
@@ -163,12 +160,13 @@ public class BidirectedEdge extends AbstractEdge{
 	public boolean getDir1(){
 		return dir1;
 	}
-	//if kmer!=127 we need to set initial lengths of edges again (easy+tedious way)
-	public void changeKmerSize(int kmer){
-		length=-kmer;
-	}
+
 	public int getLength(){
-		return length;
+		if(this.hasAttribute("path")) {
+			BidirectedPath tmp=(BidirectedPath) this.getAttribute("path");
+			return (int)(tmp.getLength()-tmp.getFirstNode().getNumber("len")-tmp.getLastNode().getNumber("len"));
+		}else
+			return -BidirectedGraph.getKmerSize();
 	}
 	
 	//TODO: include the case of tandem repeats

@@ -4,7 +4,7 @@ import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceBuilder;
 
-
+import java.util.ArrayList;
 import java.util.List;
 
 import org.graphstream.graph.Edge;
@@ -40,6 +40,11 @@ public class BidirectedPath extends Path{
 		super();
 		setRoot(e.getNode0());
 		add(e);
+	}
+	public BidirectedPath(Node root, PopBin bin) {
+		super();
+		setRoot(root);
+		uniqueBin=bin;
 	}
 	public BidirectedPath(BidirectedPath p){
 		super();
@@ -275,6 +280,26 @@ public class BidirectedPath extends Path{
 			curDistance+=curNode.getNumber("len");
 		}
 		
+		
+		return retval;
+	}
+	
+	//Only call for the final path with 2 unique ends: if path containing other unique nodes than 2 ends then we have list of paths to reduce
+	public ArrayList<BidirectedPath> chopPathAtAnchors(){
+		ArrayList<BidirectedPath> retval=new ArrayList<>();
+		
+		BidirectedPath curPath = new BidirectedPath(getRoot(), uniqueBin);
+		BidirectedNode curNode = (BidirectedNode) getRoot(), nextNode=null;
+		for(Edge e:getEdgePath()) {
+			nextNode=(BidirectedNode) e.getOpposite(curNode);
+			curPath.add(e);
+			if(SimpleBinner.getUniqueBin(nextNode)!=null) {
+				retval.add(curPath);
+				//or should be SimpleBinner.getUniqueBin(nextNode)?
+				curPath=new BidirectedPath(nextNode, uniqueBin);
+			}
+			curNode=nextNode;
+		}
 		
 		return retval;
 	}

@@ -21,8 +21,8 @@ import com.google.common.collect.Sets;
 
 public class SimpleBinner {
     private static final Logger LOG = LoggerFactory.getLogger(SimpleBinner.class);
-	public static volatile int 	UNQ_CTG_LEN=10000,
-								SIG_CTG_LEN=500;
+	public static volatile int 	UNIQUE_CTG_LEN=10000,
+								ANCHOR_CTG_LEN=500;
 	
 	BidirectedGraph graph;
 	ArrayList<PopBin> binList;
@@ -228,7 +228,7 @@ public class SimpleBinner {
 		List<DoublePoint> points = new ArrayList<DoublePoint>();
 		
 		for(Node n:graph) {
-			if(	n.getNumber("len") >= UNQ_CTG_LEN 
+			if(	n.getNumber("len") >= UNIQUE_CTG_LEN 
 				&& Math.max(n.getInDegree(), n.getOutDegree()) <= 1
 				){
 				points.add(new DoublePoint(new double[]{n.getNumber("cov"), new Double(n.getId())}));
@@ -329,7 +329,7 @@ public class SimpleBinner {
 		//3.3 Assign unique nodes here: need more tricks
 		for(Node node:graph) {
 			if(	node2BinMap.containsKey(node) 
-				&& node.getNumber("len") > SIG_CTG_LEN 
+				&& node.getNumber("len") > ANCHOR_CTG_LEN 
 				&& Math.max(node.getInDegree(), node.getOutDegree()) <= 1 //not true if e.g. sequencing errors inside unique contig
 			){
 				HashMap<PopBin, Integer> bc = node2BinMap.get(node);
