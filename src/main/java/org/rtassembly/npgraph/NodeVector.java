@@ -1,5 +1,7 @@
 package org.rtassembly.npgraph;
 
+import java.util.Objects;
+
 /*
  * Class represent a node together with its vector in relative to another root node.
  * Note: the direction here refers to the one of a ScaffoldVector, not bidirected-graph direction (in/out), neither sequence sense/antisense (+/-)
@@ -63,23 +65,31 @@ public class NodeVector implements Comparable<NodeVector>{
         if (this == obj)
             return true; 
 
-        if (obj instanceof NodeVector){	        
-	        final NodeVector other = (NodeVector) obj;
-	        BidirectedNode n=other.getNode();
-	        if(this.getNode()!=n){
-	        	return false;
-	        }else{ 
-	        	if(SimpleBinner.getUniqueBin(n)!=null) {
-	        		int dist=ScaffoldVector.composition(ScaffoldVector.reverse(other.getVector()), this.getVector()).distance(n, n);
-	        		boolean retval=(dist < -BidirectedGraph.getKmerSize());
-	        		return retval;
-	        	}
-	        	else {
-	        		return this.getVector().consistentWith(other.getVector());
-	        	}
-	        }     
-        }else 
+        if (obj == null || obj.getClass() != this.getClass()) { 
+        	return false; 
+    	}
+
+        final NodeVector other = (NodeVector) obj;
+        
+        BidirectedNode 	thisNode=this.getNode(),
+        				thatNode=other.getNode();
+        
+        if(!Objects.equals(thisNode, thatNode)){
         	return false;
+        }else{ 
+        	boolean retval;
+        	if(SimpleBinner.getUniqueBin(thatNode)!=null) {
+//        		int dist=ScaffoldVector.composition(ScaffoldVector.reverse(other.getVector()), this.getVector()).distance(thatNode, thisNode);
+//        		retval=(dist < -BidirectedGraph.getKmerSize());
+        		retval= (Math.abs(this.getVector().relDistance(thisNode) - other.getVector().relDistance(thatNode)) < thisNode.getNumber("len") - BidirectedGraph.getKmerSize());
+        	}
+        	else {
+        		retval=this.getVector().consistentWith(other.getVector());
+        	}
+    		return retval;
+
+        }     
+
     }
 	public boolean qc() {
 		return score >= BidirectedGraph.MIN_COVER;

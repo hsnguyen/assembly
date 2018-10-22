@@ -499,39 +499,75 @@ public class GoInBetweenBridge {
 		
 		void addNode(NodeVector nv) {
 			//TODO: optimize it! hashmap??? not linear searching like this!
-			//FIXME: acting weird, not call equals() properly for 141o,20o (not symmetric???)
-			System.out.println("Trying to add node vector " + nv);
-			if(nodes.contains(nv)){
-				System.out.println("Found " + nv);
-				Iterator<NodeVector> ite = nodes.iterator();
-				while(ite.hasNext()){
-					NodeVector tmp=ite.next();
-					if(tmp.equals(nv)){
-						tmp.score+=nv.score;
-						//assign end node
-						if(SimpleBinner.getUniqueBin(tmp.getNode())!=null && !tmp.getVector().isIdentity()) {
-							if(end==null)
-								end=tmp;
-							else if(!end.equals(tmp)){
-								if(end.score < tmp.score)
-									end=tmp;
-								else
-									System.out.println("Conflict detected on end node: " + tmp.toString() + " to " + end.toString());
-							}
-							
-						}
-						break;
-
-					}
-				}
-				
-			}else {
-				System.out.println("Not Found " + nv);
-				//assign start node
-				if(SimpleBinner.getUniqueBin(nv.getNode())!=null && nv.getVector().isIdentity())
+			//FIXME: acting weird, not call equals() properly for 141o,20o: Because TreeSet used compareTo() instead of equals()!!! 
+			//(https://dzone.com/articles/the-hidden-contract-between-equals-and-comparable)
+		
+			if(SimpleBinner.getUniqueBin(nv.getNode())!=null && nv.getVector().isIdentity()) {
+				if(start==null)
 					start=nv;
+			}
+			
+			Iterator<NodeVector> ite = nodes.iterator();
+			boolean found=false;
+			while(ite.hasNext()){
+				NodeVector tmp=ite.next();
+				System.out.printf("...compare %s to %s \n ", tmp.toString(), nv.toString());
+				if(tmp.equals(nv)){
+					tmp.score+=nv.score;
+					//assign end node
+					if(SimpleBinner.getUniqueBin(tmp.getNode())!=null && !tmp.getVector().isIdentity()) {
+						if(end==null)
+							end=tmp;
+						else if(!end.equals(tmp)){
+							if(end.score < tmp.score)
+								end=tmp;
+							else
+								System.out.println("Conflict detected on end node: " + tmp.toString() + " to " + end.toString());
+						}
+						
+					}
+					found=true;
+					break;
+
+				}
+			}
+			
+			if(!found) {
 				nodes.add(nv);
 			}
+
+			
+//			if(nodes.contains(nv)){
+//				System.out.println("Found " + nv);
+//				Iterator<NodeVector> ite = nodes.iterator();
+//				while(ite.hasNext()){
+//					NodeVector tmp=ite.next();
+//					if(tmp.equals(nv)){
+//						tmp.score+=nv.score;
+//						//assign end node
+//						if(SimpleBinner.getUniqueBin(tmp.getNode())!=null && !tmp.getVector().isIdentity()) {
+//							if(end==null)
+//								end=tmp;
+//							else if(!end.equals(tmp)){
+//								if(end.score < tmp.score)
+//									end=tmp;
+//								else
+//									System.out.println("Conflict detected on end node: " + tmp.toString() + " to " + end.toString());
+//							}
+//							
+//						}
+//						break;
+//
+//					}
+//				}
+//				
+//			}else {
+//				System.out.println("Not Found " + nv);
+//				//assign start node
+//				if(SimpleBinner.getUniqueBin(nv.getNode())!=null && nv.getVector().isIdentity())
+//					start=nv;
+//				nodes.add(nv);
+//			}
 		}
 			
 		
