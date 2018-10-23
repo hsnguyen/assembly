@@ -1,12 +1,7 @@
 package org.rtassembly.npgraph;
 
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
-
 import org.graphstream.graph.implementations.AbstractEdge;
 import org.graphstream.graph.implementations.AbstractGraph;
-import org.graphstream.graph.implementations.AbstractNode;
 import org.graphstream.graph.implementations.MultiNode;
 
 public class BidirectedNode extends MultiNode {

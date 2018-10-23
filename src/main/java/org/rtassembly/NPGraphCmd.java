@@ -88,7 +88,7 @@ public class NPGraphCmd extends CommandLine{
         }else {
 	        
 			try {
-				if(hbAss.prepareShortReadsProcess(true) &&	hbAss.prepareLongReadsProcess()) {
+				if(hbAss.prepareShortReadsProcess(false) &&	hbAss.prepareLongReadsProcess()) {
 					hbAss.assembly();
 					hbAss.postProcessGraph();
 				}

@@ -1,4 +1,4 @@
-package org.rtassembly.npgraph;
+package org.rtassembly.experiment;
 
 import java.io.File;
 import java.io.PrintWriter;
