@@ -11,7 +11,7 @@ public class NodeVector implements Comparable<NodeVector>{
 	
 	BidirectedNode node;
 	ScaffoldVector vector;
-	int score=1; //alignment score + number of occurences?
+	int nodeCover=1; //alignment score + number of occurences?
 	
 	NodeVector(){}
 	NodeVector(BidirectedNode node, ScaffoldVector vector){
@@ -19,9 +19,9 @@ public class NodeVector implements Comparable<NodeVector>{
 		this.vector=vector;
 	}
 	
-	public NodeVector(BidirectedNode node, ScaffoldVector vector, int score) {
+	public NodeVector(BidirectedNode node, ScaffoldVector vector, int cov) {
 		this(node, vector);
-		this.score=score;
+		this.nodeCover=cov;
 	}
 	public BidirectedNode getNode(){return node;}
 	public ScaffoldVector getVector(){return vector;}
@@ -39,7 +39,7 @@ public class NodeVector implements Comparable<NodeVector>{
 	}
 	@Override
 	public String toString(){
-		return node.getId() + ":" + vector.toString() + ":" + score;
+		return node.getId() + ":" + vector.toString() + ":" + nodeCover;
 	}
 	
 	//compare in term of distance to the root node: for sortedset
@@ -92,7 +92,23 @@ public class NodeVector implements Comparable<NodeVector>{
 
     }
 	public boolean qc() {
-		return score >= BidirectedGraph.MIN_COVER;
+		return nodeCover >= BidirectedGraph.MIN_COVER;
 	}
 
+	//Merging 2 equal NodeVectors
+	public boolean merge(NodeVector nv){
+		if(!this.equals(nv))
+			return false;
+
+		ScaffoldVector 	thisVector=this.getVector(),
+						thatVector=nv.getVector();
+		//update the vector
+		if(!thisVector.isIdentity()){
+			thisVector.setMagnitute( (thisVector.getMagnitute()*this.nodeCover+thatVector.getMagnitute()*nv.nodeCover)/(this.nodeCover+nv.nodeCover));
+		}
+		
+		//update coverage
+		this.nodeCover+=nv.nodeCover;
+		return true;
+	}
 }

@@ -114,7 +114,7 @@ public class HybridAssembler {
 	//Operational variables
 //	final BidirectedGraph origGraph;
 	public BidirectedGraph simGraph; //original and simplified graph should be separated, no???
-	public GraphStalker observer;
+	public GraphWatcher observer;
 	
 	public HybridAssembler(){
 //		origGraph=new BidirectedGraph("batch");
@@ -167,7 +167,7 @@ public class HybridAssembler {
 			return false;
 		}
 		
-		observer = new GraphStalker(simGraph);
+		observer = new GraphWatcher(simGraph);
 		return true;
 	}
 
@@ -246,9 +246,7 @@ public class HybridAssembler {
 			Alignment myRec = new Alignment(rec, (BidirectedNode) simGraph.getNode(refID)); 
 
 			//////////////////////////////////////////////////////////////////
-			//FIXME: optimize
-			// make list of alignments of the same (Nanopore) read. 
-			//not the first occurrance				
+			
 			if (!readID.equals("") && !readID.equals(myRec.readID)) {	
 				synchronized(simGraph) {
 					List<BidirectedPath> paths=simGraph.uniqueBridgesFinding(nnpRead, samList);

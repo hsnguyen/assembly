@@ -103,11 +103,11 @@ public class GoInBetweenBridge {
 						qNode0=(BidirectedNode) qBridge.pBridge.getNode0(),
 						qNode1=(BidirectedNode) qBridge.pBridge.getNode1();
 
-		System.out.printf("Merging Bridge %s lvl=%d \n%s\nwith Bridge %s lvl=%d\n%s\n", getEndingsID(), getCompletionLevel(), getAllNodeVector(), qBridge.getEndingsID(), qBridge.getCompletionLevel(), qBridge.getAllNodeVector());
-		System.out.println("sNode0=" + (sNode0==null?"null":sNode0.getId()));
-		System.out.println("sNode1=" + (sNode1==null?"null":sNode1.getId()));
-		System.out.println("qNode0=" + (qNode0==null?"null":qNode0.getId()));
-		System.out.println("qNode1=" + (qNode1==null?"null":qNode1.getId()));
+//		System.out.printf("Merging Bridge %s lvl=%d \n%s\nwith Bridge %s lvl=%d\n%s\n", getEndingsID(), getCompletionLevel(), getAllNodeVector(), qBridge.getEndingsID(), qBridge.getCompletionLevel(), qBridge.getAllNodeVector());
+//		System.out.println("sNode0=" + (sNode0==null?"null":sNode0.getId()));
+//		System.out.println("sNode1=" + (sNode1==null?"null":sNode1.getId()));
+//		System.out.println("qNode0=" + (qNode0==null?"null":qNode0.getId()));
+//		System.out.println("qNode1=" + (qNode1==null?"null":qNode1.getId()));
 
 		boolean found=true;
 		if(sNode0!=qNode0) {							//if the starting points don't agree
@@ -124,7 +124,7 @@ public class GoInBetweenBridge {
 			}
 		}
 		if(!found) {
-			System.err.println("Not found common end point between merging bridges");
+//			System.err.println("Not found common end point between merging bridges");
 			return false;
 		}
 		
@@ -173,11 +173,11 @@ public class GoInBetweenBridge {
 						qNode0=(BidirectedNode) read.getFirstAlignment().node,
 						qNode1=(BidirectedNode) read.getLastAlignment().node;
 
-		System.out.printf("Merging Bridge %s lvl=%d \n%s\nwith AlignedRead %s\n%s\n", getEndingsID(), getCompletionLevel(), getAllNodeVector(), read.getEndingsID(), read.getCompsString());
-		System.out.println("sNode0=" + (sNode0==null?"null":sNode0.getId()));
-		System.out.println("sNode1=" + (sNode1==null?"null":sNode1.getId()));
-		System.out.println("qNode0=" + (qNode0==null?"null":qNode0.getId()));
-		System.out.println("qNode1=" + (qNode1==null?"null":qNode1.getId()));
+//		System.out.printf("Merging Bridge %s lvl=%d \n%s\nwith AlignedRead %s\n%s\n", getEndingsID(), getCompletionLevel(), getAllNodeVector(), read.getEndingsID(), read.getCompsString());
+//		System.out.println("sNode0=" + (sNode0==null?"null":sNode0.getId()));
+//		System.out.println("sNode1=" + (sNode1==null?"null":sNode1.getId()));
+//		System.out.println("qNode0=" + (qNode0==null?"null":qNode0.getId()));
+//		System.out.println("qNode1=" + (qNode1==null?"null":qNode1.getId()));
 
 		boolean found=true;
 		if(sNode0!=qNode0) {							//if the starting points don't agree
@@ -194,7 +194,7 @@ public class GoInBetweenBridge {
 			}
 		}
 		if(!found) {
-			System.err.println("Not found common end point to merge");
+//			System.err.println("Not found common end point to merge");
 			return false;
 		}
 		
@@ -516,12 +516,11 @@ public class GoInBetweenBridge {
 			boolean found=false;
 			while(ite.hasNext()){
 				NodeVector tmp=ite.next();
-				if(tmp.equals(nv)){
-					tmp.score+=nv.score;
+				if(tmp.merge(nv)){
 					//re-assign end node if there is another unique node with higher score
 					if(SimpleBinner.getUniqueBin(tmp.getNode())!=null && !tmp.getVector().isIdentity()) {
 						if(!end.equals(tmp)){
-							if(end.score < tmp.score)
+							if(end.nodeCover < tmp.nodeCover)
 								end=tmp;
 							else
 								System.out.println("Conflict detected on end node: " + tmp.toString() + " to " + end.toString());
@@ -580,12 +579,12 @@ public class GoInBetweenBridge {
 				if(connectable() || force){
 					pBridge.n1=new NodeDirection(end.node, end.getDirection(pBridge.getDir0()));
 				}else{
-					System.err.println("Bridge is not qualified to connect yet!");
+//					System.err.println("Bridge is not qualified to connect yet!");
 					return false;
 				}
 
 			}else{
-				System.err.println("Bridge is not complete to connect !");
+//				System.err.println("Bridge is not complete to connect !");
 				return false;
 			}	
 			
@@ -689,7 +688,7 @@ public class GoInBetweenBridge {
 			ScaffoldVector rev=ScaffoldVector.reverse(end.getVector());//anchors number = 2 so there exist end node
 			NodeVector tmp = null;
 			for(NodeVector nv:nodes) {
-				tmp=new NodeVector(nv.getNode(), ScaffoldVector.composition(nv.getVector(), rev), nv.score);
+				tmp=new NodeVector(nv.getNode(), ScaffoldVector.composition(nv.getVector(), rev), nv.nodeCover);
 				reversedSet.add(tmp);
 
 			}

@@ -22,7 +22,7 @@ import com.google.common.collect.Sets;
 public class SimpleBinner {
     private static final Logger LOG = LoggerFactory.getLogger(SimpleBinner.class);
 	public static volatile int 	UNIQUE_CTG_LEN=10000,
-								ANCHOR_CTG_LEN=500;
+								ANCHOR_CTG_LEN=500; //should study graph structure to determined? (1000 is better?)
 	
 	BidirectedGraph graph;
 	ArrayList<PopBin> binList;
@@ -426,12 +426,12 @@ public class SimpleBinner {
 //			LOG.info("--edge {} coverage:{} to {}",ep.getId(),ep.getNumber("cov"),ep.getNumber("cov") - aveCov);
 			ep.setAttribute("cov", ep.getNumber("cov")>aveCov?ep.getNumber("cov")-aveCov:0);	
 
-			//Heuristic attempts:
+//			//Heuristic attempts:
 //			if(bcMinusOne!=null && bcMinusOne.values().stream().mapToInt(Integer::intValue).sum() == 0) {
 //				retval.add((BidirectedEdge) ep);
 //			}
-			
-//			if(ep.getNumber("cov") < 0  && !unresolvedEdges.contains(ep)) //plasmid coverage is different!!!
+//			
+////			if(ep.getNumber("cov") < 0  && !unresolvedEdges.contains(ep)) //plasmid coverage is different!!!
 //			if(ep.getNumber("cov") <= BPOP*0.5  && !edge2BinMap.containsKey(ep)) //plasmid coverage is different!!!
 //				retval.add((BidirectedEdge) ep);
 			
