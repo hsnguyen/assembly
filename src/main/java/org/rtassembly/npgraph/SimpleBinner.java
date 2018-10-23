@@ -21,11 +21,12 @@ import com.google.common.collect.Sets;
 
 public class SimpleBinner {
     private static final Logger LOG = LoggerFactory.getLogger(SimpleBinner.class);
-	public static volatile int 	UNQ_CTG_LEN=10000,
-								SIG_CTG_LEN=500;
+	public static volatile int 	UNIQUE_CTG_LEN=10000,
+								ANCHOR_CTG_LEN=500; //should study graph structure to determined? (1000 is better?)
 	
 	BidirectedGraph graph;
 	ArrayList<PopBin> binList;
+	double BPOP=Double.MAX_VALUE;
 	HashMap<Edge, HashMap<PopBin,Integer>> edge2BinMap;
 	HashMap<Node, HashMap<PopBin, Integer>> node2BinMap;
 	ArrayList<Edge> unresolvedEdges;
@@ -104,7 +105,7 @@ public class SimpleBinner {
 		unresolvedEdges.remove(edge);
 		Node 	n0 = edge.getNode0(),
 				n1 = edge.getNode1();
-		
+		System.out.printf("From edge %s%s: ", edge.getId(), getBinsOfEdge(edge));
 		if(!node2BinMap.containsKey(n0)){
 			boolean dir0 = ((BidirectedEdge)edge).getDir0();
 			Stream<Edge> edgeSet0 = dir0?n0.leavingEdges():n0.enteringEdges();		
@@ -125,17 +126,16 @@ public class SimpleBinner {
 			for(PopBin b:binCounts0.keySet()){
 				covSum+=binCounts0.get(b)*b.estCov;
 			}
-			
-			if(fully && Math.abs(covSum-n0.getNumber("cov"))/n0.getNumber("cov") < .2){
+			if(fully && GraphUtil.approxCompare(covSum, n0.getNumber("cov"))==0){
 				node2BinMap.put(n0, binCounts0);
 //				System.out.println("From edge " + edge.getId() + " updating node " + n0.getId());
-				System.out.printf("From edge %s%s completing node %s%s\n", edge.getId(), getBinsOfEdge(edge), n0.getId(),getBinsOfNode(n0));
-
+				System.out.printf("completing node %s%s\n", n0.getId(),getBinsOfNode(n0));
 				exploringFromNode(n0);
-			}
+			}else
+				System.out.printf("skip node %s%s\n", n0.getId(),getBinsOfNode(n0));
 		}else{
 			//TODO: check consistent here			
-			System.out.printf("From edge %s%s firing node %s%s\n",edge.getId(), getBinsOfEdge(edge), n0.getId(),getBinsOfNode(n0));
+			System.out.printf("firing node %s%s\n", n0.getId(),getBinsOfNode(n0));
 			exploringFromNode(n0);
 		}
 		
@@ -161,15 +161,16 @@ public class SimpleBinner {
 				covSum+=binCounts1.get(b)*b.estCov;
 			}
 			
-			if(fully && Math.abs(covSum-n1.getNumber("cov"))/n1.getNumber("cov") < .2){				
+			if(fully && GraphUtil.approxCompare(covSum, n1.getNumber("cov"))==0){				
 				node2BinMap.put(n1, binCounts1);
-				System.out.printf("From edge %s%s completing node %s%s\n", edge.getId(), getBinsOfEdge(edge), n1.getId(),getBinsOfNode(n1));
+				System.out.printf("completing node %s%s\n", n1.getId(),getBinsOfNode(n1));
 				exploringFromNode(n1);
-			}
+			}else
+				System.out.printf("skip node %s%s\n", n1.getId(),getBinsOfNode(n1));
 			
 		}else{ 
 			//TODO: check consistent here also
-			System.out.printf("From edge %s%s firing node %s%s\n",edge.getId(), getBinsOfEdge(edge), n1.getId(),getBinsOfNode(n1));
+			System.out.printf("firing node %s%s\n", n1.getId(),getBinsOfNode(n1));
 			exploringFromNode(n1);
 		}
 	}
@@ -203,19 +204,17 @@ public class SimpleBinner {
 	
 	private PopBin scanAndGuess(double cov) {
 		PopBin target=null;
-		double 	tmp=Double.MAX_VALUE,
-				lowestPopAbundance=Double.MAX_VALUE;
+		double 	tmp=Double.MAX_VALUE;
 		for(PopBin b:binList) {
 			double distance=GraphUtil.metric(cov, b.estCov);
 			if(distance<tmp) {
 				tmp=distance;
 				target=b;
 			}
-			if(lowestPopAbundance > b.estCov)
-				lowestPopAbundance=b.estCov;
+			
 		}
 		//TODO: 1.5 is important! need to find a way for more robust guess (+self-correct)!!!	
-		if(cov > 1.5*lowestPopAbundance && tmp>GraphUtil.DISTANCE_THRES) {
+		if(cov > 1.5*BPOP && tmp>GraphUtil.DISTANCE_THRES) {
 			target = null;
 		}
 		
@@ -229,7 +228,9 @@ public class SimpleBinner {
 		List<DoublePoint> points = new ArrayList<DoublePoint>();
 		
 		for(Node n:graph) {
-			if(n.getNumber("len") >= UNQ_CTG_LEN && Math.max(n.getInDegree(), n.getOutDegree()) <= 1) {
+			if(	n.getNumber("len") >= UNIQUE_CTG_LEN 
+				&& Math.max(n.getInDegree(), n.getOutDegree()) <= 1
+				){
 				points.add(new DoublePoint(new double[]{n.getNumber("cov"), new Double(n.getId())}));
 			}
 		}
@@ -253,6 +254,8 @@ public class SimpleBinner {
 					System.out.println("...core node " + n.getAttribute("name"));
 			}
 			
+			if(bin.estCov<BPOP)
+				BPOP=bin.estCov;
 		}
 
 	}
@@ -291,20 +294,23 @@ public class SimpleBinner {
 		}
 
 		while(!unresolvedEdges.isEmpty()) {
-			LOG.info("Starting assigning " + unresolvedEdges.size() + " unresolved edges");
+			System.out.println("Starting assigning " + unresolvedEdges.size() + " unresolved edges");
 			//sort the unresolved edges based on abundance and guess until all gone...
 			if(!highlyPossibleEdges.keySet().isEmpty()){
 				for(PopBin b:binList){
 					if(highlyPossibleEdges.containsKey(b)){
 						while(!highlyPossibleEdges.get(b).isEmpty()) {
 							Edge guess = highlyPossibleEdges.get(b).remove(0);
+							System.out.print("...assigning " + guess.getId());
 							if(unresolvedEdges.contains(guess)){
 								HashMap<PopBin, Integer> bc = new HashMap<>();
 								bc.put(b, 1);
 								edge2BinMap.put(guess, bc);
+								System.out.println(": start explore");
 								exploringFromEdge(guess);
 							}else{
 								//TODO: check consistent here or just take it?
+								System.out.println(": already in bin " + getBinsOfEdge(guess));
 							}
 						
 						}
@@ -321,23 +327,39 @@ public class SimpleBinner {
 		}
 		
 		//3.3 Assign unique nodes here: need more tricks
-		for(Node node:graph)
-			if(	node2BinMap.containsKey(node) && node.getNumber("len") > SIG_CTG_LEN 
-				&& Math.max(node.getInDegree(), node.getOutDegree()) <= 1){
+		for(Node node:graph) {
+			if(	node2BinMap.containsKey(node) 
+				&& node.getNumber("len") > ANCHOR_CTG_LEN 
+				&& Math.max(node.getInDegree(), node.getOutDegree()) <= 1 //not true if e.g. sequencing errors inside unique contig
+			){
 				HashMap<PopBin, Integer> bc = node2BinMap.get(node);
 				ArrayList<PopBin> counts = new ArrayList<PopBin>(bc.keySet());
 //				if(counts.size()==1 && bc.get(counts.get(0))==1){ //and should check for any conflict???
-				if(bc.values().stream().mapToInt(Integer::intValue).sum()==1){ //and should check for any conflict???
+				int totOcc = bc.values().stream().mapToInt(Integer::intValue).sum();
+				if(totOcc==1){ //and should check for any conflict???
 					node.setAttribute("unique", counts.get(0));
 				}
 			}
-		
+		}
 	}
 	static public PopBin getUniqueBin(Node node){
 		return (PopBin)node.getAttribute("unique");
 	}
 	
-	
+	public boolean checkRemovableNode(Node node) {
+		if(node.getInDegree()*node.getOutDegree()!=0 || SimpleBinner.getUniqueBin(node)!=null) {
+			return false;
+		}
+		else if(node2BinMap.containsKey(node)) {
+			if(node2BinMap.get(node).values().stream().mapToInt(Integer::intValue).sum() != 0)
+				return false;
+		}
+		else if(GraphUtil.approxCompare(node.getNumber("cov"),BPOP)<0) {
+			return false;
+		}
+			
+		return true;
+	}
 	//Traversal along a unique path (unique ends) and return list of unique edges
 	//Must only be called from BidirectedGraph.reduce()
 	synchronized public ArrayList<BidirectedEdge> walkAlongUniquePath(BidirectedPath path) {
@@ -404,15 +426,15 @@ public class SimpleBinner {
 //			LOG.info("--edge {} coverage:{} to {}",ep.getId(),ep.getNumber("cov"),ep.getNumber("cov") - aveCov);
 			ep.setAttribute("cov", ep.getNumber("cov")>aveCov?ep.getNumber("cov")-aveCov:0);	
 
-			if(bcMinusOne!=null && bcMinusOne.values().stream().mapToInt(Integer::intValue).sum() == 0) {
-//				edge2BinMap.remove(ep);
-				//delete here???
-				retval.add((BidirectedEdge) ep);
-			}
-			
-//			if(ep.getNumber("cov") < 0  && !unresolvedEdges.contains(ep)) //plasmid coverage is different!!!
-//			if(ep.getNumber("cov") <= aveCov*0.5  && !edge2BinMap.containsKey(ep)) //plasmid coverage is different!!!
+//			//Heuristic attempts:
+//			if(bcMinusOne!=null && bcMinusOne.values().stream().mapToInt(Integer::intValue).sum() == 0) {
 //				retval.add((BidirectedEdge) ep);
+//			}
+//			
+////			if(ep.getNumber("cov") < 0  && !unresolvedEdges.contains(ep)) //plasmid coverage is different!!!
+//			if(ep.getNumber("cov") <= BPOP*0.5  && !edge2BinMap.containsKey(ep)) //plasmid coverage is different!!!
+//				retval.add((BidirectedEdge) ep);
+			
 			bcMinusOne=null;
 			if(curNode!=path.getRoot() && curNode!=path.peekNode()) {
 				if(node2BinMap.containsKey(curNode)) {
