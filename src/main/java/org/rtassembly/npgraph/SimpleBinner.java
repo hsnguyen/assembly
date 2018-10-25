@@ -22,17 +22,18 @@ import com.google.common.collect.Sets;
 public class SimpleBinner {
     private static final Logger LOG = LoggerFactory.getLogger(SimpleBinner.class);
 	public static volatile int 	UNIQUE_CTG_LEN=10000,
-								ANCHOR_CTG_LEN=500; //should study graph structure to determined? (1000 is better?)
+								ANCHOR_CTG_LEN=500; //should study graph structure to determined? (for E_coli_O25b_H4-ST131, it's 5000)
 	
 	BidirectedGraph graph;
 	ArrayList<PopBin> binList;
-	double BPOP=Double.MAX_VALUE;
+	PopBin leastBin;
 	HashMap<Edge, HashMap<PopBin,Integer>> edge2BinMap;
 	HashMap<Node, HashMap<PopBin, Integer>> node2BinMap;
 	ArrayList<Edge> unresolvedEdges;
 	SimpleBinner(BidirectedGraph graph){
 		this.graph = graph;
 		binList = new ArrayList<PopBin>();
+		leastBin = null;
 		edge2BinMap = new HashMap<Edge, HashMap<PopBin,Integer>>();
 		node2BinMap = new HashMap<Node, HashMap<PopBin, Integer>>();
 		unresolvedEdges = new ArrayList<Edge>(graph.edges().collect(Collectors.toList()));
@@ -203,6 +204,7 @@ public class SimpleBinner {
 	}
 	
 	private PopBin scanAndGuess(double cov) {
+		assert leastBin!=null:"Populations not decided yet!";
 		PopBin target=null;
 		double 	tmp=Double.MAX_VALUE;
 		for(PopBin b:binList) {
@@ -214,7 +216,7 @@ public class SimpleBinner {
 			
 		}
 		//TODO: 1.5 is important! need to find a way for more robust guess (+self-correct)!!!	
-		if(cov > 1.5*BPOP && tmp>GraphUtil.DISTANCE_THRES) {
+		if(cov > 1.5*leastBin.estCov && tmp>GraphUtil.DISTANCE_THRES) {
 			target = null;
 		}
 		
@@ -254,8 +256,9 @@ public class SimpleBinner {
 					System.out.println("...core node " + n.getAttribute("name"));
 			}
 			
-			if(bin.estCov<BPOP)
-				BPOP=bin.estCov;
+			if(leastBin==null || bin.estCov<leastBin.estCov)
+				leastBin=bin;
+
 		}
 
 	}
@@ -285,6 +288,32 @@ public class SimpleBinner {
 				System.out.print("...scanning edge " + e.getId() + "cov=" + e.getNumber("cov"));
 				PopBin tmp = scanAndGuess(e.getNumber("cov"));
 				if(tmp!=null){
+					
+					//FIXME: need more robust binning (E_coli_O25b_H4-ST131 failed for ANCHOR_LENGTH=500, due to too many repeats that have similar coverage)
+					//should build bridge as stronger end contains weaker end!
+					
+					//FIXME: get more unique node (sequencing error make unique node has >2 degree). Below doesn't complete 2 Shigella genomes		
+					
+					if(tmp==leastBin && GraphUtil.approxCompare(e.getNumber("cov"), leastBin.estCov) < 0){
+						Node n0=e.getNode0(), n1=e.getNode1();
+						HashMap<PopBin, Integer> unitBinMap = new HashMap<>();
+						unitBinMap.put(leastBin, 1);
+						if(n0.getNumber("len") > UNIQUE_CTG_LEN && getUniqueBin(n0)==null){
+							n0.setAttribute("unique", leastBin);
+							node2BinMap.put(n0, unitBinMap);
+							System.out.printf(" :node %s is unique but have degree=%d, length=%d\n", n0.getId(), n0.getDegree(), (int)n0.getNumber("len"));
+							continue;
+						}
+						
+						if(n1.getNumber("len") > UNIQUE_CTG_LEN && getUniqueBin(n1)==null){
+							n1.setAttribute("unique", leastBin);
+							node2BinMap.put(n1, unitBinMap);
+							System.out.printf(" :node %s is unique but have degree=%d, length=%d\n", n1.getId(), n1.getDegree(), (int)n1.getNumber("len"));
+							continue;
+						}
+						
+					}
+					
 					if(!highlyPossibleEdges.containsKey(tmp))
 						highlyPossibleEdges.put(tmp, new ArrayList<Edge>());
 					
@@ -356,7 +385,7 @@ public class SimpleBinner {
 			if(node2BinMap.get(node).values().stream().mapToInt(Integer::intValue).sum() != 0)
 				return false;
 		}
-		else if(GraphUtil.approxCompare(node.getNumber("cov"),BPOP)<0) {
+		else if(GraphUtil.approxCompare(node.getNumber("cov"),leastBin.estCov)<0) {
 			return false;
 		}
 			

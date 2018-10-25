@@ -32,8 +32,8 @@ public class GraphExploreDesktop {
     	 */
 //    	String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/";
 //    	
-//    	String sample="EcK12S-careful";
-////    	String sample="Kp2146-careful";
+////    	String sample="EcK12S-careful";
+//    	String sample="Kp2146-careful";
 ////    	String sample="Kp13883-careful";
 // 
 ////    	String sample="W303-careful";
@@ -42,10 +42,6 @@ public class GraphExploreDesktop {
 //    	String sInput=dataFolder+sample+"/assembly_graph.fastg",
 //    			output=dataFolder+sample+"/",
 //    			lInput=dataFolder+sample+"/assembly_graph.sam";
-    	
-    	
-    	
-    	
     	
     	
     	
