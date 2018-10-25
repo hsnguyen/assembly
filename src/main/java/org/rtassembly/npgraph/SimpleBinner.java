@@ -276,6 +276,8 @@ public class SimpleBinner {
 		}
 
 		//3.2. Second round of thorough assignment: suck it deep!
+		//if big node have more than 1 edge going in/out and the edges have significant less coverage (.5+.5)
+		//then it is due to sequencing error and this node should be unique!!!
 		HashMap<PopBin, ArrayList<Edge>> highlyPossibleEdges = new HashMap<PopBin, ArrayList<Edge>>();
 		unresolvedEdges.sort((a,b)->Double.compare(a.getNumber("cov"),b.getNumber("cov")));
 

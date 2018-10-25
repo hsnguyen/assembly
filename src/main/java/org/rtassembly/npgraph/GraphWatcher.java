@@ -187,10 +187,13 @@ public class GraphWatcher {
 	
 	/*
 	 * Update the outputGraph to show statistics and current output
+	 * Should merge with updating the GUI (colore, labels...)???
 	 */
 	synchronized void update() {
 		//1. clean it first
 		cleanInsignificantNodes();
+		
+		//computing the connected components
 		rtComponents.compute();
 
 		//2. then decompose it (using cut attribute instead of removing edges)
