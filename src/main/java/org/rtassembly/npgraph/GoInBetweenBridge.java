@@ -103,7 +103,7 @@ public class GoInBetweenBridge {
 						qNode0=(BidirectedNode) qBridge.pBridge.getNode0(),
 						qNode1=(BidirectedNode) qBridge.pBridge.getNode1();
 
-//		System.out.printf("Merging Bridge %s lvl=%d \n%s\nwith Bridge %s lvl=%d\n%s\n", getEndingsID(), getCompletionLevel(), getAllNodeVector(), qBridge.getEndingsID(), qBridge.getCompletionLevel(), qBridge.getAllNodeVector());
+		System.out.printf("Merging Bridge %s lvl=%d \n%s\nwith Bridge %s lvl=%d\n%s\n", getEndingsID(), getCompletionLevel(), getAllNodeVector(), qBridge.getEndingsID(), qBridge.getCompletionLevel(), qBridge.getAllNodeVector());
 //		System.out.println("sNode0=" + (sNode0==null?"null":sNode0.getId()));
 //		System.out.println("sNode1=" + (sNode1==null?"null":sNode1.getId()));
 //		System.out.println("qNode0=" + (qNode0==null?"null":qNode0.getId()));
@@ -161,7 +161,6 @@ public class GoInBetweenBridge {
 	}
 
 	//return true if there is change in the number of anchor from the updated bridge
-	//TODO: calibrate, also implement merge for NodeVector (position calibration among population of same NodeVector)?
 
 	boolean merge(AlignedRead read) {
 		
@@ -173,7 +172,7 @@ public class GoInBetweenBridge {
 						qNode0=(BidirectedNode) read.getFirstAlignment().node,
 						qNode1=(BidirectedNode) read.getLastAlignment().node;
 
-//		System.out.printf("Merging Bridge %s lvl=%d \n%s\nwith AlignedRead %s\n%s\n", getEndingsID(), getCompletionLevel(), getAllNodeVector(), read.getEndingsID(), read.getCompsString());
+		System.out.printf("Merging Bridge %s lvl=%d \n%s\nwith AlignedRead %s\n%s\n", getEndingsID(), getCompletionLevel(), getAllNodeVector(), read.getEndingsID(), read.getCompsString());
 //		System.out.println("sNode0=" + (sNode0==null?"null":sNode0.getId()));
 //		System.out.println("sNode1=" + (sNode1==null?"null":sNode1.getId()));
 //		System.out.println("qNode0=" + (qNode0==null?"null":qNode0.getId()));
@@ -224,6 +223,9 @@ public class GoInBetweenBridge {
 		}
 		if(getCompletionLevel()<3)
 			steps.connectBridgeSteps(false);		
+				
+		
+		System.out.printf("After merging: %s\nstart=%s\nend=%s\n", pBridge.toString(), (steps.start==null?"null":steps.start.toString()), (steps.end==null?"null":steps.end.toString()));
 		return getNumberOfAnchors()>numOfAnchorsBefore;
 	
 	}
@@ -480,12 +482,16 @@ public class GoInBetweenBridge {
 						curAlg = null;				
 					
 			start=new NodeVector(firstAlg.node, new ScaffoldVector());
-			addNode(start);
-			
+			nodes.add(start);
+				
 			for(int i=1;i<read.getAlignmentRecords().size();i++) {
 				curAlg = read.getAlignmentRecords().get(i);
-				addNode(new NodeVector(curAlg.node, read.getVector(firstAlg, curAlg)));
+				NodeVector tmp=new NodeVector(curAlg.node, read.getVector(firstAlg, curAlg));
+				nodes.add(tmp);
 				
+				if(SimpleBinner.getUniqueBin(curAlg.node)!=null)
+					end=tmp;
+
 			}
 			//update the pBridge accordingly
 			if(end!=null && end.qc()) {
@@ -500,17 +506,6 @@ public class GoInBetweenBridge {
 			//TODO: optimize it! hashmap??? not linear searching like this!
 			//FIXME: acting weird, not call equals() properly for 141o,20o: Because TreeSet used compareTo() instead of equals()!!! 
 			//(https://dzone.com/articles/the-hidden-contract-between-equals-and-comparable)
-		
-			if(SimpleBinner.getUniqueBin(nv.getNode())!=null) {
-				if(nv.getVector().isIdentity()) {
-					if(start==null)
-						start=nv;
-				}
-				else {
-					if(end==null)
-						end=nv;
-				}
-			}
 			
 			Iterator<NodeVector> ite = nodes.iterator();
 			boolean found=false;
@@ -536,6 +531,13 @@ public class GoInBetweenBridge {
 			
 			if(!found) {
 				nodes.add(nv);
+				if(SimpleBinner.getUniqueBin(nv.getNode())!=null) {
+					if(nv.getVector().isIdentity()){
+						start=nv;	
+					}else if(end==null){
+						end=nv;
+					}
+				}
 			}
 
 			
@@ -575,16 +577,16 @@ public class GoInBetweenBridge {
 		
 		//Try to make the continuous segments (those that have paths connected 2 ends). Return true if it possible
 		boolean connectBridgeSteps(boolean force){
-			if(isComplete()){
+			if(isIdentifiable()){
 				if(connectable() || force){
 					pBridge.n1=new NodeDirection(end.node, end.getDirection(pBridge.getDir0()));
 				}else{
-//					System.err.println("Bridge is not qualified to connect yet!");
+					System.err.printf("Bridge %s is not qualified to connect yet: start=%s end=%s\n", pBridge.toString(), (start==null?"null":start.toString()), start.toString(), (end==null?"null":end.toString()));
 					return false;
 				}
 
 			}else{
-//				System.err.println("Bridge is not complete to connect !");
+				System.err.printf("Bridge %s is not complete to connect!\n", pBridge.toString());
 				return false;
 			}	
 			
@@ -627,7 +629,7 @@ public class GoInBetweenBridge {
 				key=current.getNode().getId() + (current.getDirection(pBridge.getDir0())?"o":"i");
 				//need a quality-checking here before including into a segment step
 				if(shortestMap.containsKey(key)){			 
-					if(force || current.qc()){
+					if((force&&current==end) || current.qc()){
 						BridgeSegment seg = null;
 						if(prev.getVector().isIdentity())
 							seg=new BridgeSegment(	prev.getNode(), current.getNode(), 
@@ -662,22 +664,23 @@ public class GoInBetweenBridge {
 						inbetween.add(current);
 				}
 					
-				//141+,148+,264-,77-,76+,7-,9+,167+,145-,146+,218-,216+,98-,100+,234+,181-,140-,20-
 			}
+			
 			if(!retval) {		
 				segments=null;
 				System.out.println("Failed to connect + " + pBridge.toString());
 				
 			}
+			
 			return retval;
 		}
 		
-		boolean isComplete(){
+		boolean isIdentifiable(){
 			return start!=null && end!=null;
 		}
 		
 		boolean connectable(){
-			if(!isComplete())
+			if(!isIdentifiable())
 				return false;
 			
 			return start.qc() && end.qc();
