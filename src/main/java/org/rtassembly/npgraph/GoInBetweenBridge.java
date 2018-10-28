@@ -534,7 +534,7 @@ public class GoInBetweenBridge {
 				if(SimpleBinner.getUniqueBin(nv.getNode())!=null) {
 					if(nv.getVector().isIdentity()){
 						start=nv;	
-					}else{
+					}else if(end==null){
 						end=nv;
 					}
 				}
@@ -629,7 +629,7 @@ public class GoInBetweenBridge {
 				key=current.getNode().getId() + (current.getDirection(pBridge.getDir0())?"o":"i");
 				//need a quality-checking here before including into a segment step
 				if(shortestMap.containsKey(key)){			 
-					if(force || current.qc()){
+					if((force&&current==end) || current.qc()){
 						BridgeSegment seg = null;
 						if(prev.getVector().isIdentity())
 							seg=new BridgeSegment(	prev.getNode(), current.getNode(), 
@@ -664,13 +664,14 @@ public class GoInBetweenBridge {
 						inbetween.add(current);
 				}
 					
-				//141+,148+,264-,77-,76+,7-,9+,167+,145-,146+,218-,216+,98-,100+,234+,181-,140-,20-
 			}
+			
 			if(!retval) {		
 				segments=null;
 				System.out.println("Failed to connect + " + pBridge.toString());
 				
 			}
+			
 			return retval;
 		}
 		

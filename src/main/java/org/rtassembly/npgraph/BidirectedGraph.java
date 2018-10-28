@@ -8,6 +8,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.PriorityQueue;
+import java.util.Set;
 import java.util.Stack;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -34,7 +35,7 @@ public class BidirectedGraph extends MultiGraph{
     //these should be changed in another thread, e.g. settings from GUI
 	public static volatile double ILLUMINA_READ_LENGTH=300; //Illumina MiSeq
     
-    public static final int D_LIMIT=2105; //distance bigger than this will be ignored
+    public static final int D_LIMIT=10000; //distance bigger than this will be ignored
     public static int S_LIMIT=125;// maximum number of DFS steps
     
 	public static volatile int MAX_DIFF=5;//safe distance between good and bad possible paths so we can discard the bad ones
@@ -403,8 +404,8 @@ public class BidirectedGraph extends MultiGraph{
 
 					delta=Math.abs(distance-curEdge.getLength());
 					//note that traversing direction (true: template, false: reverse complement) of destination node is opposite its defined direction (true: outward, false:inward) 
-//					if(to==dstNode && dir==dstDir && delta < tolerance){ 
-					if(to==dstNode && dir==dstDir){ 
+					if(to==dstNode && dir==dstDir && delta < tolerance){ 
+//					if(to==dstNode && dir==dstDir){ 
 
 				    	BidirectedPath 	tmpPath=new BidirectedPath(path);
 				    	tmpPath.setDeviation(delta);
@@ -529,169 +530,138 @@ public class BidirectedGraph extends MultiGraph{
     /*
      * Find bridges based on list of Alignments.
      * Return list of bridges with endings as markers and alignments of non-markers in-between.
-     */
+     */ 
     synchronized protected List<BidirectedPath> uniqueBridgesFinding(Sequence nnpRead, ArrayList<Alignment> alignments) {
-		if(nnpRead==null || alignments.size()<=1)
-			return null;
-		
-		System.out.println("=================================================");
-		for(Alignment alg:alignments)
-			System.out.println("\t"+alg.toString());
-		System.out.println("=================================================");
-		//First bin the alignments into different overlap regions			
-		//only considering useful alignments
-		HashMap<Range,Alignment> allAlignments = new HashMap<Range,Alignment>();
-	
-		for(Alignment alg:alignments){
-			if(alg.useful){
-				Range range = new Range(alg.readAlignmentStart(),alg.readAlignmentEnd());
-				allAlignments.put(range, alg);
-			}
-		}
-		//now get all the bin in order
-		List<Range> baseRanges=new ArrayList<Range>(allAlignments.keySet());
-		List<List<Range>> rangeGroups = MetaRange.getOverlappingGroups(baseRanges);
-		
-		if(rangeGroups.size() < 2)
-			return null;
-		
-		List<Range> stepRanges=new ArrayList<>(rangeGroups.size());
-		
-		System.out.println("Step ranges: ");
-	    for(List<Range> group : rangeGroups){
-	    	int maxscore=-1;
-	    	Range rangeOfBest=null;
-	    	for(Range range:group) { 
-	    		System.out.print(allAlignments.get(range).node.getId() + " "+ binner.getBinsOfNode(allAlignments.get(range).node) + ": " + range + "; ");	    
-	    		if(allAlignments.get(range).quality > maxscore)
-	    			rangeOfBest=range;
-	    	}
-	  	
-	    	stepRanges.add(rangeOfBest);
-	    	System.out.println();
-	    }
-
-	    PopBin leastAbundancePop;
-		Optional<PopBin> aBin=
-				stepRanges.stream()
-	    			.map(r->SimpleBinner.getUniqueBin(allAlignments.get(r).node))
-	    			.filter(b->b!=null)
-	    			.reduce((a,b)->(a.estCov > b.estCov?b:a));
-		if(aBin.isPresent())
-			leastAbundancePop=aBin.get();
-		else 
-			return null;
-	    
-		Range curRange = stepRanges.get(0);
-
-		Alignment 	curAlignment =allAlignments.get(curRange),
-					nextAlignment;
-		ArrayList<AlignedRead> allBuildingBlocks = new ArrayList<>();
-		AlignedRead	curBuildingBlocks=new AlignedRead(nnpRead, curAlignment);
-		PopBin tmpBin=null;
-		HashMap<PopBin, Long> bins2Length = new HashMap<PopBin,Long>();
-
-		
-		tmpBin=SimpleBinner.getUniqueBin(curAlignment.node);
-		if( tmpBin != null){
-			bins2Length.put(tmpBin, (long)curAlignment.node.getNumber("len"));
-		}
-				
-		for(int i=1; i<stepRanges.size();i++){
-			Range nextRanges = stepRanges.get(i);
-			nextAlignment = allAlignments.get(nextRanges);
-			tmpBin=SimpleBinner.getUniqueBin(nextAlignment.node);
-			if(tmpBin!=null){				
-//				System.out.print("Node " + nextAlignment.node.getId() + " has unique bin " + tmpBin.binID + ": ");
-				if(tmpBin.isCloseTo(leastAbundancePop)){
-//					System.out.println(" close to " + leastAbundancePop.binID);
-					curBuildingBlocks.append(nextAlignment);
-					allBuildingBlocks.add(curBuildingBlocks);
-					
-					curBuildingBlocks=new AlignedRead(nnpRead, nextAlignment);
-					
-					if(bins2Length.containsKey(tmpBin)){
-						long newval=bins2Length.get(tmpBin)+(long)nextAlignment.node.getNumber("len");
-						bins2Length.replace(tmpBin, newval);
-					}else
-						bins2Length.put(tmpBin, (long)nextAlignment.node.getNumber("len"));
-				}else{
-					//revert its bridges! (correct later when traverse through induced path)
-//					System.out.println(" not close to " + leastAbundancePop.binID);
-					curBuildingBlocks.append(nextAlignment);
-					continue;
-				}	
-			}else
-				curBuildingBlocks.append(nextAlignment);
-				
-				
-			
-		}
-		if(curBuildingBlocks.getAlignmentRecords().size() > 1)
-			allBuildingBlocks.add(curBuildingBlocks);
-		
-		
-		//determine the global unique bin of the whole path
-		long ltmp=0;
-		for(PopBin b:bins2Length.keySet())
-			if(bins2Length.get(b)>ltmp){
-				ltmp=bins2Length.get(b);
-				tmpBin=b;
-			}
-		
-		ArrayList<BidirectedPath> retrievedPaths = new ArrayList<>();
-
-		
-		// Now we got all possible bridges from chopping the alignments at unique nodes
-		System.out.println("\n=> bridges list: ");
-		for(AlignedRead bb:allBuildingBlocks) {
-			GoInBetweenBridge 	storedBridge=getBridgeFromMap(bb);
-			System.out.printf("+++%s <=> %s\n", bb.getEndingsID(), storedBridge==null?"null":storedBridge.getEndingsID());
-			
-			if(storedBridge!=null) {
-				if(storedBridge.getCompletionLevel()==4){
-					System.out.println(storedBridge.getEndingsID() + ": already solved: ignore!");
-					continue;
-				}else{
-					System.out.println(storedBridge.getEndingsID() + ": already built: fortify!");
-					//update available bridge using alignments
-					if(storedBridge.merge(bb))
-						updateBridgesMap(storedBridge);
-					
-						
-					//also update the reversed bridge
-					if(bb.isBridgePrototype()) {
-						bb.reverse();
-						GoInBetweenBridge anotherBridge = getBridgeFromMap(bb);
-						if(anotherBridge!=storedBridge) {
-							if(anotherBridge.merge(bb))
-								updateBridgesMap(anotherBridge);											
-							
-							if(anotherBridge.getCompletionLevel()==4){
-								System.out.printf("=> final path: %s\n ", anotherBridge.getAllPossiblePaths());
-								retrievedPaths.addAll(anotherBridge.getBestPath().chopPathAtAnchors());
-							}
-						}
-					}
-				}			
-				
-
-			}else{
-				storedBridge=new GoInBetweenBridge(this,bb,tmpBin);
-				updateBridgesMap(storedBridge);		
-			}
-			
-			
-			if(storedBridge.getCompletionLevel()==4){
-				System.out.printf("=> final path: %s\n ", storedBridge.getAllPossiblePaths());
-				retrievedPaths.addAll(storedBridge.getBestPath().chopPathAtAnchors());
-			}
-			
-		
-		}
-		return retrievedPaths;
-	}
+ 		if(nnpRead==null || alignments.size()<=1)
+ 			return null;
+ 		
+ 		System.out.println("=================================================");
+ 		for(Alignment alg:alignments)
+ 			System.out.println("\t"+alg.toString());
+ 		System.out.println("=================================================");
+ 		//First bin the alignments into different overlap regions			
+ 		//only considering useful alignments
+ 		HashMap<Range,Alignment> allAlignments = new HashMap<Range,Alignment>();
  	
+ 		for(Alignment alg:alignments){
+ 			if(alg.useful){
+ 				Range range = new Range(alg.readAlignmentStart(),alg.readAlignmentEnd());
+ 				allAlignments.put(range, alg);
+ 			}
+ 		}
+ 		//now get all the bin in order
+ 		List<Range> baseRanges=new ArrayList<Range>(allAlignments.keySet());
+ 		List<List<Range>> rangeGroups = MetaRange.getOverlappingGroups(baseRanges);
+ 		
+ 		if(rangeGroups.size() < 2)
+ 			return null;
+
+ 		ArrayList<BidirectedPath> retrievedPaths = new ArrayList<>();
+
+ 		List<Range> curRanges=rangeGroups.get(0);
+ 		AlignedRead	curBuildingBlocks; //building blocks for a bridge, taken from alignments with unique end(s)
+ 		PopBin curBin=null, prevUnqBin=null;
+
+		System.out.println("Step ranges: ");
+
+ 		int flag=0; //+1 for unique startAlignment.node, +2 for unique endAlignment.node flag={0,1,2,3}
+ 		if(curRanges.size()==1){
+ 			curBin=SimpleBinner.getUniqueBin(allAlignments.get(curRanges.get(0)).node);
+ 			if( curBin!= null){
+ 				flag+=1;
+ 				prevUnqBin=curBin;
+ 			}
+ 			curBuildingBlocks=new AlignedRead(nnpRead, allAlignments.get(curRanges.get(0)));
+ 		}else{
+ 			curBuildingBlocks=new AlignedRead(nnpRead, (ArrayList<Alignment>) curRanges.stream().map(g->allAlignments.get(g)).collect(Collectors.toList()) );
+ 		
+ 		}
+ 		
+    	for(Range range:curRanges) 
+    		System.out.print(allAlignments.get(range).node.getId() + " "+ binner.getBinsOfNode(allAlignments.get(range).node) + ": " + range + "; ");	    
+    	System.out.println();
+ 		
+ 		Alignment curAlg=null;
+ 	    for(int i=1; i<rangeGroups.size(); i++){
+ 	    	curRanges = rangeGroups.get(i);
+ 	    	
+ 	      	for(Range range:curRanges) 
+ 	    		System.out.print(allAlignments.get(range).node.getId() + " "+ binner.getBinsOfNode(allAlignments.get(range).node) + ": " + range + "; ");	    
+ 	      	System.out.println();
+ 	      	
+ 	    	if(curRanges.size()==1){
+ 	    		curAlg=allAlignments.get(curRanges.get(0));
+ 	    		curBin=SimpleBinner.getUniqueBin(curAlg.node);
+ 	    		
+    			curBuildingBlocks.append(curAlg);
+
+ 	    		if(curBin!=null){//TODO: need to check if this unique bin agrees with the other bin		
+ 	    			if(prevUnqBin!=null)//FIXME:ugly!!! need to check agreement between two bins + last half-bridge process
+ 	    				flag+=2;
+ 	    			curBuildingBlocks.setEFlag(flag);
+ 	    			//do smt here instead of storing it!!! Parameters: curBuildingBlocks + flag + curBin
+ 					//TODO: implement the bridge building here, EVERYTHING
+ 	    			////////////////////////////////////////////////////////////////////////////////////
+ 	    			GoInBetweenBridge 	storedBridge=getBridgeFromMap(curBuildingBlocks);
+ 	    			System.out.printf("+++%s <=> %s\n", curBuildingBlocks.getEndingsID(), storedBridge==null?"null":storedBridge.getEndingsID());
+ 	    			
+ 	    			if(storedBridge!=null) {
+ 	    				if(storedBridge.getCompletionLevel()==4){
+ 	    					System.out.println(storedBridge.getEndingsID() + ": already solved: ignore!");
+ 	    					continue;
+ 	    				}else{
+ 	    					System.out.println(storedBridge.getEndingsID() + ": already built: fortify!");
+ 	    					//update available bridge using alignments
+ 	    					if(storedBridge.merge(curBuildingBlocks))
+ 	    						updateBridgesMap(storedBridge);
+ 	    					
+ 	    						
+ 	    					//also update the reversed bridge
+ 	    					if(curBuildingBlocks.getEFlag()==3) {
+ 	    						curBuildingBlocks.reverse();
+ 	    						GoInBetweenBridge anotherBridge = getBridgeFromMap(curBuildingBlocks);
+ 	    						if(anotherBridge!=storedBridge) {
+ 	    							if(anotherBridge.merge(curBuildingBlocks))
+ 	    								updateBridgesMap(anotherBridge);											
+ 	    							
+ 	    							if(anotherBridge.getCompletionLevel()==4){
+ 	    								System.out.printf("=> final path: %s\n ", anotherBridge.getAllPossiblePaths());
+ 	    								retrievedPaths.addAll(anotherBridge.getBestPath().chopPathAtAnchors());
+ 	    							}
+ 	    						}
+ 	    					}
+ 	    				}			
+ 	    				
+
+ 	    			}else{
+ 	    				storedBridge=new GoInBetweenBridge(this,curBuildingBlocks, curBin);
+ 	    				updateBridgesMap(storedBridge);		
+ 	    			}
+ 	    			
+ 	    			
+ 	    			if(storedBridge.getCompletionLevel()==4){
+ 	    				System.out.printf("=> final path: %s\n ", storedBridge.getAllPossiblePaths());
+ 	    				retrievedPaths.addAll(storedBridge.getBestPath().chopPathAtAnchors());
+ 	    			}
+ 	    			
+ 	    			////////////////////////////////////////////////////////////////////////////////////
+ 	    			//start new building block
+ 					curBuildingBlocks=new AlignedRead(nnpRead, curAlg);
+ 					flag=1;
+ 					prevUnqBin=curBin;
+ 	    		}
+ 	    		
+ 	    	}else{
+ 	    		curBuildingBlocks.appendAll((ArrayList<Alignment>) curRanges.stream().map(g->allAlignments.get(g)).collect(Collectors.toList()));
+ 	    	}
+ 	    }
+ 	    
+ 		
+ 		return retrievedPaths;
+ 	}
+  	
+    
+    
 
     /**
      * Another reduce that doesn't remove the unique nodes
@@ -714,13 +684,13 @@ public class BidirectedGraph extends MultiGraph{
     	boolean startDir=((BidirectedEdge) path.getEdgePath().get(0)).getDir(startNode),
     			endDir=((BidirectedEdge) path.peekEdge()).getDir(endNode);
 
-    	ArrayList<BidirectedEdge> 	potentialRemovedEdges = binner.walkAlongUniquePath(path);
+    	Set<Edge> 	potentialRemovedEdges = binner.walkAlongUniquePath(path);
 		HashMap<PopBin, Integer> oneBin = new HashMap<>();
 		oneBin.put(path.getConsensusUniqueBinOfPath(), 1);
     	
     	if(potentialRemovedEdges!=null && potentialRemovedEdges.size()>1){
 	    	//remove appropriate edges
-	    	for(BidirectedEdge e:potentialRemovedEdges){
+	    	for(Edge e:potentialRemovedEdges){
 	    		LOG.info("REMOVING EDGE " + e.getId() + " from " + e.getNode0().getGraph().getId() + "-" + e.getNode1().getGraph().getId());
 	    		LOG.info("before: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
 	    		removeEdge(e.getId());
@@ -772,8 +742,8 @@ public class BidirectedGraph extends MultiGraph{
 		curPath.setRoot(curNodeFromSimGraph);
 
     	//search for an unique node as the marker. 
-    	ArrayList<BidirectedEdge> 	tobeRemoved = new ArrayList<BidirectedEdge>(),
-    								tobeAdded = new ArrayList<BidirectedEdge>();
+    	ArrayList<Edge> 	tobeRemoved = new ArrayList<Edge>(),
+    								tobeAdded = new ArrayList<Edge>();
     	for(Edge edge:path.getEdgePath()){
     		curPath.add(edge);	
     		curNodeFromSimGraph=(BidirectedNode) edge.getOpposite(curNodeFromSimGraph);
@@ -798,7 +768,7 @@ public class BidirectedGraph extends MultiGraph{
 					tobeAdded.add(reducedEdge);
 					updateBridgesMap(curPath);
 					
-					ArrayList<BidirectedEdge> potentialRemovedEdges = binner.walkAlongUniquePath(curPath);
+					Set<Edge> potentialRemovedEdges = binner.walkAlongUniquePath(curPath);
 					if(potentialRemovedEdges!=null)
 						tobeRemoved.addAll(potentialRemovedEdges);
 					
@@ -829,7 +799,7 @@ public class BidirectedGraph extends MultiGraph{
     	
     	if(tobeRemoved.size()>0){
 	    	//remove appropriate edges
-	    	for(BidirectedEdge e:tobeRemoved){
+	    	for(Edge e:tobeRemoved){
 	    		LOG.info("REMOVING EDGE " + e.getId() + " from " + e.getNode0().getGraph().getId() + "-" + e.getNode1().getGraph().getId());
 	    		LOG.info("before: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
 	    		removeEdge(e.getId());
@@ -837,11 +807,11 @@ public class BidirectedGraph extends MultiGraph{
 	    	}
 	    	
 	    	//add appropriate edges
-	    	for(BidirectedEdge e:tobeAdded){
+	    	for(Edge e:tobeAdded){
 	    		LOG.info("ADDING EDGE " + e.getId()+ " from " + e.getNode0().getGraph().getId() + "-" + e.getNode1().getGraph().getId());
 	    		LOG.info("before: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
 	    		
-	    		BidirectedEdge reducedEdge = addEdge((BidirectedNode)e.getSourceNode(),(BidirectedNode)e.getTargetNode(),e.getDir0(),e.getDir1());
+	    		BidirectedEdge reducedEdge = addEdge((BidirectedNode)e.getSourceNode(),(BidirectedNode)e.getTargetNode(),((BidirectedEdge)e).getDir0(),((BidirectedEdge)e).getDir1());
 	    		
 	    		LOG.info("after: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
 	

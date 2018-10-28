@@ -32,8 +32,8 @@ public class GraphExploreDesktop {
     	 */
 //    	String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/";
 //    	
-//    	String sample="EcK12S-careful";
-////    	String sample="Kp2146-careful";
+////    	String sample="EcK12S-careful";
+//    	String sample="Kp2146-careful";
 ////    	String sample="Kp13883-careful";
 // 
 ////    	String sample="W303-careful";
@@ -46,10 +46,6 @@ public class GraphExploreDesktop {
     	
     	
     	
-    	
-    	
-    	
-    	
     	/*
     	 * unicycler data set
     	 */
@@ -57,7 +53,7 @@ public class GraphExploreDesktop {
 //    	String sample="Acinetobacter_A1/";
 //    	String sample="Acinetobacter_AB30/";
 //    	String sample="E_coli_K-12_MG1655/";
-    	String sample="E_coli_O25b_H4-ST131/";
+//    	String sample="E_coli_O25b_H4-ST131/";
 //    	String sample="Klebsiella_30660_NJST258_1/";
 //    	String sample="Klebsiella_MGH_78578/";
 //    	String sample="Klebsiella_NTUH-K2044/";
@@ -66,7 +62,7 @@ public class GraphExploreDesktop {
 //    	String sample="random_sequences_no_repeats/";
 //    	String sample="random_sequences_some_repeats/";
 //    	String sample="Saccharomyces_cerevisiae_S288c/";
-//    	String sample="Shigella_dysenteriae_Sd197/";
+    	String sample="Shigella_dysenteriae_Sd197/";
 //    	String sample="Shigella_sonnei_53G/";
 //    	String sample="Streptococcus_suis_BM407/";
     	
