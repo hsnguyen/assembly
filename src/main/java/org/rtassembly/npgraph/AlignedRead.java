@@ -47,7 +47,10 @@ public class AlignedRead{
 	 */
 	Sequence readSequence;		
 	private boolean sorted = false;
-
+	
+	//This is only used in uniqueBridgesFinding()
+	private int eFlag=0; // 0: both ends are from non-unique nodes; 1: start node is unique; 2: end node is unique; 3: both ends are from unique nodes
+	
 	ArrayList<Alignment> alignments;	
 
 	public AlignedRead(Sequence read, ArrayList<Alignment> alignmentList){
@@ -69,6 +72,9 @@ public class AlignedRead{
 	public void append(Alignment alg){
 		alignments.add(alg);
 	}
+	public void appendAll(ArrayList<Alignment> algs){
+		alignments.addAll(algs);
+	}
 	public Alignment getFirstAlignment(){
 		if(alignments==null || alignments.isEmpty())
 			return null;
@@ -79,15 +85,14 @@ public class AlignedRead{
 			return null;
 		return alignments.get(alignments.size()-1);
 	}
-	//Return true if the read containing alignments of 2 unique contigs at the ends
-	public boolean isBridgePrototype() {
-		Alignment 	first=getFirstAlignment(),
-					last=getLastAlignment();
-		if(first==null||last==null)
-			return false;
-		else 
-			return SimpleBinner.getUniqueBin(first.node)!=null && SimpleBinner.getUniqueBin(last.node)!=null;
+	
+	public void setEFlag(int flag){
+		eFlag=flag;
 	}
+	public int getEFlag(){
+		return eFlag;
+	}
+
 	
 	public void reverse(){
 		//return an (conceptually the same) read filling with the a reverse read

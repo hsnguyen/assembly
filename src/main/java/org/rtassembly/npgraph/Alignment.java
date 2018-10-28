@@ -41,7 +41,7 @@ import htsjdk.samtools.SAMRecord;
 import japsa.seq.Sequence;
 
 public class Alignment implements Comparable<Alignment> {
-	public final static int OVERHANG_THRES=500; 
+//	public final static int OVERHANG_THRES=500; 
 	public final static int GOOD_QUAL=60; 
 
 	public static int MIN_QUAL=1; 
@@ -151,14 +151,15 @@ public class Alignment implements Comparable<Alignment> {
 			readStart = 1 + readLength - readStart;
 			readEnd = 1 + readLength - readEnd;
 		}
-
+		
+		int overhangTolerance = (int) Math.min(BidirectedGraph.A_TOL, BidirectedGraph.R_TOL*node.getNumber("len"));
 		if (
-				(readLeft < OVERHANG_THRES || refLeft < OVERHANG_THRES) &&
-				(readRight  < OVERHANG_THRES || refRight < OVERHANG_THRES)
+				(readLeft < overhangTolerance || refLeft < overhangTolerance) &&
+				(readRight  < overhangTolerance || refRight < overhangTolerance)
 			)
 			goodMargin=true;
 		
-	if	(		goodMargin
+		if	(	goodMargin
 				&& prime //TODO: there are useful secondary alignment!!!
 //				&& alignLength > BidirectedGraph.getKmerSize() //FIXME: 
 				&& quality >= MIN_QUAL
