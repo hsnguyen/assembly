@@ -291,15 +291,15 @@ public class SimpleBinner {
 				PopBin tmp = scanAndGuess(e.getNumber("cov"));
 				if(tmp!=null){
 					
-					//FIXME: need more robust binning (E_coli_O25b_H4-ST131 failed for ANCHOR_LENGTH=500, due to too many repeats that have similar coverage)
+					//FIXME: need more robust binning
 					//should build bridge as stronger end contains weaker end!
 					
 					//FIXME: get more unique node (sequencing error make unique node has >2 degree). Below doesn't complete 2 Shigella genomes		
-					
 					if(tmp==leastBin && GraphUtil.approxCompare(e.getNumber("cov"), leastBin.estCov) < 0){
 						Node n0=e.getNode0(), n1=e.getNode1();
 						HashMap<PopBin, Integer> unitBinMap = new HashMap<>();
 						unitBinMap.put(leastBin, 1);
+						
 						if(n0.getNumber("len") > UNIQUE_CTG_LEN && getUniqueBin(n0)==null){
 							n0.setAttribute("unique", leastBin);
 							node2BinMap.put(n0, unitBinMap);
