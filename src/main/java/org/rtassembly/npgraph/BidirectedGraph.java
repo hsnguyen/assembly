@@ -655,9 +655,8 @@ public class BidirectedGraph extends MultiGraph{
  	    		curBuildingBlocks.appendAll((ArrayList<Alignment>) curRanges.stream().map(g->allAlignments.get(g)).collect(Collectors.toList()));
  	    	}
  	    }
- 	    
- 		
- 		return retrievedPaths;
+
+ 	    return retrievedPaths;
  	}
   	
     
@@ -673,7 +672,7 @@ public class BidirectedGraph extends MultiGraph{
     //This assuming path is surely unique!!!
     public boolean reduceUniquePath(BidirectedPath path){
     	//do nothing if the path has only one node
-    	if(path==null||path.getEdgeCount()<2)
+    	if(path==null||path.getEdgeCount()<1)
     		return false;
     	else
     		System.out.println("Reducing path: " + path.getId());
