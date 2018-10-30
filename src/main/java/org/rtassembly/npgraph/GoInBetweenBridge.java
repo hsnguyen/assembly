@@ -98,10 +98,10 @@ public class GoInBetweenBridge {
 		if(qBridge==null || qBridge.getCompletionLevel()==0 || getCompletionLevel()==4)
 			return false;
 		
-		BidirectedNode 	sNode0=(BidirectedNode) pBridge.getNode0(),
-						sNode1=(BidirectedNode) pBridge.getNode1(),
-						qNode0=(BidirectedNode) qBridge.pBridge.getNode0(),
-						qNode1=(BidirectedNode) qBridge.pBridge.getNode1();
+		NodeDirection 	sNode0=pBridge.n0,
+						sNode1=pBridge.n1,
+						qNode0=qBridge.pBridge.n0,
+						qNode1=qBridge.pBridge.n1;
 
 		System.out.printf("Merging Bridge %s lvl=%d \n%s\nwith Bridge %s lvl=%d\n%s\n", getEndingsID(), getCompletionLevel(), getAllNodeVector(), qBridge.getEndingsID(), qBridge.getCompletionLevel(), qBridge.getAllNodeVector());
 //		System.out.println("sNode0=" + (sNode0==null?"null":sNode0.getId()));
@@ -110,14 +110,14 @@ public class GoInBetweenBridge {
 //		System.out.println("qNode1=" + (qNode1==null?"null":qNode1.getId()));
 
 		boolean found=true;
-		if(sNode0!=qNode0) {							//if the starting points don't agree
-			if(sNode0==qNode1) {						//the first unique contig actually located at the end of alignments list
+		if(!sNode0.equals(qNode0)) {							//if the starting points don't agree
+			if(sNode0.equals(qNode1)) {						//the first unique contig actually located at the end of alignments list
 				qBridge.reverse();
 			}else if(sNode1!=null){						//if not: this pBridge must have 2 anchors, the first anchor is not in the alignments list
 				reverse();							//flip the first and second anchors: now the second anchor is used as shared maker between subject and query bridge
-				if(sNode1==qNode1)	
+				if(sNode1.equals(qNode1))	
 					qBridge.reverse();
-				else if(sNode1!=qNode0)
+				else if(!sNode1.equals(qNode0))
 					found=false;
 			}else { 
 				found=false;
@@ -167,10 +167,10 @@ public class GoInBetweenBridge {
 		if(read==null || read.getAlignmentRecords().size() < 2 || getCompletionLevel()==4)
 			return false;
 		
-		BidirectedNode 	sNode0=(BidirectedNode) pBridge.getNode0(),
-						sNode1=(BidirectedNode) pBridge.getNode1(),
-						qNode0=(BidirectedNode) read.getFirstAlignment().node,
-						qNode1=(BidirectedNode) read.getLastAlignment().node;
+		NodeDirection 	sNode0=pBridge.n0,
+						sNode1=pBridge.n1,
+						qNode0=new NodeDirection(read.getFirstAlignment().node, read.getFirstAlignment().strand),
+						qNode1=new NodeDirection(read.getLastAlignment().node, !read.getLastAlignment().strand);
 
 		System.out.printf("Merging Bridge %s lvl=%d \n%s\nwith AlignedRead %s\n%s\n", getEndingsID(), getCompletionLevel(), getAllNodeVector(), read.getEndingsID(), read.getCompsString());
 //		System.out.println("sNode0=" + (sNode0==null?"null":sNode0.getId()));
@@ -179,14 +179,14 @@ public class GoInBetweenBridge {
 //		System.out.println("qNode1=" + (qNode1==null?"null":qNode1.getId()));
 
 		boolean found=true;
-		if(sNode0!=qNode0) {							//if the starting points don't agree
-			if(sNode0==qNode1) {						//the first unique contig actually located at the end of alignments list
+		if(!sNode0.equals(qNode0)) {							//if the starting points don't agree
+			if(sNode0.equals(qNode1)) {						//the first unique contig actually located at the end of alignments list
 				read.reverse();
 			}else if(sNode1!=null){						//if not: this pBridge must have 2 anchors, the first anchor is not in the alignments list
 				reverse();							//flip the first and second anchors: now the second anchor is used as shared maker between subject and query bridge
-				if(sNode1==qNode1)	
+				if(sNode1.equals(qNode1))	
 					read.reverse();
-				else if(sNode1!=qNode0)
+				else if(!sNode1.equals(qNode0))
 					found=false;
 			}else { 
 				found=false;

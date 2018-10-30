@@ -133,7 +133,6 @@ public class GraphWatcher {
 				 
 			 }
 			 //now we have repPath
-			 System.out.println(repPath.getId() + " => "+ repPath.getPrimitivePath().getId());
 			 Sequence seq=repPath.spelling();
 			 double cov=repPath.averageCov();
 			 Node n=outputGraph.addNode(Integer.toString(comp.id));
@@ -142,6 +141,8 @@ public class GraphWatcher {
 			 n.setAttribute("len", seq.length());
 			 n.setAttribute("cov",cov);
 			 n.setAttribute("path", repPath);
+			 System.out.println("\n" + seq.getName() + ":" + repPath.getId() + "\n=> "+ repPath.getPrimitivePath().getId());
+
 		}
 		//now set the edge of outputGraph based on the cut edges
 		for(Edge e:cutEdges) {
@@ -186,8 +187,9 @@ public class GraphWatcher {
 
 	
 	/*
+	 * TODO: replace linearComponentsDecomposition() with this + real-time + threads...
 	 * Update the outputGraph to show statistics and current output
-	 * Should merge with updating the GUI (colore, labels...)???
+	 * Should merge with updating the GUI (colors, labels...)???
 	 */
 	synchronized void update() {
 		//1. clean it first
@@ -259,7 +261,6 @@ public class GraphWatcher {
 				 
 			 }
 			 //now we have repPath
-			 System.out.println(repPath.getId() + " => "+ repPath.getPrimitivePath().getId());
 			 Sequence seq=repPath.spelling();
 			 double cov=repPath.averageCov();
 			 Node n=outputGraph.addNode(Integer.toString(comp.id));
@@ -268,6 +269,9 @@ public class GraphWatcher {
 			 n.setAttribute("len", seq.length());
 			 n.setAttribute("cov",cov);
 			 n.setAttribute("path", repPath);
+			 
+			 System.out.println("\n" + seq.getName() + ":" + repPath.getId() + "\n=> "+ repPath.getPrimitivePath().getId());
+
 		}
 		//now set the edge of outputGraph based on the cut edges
 		for(Edge e:cutEdges) {
