@@ -51,8 +51,8 @@ public class GraphExploreDesktop {
     	 */
     	String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/unicycler/";
 //    	String sample="Acinetobacter_A1/";
-//    	String sample="Acinetobacter_AB30/";
-//    	String sample="E_coli_K-12_MG1655/";
+//    	String sample="Acinetobacter_AB30/"; //SimpleBinner.ANCHOR_CTG_LEN=2000
+    	String sample="E_coli_K-12_MG1655/";
 //    	String sample="E_coli_O25b_H4-ST131/";
 //    	String sample="Klebsiella_30660_NJST258_1/";
 //    	String sample="Klebsiella_MGH_78578/";
@@ -62,7 +62,7 @@ public class GraphExploreDesktop {
 //    	String sample="random_sequences_no_repeats/";
 //    	String sample="random_sequences_some_repeats/";
 //    	String sample="Saccharomyces_cerevisiae_S288c/";
-    	String sample="Shigella_dysenteriae_Sd197/";
+//    	String sample="Shigella_dysenteriae_Sd197/";
 //    	String sample="Shigella_sonnei_53G/";
 //    	String sample="Streptococcus_suis_BM407/";
     	
@@ -115,21 +115,7 @@ public class GraphExploreDesktop {
         HybridAssembler.promptEnterKey();
         viewer.disableAutoLayout();
         
-        
-        /*
-         * Testing BidirectedEdge id pattern
-         */
-//    	String pattern = "^\\[([0-9\\+\\-]*)\\]([oi])\\[([0-9\\+\\-]*)\\]([oi])$";
-//        // Create a Pattern object
-//        Pattern r = Pattern.compile(pattern);
-//        // Now create matcher object.
-//        String id="[3]i[4+8+]o";
-//        Matcher m = r.matcher(id);
-//         	
-//        if(m.find()){
-//        	System.out.println(m.group(1)+"|"+m.group(2)+"|"+m.group(3)+"|"+m.group(4));
-//        } else
-//        	System.out.println("Fuck");
+       
     }
     
 

@@ -154,7 +154,8 @@ public class BidirectedGraph extends MultiGraph{
 		
 		for(Node node:this) {
 			Sequence seq=(Sequence) node.getAttribute("seq");
-			if((node.getDegree()==0 && (seq.length() < SimpleBinner.ANCHOR_CTG_LEN) || node.getNumber("cov") < RCOV*0.1))//noises
+			if( (node.getDegree()==0 && (seq.length() < SimpleBinner.ANCHOR_CTG_LEN)) 
+				|| node.getNumber("cov") < RCOV*0.1 )	//not display <10% abundance pops
 				continue;
 			seq.writeFasta(out);
 		}
@@ -608,13 +609,16 @@ public class BidirectedGraph extends MultiGraph{
  	    			if(storedBridge!=null) {
  	    				if(storedBridge.getCompletionLevel()==4){
  	    					System.out.println(storedBridge.getEndingsID() + ": already solved: ignore!");
- 	    					continue;
  	    				}else{
  	    					System.out.println(storedBridge.getEndingsID() + ": already built: fortify!");
  	    					//update available bridge using alignments
  	    					if(storedBridge.merge(curBuildingBlocks))
  	    						updateBridgesMap(storedBridge);
  	    					
+ 	    	    			if(storedBridge.getCompletionLevel()==4){
+ 	    	    				System.out.printf("=> final path: %s\n ", storedBridge.getAllPossiblePaths());
+ 	    	    				retrievedPaths.addAll(storedBridge.getBestPath().chopPathAtAnchors());
+ 	    	    			}
  	    						
  	    					//also update the reversed bridge
  	    					if(curBuildingBlocks.getEFlag()==3) {
@@ -636,13 +640,14 @@ public class BidirectedGraph extends MultiGraph{
  	    			}else{
  	    				storedBridge=new GoInBetweenBridge(this,curBuildingBlocks, curBin);
  	    				updateBridgesMap(storedBridge);		
+ 	 	    			if(storedBridge.getCompletionLevel()==4){
+ 	 	    				System.out.printf("=> final path: %s\n ", storedBridge.getAllPossiblePaths());
+ 	 	    				retrievedPaths.addAll(storedBridge.getBestPath().chopPathAtAnchors());
+ 	 	    			}
  	    			}
  	    			
  	    			
- 	    			if(storedBridge.getCompletionLevel()==4){
- 	    				System.out.printf("=> final path: %s\n ", storedBridge.getAllPossiblePaths());
- 	    				retrievedPaths.addAll(storedBridge.getBestPath().chopPathAtAnchors());
- 	    			}
+
  	    			
  	    			////////////////////////////////////////////////////////////////////////////////////
  	    			//start new building block
