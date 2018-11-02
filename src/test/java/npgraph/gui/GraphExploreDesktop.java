@@ -30,18 +30,18 @@ public class GraphExploreDesktop {
     	/*
     	 * npScarf data set
     	 */
-//    	String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/";
-//    	
-////    	String sample="EcK12S-careful";
-//    	String sample="Kp2146-careful";
-////    	String sample="Kp13883-careful";
-// 
-////    	String sample="W303-careful";
-////    	String sample="meta-careful";
-////    	String sample="cp_S5";
-//    	String sInput=dataFolder+sample+"/assembly_graph.fastg",
-//    			output=dataFolder+sample+"/",
-//    			lInput=dataFolder+sample+"/assembly_graph.sam";
+    	String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/";
+    	
+//    	String sample="EcK12S-careful";
+    	String sample="Kp2146-careful";
+//    	String sample="Kp13883-careful";
+ 
+//    	String sample="W303-careful";
+//    	String sample="meta-careful";
+//    	String sample="cp_S5";
+    	String sInput=dataFolder+sample+"/assembly_graph.fastg",
+    			output=dataFolder+sample+"/",
+    			lInput=dataFolder+sample+"/assembly_graph.sam";
     	
     	
     	
@@ -49,31 +49,31 @@ public class GraphExploreDesktop {
     	/*
     	 * unicycler data set
     	 */
-    	String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/unicycler/";
-//    	String sample="Acinetobacter_A1/";
-//    	String sample="Acinetobacter_AB30/"; //SimpleBinner.ANCHOR_CTG_LEN=2000
-    	String sample="E_coli_K-12_MG1655/";
-//    	String sample="E_coli_O25b_H4-ST131/";
-//    	String sample="Klebsiella_30660_NJST258_1/";
-//    	String sample="Klebsiella_MGH_78578/";
-//    	String sample="Klebsiella_NTUH-K2044/";
-//    	String sample="Mycobacterium_tuberculosis_H37Rv/";
-//    	String sample="random_sequences_many_repeats/";
-//    	String sample="random_sequences_no_repeats/";
-//    	String sample="random_sequences_some_repeats/";
-//    	String sample="Saccharomyces_cerevisiae_S288c/";
-//    	String sample="Shigella_dysenteriae_Sd197/";
-//    	String sample="Shigella_sonnei_53G/";
-//    	String sample="Streptococcus_suis_BM407/";
-    	
-    	
-//    	String quality="bad/";
-//    	String quality="medium/";
-    	String quality="good/";
-
-    	String sInput=dataFolder+sample+quality+"spades/assembly_graph.fastg",
-    			output=dataFolder+sample+quality+"/",
-    			lInput=dataFolder+sample+quality+"mm2.sam";	
+//    	String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/unicycler/";
+////    	String sample="Acinetobacter_A1/";
+////    	String sample="Acinetobacter_AB30/"; //SimpleBinner.ANCHOR_CTG_LEN=2000 || Alignment.MIN_QUAL=10
+////    	String sample="E_coli_K-12_MG1655/";
+////    	String sample="E_coli_O25b_H4-ST131/";
+////    	String sample="Klebsiella_30660_NJST258_1/";
+//    	String sample="Klebsiella_MGH_78578/"; //SimpleBinner.ANCHOR_CTG_LEN=500
+////    	String sample="Klebsiella_NTUH-K2044/";
+////    	String sample="Mycobacterium_tuberculosis_H37Rv/";
+////    	String sample="random_sequences_many_repeats/";
+////    	String sample="random_sequences_no_repeats/";
+////    	String sample="random_sequences_some_repeats/";
+////    	String sample="Saccharomyces_cerevisiae_S288c/";
+////    	String sample="Shigella_dysenteriae_Sd197/";
+////    	String sample="Shigella_sonnei_53G/";
+////    	String sample="Streptococcus_suis_BM407/";
+//    	
+//    	
+////    	String quality="bad/";
+////    	String quality="medium/";
+//    	String quality="good/";
+//
+//    	String sInput=dataFolder+sample+quality+"spades/assembly_graph.fastg",
+//    			output=dataFolder+sample+quality+"/",
+//    			lInput=dataFolder+sample+quality+"mm2.sam";	
     
     	/*
     	 * Share code

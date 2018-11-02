@@ -36,7 +36,8 @@ public class BidirectedGraph extends MultiGraph{
 	public static volatile double ILLUMINA_READ_LENGTH=300; //Illumina MiSeq
     
     public static final int D_LIMIT=10000; //distance bigger than this will be ignored
-    public static int S_LIMIT=125;// maximum number of DFS steps
+    public static int S_LIMIT=215;// maximum number of DFS steps
+    public static int MAX_DFS_PATHS=100; //maximum number of candidate DFS paths
     
 	public static volatile int MAX_DIFF=5;//safe distance between good and bad possible paths so we can discard the bad ones
 	public static volatile int MIN_COVER=3;//number of reads spanning 2 ends of an bridge for it to be considered complete 
@@ -454,7 +455,7 @@ public class BidirectedGraph extends MultiGraph{
 		}
 		
 		double bestScore=possiblePaths.get(0).getDeviation();
-		int keepMax = 10;//only keep this many possible paths 
+		int keepMax = MAX_DFS_PATHS;//only keep this many possible paths 
 		for(int i=0;i<possiblePaths.size();i++){
 			BidirectedPath p = possiblePaths.get(i);
 			if(p.getDeviation()>bestScore+Math.abs(distance+getKmerSize())*R_TOL || i>=keepMax)

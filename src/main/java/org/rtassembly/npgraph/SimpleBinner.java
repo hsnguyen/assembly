@@ -24,7 +24,7 @@ import com.google.common.collect.Sets;
 public class SimpleBinner {
     private static final Logger LOG = LoggerFactory.getLogger(SimpleBinner.class);
 	public static volatile int 	UNIQUE_CTG_LEN=10000,
-								ANCHOR_CTG_LEN=1000; //should study graph structure to determined? (for Acinetobacter_AB30, it's 2000)
+								ANCHOR_CTG_LEN=1000; //surely length for the anchors; shorter anchors wouldn't be used until double-checked
 	
 	BidirectedGraph graph;
 	ArrayList<PopBin> binList;

@@ -581,7 +581,7 @@ public class GoInBetweenBridge {
 				if(connectable() || force){
 					pBridge.n1=new NodeDirection(end.node, end.getDirection(pBridge.getDir0()));
 				}else{
-					System.err.printf("Bridge %s is not qualified to connect yet: start=%s end=%s\n", pBridge.toString(), (start==null?"null":start.toString()), start.toString(), (end==null?"null":end.toString()));
+					System.err.printf("Bridge %s is not qualified to connect yet: start=%s end=%s\n", pBridge.toString(), (start==null?"null":start.toString()), (end==null?"null":end.toString()));
 					return false;
 				}
 
