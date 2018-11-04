@@ -89,8 +89,7 @@ public class BidirectedPath extends Path{
 		}
 	}
 	public BidirectedPath reverse(){
-		BidirectedPath rcPath = new BidirectedPath();
-		rcPath.setRoot(this.peekNode());
+		BidirectedPath rcPath = new BidirectedPath(this.peekNode(), uniqueBin);
 		List<Edge> edges = this.getEdgePath();
 		for(int i = edges.size()-1; i>=0; i--)
 			rcPath.add(edges.get(i));
@@ -293,14 +292,14 @@ public class BidirectedPath extends Path{
 		for(Edge e:getEdgePath()) {
 			nextNode=(BidirectedNode) e.getOpposite(curNode);
 			curPath.add(e);
-			if(SimpleBinner.getUniqueBin(nextNode)!=null) {
-				retval.add(curPath);
-				//or should be SimpleBinner.getUniqueBin(nextNode)?
+			if(SimpleBinner.getBinIfUnique(nextNode)!=null) {
+				retval.add(curPath);		
 				curPath=new BidirectedPath(nextNode, uniqueBin);
 			}
 			curNode=nextNode;
 		}
-		
+		if(retval.isEmpty())
+			retval.add(curPath);
 		return retval;
 	}
 //	/**

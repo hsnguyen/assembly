@@ -19,6 +19,7 @@ import org.graphstream.graph.Node;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 
 public class SimpleBinner {
@@ -300,14 +301,14 @@ public class SimpleBinner {
 						HashMap<PopBin, Integer> unitBinMap = new HashMap<>();
 						unitBinMap.put(leastBin, 1);
 						
-						if(n0.getNumber("len") > UNIQUE_CTG_LEN && getUniqueBin(n0)==null){
+						if(n0.getNumber("len") > UNIQUE_CTG_LEN && getBinIfUnique(n0)==null){
 							n0.setAttribute("unique", leastBin);
 							node2BinMap.put(n0, unitBinMap);
 							System.out.printf(" :node %s is unique but have degree=%d, length=%d\n", n0.getId(), n0.getDegree(), (int)n0.getNumber("len"));
 							continue;
 						}
 						
-						if(n1.getNumber("len") > UNIQUE_CTG_LEN && getUniqueBin(n1)==null){
+						if(n1.getNumber("len") > UNIQUE_CTG_LEN && getBinIfUnique(n1)==null){
 							n1.setAttribute("unique", leastBin);
 							node2BinMap.put(n1, unitBinMap);
 							System.out.printf(" :node %s is unique but have degree=%d, length=%d\n", n1.getId(), n1.getDegree(), (int)n1.getNumber("len"));
@@ -375,12 +376,26 @@ public class SimpleBinner {
 			}
 		}
 	}
-	static public PopBin getUniqueBin(Node node){
+	
+	//unique node from the beginning
+	static public PopBin getBinIfUnique(Node node){
 		return (PopBin)node.getAttribute("unique");
+	}
+	//node transformed to unique after reduced
+	public PopBin getBinIfUniqueNow(Node node){
+		PopBin retval=null;
+		if(node.getNumber("len") > UNIQUE_CTG_LEN && node2BinMap.containsKey(node)){
+			HashMap<PopBin, Integer> bc = node2BinMap.get(node);
+			if(bc.values().stream().mapToInt(Integer::intValue).sum() == 1){
+				retval=Iterables.getOnlyElement(bc.keySet());
+			}
+		}
+		return retval;
+		
 	}
 	
 	public boolean checkRemovableNode(Node node) {
-		if(node.getInDegree()*node.getOutDegree()!=0 || SimpleBinner.getUniqueBin(node)!=null) {
+		if(node.getInDegree()*node.getOutDegree()!=0 || SimpleBinner.getBinIfUnique(node)!=null) {
 			return false;
 		}
 		else if(node2BinMap.containsKey(node)) {
@@ -396,27 +411,33 @@ public class SimpleBinner {
 	//Traversal along a unique path (unique ends) and return list of unique edges
 	//Must only be called from BidirectedGraph.reduce()
 	synchronized public Set<Edge> walkAlongUniquePath(BidirectedPath path) {
-		LOG.info("Path {} being processed based on binning info...", path.getId());
+		System.out.printf("Path %s being processed based on binning info...\n", path.getId());
 		Node  	curNode = path.getRoot(), nextNode;
 		PopBin 	uniqueBin=path.getConsensusUniqueBinOfPath(),
-				startBin=getUniqueBin(path.getRoot()),
-				endBin=getUniqueBin(path.peekNode());
+				startBin=getBinIfUnique(path.getRoot()),
+				endBin=getBinIfUnique(path.peekNode());
+		if(startBin==null)
+			startBin=getBinIfUniqueNow(path.getRoot());
+		if(endBin==null)
+			endBin=getBinIfUniqueNow(path.peekNode());
+		
+		
 		if(uniqueBin==null||startBin==null||endBin==null){
-			LOG.info("Ignored: population bin of the path (either at ending node or global) is not known!");
+			System.err.println("Ignored: population bin of the path (either at ending node or global) is not known!");
 			return null;
 		}else if(uniqueBin!=startBin && uniqueBin!=endBin){//at least one end must agree with the wholepath bin
-			LOG.info("Ignored: consensus bin must be one of the endings bin: Ignored!");
+			System.err.println("Ignored: consensus bin must be one of the endings bin: Ignored!");
 			//clean from bin map here...
 			node2BinMap.remove(path.getRoot());
 			node2BinMap.remove(path.peekNode());
 			return null;
 		}else if(!uniqueBin.isCloseTo(startBin)){
-			LOG.info("Ignored: consensus bin {} doesn't agree with one of the endings bin {} at node {}", uniqueBin, startBin, path.getRoot());
+			System.err.printf("Ignored: consensus bin %s doesn't agree with one of the endings bin %s at node %s\n", uniqueBin, startBin, path.getRoot());
 			node2BinMap.remove(path.getRoot());
 			//clean from bin map here...
 			return null;
 		}else if(!uniqueBin.isCloseTo(endBin)){
-			LOG.info("Ignored: consensus bin {} doesn't agree with one of the endings bin {} at node {}", uniqueBin, endBin, path.peekNode());
+			System.err.printf("Ignored: consensus bin %s doesn't agree with one of the endings bin %s at node %s\n", uniqueBin, endBin, path.peekNode());
 			node2BinMap.remove(path.peekNode());
 			//clean from bin map here...
 			return null;
@@ -434,7 +455,8 @@ public class SimpleBinner {
 			nextNode=ep.getOpposite(curNode);
 			HashMap<PopBin, Integer> edgeBinsCount, bcMinusOne=null,  
 										nodeBinsCount;	
-			if(getUniqueBin(curNode)!=null){
+			//remove faulty edge of unique nodes (that has degree=3)
+			if(getBinIfUnique(curNode)!=null || getBinIfUniqueNow(curNode)!=null){
 				if(curNode.getNumber("len") > UNIQUE_CTG_LEN){
 					boolean dir=((BidirectedEdge)ep).getDir((BidirectedNode)curNode);
 					Stream<Edge> streamEdges=dir?curNode.leavingEdges():curNode.enteringEdges();
@@ -442,7 +464,7 @@ public class SimpleBinner {
 				}else
 					retval.add(ep);
 			}
-			if(getUniqueBin(nextNode)!=null){
+			if(getBinIfUnique(nextNode)!=null || getBinIfUniqueNow(nextNode)!=null){
 				if(nextNode.getNumber("len") > UNIQUE_CTG_LEN){
 					boolean dir=((BidirectedEdge)ep).getDir((BidirectedNode)nextNode);
 					Stream<Edge> streamEdges=dir?nextNode.leavingEdges():nextNode.enteringEdges();
@@ -466,7 +488,7 @@ public class SimpleBinner {
 					edge2BinMap.replace(ep, bcMinusOne);				
 
 				}else {
-					LOG.error("Conflict binning information on path {}, at edge {}: {}!,", path.getId(), ep.getId(), getBinsOfEdge(ep));
+					System.err.printf("Conflict binning information on path %s, at edge %s: %s!\n", path.getId(), ep.getId(), getBinsOfEdge(ep));
 //					edge2BinMap.remove(ep);
 				}
 		
@@ -522,37 +544,37 @@ public class SimpleBinner {
 //							!(checkEdgeSafeToRemove(e)));
 		return retval;
 	}
-
 	
-	private boolean checkEdgeSafeToRemove(BidirectedEdge edge) {
-		boolean retval=true;
-		BidirectedNode 	n0=(BidirectedNode) edge.getNode0(),
-						n1=(BidirectedNode) edge.getNode1();
-		boolean dir0=edge.getDir0(),
-				dir1=edge.getDir1();
-		double remainCov=0.0;
-		Optional<Double> tmp;
-		System.out.printf("Checking edge " + edge.getId() + ": remainCov=");
-		boolean onlyFlag=false;
-		if(getUniqueBin(n0)==null && getUniqueBin(n1)==null){
-			if((dir0?n0.getOutDegree():n0.getInDegree()) == 1){//the only in/out edge for n0
-				tmp=(dir0?n0.enteringEdges():n0.leavingEdges()).map(e->(e.getNumber("cov"))).reduce(Double::sum);
-				if(tmp.isPresent())
-					remainCov+=tmp.get();
-				onlyFlag=true;
-			}
-			if((dir1?n1.getOutDegree():n1.getInDegree()) == 1){//the only in/out edge for n1
-				tmp=(dir1?n1.enteringEdges():n1.leavingEdges()).map(e->(e.getNumber("cov"))).reduce(Double::sum);
-				if(tmp.isPresent())
-					remainCov+=tmp.get();			
-				onlyFlag=true;
-			}
-			if(onlyFlag && remainCov > edge.getNumber("cov"))
-				retval=false;
-		}
-		System.out.println(remainCov + " => " + retval);
-		return retval;
-	}
+//	private boolean checkEdgeSafeToRemove(BidirectedEdge edge) {
+//		boolean retval=true;
+//		BidirectedNode 	n0=(BidirectedNode) edge.getNode0(),
+//						n1=(BidirectedNode) edge.getNode1();
+//		boolean dir0=edge.getDir0(),
+//				dir1=edge.getDir1();
+//		double remainCov=0.0;
+//		Optional<Double> tmp;
+//		System.out.printf("Checking edge " + edge.getId() + ": remainCov=");
+//		boolean onlyFlag=false;
+//		if(getUniqueBin(n0)==null && getUniqueBin(n1)==null){
+//			if((dir0?n0.getOutDegree():n0.getInDegree()) == 1){//the only in/out edge for n0
+//				tmp=(dir0?n0.enteringEdges():n0.leavingEdges()).map(e->(e.getNumber("cov"))).reduce(Double::sum);
+//				if(tmp.isPresent())
+//					remainCov+=tmp.get();
+//				onlyFlag=true;
+//			}
+//			if((dir1?n1.getOutDegree():n1.getInDegree()) == 1){//the only in/out edge for n1
+//				tmp=(dir1?n1.enteringEdges():n1.leavingEdges()).map(e->(e.getNumber("cov"))).reduce(Double::sum);
+//				if(tmp.isPresent())
+//					remainCov+=tmp.get();			
+//				onlyFlag=true;
+//			}
+//			if(onlyFlag && remainCov > edge.getNumber("cov"))
+//				retval=false;
+//		}
+//		System.out.println(remainCov + " => " + retval);
+//		return retval;
+//	}
+	
 	public String getBinsOfNode(Node node) {
 		String retval="[";
 		HashMap<PopBin, Integer> binCount=node2BinMap.get(node);

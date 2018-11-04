@@ -156,7 +156,7 @@ public class BidirectedGraph extends MultiGraph{
 		for(Node node:this) {
 			Sequence seq=(Sequence) node.getAttribute("seq");
 			if( (node.getDegree()==0 && (seq.length() < SimpleBinner.ANCHOR_CTG_LEN)) 
-				|| node.getNumber("cov") < RCOV*0.1 )	//not display <10% abundance pops
+				|| node.getNumber("cov") < 10.0 )	//not display <10% abundance pops
 				continue;
 			seq.writeFasta(out);
 		}
@@ -236,10 +236,10 @@ public class BidirectedGraph extends MultiGraph{
 	    					endNode=path.getLastNode();
 	    	boolean startNodeDir=path.getFirstNodeDirection(),
 	    			endNodeDir=path.getLastNodeDirection();
-	    	if(SimpleBinner.getUniqueBin(startNode)!=null){
+	    	if(SimpleBinner.getBinIfUnique(startNode)!=null){
 	    		bridgesMap.put(startNode.getId()+(startNodeDir?"o":"i"), new GoInBetweenBridge(this,path));
 	    	}
-	    	if(SimpleBinner.getUniqueBin(endNode)!=null){
+	    	if(SimpleBinner.getBinIfUnique(endNode)!=null){
 	    		bridgesMap.put(endNode.getId()+(endNodeDir?"o":"i"), new GoInBetweenBridge(this,path));
 	    	}
 		} catch (Exception e) {
@@ -258,17 +258,17 @@ public class BidirectedGraph extends MultiGraph{
 	    	boolean startNodeDir=algRead.getFirstAlignment().strand,
 	    			endNodeDir=!algRead.getLastAlignment().strand;
 	    	
-	    	if(SimpleBinner.getUniqueBin(startNode)!=null){
+	    	if(SimpleBinner.getBinIfUnique(startNode)!=null){
 	    		tmp=bridgesMap.get(startNode.getId()+(startNodeDir?"o":"i"));
 	    		if(tmp!=null)
 	    			retval=tmp;
 	    	}
 	    	
-	    	if(SimpleBinner.getUniqueBin(endNode)!=null){
+	    	if(SimpleBinner.getBinIfUnique(endNode)!=null){
 	    		tmp=bridgesMap.get(endNode.getId()+(endNodeDir?"o":"i"));
-	    		if(tmp!=null && retval==null){
-//	    			if(retval.getNumberOfAnchors()<tmp.getNumberOfAnchors())
-    				retval=tmp;
+	    		if(tmp!=null){
+	    			if(retval==null||retval.getNumberOfAnchors()<tmp.getNumberOfAnchors())
+	    				retval=tmp;
 	    			
 	    		}
 	    	}
@@ -439,7 +439,7 @@ public class BidirectedGraph extends MultiGraph{
 //		traverse(tmp, dstNode, possiblePaths, distance, distance>A_TOL?(int) (R_TOL*distance):A_TOL, srcDir, !dstDir, 0);
 		
 		if(possiblePaths.isEmpty()){
-			if(SimpleBinner.getUniqueBin(srcNode)!=null && SimpleBinner.getUniqueBin(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 && assureFlag){
+			if(SimpleBinner.getBinIfUnique(srcNode)!=null && SimpleBinner.getBinIfUnique(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 && assureFlag){
 				//save the corresponding content of long reads to this edge
 				//FIXME: save nanopore reads into this pseudo edge to run consensus later
 				BidirectedEdge pseudoEdge = addEdge(srcNode, dstNode, srcDir, dstDir);
@@ -568,7 +568,7 @@ public class BidirectedGraph extends MultiGraph{
 
  		int flag=0; //+1 for unique startAlignment.node, +2 for unique endAlignment.node flag={0,1,2,3}
  		if(curRanges.size()==1){
- 			curBin=SimpleBinner.getUniqueBin(allAlignments.get(curRanges.get(0)).node);
+ 			curBin=SimpleBinner.getBinIfUnique(allAlignments.get(curRanges.get(0)).node);
  			if( curBin!= null){
  				flag+=1;
  				prevUnqBin=curBin;
@@ -593,80 +593,98 @@ public class BidirectedGraph extends MultiGraph{
  	      	
  	    	if(curRanges.size()==1){
  	    		curAlg=allAlignments.get(curRanges.get(0));
- 	    		curBin=SimpleBinner.getUniqueBin(curAlg.node);
- 	    		
-    			curBuildingBlocks.append(curAlg);
-
- 	    		if(curBin!=null){//TODO: need to check if this unique bin agrees with the other bin		
- 	    			if(prevUnqBin!=null)//FIXME:ugly!!! need to check agreement between two bins + last half-bridge process
- 	    				flag+=2;
- 	    			curBuildingBlocks.setEFlag(flag);
- 	    			//do smt here instead of storing it!!! Parameters: curBuildingBlocks + flag + curBin
- 					//TODO: implement the bridge building here, EVERYTHING
- 	    			////////////////////////////////////////////////////////////////////////////////////
- 	    			GoInBetweenBridge 	storedBridge=getBridgeFromMap(curBuildingBlocks);
- 	    			System.out.printf("+++%s <=> %s\n", curBuildingBlocks.getEndingsID(), storedBridge==null?"null":storedBridge.getEndingsID());
- 	    			
- 	    			if(storedBridge!=null) {
- 	    				if(storedBridge.getCompletionLevel()==4){
- 	    					System.out.println(storedBridge.getEndingsID() + ": already solved: ignore!");
- 	    				}else{
- 	    					System.out.println(storedBridge.getEndingsID() + ": already built: fortify!");
- 	    					//update available bridge using alignments
- 	    					if(storedBridge.merge(curBuildingBlocks))
- 	    						updateBridgesMap(storedBridge);
- 	    					
- 	    	    			if(storedBridge.getCompletionLevel()==4){
- 	    	    				System.out.printf("=> final path: %s\n ", storedBridge.getAllPossiblePaths());
- 	    	    				retrievedPaths.addAll(storedBridge.getBestPath().chopPathAtAnchors());
- 	    	    			}
- 	    						
- 	    					//also update the reversed bridge
- 	    					if(curBuildingBlocks.getEFlag()==3) {
- 	    						curBuildingBlocks.reverse();
- 	    						GoInBetweenBridge anotherBridge = getBridgeFromMap(curBuildingBlocks);
- 	    						if(anotherBridge!=storedBridge) {
- 	    							if(anotherBridge.merge(curBuildingBlocks))
- 	    								updateBridgesMap(anotherBridge);											
- 	    							
- 	    							if(anotherBridge.getCompletionLevel()==4){
- 	    								System.out.printf("=> final path: %s\n ", anotherBridge.getAllPossiblePaths());
- 	    								retrievedPaths.addAll(anotherBridge.getBestPath().chopPathAtAnchors());
- 	    							}
- 	    						}
- 	    					}
- 	    				}			
- 	    				
-
- 	    			}else{
- 	    				storedBridge=new GoInBetweenBridge(this,curBuildingBlocks, curBin);
- 	    				updateBridgesMap(storedBridge);		
- 	 	    			if(storedBridge.getCompletionLevel()==4){
- 	 	    				System.out.printf("=> final path: %s\n ", storedBridge.getAllPossiblePaths());
- 	 	    				retrievedPaths.addAll(storedBridge.getBestPath().chopPathAtAnchors());
- 	 	    			}
- 	    			}
- 	    			
- 	    			
-
- 	    			
- 	    			////////////////////////////////////////////////////////////////////////////////////
- 	    			//start new building block
- 					curBuildingBlocks=new AlignedRead(nnpRead, curAlg);
- 					flag=1;
- 					prevUnqBin=curBin;
- 	    		}
- 	    		
+ 	    		curBin=SimpleBinner.getBinIfUnique(curAlg.node);	    		
+    			curBuildingBlocks.append(curAlg);	    		
  	    	}else{
+ 	    		curBin=null;
  	    		curBuildingBlocks.appendAll((ArrayList<Alignment>) curRanges.stream().map(g->allAlignments.get(g)).collect(Collectors.toList()));
  	    	}
+ 	    	
+  			
+    		if(curBin!=null){
+    			if(curBin.isCloseTo(prevUnqBin))
+    				flag+=2;
+    			else if(prevUnqBin!=null)
+    				continue;
+    			
+    			curBuildingBlocks.setEFlag(flag);
+    			//do smt here instead of storing it!!! Parameters: curBuildingBlocks + flag + curBin
+				//TODO: implement the bridge building here, EVERYTHING
+    			////////////////////////////////////////////////////////////////////////////////////
+    			
+    			retrievedPaths.addAll(updateBridge(curBuildingBlocks, curBin));
+    			   					
+    			////////////////////////////////////////////////////////////////////////////////////
+    			//start new building block
+				curBuildingBlocks=new AlignedRead(nnpRead, curAlg);
+				flag=1;
+				prevUnqBin=curBin;
+    		}
+	    		
+ 	    }
+ 	    
+ 	    //last time iteration: shouldn't be any new paths found, just merging information
+ 	    
+ 	    if(curBuildingBlocks.alignments.size() > 1){
+ 	    	curBuildingBlocks.setEFlag(1);
+ 	    	retrievedPaths.addAll(updateBridge(curBuildingBlocks, prevUnqBin));
  	    }
 
  	    return retrievedPaths;
  	}
   	
     
-    
+    private List<BidirectedPath> updateBridge(AlignedRead read, PopBin bin){
+    	List<BidirectedPath> retval=new ArrayList<BidirectedPath>();
+		GoInBetweenBridge 	storedBridge=getBridgeFromMap(read);
+		System.out.printf("+++%s <=> %s\n", read.getEndingsID(), storedBridge==null?"null":storedBridge.getEndingsID());
+		
+		if(storedBridge!=null) {
+			if(storedBridge.getCompletionLevel()==4){
+				System.out.println(storedBridge.getEndingsID() + ": already solved: ignore!");
+			}else{
+				System.out.println(storedBridge.getEndingsID() + ": already built: fortify!");
+				//update available bridge using alignments
+				if(storedBridge.merge(read))
+					updateBridgesMap(storedBridge);
+				
+				if(storedBridge.getCompletionLevel()==1 && storedBridge.scanForAnEnd()){
+					storedBridge.steps.connectBridgeSteps(false);
+				}
+				
+    			if(storedBridge.getCompletionLevel()==4){
+    				System.out.printf("=> final path: %s\n ", storedBridge.getAllPossiblePaths());
+    				retval.addAll(storedBridge.getBestPath().chopPathAtAnchors());
+    			}
+					
+//				//also update the reversed bridge: important e.g. Acinetobacter_AB30. WHY??? (already updated and merged 2 homo bridges)
+				if(read.getEFlag()==3) {
+					read.reverse();
+					GoInBetweenBridge anotherBridge = getBridgeFromMap(read);
+					if(anotherBridge!=storedBridge) {
+						if(anotherBridge.merge(read))
+							updateBridgesMap(anotherBridge);											
+						
+						if(anotherBridge.getCompletionLevel()==4){
+							System.out.printf("=> final path: %s\n ", anotherBridge.getAllPossiblePaths());
+							retval.addAll(anotherBridge.getBestPath().chopPathAtAnchors());
+						}
+					}
+				}
+			}			
+			
+
+		}else{
+			storedBridge=new GoInBetweenBridge(this,read, bin);
+			updateBridgesMap(storedBridge);		
+ 			if(storedBridge.getCompletionLevel()==4){
+ 				System.out.printf("=> final path: %s\n ", storedBridge.getAllPossiblePaths());
+ 				retval.addAll(storedBridge.getBestPath().chopPathAtAnchors());
+ 			}
+		}
+		
+		return retval;
+    }
 
     /**
      * Another reduce that doesn't remove the unique nodes
@@ -720,7 +738,7 @@ public class BidirectedGraph extends MultiGraph{
 			
 	    	return true;
     	}else {
-    		LOG.info("Path {} has failed reduce operation!", path.getId());
+    		LOG.info("Path {} has not reduced!", path.getId());
     		return false;
     	}
 
@@ -738,7 +756,7 @@ public class BidirectedGraph extends MultiGraph{
     			curNodeFromSimGraph = (BidirectedNode) path.getRoot();
 	
     	boolean markerDir=true, curDir;
-    	PopBin 	curUniqueBin = SimpleBinner.getUniqueBin(curNodeFromSimGraph);
+    	PopBin 	curUniqueBin = SimpleBinner.getBinIfUnique(curNodeFromSimGraph);
     	if(curUniqueBin!=null){
     		markerNode=curNodeFromSimGraph;
     		markerDir=((BidirectedEdge) path.getEdgePath().get(0)).getDir(markerNode);
@@ -755,7 +773,7 @@ public class BidirectedGraph extends MultiGraph{
     		   		
     		curDir=((BidirectedEdge) edge).getDir(curNodeFromSimGraph);
     		
-    		curUniqueBin = SimpleBinner.getUniqueBin(curNodeFromSimGraph);
+    		curUniqueBin = SimpleBinner.getBinIfUnique(curNodeFromSimGraph);
     		if(curUniqueBin!=null){//only when reach the end of path
 				curPath.setConsensusUniqueBinOfPath(curUniqueBin);
 				if(markerNode!=null){

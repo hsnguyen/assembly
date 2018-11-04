@@ -33,10 +33,10 @@ public class GoInBetweenBridge {
 	GoInBetweenBridge (BidirectedGraph graph, BidirectedPath path){
 		this(graph,path.getConsensusUniqueBinOfPath());
 		if(	path.size()>1) {
-			if(SimpleBinner.getUniqueBin(path.getRoot())!=null) {
+			if(SimpleBinner.getBinIfUnique(path.getRoot())!=null) {
 				addSegment(new BridgeSegment(path));
 			}
-			else if(SimpleBinner.getUniqueBin(path.peekNode())!=null) {
+			else if(SimpleBinner.getBinIfUnique(path.peekNode())!=null) {
 				addSegment(new BridgeSegment(path.reverse()));
 			}
 			
@@ -324,9 +324,33 @@ public class GoInBetweenBridge {
 			retval.setConsensusUniqueBinOfPath(bin);
 		return retval;
 	}
-
 	
+	
+	//Try to look for an ending unique node of a unidentifiable bridge
+	//by using isUniqueNow()
+	public boolean scanForAnEnd(){
+		boolean retval=false;
+		if(steps==null || steps.isIdentifiable())
+			return false;
+		Iterator<NodeVector> ite = steps.nodes.descendingIterator();
+		while(ite.hasNext()){
+			NodeVector tmp=ite.next();
+			if(tmp==steps.start)
+				break;
+			PopBin b=graph.binner.getBinIfUniqueNow(tmp.node);
+			if(b!=null && b.isCloseTo(bin)){
+				steps.end=tmp;
+				retval=true;
+				break;
+			}
+				
+		}
+		
+		return retval;
+	}
+
 	/************************************************************************************************
+	 ************************************************************************************************
 	 * Class to represent a single segment of the whole bridge.
 	 * A bridge consists of >=1 segments.
 	 ************************************************************************************************/
@@ -459,7 +483,7 @@ public class GoInBetweenBridge {
 	 * Used for determine segments 
 	 */
 	class BridgeSteps{
-		SortedSet<NodeVector> nodes;
+		TreeSet<NodeVector> nodes;
 		//save the two unique nodes at 2 endings of the bridge. When end is covered more than threshold, pBridge is set
 		NodeVector start, end; 
 		
@@ -471,8 +495,8 @@ public class GoInBetweenBridge {
 			this();
 			if(read.getAlignmentRecords().size()<2)
 				return;
-			if(SimpleBinner.getUniqueBin(read.getFirstAlignment().node)==null)
-				if(SimpleBinner.getUniqueBin(read.getLastAlignment().node)!=null)
+			if(SimpleBinner.getBinIfUnique(read.getFirstAlignment().node)==null)
+				if(SimpleBinner.getBinIfUnique(read.getLastAlignment().node)!=null)
 					read.reverse();
 				else
 					return;
@@ -489,7 +513,7 @@ public class GoInBetweenBridge {
 				NodeVector tmp=new NodeVector(curAlg.node, read.getVector(firstAlg, curAlg));
 				nodes.add(tmp);
 				
-				if(SimpleBinner.getUniqueBin(curAlg.node)!=null)
+				if(SimpleBinner.getBinIfUnique(curAlg.node)!=null)
 					end=tmp;
 
 			}
@@ -513,7 +537,7 @@ public class GoInBetweenBridge {
 				NodeVector tmp=ite.next();
 				if(tmp.merge(nv)){
 					//re-assign end node if there is another unique node with higher score
-					if(SimpleBinner.getUniqueBin(tmp.getNode())!=null && !tmp.getVector().isIdentity()) {
+					if(SimpleBinner.getBinIfUnique(tmp.getNode())!=null && !tmp.getVector().isIdentity()) {
 						if(!end.equals(tmp)){
 							if(end.nodeCover < tmp.nodeCover)
 								end=tmp;
@@ -531,7 +555,7 @@ public class GoInBetweenBridge {
 			
 			if(!found) {
 				nodes.add(nv);
-				if(SimpleBinner.getUniqueBin(nv.getNode())!=null) {
+				if(SimpleBinner.getBinIfUnique(nv.getNode())!=null) {
 					if(nv.getVector().isIdentity()){
 						start=nv;	
 					}else if(end==null){
@@ -606,7 +630,7 @@ public class GoInBetweenBridge {
 					System.out.println(" ignored!");
 					return false;
 				}else{
-					System.out.println(" proceed for the last attempt!");
+					System.out.println(" proceed for the last attempt (or just to see how it went wrong)!");
 
 				}
 			}else{
@@ -687,7 +711,7 @@ public class GoInBetweenBridge {
 		}
 		void reverse() {
 			//reverse the nodes list
-			SortedSet<NodeVector> reversedSet = new TreeSet<NodeVector>();
+			TreeSet<NodeVector> reversedSet = new TreeSet<NodeVector>();
 			ScaffoldVector rev=ScaffoldVector.reverse(end.getVector());//anchors number = 2 so there exist end node
 			NodeVector tmp = null;
 			for(NodeVector nv:nodes) {

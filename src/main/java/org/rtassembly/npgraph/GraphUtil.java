@@ -72,16 +72,9 @@ public class GraphUtil {
 				node.setAttribute("len", seq.length());
 
 				double cov = Double.parseDouble(name.split("_")[5]);
-
-				//Convert from kmer coverage (read kmer per contig kmer)
-				//to read coverage (read bp per contig bp)
-				//Cx=Ck*L/(L-k+1)
-//				cov=cov*BidirectedGraph.ILLUMINA_READ_LENGTH/(BidirectedGraph.ILLUMINA_READ_LENGTH-BidirectedGraph.KMER+1);
 				
 				node.setAttribute("cov", cov);
 
-//				totReadsLen += cov*seq.length();
-//				totContigsLen += seq.length();
 			}
 			if (adjList.length > 1){
 				String[] nbList = adjList[1].split(",");
@@ -120,8 +113,16 @@ public class GraphUtil {
 		double totReadsLen=0, totContigsLen=0;
 
 		for(Node node:graph) {
+			//Convert from kmer coverage (read kmer per contig kmer)
+			//to read coverage (read bp per contig bp)
+			//Cx=Ck*L/(L-k+1)
+//			cov=cov*BidirectedGraph.ILLUMINA_READ_LENGTH/(BidirectedGraph.ILLUMINA_READ_LENGTH-BidirectedGraph.KMER+1);
+			double cov=node.getNumber("cov")*BidirectedGraph.ILLUMINA_READ_LENGTH/(BidirectedGraph.ILLUMINA_READ_LENGTH-BidirectedGraph.getKmerSize()+1);
+			node.setAttribute("cov", cov);	
+			
+			//ignore noises
 			if(node.getDegree()==0 && node.getNumber("len")<2*BidirectedGraph.ILLUMINA_READ_LENGTH) {
-//				removeNode(node);
+				continue;
 			}
 			else {
 				totReadsLen += node.getNumber("cov")*node.getNumber("len");
@@ -137,15 +138,17 @@ public class GraphUtil {
 		 * n: total number of reads, G: genome size
 		 * Recalculated by Cx, contig_len, read_len, RCOV (average read coverage over the genome)
 		 */
-		for (Node n:graph) {
-			Sequence nseq = (Sequence) n.getAttribute("seq");
+		for (Node node:graph) {
+			Sequence nseq = (Sequence) node.getAttribute("seq");
 			double astats = nseq.length()*BidirectedGraph.RCOV/BidirectedGraph.ILLUMINA_READ_LENGTH
-							-Math.log(2)*n.getNumber("cov")*nseq.length()/BidirectedGraph.ILLUMINA_READ_LENGTH;
+							-Math.log(2)*node.getNumber("cov")*nseq.length()/BidirectedGraph.ILLUMINA_READ_LENGTH;
 			astats*=Math.log10(Math.E);
-			n.setAttribute("astats", astats);
-			LOG.info("{} Read coverage = {} Length = {} A-stats = {}", n.getAttribute("name"), n.getNumber("cov"), n.getNumber("len"), astats );
+			node.setAttribute("astats", astats);
+			normalizedCoverage(node);
+			LOG.info("{} Normalized coverage = {} Length = {} A-stats = {}", node.getAttribute("name"), node.getNumber("cov"), node.getNumber("len"), astats );
 		}
-		LOG.info("No of nodes= {} No of edges = {} Estimated avg. read coverage = {} Total contigs length = {}", graph.getNodeCount(), graph.getEdgeCount(), BidirectedGraph.RCOV, totContigsLen );
+		
+		LOG.info("No of nodes= {} No of edges = {} Estimated avg. read coverage = {} (normalized to 100.0) Total contigs length = {}", graph.getNodeCount(), graph.getEdgeCount(), BidirectedGraph.RCOV, totContigsLen );
 		
 		
 		/*
@@ -280,21 +283,21 @@ public class GraphUtil {
 			BidirectedGraph.setKmerSize(shortestLen-1);
 
 		}
-		
-		graph.nodes().forEach(n->{
-			//1.kmer count to kmer cov
-			double cov=n.getNumber("cov")/(n.getNumber("len")-BidirectedGraph.getKmerSize()); 
-			//2.kmer cov to read cov
-			cov*=BidirectedGraph.ILLUMINA_READ_LENGTH/(BidirectedGraph.ILLUMINA_READ_LENGTH-BidirectedGraph.getKmerSize());
-			n.setAttribute("cov", cov);	
-		});
 
 		
 		double totReadsLen=0, totContigsLen=0;
 
 		for(Node node:graph) {
+			//1.kmer count to kmer cov
+			double cov=node.getNumber("cov")/(node.getNumber("len")-BidirectedGraph.getKmerSize()); 
+			//2.kmer cov to read cov
+			cov*=BidirectedGraph.ILLUMINA_READ_LENGTH/(BidirectedGraph.ILLUMINA_READ_LENGTH-BidirectedGraph.getKmerSize()+1);
+			node.setAttribute("cov", cov);	
+			
+			
+			//ignore noises
 			if(node.getDegree()==0 && node.getNumber("len")<2*BidirectedGraph.ILLUMINA_READ_LENGTH) {
-//				removeNode(node);
+				continue;
 			}
 			else {
 				totReadsLen += node.getNumber("cov")*node.getNumber("len");
@@ -310,15 +313,17 @@ public class GraphUtil {
 		 * n: total number of reads, G: genome size
 		 * Recalculated by Cx, contig_len, read_len, RCOV (average read coverage over the genome)
 		 */
-		for (Node n:graph) {
-			Sequence nseq = (Sequence) n.getAttribute("seq");
+		for (Node node:graph) {
+			Sequence nseq = (Sequence) node.getAttribute("seq");
 			double astats = nseq.length()*BidirectedGraph.RCOV/BidirectedGraph.ILLUMINA_READ_LENGTH
-							-Math.log(2)*n.getNumber("cov")*nseq.length()/BidirectedGraph.ILLUMINA_READ_LENGTH;
+							-Math.log(2)*node.getNumber("cov")*nseq.length()/BidirectedGraph.ILLUMINA_READ_LENGTH;
 			astats*=Math.log10(Math.E);
-			n.setAttribute("astats", astats);
-			LOG.info("{} Read coverage = {} Length = {} A-stats = {}", n.getAttribute("name"), n.getNumber("cov"), n.getNumber("len"), astats );
+			node.setAttribute("astats", astats);
+			normalizedCoverage(node);
+			LOG.info("{} Normalized coverage = {} Length = {} A-stats = {}", node.getAttribute("name"), node.getNumber("cov"), node.getNumber("len"), astats );
 		}
-		LOG.info("No of nodes= {} No of edges = {} Estimated avg. read coverage = {} Total contigs length = {}", graph.getNodeCount(), graph.getEdgeCount(), BidirectedGraph.RCOV, totContigsLen );
+		
+		LOG.info("No of nodes= {} No of edges = {} Estimated avg. read coverage = {} (normalized to 100.0) Total contigs length = {}", graph.getNodeCount(), graph.getEdgeCount(), BidirectedGraph.RCOV, totContigsLen );
 		
 		/*
 		 * 2. Binning the graph
@@ -337,6 +342,16 @@ public class GraphUtil {
 				redrawGraphComponents(graph);
 		}
     }
+    
+    //Normalized the average cov to 100
+    public static void normalizedCoverage(Node node){
+    	assert BidirectedGraph.RCOV!=0 && node.hasAttribute("cov"):"Cannot normalize coverage of node " + node.getId();
+    	node.setAttribute("cov", node.getNumber("cov")*100.0/BidirectedGraph.RCOV);
+    }
+    public static double getRealCoverage(double cov){
+    	return cov*BidirectedGraph.RCOV/100.0;
+    }
+    
     
 	public static void gradientDescent(BidirectedGraph graph) {
 		int 	maxIterations=100, 
@@ -614,8 +629,8 @@ public class GraphUtil {
     
     
     /***********************************************************************
-     * *********************************************************************
-     */
+     * TODO: merge this with GraphWatcher.update()
+     **********************************************************************/
     
     public static void redrawGraphComponents(BidirectedGraph graph) {
 //      graph.addAttribute("ui.quality");
@@ -630,7 +645,7 @@ public class GraphUtil {
 			if(lengthScale<1) lengthScale=1;
 			else if(lengthScale>2) lengthScale=2;
 	          
-			int covScale = (int) Math.round(node.getNumber("cov")/BidirectedGraph.RCOV);
+			int covScale = (int) Math.round(node.getNumber("cov")/100.0);
 			SimpleBinner binner=graph.binner;
 	          
 			String[] palette= {"grey","blue","yellow","orange","green","pink","magenta","red"};

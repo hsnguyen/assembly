@@ -105,7 +105,7 @@ public class GraphWatcher {
 			 }
 			 //now we have repPath
 			 Sequence seq=repPath.spelling();
-			 double cov=repPath.averageCov();
+			 double cov=GraphUtil.getRealCoverage(repPath.averageCov());
 			 Node n=outputGraph.addNode(Integer.toString(comp.id));
 			 seq.setName("Contig_"+comp.id+"_"+(isCircular?"circular":"linear")+"_length_"+seq.length()+"_cov_"+cov);
 			 n.setAttribute("seq", seq);
@@ -268,7 +268,7 @@ public class GraphWatcher {
 			 }
 			 //now we have repPath
 			 Sequence seq=repPath.spelling();
-			 double cov=repPath.averageCov();
+			 double cov=GraphUtil.getRealCoverage(repPath.averageCov());
 			 Node n=outputGraph.addNode(Integer.toString(comp.id));
 			 seq.setName("Contig_"+comp.id+"_"+(isCircular?"circular":"linear")+"_length_"+seq.length()+"_cov_"+cov);
 			 n.setAttribute("seq", seq);
