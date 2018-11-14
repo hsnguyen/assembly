@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.regex.Matcher;
@@ -38,7 +39,7 @@ public class GraphUtil {
 	 * ****************************Algorithms go from here*****************************
 	 */
     //TODO: read from ABySS assembly graph (graph of final contigs, not like SPAdes)
-	public static volatile double DISTANCE_THRES=1.0;
+	public static volatile double DISTANCE_THRES=3.0; //i like number 3
     
     public static void loadFromFASTG(String graphFileName, BidirectedGraph graph, boolean spadesBridging) throws IOException{
         graph.setAutoCreate(true);
@@ -138,14 +139,36 @@ public class GraphUtil {
 		 * n: total number of reads, G: genome size
 		 * Recalculated by Cx, contig_len, read_len, RCOV (average read coverage over the genome)
 		 */
+		
+		//Try print sequence of Astat
+		//A(delta,r,k)=log(e)*delta*n/G +r*log(n/n+1)
+		//Celera Astats = A(delta,r,1)
+		
 		for (Node node:graph) {
 			Sequence nseq = (Sequence) node.getAttribute("seq");
-			double astats = nseq.length()*BidirectedGraph.RCOV/BidirectedGraph.ILLUMINA_READ_LENGTH
-							-Math.log(2)*node.getNumber("cov")*nseq.length()/BidirectedGraph.ILLUMINA_READ_LENGTH;
-			astats*=Math.log10(Math.E);
-			node.setAttribute("astats", astats);
-			normalizedCoverage(node);
-			LOG.info("{} Normalized coverage = {} Length = {} A-stats = {}", node.getAttribute("name"), node.getNumber("cov"), node.getNumber("len"), astats );
+			int estcov=(int) Math.round(node.getNumber("cov")/BidirectedGraph.RCOV);
+			double astats=-1;
+			int i=0;
+			//get the first positive astats, if > 10 then assign its multiplicity (not work with different pops) 
+			while(astats<0){
+				i++;
+				astats = nseq.length()*BidirectedGraph.RCOV/BidirectedGraph.ILLUMINA_READ_LENGTH
+				+Math.log((i+1)*1.0/(i+2))*node.getNumber("cov")*nseq.length()/BidirectedGraph.ILLUMINA_READ_LENGTH;
+				astats*=Math.log10(Math.E);				
+			}
+			normalizedCoverage(node);			
+			if(astats>10)
+				LOG.info("{} Normalized coverage={} Length={} Coverage={} A-stats={}", node.getAttribute("name"), node.getNumber("cov"), node.getNumber("len"), estcov, astats );
+			else
+				LOG.info("{} Normalized coverage={} Length={}", node.getAttribute("name"), node.getNumber("cov"), node.getNumber("len") );
+
+			
+//			double astats = nseq.length()*BidirectedGraph.RCOV/BidirectedGraph.ILLUMINA_READ_LENGTH
+//							-Math.log(2)*node.getNumber("cov")*nseq.length()/BidirectedGraph.ILLUMINA_READ_LENGTH;
+//			astats*=Math.log10(Math.E);
+//			node.setAttribute("astats", astats);
+//			normalizedCoverage(node);
+//			LOG.info("{} Normalized coverage = {} Length = {} \nA-stats = {}", node.getAttribute("name"), node.getNumber("cov"), node.getNumber("len"), astats);
 		}
 		
 		LOG.info("No of nodes= {} No of edges = {} Estimated avg. read coverage = {} (normalized to 100.0) Total contigs length = {}", graph.getNodeCount(), graph.getEdgeCount(), BidirectedGraph.RCOV, totContigsLen );

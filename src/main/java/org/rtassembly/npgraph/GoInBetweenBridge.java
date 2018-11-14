@@ -51,8 +51,13 @@ public class GoInBetweenBridge {
 
 	}
 	
-	public GoInBetweenBridge(BidirectedGraph graph, AlignedRead bb, PopBin b) {
+	public GoInBetweenBridge(BidirectedGraph graph, BridgeSteps steps, PopBin b){
 		this(graph,b);
+		this.steps=steps;
+	}
+	
+	public GoInBetweenBridge(BidirectedGraph graph, AlignedRead bb, PopBin b) {
+		this(graph, b);
 		steps=new BridgeSteps(bb);
 	}
 
@@ -328,24 +333,41 @@ public class GoInBetweenBridge {
 	
 	//Try to look for an ending unique node of a unidentifiable bridge
 	//by using isUniqueNow()
-	public boolean scanForAnEnd(){
-		boolean retval=false;
+	public NodeVector scanForAnEnd(){
 		if(steps==null || steps.isIdentifiable())
-			return false;
+			return null;
 		Iterator<NodeVector> ite = steps.nodes.descendingIterator();
 		while(ite.hasNext()){
 			NodeVector tmp=ite.next();
+			if(!tmp.qc())
+				continue;
 			if(tmp==steps.start)
 				break;
 			PopBin b=graph.binner.getBinIfUniqueNow(tmp.node);
 			if(b!=null && b.isCloseTo(bin)){
 				steps.end=tmp;
-				retval=true;
 				break;
 			}
 				
 		}
 		
+		return steps.end;
+	}
+	
+	//Break a bridge at a transformed unique node (end) and 
+	//return the left-over bridge
+	public GoInBetweenBridge breakAtEndNode() {
+		GoInBetweenBridge retval=null;
+		TreeSet<NodeVector> headSet=(TreeSet<NodeVector>) steps.nodes.headSet(steps.end,true),
+							tailSet=(TreeSet<NodeVector>) steps.nodes.tailSet(steps.end);
+		steps.nodes=headSet;
+		if(tailSet.size()>0){
+			BridgeSteps tailSteps=new BridgeSteps();
+			tailSteps.nodes=tailSet;
+			retval=new GoInBetweenBridge(graph, tailSteps, bin);
+			retval.pBridge=new BidirectedEdgePrototype(steps.end.node, !steps.end.getDirection(pBridge.getDir0()));
+		}
+
 		return retval;
 	}
 

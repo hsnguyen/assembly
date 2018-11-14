@@ -46,7 +46,7 @@ public class BidirectedGraph extends MultiGraph{
     //provide mapping from unique directed node to its corresponding bridge
     //E.g: 103-: <103-82-> also 82+:<82+103+>
     private HashMap<String, GoInBetweenBridge> bridgesMap; 
-    
+    private HashMap<Node, Set<Node>> adjacencyMap; // map a node to the set of its nearest unique nodes (identify via reduce function) 
     private static final Logger LOG = LoggerFactory.getLogger(BidirectedGraph.class);
 
     // *** Constructors ***
@@ -75,8 +75,9 @@ public class BidirectedGraph extends MultiGraph{
 	public BidirectedGraph(String id, boolean strictChecking, boolean autoCreate,
 			int initialNodeCapacity, int initialEdgeCapacity) {
 		super(id, strictChecking, autoCreate);
-		bridgesMap=new HashMap<String, GoInBetweenBridge>(initialNodeCapacity*2);
 		
+		bridgesMap=new HashMap<String, GoInBetweenBridge>(initialNodeCapacity*2);
+		adjacencyMap=new HashMap<Node, Set<Node>>();
 		// All we need to do is to change the node & edge factory
 		setNodeFactory(new NodeFactory<BidirectedNode>() {
 			public BidirectedNode newInstance(String id, Graph graph) {
@@ -441,7 +442,7 @@ public class BidirectedGraph extends MultiGraph{
 		if(possiblePaths.isEmpty()){
 			if(SimpleBinner.getBinIfUnique(srcNode)!=null && SimpleBinner.getBinIfUnique(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 && assureFlag){
 				//save the corresponding content of long reads to this edge
-				//FIXME: save nanopore reads into this pseudo edge to run consensus later
+				//TODO: save nanopore reads into this pseudo edge to run consensus later
 				BidirectedEdge pseudoEdge = addEdge(srcNode, dstNode, srcDir, dstDir);
 				pseudoEdge.setAttribute("dist", distance);
 				path.add(pseudoEdge);
@@ -464,7 +465,7 @@ public class BidirectedGraph extends MultiGraph{
 			System.out.println("Hit added: "+p.getId()+"(candidate deviation: "+p.getDeviation() + "; depth: " + p.size()+")");
 		}
 		
-		//FIXME: reduce the number of returned paths here (calculate edit distance with nanopore read: dynamic programming?)
+		//TODO: reduce the number of returned paths here (calculate edit distance with nanopore read: dynamic programming?)
 		return retval;
 	}    
     
@@ -612,7 +613,7 @@ public class BidirectedGraph extends MultiGraph{
 				//TODO: implement the bridge building here, EVERYTHING
     			////////////////////////////////////////////////////////////////////////////////////
     			
-    			retrievedPaths.addAll(updateBridge(curBuildingBlocks, curBin));
+    			retrievedPaths.addAll(buildBridge(curBuildingBlocks, curBin));
     			   					
     			////////////////////////////////////////////////////////////////////////////////////
     			//start new building block
@@ -627,14 +628,14 @@ public class BidirectedGraph extends MultiGraph{
  	    
  	    if(curBuildingBlocks.alignments.size() > 1){
  	    	curBuildingBlocks.setEFlag(1);
- 	    	retrievedPaths.addAll(updateBridge(curBuildingBlocks, prevUnqBin));
+ 	    	retrievedPaths.addAll(buildBridge(curBuildingBlocks, prevUnqBin));
  	    }
 
  	    return retrievedPaths;
  	}
   	
     
-    private List<BidirectedPath> updateBridge(AlignedRead read, PopBin bin){
+    private List<BidirectedPath> buildBridge(AlignedRead read, PopBin bin){
     	List<BidirectedPath> retval=new ArrayList<BidirectedPath>();
 		GoInBetweenBridge 	storedBridge=getBridgeFromMap(read);
 		System.out.printf("+++%s <=> %s\n", read.getEndingsID(), storedBridge==null?"null":storedBridge.getEndingsID());
@@ -648,8 +649,14 @@ public class BidirectedGraph extends MultiGraph{
 				if(storedBridge.merge(read))
 					updateBridgesMap(storedBridge);
 				
-				if(storedBridge.getCompletionLevel()==1 && storedBridge.scanForAnEnd()){
-					storedBridge.steps.connectBridgeSteps(false);
+				if(storedBridge.getCompletionLevel()==1){
+					NodeVector breakPoint=storedBridge.scanForAnEnd(); //missing connections after new end, need a break function
+					if(breakPoint!=null){
+						//FIXME: must link with original unique node
+//						GoInBetweenBridge newBridge = storedBridge.breakAtEndNode();
+//						updateBridgesMap(newBridge);
+						storedBridge.steps.connectBridgeSteps(false);
+					}
 				}
 				
     			if(storedBridge.getCompletionLevel()==4){
@@ -691,8 +698,6 @@ public class BidirectedGraph extends MultiGraph{
      * Instead redundant edges are removed on a path way
      * @param path: unique path to simplify the graph (from origGraph)
      */
-
-    
     //This assuming path is surely unique!!!
     public boolean reduceUniquePath(BidirectedPath path){
     	//do nothing if the path has only one node

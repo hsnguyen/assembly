@@ -9,7 +9,7 @@ public class PopBin{
 	static int lastID=1;
 	int binID;
 	double estCov; //or range???
-	long totLen;
+	long estLen; //bad
 	ArrayList<Node> coreNodes;
 	private static DecimalFormat df2 = new DecimalFormat(".##");
 	
@@ -27,14 +27,14 @@ public class PopBin{
 			return;
 		
 		coreNodes.add(node);
-		estCov=(estCov*totLen+node.getNumber("cov")*node.getNumber("len"))/(node.getNumber("len")+totLen);
-		totLen+=node.getNumber("len");
+		estCov=(estCov*estLen+node.getNumber("cov")*node.getNumber("len"))/(node.getNumber("len")+estLen);
+		estLen+=node.getNumber("len");
 		
 	}
 	public void removeCoreNode(Node node) {
 		if(coreNodes.remove(node)) {
-			estCov=(estCov*totLen-node.getNumber("cov")*node.getNumber("len"))/(-node.getNumber("len")+totLen);
-			totLen-=node.getNumber("len");
+			estCov=(estCov*estLen-node.getNumber("cov")*node.getNumber("len"))/(-node.getNumber("len")+estLen);
+			estLen-=node.getNumber("len");
 		}else {
 			System.err.println("Node "+ node.getId() + " not found to remove!");
 		}
@@ -44,7 +44,7 @@ public class PopBin{
 		
 	}
 	public String toString(){
-		return "B-" + binID + "(cov=" + df2.format(estCov)  + " totLen=" + totLen +")";
+		return "B-" + binID + "(cov=" + df2.format(estCov)  + " totLen=" + estLen +")";
 	}
 	/*
 	 * A-stats here?

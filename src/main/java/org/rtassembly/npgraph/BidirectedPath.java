@@ -334,5 +334,4 @@ public class BidirectedPath extends Path{
 		return ((BidirectedEdge) peekEdge()).getDir(getLastNode());
 	}
 	
-	
 }

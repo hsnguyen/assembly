@@ -25,7 +25,8 @@ import com.google.common.collect.Sets;
 public class SimpleBinner {
     private static final Logger LOG = LoggerFactory.getLogger(SimpleBinner.class);
 	public static volatile int 	UNIQUE_CTG_LEN=10000,
-								ANCHOR_CTG_LEN=1000; //surely length for the anchors; shorter anchors wouldn't be used until double-checked
+								ANCHOR_CTG_LEN=1000, //surely length for the anchors; shorter anchors wouldn't be used until double-checked
+								TRANSFORMED_ANCHOR_CTG_LEN=2000; //same as UNIQUE_CTG_LEN: not work for old Kpn2146. Need more testing
 	
 	BidirectedGraph graph;
 	ArrayList<PopBin> binList;
@@ -186,8 +187,8 @@ public class SimpleBinner {
 				_diff = _minuend - (subtrahend.containsKey(b)?subtrahend.get(b):0);	
 			if(_diff > 0)
 				difference.put(b, _diff);
-			else
-				difference.put(b, 0);
+//			else
+//				difference.put(b, 0);
 		}
 		
 		return difference;
@@ -200,8 +201,11 @@ public class SimpleBinner {
 //		if(addend==null) return augend;
 		
 		HashMap<PopBin, Integer> retval = new HashMap<PopBin, Integer>();
-		for(PopBin b:Sets.union(augend.keySet(), addend.keySet()))
-			retval.put(b, (augend.containsKey(b)?augend.get(b):0) + (addend.containsKey(b)?addend.get(b):0));
+		for(PopBin b:Sets.union(augend.keySet(), addend.keySet())){
+			int re=(augend.containsKey(b)?augend.get(b):0) + (addend.containsKey(b)?addend.get(b):0);
+			if(re>0)
+			retval.put(b, re);
+		}
 		
 		return retval;
 	}
@@ -220,6 +224,7 @@ public class SimpleBinner {
 		}
 		//TODO: 1.5 is important! need to find a way for more robust guess (+self-correct)!!!	
 		if(cov > 1.5*leastBin.estCov && tmp>GraphUtil.DISTANCE_THRES) {
+			System.out.println("...reason: " + tmp + " > " + GraphUtil.DISTANCE_THRES);
 			target = null;
 		}
 		
@@ -362,19 +367,22 @@ public class SimpleBinner {
 		
 		//3.3 Assign unique nodes here: need more tricks
 		for(Node node:graph) {
-			if(	node2BinMap.containsKey(node) 
-				&& node.getNumber("len") > ANCHOR_CTG_LEN 
-				&& Math.max(node.getInDegree(), node.getOutDegree()) <= 1 //not true if e.g. sequencing errors inside unique contig
-			){
-				HashMap<PopBin, Integer> bc = node2BinMap.get(node);
-				ArrayList<PopBin> counts = new ArrayList<PopBin>(bc.keySet());
-//				if(counts.size()==1 && bc.get(counts.get(0))==1){ //and should check for any conflict???
-				int totOcc = bc.values().stream().mapToInt(Integer::intValue).sum();
-				if(totOcc==1){ //and should check for any conflict???
-					node.setAttribute("unique", counts.get(0));
+			if(	node2BinMap.containsKey(node) && node.getNumber("len") > ANCHOR_CTG_LEN ){ 
+				if(Math.max(node.getInDegree(), node.getOutDegree()) <= 1){ //not true if e.g. sequencing errors inside unique contig
+					HashMap<PopBin, Integer> bc = node2BinMap.get(node);
+					ArrayList<PopBin> counts = new ArrayList<PopBin>(bc.keySet());
+	//				if(counts.size()==1 && bc.get(counts.get(0))==1){ //and should check for any conflict???
+					int totOcc = bc.values().stream().mapToInt(Integer::intValue).sum();
+					if(totOcc==1) //and should check for any conflict???
+						node.setAttribute("unique", counts.get(0));
+				} else{ // REMOVE NODES WITH MULTIPLICITY > 3 SINCE THEY'RE NOT SO CONFIDENT 
+					if(node2BinMap.get(node).values().stream().mapToInt(Integer::intValue).sum() > 3)
+						node2BinMap.remove(node);
 				}
 			}
 		}
+		
+		
 	}
 	
 	//unique node from the beginning
@@ -384,7 +392,7 @@ public class SimpleBinner {
 	//node transformed to unique after reduced
 	public PopBin getBinIfUniqueNow(Node node){
 		PopBin retval=null;
-		if(node.getNumber("len") > UNIQUE_CTG_LEN && node2BinMap.containsKey(node)){
+		if(node.getNumber("len") > TRANSFORMED_ANCHOR_CTG_LEN && node2BinMap.containsKey(node)){
 			HashMap<PopBin, Integer> bc = node2BinMap.get(node);
 			if(bc.values().stream().mapToInt(Integer::intValue).sum() == 1){
 				retval=Iterables.getOnlyElement(bc.keySet());
@@ -613,7 +621,7 @@ public class SimpleBinner {
 		//binner.estimatePathsByCoverage();
 		System.out.println("=> number of bin = " + binner.binList.size());
 		for(PopBin b:binner.binList) {
-			System.out.println("Bin " + b.binID + " estCov=" + b.estCov + " totLen=" + b.totLen);
+			System.out.println("Bin " + b.binID + " estCov=" + b.estCov + " totLen=" + b.estLen);
 			for(Node n:b.getCoreNodes())
 				System.out.println(n.getAttribute("name"));
 		}
