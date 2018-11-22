@@ -98,7 +98,7 @@ public class GoInBetweenBridge {
 							
 	//Merge 2 bridge (must share at least one same unique end-point) together
 	//Return true if merging make the bridge reaching new anchor
-	boolean merge(GoInBetweenBridge qBridge) {
+	boolean merge(GoInBetweenBridge qBridge, boolean toConnect) {
 	
 		if(qBridge==null || qBridge.getCompletionLevel()==0 || getCompletionLevel()==4)
 			return false;
@@ -160,14 +160,14 @@ public class GoInBetweenBridge {
 			}	
 			
 		}		
-		if(getCompletionLevel()<3)
+		if(toConnect && getCompletionLevel()<3)
 			steps.connectBridgeSteps(false);	
 		return getNumberOfAnchors()>numberOfAnchorsBefore;
 	}
 
 	//return true if there is change in the number of anchor from the updated bridge
 
-	boolean merge(AlignedRead read) {
+	boolean merge(AlignedRead read, boolean toConnect) {
 		
 		if(read==null || read.getAlignmentRecords().size() < 2 || getCompletionLevel()==4)
 			return false;
@@ -226,7 +226,7 @@ public class GoInBetweenBridge {
 				steps.addNode(current);
 			}
 		}
-		if(getCompletionLevel()<3)
+		if(toConnect && getCompletionLevel()<3)
 			steps.connectBridgeSteps(false);		
 				
 		

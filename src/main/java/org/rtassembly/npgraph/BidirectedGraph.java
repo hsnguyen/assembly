@@ -46,7 +46,7 @@ public class BidirectedGraph extends MultiGraph{
     //provide mapping from unique directed node to its corresponding bridge
     //E.g: 103-: <103-82-> also 82+:<82+103+>
     private HashMap<String, GoInBetweenBridge> bridgesMap; 
-    private HashMap<Node, Set<Node>> adjacencyMap; // map a node to the set of its nearest unique nodes (identify via reduce function) 
+//    private HashMap<Node, Set<Node>> adjacencyMap; // map a node to the set of its nearest unique nodes (identify via reduce function) 
     private static final Logger LOG = LoggerFactory.getLogger(BidirectedGraph.class);
 
     // *** Constructors ***
@@ -77,7 +77,7 @@ public class BidirectedGraph extends MultiGraph{
 		super(id, strictChecking, autoCreate);
 		
 		bridgesMap=new HashMap<String, GoInBetweenBridge>(initialNodeCapacity*2);
-		adjacencyMap=new HashMap<Node, Set<Node>>();
+//		adjacencyMap=new HashMap<Node, Set<Node>>();
 		// All we need to do is to change the node & edge factory
 		setNodeFactory(new NodeFactory<BidirectedNode>() {
 			public BidirectedNode newInstance(String id, Graph graph) {
@@ -202,20 +202,20 @@ public class BidirectedGraph extends MultiGraph{
 			GoInBetweenBridge ultimateBridge=bidirectedBridge;
 			if(brg0!=null&&brg0!=bidirectedBridge) {
 				if(brg0.getCompletionLevel()>bidirectedBridge.getCompletionLevel()) {
-					brg0.merge(bidirectedBridge);
+					brg0.merge(bidirectedBridge,true);
 					ultimateBridge=brg0;
 				}else {
-					bidirectedBridge.merge(brg0);
+					bidirectedBridge.merge(brg0,true);
 					ultimateBridge=bidirectedBridge;
 				}
 			}
 			
 			if(brg1!=null&&brg1!=bidirectedBridge) {
 				if(brg1.getCompletionLevel()>bidirectedBridge.getCompletionLevel()) {
-					brg1.merge(bidirectedBridge);
+					brg1.merge(bidirectedBridge,true);
 					ultimateBridge=brg1;
 				}else {
-					bidirectedBridge.merge(brg1);
+					bidirectedBridge.merge(brg1,true);
 					ultimateBridge=bidirectedBridge;
 				}
 			}
@@ -437,7 +437,6 @@ public class BidirectedGraph extends MultiGraph{
 			}
 		} 
 		
-//		traverse(tmp, dstNode, possiblePaths, distance, distance>A_TOL?(int) (R_TOL*distance):A_TOL, srcDir, !dstDir, 0);
 		
 		if(possiblePaths.isEmpty()){
 			if(SimpleBinner.getBinIfUnique(srcNode)!=null && SimpleBinner.getBinIfUnique(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 && assureFlag){
@@ -646,7 +645,7 @@ public class BidirectedGraph extends MultiGraph{
 			}else{
 				System.out.println(storedBridge.getEndingsID() + ": already built: fortify!");
 				//update available bridge using alignments
-				if(storedBridge.merge(read))
+				if(storedBridge.merge(read,true))
 					updateBridgesMap(storedBridge);
 				
 				if(storedBridge.getCompletionLevel()==1){
@@ -669,7 +668,7 @@ public class BidirectedGraph extends MultiGraph{
 					read.reverse();
 					GoInBetweenBridge anotherBridge = getBridgeFromMap(read);
 					if(anotherBridge!=storedBridge) {
-						if(anotherBridge.merge(read))
+						if(anotherBridge.merge(read,true))
 							updateBridgesMap(anotherBridge);											
 						
 						if(anotherBridge.getCompletionLevel()==4){
