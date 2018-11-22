@@ -111,7 +111,7 @@ class NodeDirection implements Comparable<NodeDirection>{
         if (getClass() != obj.getClass())
             return false;
         final NodeDirection other = (NodeDirection) obj;
-        if (this.toString()==other.toString())   
+        if (this.toString().equals(other.toString()))   
         	return true;
         else 
         	return false;
