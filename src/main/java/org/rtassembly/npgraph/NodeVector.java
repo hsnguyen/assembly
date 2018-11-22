@@ -78,7 +78,7 @@ public class NodeVector implements Comparable<NodeVector>{
         	return false;
         }else{ 
         	boolean retval;
-        	if(SimpleBinner.getUniqueBin(thatNode)!=null) {
+        	if(SimpleBinner.getBinIfUnique(thatNode)!=null) {
 //        		int dist=ScaffoldVector.composition(ScaffoldVector.reverse(other.getVector()), this.getVector()).distance(thatNode, thisNode);
 //        		retval=(dist < -BidirectedGraph.getKmerSize());
         		retval= (Math.abs(this.getVector().relDistance(thisNode) - other.getVector().relDistance(thatNode)) < thisNode.getNumber("len") - BidirectedGraph.getKmerSize());
