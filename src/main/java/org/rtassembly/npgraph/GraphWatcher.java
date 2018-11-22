@@ -29,36 +29,7 @@ public class GraphWatcher {
 
 		numberOfComponents=rtComponents.getConnectedComponentsCount();
 	}
-	synchronized void forFunUpdate() {
-//		This is just for fun
-//		LOG.info("==========================================================================");
-//		LOG.info("\nTotal number of components: {} \ncomponents containing more than 1: {} \nsize of biggest component: {}", 
-//					rtComponents.getConnectedComponentsCount(),rtComponents.getConnectedComponentsCount(2),rtComponents.getGiantComponent().size());					    		
-//		LOG.info("==========================================================================");    		
-		if(numberOfComponents != rtComponents.getConnectedComponentsCount()) {
-			numberOfComponents = rtComponents.getConnectedComponentsCount();
 
-    		//Hide components with no markers! Optimize it to work dynamically
-    		ArrayList<Node> cleanup = new ArrayList<>();
-    		for (Iterator<ConnectedComponents.ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
-    			ConnectedComponents.ConnectedComponent comp = compIter.next();
-
-    			AtomicDouble lengthWeightedCov = new AtomicDouble(0.0);
-    			ArrayList<Node> tmp = new ArrayList<>();
-    			comp.nodes().forEach(n->{
-    				lengthWeightedCov.getAndAdd(n.getNumber("cov")*(n.getNumber("len")-BidirectedGraph.getKmerSize()));
-    				tmp.add(n);
-    			});
-    			if(lengthWeightedCov.get() < 10000*BidirectedGraph.RCOV)
-    				cleanup.addAll(tmp);
-    		}
-    		for(Node n:cleanup) {
-				n.setAttribute("ui.hide");
-				n.edges().forEach(e->e.setAttribute("ui.hide"));
-////			inputGraph.removeNode(n); //this faster but careful here!!!
-    		}
-		}
-	}
 	
 	synchronized void linearComponentsDecomposition() {
 		//1. clean it first
@@ -133,15 +104,19 @@ public class GraphWatcher {
 				 
 			 }
 			 //now we have repPath
-			 System.out.println(repPath.getId() + " => "+ repPath.getPrimitivePath().getId());
 			 Sequence seq=repPath.spelling();
-			 double cov=repPath.averageCov();
+			 double cov=GraphUtil.getRealCoverage(repPath.averageCov());
 			 Node n=outputGraph.addNode(Integer.toString(comp.id));
 			 seq.setName("Contig_"+comp.id+"_"+(isCircular?"circular":"linear")+"_length_"+seq.length()+"_cov_"+cov);
 			 n.setAttribute("seq", seq);
 			 n.setAttribute("len", seq.length());
 			 n.setAttribute("cov",cov);
-			 n.setAttribute("path", repPath);
+			 n.setAttribute("path", repPath);//primitive??
+			 System.out.println("\n" + seq.getName() + ":" + repPath.getId() + "\n=> "+ repPath.getPrimitivePath().getId());
+
+			//Adding loop to circular node
+			if(isCircular)
+				outputGraph.addEdge((BidirectedNode)n, (BidirectedNode)n , true, false);
 		}
 		//now set the edge of outputGraph based on the cut edges
 		for(Edge e:cutEdges) {
@@ -166,6 +141,8 @@ public class GraphWatcher {
 			}
 		}
 		
+
+		
 	}
 
 	//Remove nodes with degree <=1 and length || cov low
@@ -184,10 +161,41 @@ public class GraphWatcher {
 		}
 	}
 
+	synchronized void forFunUpdate() {
+//		This is just for fun
+//		LOG.info("==========================================================================");
+//		LOG.info("\nTotal number of components: {} \ncomponents containing more than 1: {} \nsize of biggest component: {}", 
+//					rtComponents.getConnectedComponentsCount(),rtComponents.getConnectedComponentsCount(2),rtComponents.getGiantComponent().size());					    		
+//		LOG.info("==========================================================================");    		
+		if(numberOfComponents != rtComponents.getConnectedComponentsCount()) {
+			numberOfComponents = rtComponents.getConnectedComponentsCount();
+
+    		//Hide components with no markers! Optimize it to work dynamically
+    		ArrayList<Node> cleanup = new ArrayList<>();
+    		for (Iterator<ConnectedComponents.ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
+    			ConnectedComponents.ConnectedComponent comp = compIter.next();
+
+    			AtomicDouble lengthWeightedCov = new AtomicDouble(0.0);
+    			ArrayList<Node> tmp = new ArrayList<>();
+    			comp.nodes().forEach(n->{
+    				lengthWeightedCov.getAndAdd(n.getNumber("cov")*(n.getNumber("len")-BidirectedGraph.getKmerSize()));
+    				tmp.add(n);
+    			});
+    			if(lengthWeightedCov.get() < 10000*inputGraph.binner.leastBin.estCov)
+    				cleanup.addAll(tmp);
+    		}
+    		for(Node n:cleanup) {
+				n.setAttribute("ui.hide");
+				n.edges().forEach(e->e.setAttribute("ui.hide"));
+////			inputGraph.removeNode(n); //this faster but careful here!!!
+    		}
+		}
+	}
 	
 	/*
+	 * TODO: replace linearComponentsDecomposition() with this + real-time + threads...
 	 * Update the outputGraph to show statistics and current output
-	 * Should merge with updating the GUI (colore, labels...)???
+	 * Should merge with updating the GUI (colors, labels...)???
 	 */
 	synchronized void update() {
 		//1. clean it first
@@ -259,15 +267,17 @@ public class GraphWatcher {
 				 
 			 }
 			 //now we have repPath
-			 System.out.println(repPath.getId() + " => "+ repPath.getPrimitivePath().getId());
 			 Sequence seq=repPath.spelling();
-			 double cov=repPath.averageCov();
+			 double cov=GraphUtil.getRealCoverage(repPath.averageCov());
 			 Node n=outputGraph.addNode(Integer.toString(comp.id));
 			 seq.setName("Contig_"+comp.id+"_"+(isCircular?"circular":"linear")+"_length_"+seq.length()+"_cov_"+cov);
 			 n.setAttribute("seq", seq);
 			 n.setAttribute("len", seq.length());
 			 n.setAttribute("cov",cov);
 			 n.setAttribute("path", repPath);
+			 
+			 System.out.println("\n" + seq.getName() + ":" + repPath.getId() + "\n=> "+ repPath.getPrimitivePath().getId());
+
 		}
 		//now set the edge of outputGraph based on the cut edges
 		for(Edge e:cutEdges) {
