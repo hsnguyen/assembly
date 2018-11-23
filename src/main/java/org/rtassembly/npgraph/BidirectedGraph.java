@@ -648,11 +648,15 @@ public class BidirectedGraph extends MultiGraph{
 				if(storedBridge.merge(read,true))
 					updateBridgesMap(storedBridge);
 				
-				//TODO: scanForAnEnd() + connectBridgeSteps + getBestPath() + return appropriate paths to reduce (careful!!!)
+				//scan for transformed unique nodes
 				if(storedBridge.getCompletionLevel()==1){
-					NodeVector breakPoint=storedBridge.scanForAnEnd(); //missing connections after new end, need a break function
-					if(breakPoint!=null){
-						storedBridge.steps.connectBridgeSteps(false);
+					NodeVector prevRightMostMarker= (storedBridge.steps.end==null?storedBridge.steps.start:storedBridge.steps.end);
+					if(storedBridge.scanForAnEnd()){
+						//TODO: selective connecting
+						if(storedBridge.steps.connectBridgeSteps(false)) {
+							//TODO: return appropriate path
+							
+						}
 					}
 				}
 				

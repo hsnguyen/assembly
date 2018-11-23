@@ -333,25 +333,27 @@ public class GoInBetweenBridge {
 	
 	//Try to look for an ending unique node of a unidentifiable bridge
 	//by using isUniqueNow()
-	public NodeVector scanForAnEnd(){
+	public boolean scanForAnEnd(){
 		if(steps==null || steps.isIdentifiable())
-			return null;
+			return false;
 		Iterator<NodeVector> ite = steps.nodes.descendingIterator();
 		while(ite.hasNext()){
 			NodeVector tmp=ite.next();
 			if(!tmp.qc())
 				continue;
-			if(tmp==steps.start)
-				break;
+			
+			if(tmp==steps.start || tmp==steps.end) //there is no (new) end detected
+				return false;
+			
 			PopBin b=graph.binner.getBinIfUniqueNow(tmp.node);
 			if(b!=null && b.isCloseTo(bin)){
 				steps.end=tmp;
-				break;
+				return true;
 			}
 				
 		}
+		return false;
 		
-		return steps.end;
 	}
 	
 //	//Break a bridge at a transformed unique node (end) and 
