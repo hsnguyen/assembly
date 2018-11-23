@@ -354,22 +354,22 @@ public class GoInBetweenBridge {
 		return steps.end;
 	}
 	
-	//Break a bridge at a transformed unique node (end) and 
-	//return the left-over bridge
-	public GoInBetweenBridge breakAtEndNode() {
-		GoInBetweenBridge retval=null;
-		TreeSet<NodeVector> headSet=(TreeSet<NodeVector>) steps.nodes.headSet(steps.end,true),
-							tailSet=(TreeSet<NodeVector>) steps.nodes.tailSet(steps.end);
-		steps.nodes=headSet;
-		if(tailSet.size()>0){
-			BridgeSteps tailSteps=new BridgeSteps();
-			tailSteps.nodes=tailSet;
-			retval=new GoInBetweenBridge(graph, tailSteps, bin);
-			retval.pBridge=new BidirectedEdgePrototype(steps.end.node, !steps.end.getDirection(pBridge.getDir0()));
-		}
-
-		return retval;
-	}
+//	//Break a bridge at a transformed unique node (end) and 
+//	//return the left-over bridge
+//	public GoInBetweenBridge breakAtEndNode() {
+//		GoInBetweenBridge retval=null;
+//		TreeSet<NodeVector> headSet=(TreeSet<NodeVector>) steps.nodes.headSet(steps.end,true),
+//							tailSet=(TreeSet<NodeVector>) steps.nodes.tailSet(steps.end);
+//		steps.nodes=headSet;
+//		if(tailSet.size()>0){
+//			BridgeSteps tailSteps=new BridgeSteps();
+//			tailSteps.nodes=tailSet;
+//			retval=new GoInBetweenBridge(graph, tailSteps, bin);
+//			retval.pBridge=new BidirectedEdgePrototype(steps.end.node, !steps.end.getDirection(pBridge.getDir0()));
+//		}
+//
+//		return retval;
+//	}
 
 	/************************************************************************************************
 	 ************************************************************************************************
@@ -648,7 +648,7 @@ public class GoInBetweenBridge {
 				System.out.printf("Shortest tree couldn't reach to the other end: ");
 
 				if(!force){
-					pBridge=new BidirectedEdgePrototype(pBridge.getNode0(), pBridge.getDir0());	
+					pBridge.n1=null;	
 					System.out.println(" ignored!");
 					return false;
 				}else{
@@ -666,12 +666,12 @@ public class GoInBetweenBridge {
 			boolean retval = false;
 			ArrayList<NodeVector> inbetween = new ArrayList<>();
 			while(iterator.hasNext()){
-				if(current==null){
-					prev=current=iterator.next();//first unique node, don't need to check quality
+				current=iterator.next();
+				if(prev==null){
+					prev=current;//first unique node, don't need to check quality
 					continue;
 				}
 				
-				current=iterator.next();
 				key=current.getNode().getId() + (current.getDirection(pBridge.getDir0())?"o":"i");
 				//need a quality-checking here before including into a segment step
 				if(shortestMap.containsKey(key)){			 
@@ -717,7 +717,10 @@ public class GoInBetweenBridge {
 				System.out.println("Failed to connect + " + pBridge.toString());
 				
 			}
-			
+			//reset pBridge if end node is not real unique node (transformed)
+			if(SimpleBinner.getBinIfUnique(end.node)==null)
+				pBridge.n1=null;
+				
 			return retval;
 		}
 		
