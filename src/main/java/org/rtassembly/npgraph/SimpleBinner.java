@@ -389,10 +389,10 @@ public class SimpleBinner {
 	static public PopBin getBinIfUnique(Node node){
 		return (PopBin)node.getAttribute("unique");
 	}
-	//node transformed to unique after reduced
+	//also take into account nodes that transformed to unique after reduced
 	public PopBin getBinIfUniqueNow(Node node){
-		PopBin retval=null;
-		if(node.getNumber("len") > TRANSFORMED_ANCHOR_CTG_LEN && node2BinMap.containsKey(node)){
+		PopBin retval=getBinIfUnique(node);
+		if(retval==null && node.getNumber("len") > TRANSFORMED_ANCHOR_CTG_LEN && node2BinMap.containsKey(node)){
 			HashMap<PopBin, Integer> bc = node2BinMap.get(node);
 			if(bc.values().stream().mapToInt(Integer::intValue).sum() == 1){
 				retval=Iterables.getOnlyElement(bc.keySet());
@@ -465,20 +465,20 @@ public class SimpleBinner {
 										nodeBinsCount;	
 			//remove faulty edge of unique nodes (that has degree=3)
 			if(getBinIfUnique(curNode)!=null || getBinIfUniqueNow(curNode)!=null){
-				if(curNode.getNumber("len") > UNIQUE_CTG_LEN){
+//				if(curNode.getNumber("len") > UNIQUE_CTG_LEN){
 					boolean dir=((BidirectedEdge)ep).getDir((BidirectedNode)curNode);
 					Stream<Edge> streamEdges=dir?curNode.leavingEdges():curNode.enteringEdges();
 					streamEdges.forEach(retval::add);
-				}else
-					retval.add(ep);
+//				}else
+//					retval.add(ep);
 			}
 			if(getBinIfUnique(nextNode)!=null || getBinIfUniqueNow(nextNode)!=null){
-				if(nextNode.getNumber("len") > UNIQUE_CTG_LEN){
+//				if(nextNode.getNumber("len") > UNIQUE_CTG_LEN){
 					boolean dir=((BidirectedEdge)ep).getDir((BidirectedNode)nextNode);
 					Stream<Edge> streamEdges=dir?nextNode.leavingEdges():nextNode.enteringEdges();
 					streamEdges.forEach(retval::add);
-				}else
-					retval.add(ep);
+//				}else
+//					retval.add(ep);
 			}
 			
 //			if(getUniqueBin(ep.getNode0())!=null || getUniqueBin(ep.getNode1())!=null)

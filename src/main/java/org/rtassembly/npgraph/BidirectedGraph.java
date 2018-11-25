@@ -650,19 +650,24 @@ public class BidirectedGraph extends MultiGraph{
 				
 				//scan for transformed unique nodes
 				if(storedBridge.getCompletionLevel()==1){
-					NodeVector prevRightMostMarker= (storedBridge.steps.end==null?storedBridge.steps.start:storedBridge.steps.end);
+					NodeVector prevRightMostMarker= storedBridge.steps.start;
+					if(storedBridge.steps.end!=null && storedBridge.steps.end.qc())
+						prevRightMostMarker=storedBridge.steps.end;
+					
 					if(storedBridge.scanForAnEnd()){
-						//TODO: selective connecting
-						if(storedBridge.steps.connectBridgeSteps(false)) {
-							//TODO: return appropriate path
-							
+						System.out.println("FOUND NEW TRANSFORMED END: " + storedBridge.steps.end.getNode().getId());
+						//selective connecting
+						if(storedBridge.steps.connectBridgeSteps(prevRightMostMarker, false)) {
+							//return appropriate path
+							if(storedBridge.countPathsBetween(prevRightMostMarker.getNode(), storedBridge.steps.end.getNode())==1)
+								retval.add(storedBridge.getBestPath(prevRightMostMarker.getNode(), storedBridge.steps.end.getNode()));
 						}
 					}
 				}
 				
     			if(storedBridge.getCompletionLevel()==4){
     				System.out.printf("=> final path: %s\n ", storedBridge.getAllPossiblePaths());
-    				retval.addAll(storedBridge.getBestPath().chopPathAtAnchors());
+    				retval.addAll(storedBridge.getBestPath(storedBridge.steps.start.getNode(), storedBridge.steps.end.getNode()).chopPathAtAnchors());
     			}
 					
 //				//also update the reversed bridge: important e.g. Acinetobacter_AB30. WHY??? (already updated and merged 2 homo bridges)
@@ -675,7 +680,7 @@ public class BidirectedGraph extends MultiGraph{
 						
 						if(anotherBridge.getCompletionLevel()==4){
 							System.out.printf("=> final path: %s\n ", anotherBridge.getAllPossiblePaths());
-							retval.addAll(anotherBridge.getBestPath().chopPathAtAnchors());
+							retval.addAll(anotherBridge.getBestPath(anotherBridge.steps.start.getNode(), anotherBridge.steps.end.getNode()).chopPathAtAnchors());
 						}
 					}
 				}
@@ -685,10 +690,10 @@ public class BidirectedGraph extends MultiGraph{
 		}else{
 			storedBridge=new GoInBetweenBridge(this,read, bin);
 			updateBridgesMap(storedBridge);		
- 			if(storedBridge.getCompletionLevel()==4){
- 				System.out.printf("=> final path: %s\n ", storedBridge.getAllPossiblePaths());
- 				retval.addAll(storedBridge.getBestPath().chopPathAtAnchors());
- 			}
+// 			if(storedBridge.getCompletionLevel()==4){
+// 				System.out.printf("=> final path: %s\n ", storedBridge.getAllPossiblePaths());
+// 				retval.addAll(storedBridge.getBestPath(storedBridge.steps.start.getNode(), storedBridge.steps.end.getNode()).chopPathAtAnchors());
+// 			}
 		}
 		
 		return retval;

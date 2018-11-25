@@ -131,7 +131,8 @@ public class BidirectedPath extends Path{
 				BidirectedPath subPath=(BidirectedPath) e.getAttribute("path");
 				if(subPath.getRoot()!=curNode)
 					subPath=subPath.reverse();
-				retval=retval.join(subPath);
+//				retval=retval.join(subPath);
+				retval=retval.join(subPath.getPrimitivePath());
 			}
 			else
 				retval.add(e);
@@ -149,7 +150,7 @@ public class BidirectedPath extends Path{
 		if(realPath.getEdgeCount()==0)
 			return curSeq;
 		
-		SequenceBuilder seq = new SequenceBuilder(Alphabet.DNA16(), 1024*1024, toString());
+		SequenceBuilder seq = new SequenceBuilder(Alphabet.DNA5(), 1024*1024, toString());
 		seq.setDesc(realPath.toString());
 		boolean curDir=((BidirectedEdge) realPath.getEdgePath().get(0)).getDir(curNode);
 		curSeq = curDir?curSeq:Alphabet.DNA.complement(curSeq);
@@ -166,13 +167,15 @@ public class BidirectedPath extends Path{
 			
 
 			int overlap=((BidirectedEdge) e).getLength();
-			//if length of edge > 0: should add NNNN...NN to seq
+			//if length of edge > 0: should add NNNN...NN to seq (in case there are gaps in NGS assembly graph)
 			if(overlap < 0)
 				seq.append(curSeq.subSequence(-overlap, curSeq.length())); 
 			else {
 				String filler=new String(new char[overlap]).replace("\0", "N");
 				Sequence fillerSeq=new Sequence(Alphabet.DNA5(), filler, "gap");
-				seq.append(fillerSeq.concatenate(curSeq));
+				seq.append(fillerSeq.concatenate(curSeq));				
+				LOG.error("Edge {} has length={} > 0: filled with Ns", e.getId(), overlap);
+
 			}
 			
 			curNode=nextNode;

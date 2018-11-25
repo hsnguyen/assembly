@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
+import org.graphstream.graph.Node;
 import org.graphstream.graph.implementations.AbstractNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -133,35 +134,37 @@ public class GoInBetweenBridge {
 			return false;
 		}
 		
-		BridgeSteps sSteps=steps, qSteps=qBridge.steps;
+		BridgeSteps qSteps=qBridge.steps;
 		
 		Iterator<NodeVector> iterator = qSteps.nodes.iterator();		
 		NodeVector 	current=null;
 		int lastIdx=0, numberOfAnchorsBefore=getNumberOfAnchors();
 		while(iterator.hasNext()){
 			current=iterator.next();
-			if(getCompletionLevel()==3){
-				if(!sSteps.nodes.contains(current)){
-					int prev=-1, cur;
-					for(int i=lastIdx; i<segments.size();i++) {
-						BridgeSegment curSeg=segments.get(i);
-						cur=curSeg.locateAndVote(current);
-						if(cur<prev)
-							break;
-						else {
-							prev=cur;
-							lastIdx=i;
-						}
+			if(segments!=null){//&& !steps.nodes.contains(current)???
+				int prev=-1, cur;
+				for(int i=lastIdx; i<segments.size();i++) {
+					BridgeSegment curSeg=segments.get(i);
+					cur=curSeg.locateAndVote(current);
+					if(cur<prev)
+						break;
+					else {
+						prev=cur;
+						lastIdx=i;
 					}
 				}
-			}else{
+				
+			}
+			if(getCompletionLevel()<3){
 				//just adding
 				steps.addNode(current);
 			}	
 			
-		}		
+		}	
+		
 		if(toConnect && getCompletionLevel()<3)
-			steps.connectBridgeSteps(false);	
+			steps.connectBridgeSteps(steps.start, false);	
+		
 		return getNumberOfAnchors()>numberOfAnchorsBefore;
 	}
 
@@ -207,27 +210,28 @@ public class GoInBetweenBridge {
 		int lastIdx=0, numOfAnchorsBefore=getNumberOfAnchors();
 		for(Alignment alg:read.getAlignmentRecords()) {
 			current=new NodeVector(alg.node, read.getVector(start,alg));
-			if(getCompletionLevel()==3){
-				if(!steps.nodes.contains(current)){
-					int prev=-1, cur;
-					for(int i=lastIdx; i<segments.size();i++) {
-						BridgeSegment curSeg=segments.get(i);
-						cur=curSeg.locateAndVote(current);
-						if(cur<prev)
-							break;
-						else {
-							prev=cur;
-							lastIdx=i;
-						}
+			if(segments!=null){ //&& !steps.nodes.contains(current)???
+				int prev=-1, cur;
+				for(int i=lastIdx; i<segments.size();i++) {
+					BridgeSegment curSeg=segments.get(i);
+					cur=curSeg.locateAndVote(current);
+					if(cur<prev)
+						break;
+					else {
+						prev=cur;
+						lastIdx=i;
 					}
 				}
-			}else{
+				
+			}
+			
+			if(getCompletionLevel()<3){
 				//just adding
 				steps.addNode(current);
 			}
 		}
 		if(toConnect && getCompletionLevel()<3)
-			steps.connectBridgeSteps(false);		
+			steps.connectBridgeSteps(steps.start, false);		
 				
 		
 		System.out.printf("After merging: %s\nstart=%s\nend=%s\n", pBridge.toString(), (steps.start==null?"null":steps.start.toString()), (steps.end==null?"null":steps.end.toString()));
@@ -235,25 +239,11 @@ public class GoInBetweenBridge {
 	
 	}
 	
-	//adding new segment with/without update pBridge
 	private void addSegment(BridgeSegment seg) {
 		if(segments==null)
 			segments=new ArrayList<>();
-//		if(pBridge==null) {
-//			segments.add(seg);
-//			if(update)
-//				pBridge=new BidirectedEdgePrototype(seg.pSegment.getNode0(), seg.pSegment.getNode1(), seg.pSegment.getDir0(), seg.pSegment.getDir1());
-//		}
-//		else if(pBridge.getNode1()==seg.pSegment.getNode0() && pBridge.getDir1()!=seg.pSegment.getDir0()){
-//			segments.add(seg);
-//			if(update)
-//				pBridge.n1=seg.pSegment.n1;
-//		}
 		segments.add(seg);
 	}
-
-
-	
 	
 	private void reverse() {
 		assert getNumberOfAnchors()==2:"Could only reverse a determined bridge (2 anchors)";
@@ -309,12 +299,24 @@ public class GoInBetweenBridge {
 		return steps.toString();
 	}
 
-	public BidirectedPath getBestPath() {
+	public BidirectedPath getBestPath(Node startFrom, Node endAt) { //the markers must be (transformed) unique
 		BidirectedPath best=null,retval=null;
+		boolean found=false;
 		for(BridgeSegment seg:segments) {
+			//finding the start node
+			if(!found){
+				if(seg.pSegment.getNode0()!=startFrom){
+					continue;
+				}
+				else
+					found=true;
+			}
+			//escape if end node is reached
+			if(seg.pSegment.getNode0()==endAt)
+				break;
+			
 			if(seg.getNumberOfPaths()>0){
 				if(seg.getNumberOfPaths()>1)
-					//FIXME: double-check this
 					seg.connectedPaths.sort(Comparator.comparing(BidirectedPath::getVote, Comparator.reverseOrder()).thenComparing(BidirectedPath::getDeviation));	
 				
 				best=seg.connectedPaths.get(0);
@@ -324,24 +326,50 @@ public class GoInBetweenBridge {
 					retval=retval.join(best);//assuming first path has highest score!!!
 			}else
 				return null;
+			
+
 		}
+		
 		if(retval!=null)
 			retval.setConsensusUniqueBinOfPath(bin);
 		return retval;
 	}
 	
+	public int countPathsBetween(Node startFrom, Node endAt){
+		int retval=0;
+		boolean found=false;
+		for(BridgeSegment seg:segments) {
+			//finding the start node
+			if(!found){
+				if(seg.pSegment.getNode0()!=startFrom)
+					continue;
+				else
+					found=true;
+			}
+			if(!seg.isConnected())
+				return 0;
+			if(retval!=0)
+				retval*=seg.connectedPaths.size();
+			else
+				retval=seg.connectedPaths.size();
+			//escape if end node is reached
+			if(seg.pSegment.getNode1()!=endAt)
+				break;
+		}
+		return retval;
+	}
 	
 	//Try to look for an ending unique node of a unidentifiable bridge
 	//by using isUniqueNow()
 	public boolean scanForAnEnd(){
-		if(steps==null || steps.isIdentifiable())
+		if(steps==null)
 			return false;
 		Iterator<NodeVector> ite = steps.nodes.descendingIterator();
 		while(ite.hasNext()){
 			NodeVector tmp=ite.next();
 			if(!tmp.qc())
 				continue;
-			
+			//TODO: find furthest or closest marker??
 			if(tmp==steps.start || tmp==steps.end) //there is no (new) end detected
 				return false;
 			
@@ -356,22 +384,6 @@ public class GoInBetweenBridge {
 		
 	}
 	
-//	//Break a bridge at a transformed unique node (end) and 
-//	//return the left-over bridge
-//	public GoInBetweenBridge breakAtEndNode() {
-//		GoInBetweenBridge retval=null;
-//		TreeSet<NodeVector> headSet=(TreeSet<NodeVector>) steps.nodes.headSet(steps.end,true),
-//							tailSet=(TreeSet<NodeVector>) steps.nodes.tailSet(steps.end);
-//		steps.nodes=headSet;
-//		if(tailSet.size()>0){
-//			BridgeSteps tailSteps=new BridgeSteps();
-//			tailSteps.nodes=tailSet;
-//			retval=new GoInBetweenBridge(graph, tailSteps, bin);
-//			retval.pBridge=new BidirectedEdgePrototype(steps.end.node, !steps.end.getDirection(pBridge.getDir0()));
-//		}
-//
-//		return retval;
-//	}
 
 	/************************************************************************************************
 	 ************************************************************************************************
@@ -624,7 +636,8 @@ public class GoInBetweenBridge {
 			
 		
 		//Try to make the continuous segments (those that have paths connected 2 ends). Return true if it possible
-		boolean connectBridgeSteps(boolean force){
+		//starting from a marker (unique or transformed unique node)
+		boolean connectBridgeSteps(NodeVector startFrom, boolean force){
 			if(isIdentifiable()){
 				if(connectable() || force){
 					pBridge.n1=new NodeDirection(end.node, end.getDirection(pBridge.getDir0()));
@@ -638,7 +651,7 @@ public class GoInBetweenBridge {
 				return false;
 			}	
 			
-			System.out.println("Trying to connect bridge " + pBridge.toString() + ":\n" + getAllNodeVector());
+			System.out.println("Trying to connect bridge " + pBridge.toString() + " from "+ startFrom.getNode().getId() + ":\n" + getAllNodeVector());
 			//First build shortest tree from the end
 			//TODO: optimize finding path by using this list
 			HashMap<String,Integer> shortestMap = 
@@ -670,10 +683,10 @@ public class GoInBetweenBridge {
 			while(iterator.hasNext()){
 				current=iterator.next();
 				if(prev==null){
-					prev=current;//first unique node, don't need to check quality
+					if(current==startFrom)
+						prev=current;
 					continue;
 				}
-				
 				key=current.getNode().getId() + (current.getDirection(pBridge.getDir0())?"o":"i");
 				//need a quality-checking here before including into a segment step
 				if(shortestMap.containsKey(key)){			 
