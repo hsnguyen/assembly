@@ -33,7 +33,7 @@ public class Range implements Comparable<Range>{
 		Range 	ref=(order<0?this:other), 
 				qry=(order<0?other:this);
 		
-		if(ref.right-qry.left > ER_UPPERBOUND*BidirectedGraph.getKmerSize())
+		if(ref.right-qry.left > ER_UPPERBOUND*BDGraph.getKmerSize())
 			retval=true;
 		else 
 			retval=(qry.right<=ref.right);

@@ -3,7 +3,7 @@ package npgraph.gui;
 import java.io.IOException;
 
 import org.graphstream.ui.view.Viewer;
-import org.rtassembly.npgraph.BidirectedGraph;
+import org.rtassembly.npgraph.BDGraph;
 import org.rtassembly.npgraph.GraphUtil;
 import org.rtassembly.npgraph.HybridAssembler;
 
@@ -64,7 +64,7 @@ public class GraphExploreLaptop {
 		hbAss.prepareShortReadsProcess(false);//change true/false to use/not use SPAdes path
 		
 		
-    	BidirectedGraph graph= hbAss.simGraph;
+    	BDGraph graph= hbAss.simGraph;
     	
     	GraphUtil.redrawGraphComponents(graph);
     	graph.setAttribute("ui.style", GraphUtil.styleSheet);

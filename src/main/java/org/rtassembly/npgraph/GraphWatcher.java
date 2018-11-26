@@ -16,12 +16,12 @@ import com.google.common.util.concurrent.AtomicDouble;
 import japsa.seq.Sequence;
 
 public class GraphWatcher {
-	BidirectedGraph inputGraph, outputGraph;
+	BDGraph inputGraph, outputGraph;
 	ConnectedComponents rtComponents;
-	HashSet<BidirectedEdge> cutEdges;
+	HashSet<BDEdge> cutEdges;
 	int numberOfComponents=0;
 	
-	public GraphWatcher(BidirectedGraph graph) {
+	public GraphWatcher(BDGraph graph) {
 		this.inputGraph=graph;
 		rtComponents = new ConnectedComponents();
 		rtComponents.init(graph);
@@ -38,29 +38,29 @@ public class GraphWatcher {
 
 		//2. then decompose it (using cut attribute instead of removing edges)
 		//reset
-		cutEdges = new HashSet<BidirectedEdge>();
+		cutEdges = new HashSet<BDEdge>();
 		inputGraph.edges().filter(e->e.hasAttribute("cut")).forEach(e->{e.removeAttribute("cut"); e.removeAttribute("ui.hide");});;
 
 		inputGraph.nodes()
 //		.filter(n->(n.clean))
 		.forEach(n->{
 //			if(n.getInDegree()>=2)
-//				n.enteringEdges().forEach(e->{e.setAttribute("ui.class","cut");e.setAttribute("cut");cutEdges.add((BidirectedEdge) e);});
+//				n.enteringEdges().forEach(e->{e.setAttribute("ui.class","cut");e.setAttribute("cut");cutEdges.add((BDEdge) e);});
 //			if(n.getOutDegree()>=2)
-//				n.leavingEdges().forEach(e->{e.setAttribute("ui.class","cut");e.setAttribute("cut");cutEdges.add((BidirectedEdge) e);});
+//				n.leavingEdges().forEach(e->{e.setAttribute("ui.class","cut");e.setAttribute("cut");cutEdges.add((BDEdge) e);});
 		
 			if(n.getInDegree()>=2)
-				n.enteringEdges().forEach(e->{e.setAttribute("ui.hide");e.setAttribute("cut");cutEdges.add((BidirectedEdge) e);});
+				n.enteringEdges().forEach(e->{e.setAttribute("ui.hide");e.setAttribute("cut");cutEdges.add((BDEdge) e);});
 			if(n.getOutDegree()>=2)
-				n.leavingEdges().forEach(e->{e.setAttribute("ui.hide");e.setAttribute("cut");cutEdges.add((BidirectedEdge) e);});
+				n.leavingEdges().forEach(e->{e.setAttribute("ui.hide");e.setAttribute("cut");cutEdges.add((BDEdge) e);});
 
 		});
-		outputGraph=new BidirectedGraph();
-		BidirectedPath repPath=null; //representative path of a component
+		outputGraph=new BDGraph();
+		BDPath repPath=null; //representative path of a component
 		for (Iterator<ConnectedComponents.ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
 			ConnectedComponents.ConnectedComponent comp = compIter.next();
 			//check comp: should be linear paths, should start with node+
-			 repPath = new BidirectedPath();
+			 repPath = new BDPath();
 			 Node node = comp.nodes().toArray(Node[]::new)[0];
 			 repPath.setRoot(node);
 			 boolean isCircular=false;
@@ -79,7 +79,7 @@ public class GraphWatcher {
 						 break;
 					 }
 					 
-					 curDir=!((BidirectedEdge) edge).getDir((BidirectedNode)curNode);
+					 curDir=!((BDEdge) edge).getDir((BDNode)curNode);
 					 ways = (curDir?curNode.leavingEdges():curNode.enteringEdges()).filter(e->!e.hasAttribute("cut")).collect(Collectors.toList());
 
 				 }
@@ -96,7 +96,7 @@ public class GraphWatcher {
 						 Edge edge = ways.get(0);
 						 repPath.add(edge);
 						 curNode=edge.getOpposite(curNode);
-						 curDir=!((BidirectedEdge) edge).getDir((BidirectedNode)curNode);
+						 curDir=!((BDEdge) edge).getDir((BDNode)curNode);
 						 ways = (curDir?curNode.leavingEdges():curNode.enteringEdges()).filter(e->!e.hasAttribute("cut")).collect(Collectors.toList());
 
 					 }
@@ -116,7 +116,7 @@ public class GraphWatcher {
 
 			//Adding loop to circular node
 			if(isCircular)
-				outputGraph.addEdge((BidirectedNode)n, (BidirectedNode)n , true, false);
+				outputGraph.addEdge((BDNode)n, (BDNode)n , true, false);
 		}
 		//now set the edge of outputGraph based on the cut edges
 		for(Edge e:cutEdges) {
@@ -125,19 +125,19 @@ public class GraphWatcher {
 			Node 	nn0=outputGraph.getNode(Integer.toString(rtComponents.getConnectedComponentOf(n0).id)),
 					nn1=outputGraph.getNode(Integer.toString(rtComponents.getConnectedComponentOf(n1).id));
 			if(nn0!=null && nn1!=null) {
-				boolean dir0=((BidirectedEdge)e).getDir((BidirectedNode)n0),
-						dir1=((BidirectedEdge)e).getDir((BidirectedNode)n1);
-				if(((BidirectedPath)nn0.getAttribute("path")).getNodeCount()>1) 
-					dir0=(n0==((BidirectedPath)nn0.getAttribute("path")).peekNode())?true:false;
+				boolean dir0=((BDEdge)e).getDir((BDNode)n0),
+						dir1=((BDEdge)e).getDir((BDNode)n1);
+				if(((BDPath)nn0.getAttribute("path")).getNodeCount()>1) 
+					dir0=(n0==((BDPath)nn0.getAttribute("path")).peekNode())?true:false;
 				
-				if(((BidirectedPath)nn1.getAttribute("path")).getNodeCount()>1) 
-					dir1=(n1==((BidirectedPath)nn1.getAttribute("path")).getRoot())?false:true;	
+				if(((BDPath)nn1.getAttribute("path")).getNodeCount()>1) 
+					dir1=(n1==((BDPath)nn1.getAttribute("path")).getRoot())?false:true;	
 				
-				outputGraph.addEdge((BidirectedNode)nn0, (BidirectedNode)nn1 , dir0, dir1);
-//				Edge newEdge=outputGraph.addEdge((BidirectedNode)nn0, (BidirectedNode)nn1 , dir0, dir1);
+				outputGraph.addEdge((BDNode)nn0, (BDNode)nn1 , dir0, dir1);
+//				Edge newEdge=outputGraph.addEdge((BDNode)nn0, (BDNode)nn1 , dir0, dir1);
 //				System.out.printf("Cut edge %s == New edge %s (%s=%s and %s=%s)\n", e.getId(), newEdge.getId(), 
-//							nn0.getId(),((BidirectedPath)nn0.getAttribute("path")).getId(),  
-//							nn1.getId(),((BidirectedPath)nn1.getAttribute("path")).getId());
+//							nn0.getId(),((BDPath)nn0.getAttribute("path")).getId(),  
+//							nn1.getId(),((BDPath)nn1.getAttribute("path")).getId());
 			}
 		}
 		
@@ -178,7 +178,7 @@ public class GraphWatcher {
     			AtomicDouble lengthWeightedCov = new AtomicDouble(0.0);
     			ArrayList<Node> tmp = new ArrayList<>();
     			comp.nodes().forEach(n->{
-    				lengthWeightedCov.getAndAdd(n.getNumber("cov")*(n.getNumber("len")-BidirectedGraph.getKmerSize()));
+    				lengthWeightedCov.getAndAdd(n.getNumber("cov")*(n.getNumber("len")-BDGraph.getKmerSize()));
     				tmp.add(n);
     			});
     			if(lengthWeightedCov.get() < 10000*inputGraph.binner.leastBin.estCov)
@@ -206,24 +206,24 @@ public class GraphWatcher {
 
 		//2. then decompose it (using cut attribute instead of removing edges)
 		//reset
-		cutEdges = new HashSet<BidirectedEdge>();
+		cutEdges = new HashSet<BDEdge>();
 		inputGraph.edges().filter(e->e.hasAttribute("cut")).forEach(e->{e.removeAttribute("cut"); e.removeAttribute("ui.hide");});;
 
 		//the set the cut edges
 		inputGraph.nodes()
 		.forEach(n->{
 			if(n.getInDegree()>=2)
-				n.enteringEdges().forEach(e->{e.setAttribute("ui.hide");e.setAttribute("cut");cutEdges.add((BidirectedEdge) e);});
+				n.enteringEdges().forEach(e->{e.setAttribute("ui.hide");e.setAttribute("cut");cutEdges.add((BDEdge) e);});
 			if(n.getOutDegree()>=2)
-				n.leavingEdges().forEach(e->{e.setAttribute("ui.hide");e.setAttribute("cut");cutEdges.add((BidirectedEdge) e);});
+				n.leavingEdges().forEach(e->{e.setAttribute("ui.hide");e.setAttribute("cut");cutEdges.add((BDEdge) e);});
 
 		});
-		outputGraph=new BidirectedGraph();
-		BidirectedPath repPath=null; //representative path of a component
+		outputGraph=new BDGraph();
+		BDPath repPath=null; //representative path of a component
 		for (Iterator<ConnectedComponents.ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
 			ConnectedComponents.ConnectedComponent comp = compIter.next();
 			//check comp: should be linear paths, should start with node+
-			 repPath = new BidirectedPath();
+			 repPath = new BDPath();
 			 Node node = comp.nodes().toArray(Node[]::new)[0];
 			 repPath.setRoot(node);
 			 boolean isCircular=false;
@@ -242,7 +242,7 @@ public class GraphWatcher {
 						 break;
 					 }
 					 
-					 curDir=!((BidirectedEdge) edge).getDir((BidirectedNode)curNode);
+					 curDir=!((BDEdge) edge).getDir((BDNode)curNode);
 					 ways = (curDir?curNode.leavingEdges():curNode.enteringEdges()).filter(e->!e.hasAttribute("cut")).collect(Collectors.toList());
 
 				 }
@@ -259,7 +259,7 @@ public class GraphWatcher {
 						 Edge edge = ways.get(0);
 						 repPath.add(edge);
 						 curNode=edge.getOpposite(curNode);
-						 curDir=!((BidirectedEdge) edge).getDir((BidirectedNode)curNode);
+						 curDir=!((BDEdge) edge).getDir((BDNode)curNode);
 						 ways = (curDir?curNode.leavingEdges():curNode.enteringEdges()).filter(e->!e.hasAttribute("cut")).collect(Collectors.toList());
 
 					 }
@@ -286,19 +286,19 @@ public class GraphWatcher {
 			Node 	nn0=outputGraph.getNode(Integer.toString(rtComponents.getConnectedComponentOf(n0).id)),
 					nn1=outputGraph.getNode(Integer.toString(rtComponents.getConnectedComponentOf(n1).id));
 			if(nn0!=null && nn1!=null) {
-				boolean dir0=((BidirectedEdge)e).getDir((BidirectedNode)n0),
-						dir1=((BidirectedEdge)e).getDir((BidirectedNode)n1);
-				if(((BidirectedPath)nn0.getAttribute("path")).getNodeCount()>1) 
-					dir0=(n0==((BidirectedPath)nn0.getAttribute("path")).peekNode())?true:false;
+				boolean dir0=((BDEdge)e).getDir((BDNode)n0),
+						dir1=((BDEdge)e).getDir((BDNode)n1);
+				if(((BDPath)nn0.getAttribute("path")).getNodeCount()>1) 
+					dir0=(n0==((BDPath)nn0.getAttribute("path")).peekNode())?true:false;
 				
-				if(((BidirectedPath)nn1.getAttribute("path")).getNodeCount()>1) 
-					dir1=(n1==((BidirectedPath)nn1.getAttribute("path")).getRoot())?false:true;	
+				if(((BDPath)nn1.getAttribute("path")).getNodeCount()>1) 
+					dir1=(n1==((BDPath)nn1.getAttribute("path")).getRoot())?false:true;	
 				
-				outputGraph.addEdge((BidirectedNode)nn0, (BidirectedNode)nn1 , dir0, dir1);
-//				Edge newEdge=outputGraph.addEdge((BidirectedNode)nn0, (BidirectedNode)nn1 , dir0, dir1);
+				outputGraph.addEdge((BDNode)nn0, (BDNode)nn1 , dir0, dir1);
+//				Edge newEdge=outputGraph.addEdge((BDNode)nn0, (BDNode)nn1 , dir0, dir1);
 //				System.out.printf("Cut edge %s == New edge %s (%s=%s and %s=%s)\n", e.getId(), newEdge.getId(), 
-//							nn0.getId(),((BidirectedPath)nn0.getAttribute("path")).getId(),  
-//							nn1.getId(),((BidirectedPath)nn1.getAttribute("path")).getId());
+//							nn0.getId(),((BDPath)nn0.getAttribute("path")).getId(),  
+//							nn1.getId(),((BDPath)nn1.getAttribute("path")).getId());
 			}
 		}
 		

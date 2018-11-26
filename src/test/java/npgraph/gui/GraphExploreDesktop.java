@@ -3,7 +3,7 @@ package npgraph.gui;
 import java.io.IOException;
 
 import org.graphstream.ui.view.Viewer;
-import org.rtassembly.npgraph.BidirectedGraph;
+import org.rtassembly.npgraph.BDGraph;
 import org.rtassembly.npgraph.GraphUtil;
 import org.rtassembly.npgraph.HybridAssembler;
 
@@ -84,7 +84,7 @@ public class GraphExploreDesktop {
 		hbAss.setShortReadsInputFormat("fastg");
 		hbAss.prepareShortReadsProcess(false);
 		
-    	BidirectedGraph graph= hbAss.simGraph;
+    	BDGraph graph= hbAss.simGraph;
     	
     	GraphUtil.redrawGraphComponents(graph);
     	graph.setAttribute("ui.style", GraphUtil.styleSheet);

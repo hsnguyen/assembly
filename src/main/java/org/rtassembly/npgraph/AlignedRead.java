@@ -118,7 +118,7 @@ public class AlignedRead{
 		if(alignments==null || alignments.isEmpty())
 			return "-,-";
 		else{
-			BidirectedEdgePrototype tmp = new BidirectedEdgePrototype(getFirstAlignment(),getLastAlignment());
+			BDEdgePrototype tmp = new BDEdgePrototype(getFirstAlignment(),getLastAlignment());
 			return tmp.toString();
 			
 		}

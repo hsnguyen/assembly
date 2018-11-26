@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.Stack;
@@ -23,7 +22,7 @@ import japsa.seq.Sequence;
 import japsa.seq.SequenceOutputStream;
 
 
-public class BidirectedGraph extends MultiGraph{
+public class BDGraph extends MultiGraph{
     static int KMER=127;
     static double RCOV=0.0;
 	SimpleBinner binner;
@@ -47,7 +46,7 @@ public class BidirectedGraph extends MultiGraph{
     //E.g: 103-: <103-82-> also 82+:<82+103+>
     private HashMap<String, GoInBetweenBridge> bridgesMap; 
 //    private HashMap<Node, Set<Node>> adjacencyMap; // map a node to the set of its nearest unique nodes (identify via reduce function) 
-    private static final Logger LOG = LoggerFactory.getLogger(BidirectedGraph.class);
+    private static final Logger LOG = LoggerFactory.getLogger(BDGraph.class);
 
     // *** Constructors ***
 	/**
@@ -72,22 +71,22 @@ public class BidirectedGraph extends MultiGraph{
 	 *            graph. The graph can grow beyond this limit, but storage
 	 *            reallocation is expensive operation.
 	 */
-	public BidirectedGraph(String id, boolean strictChecking, boolean autoCreate,
+	public BDGraph(String id, boolean strictChecking, boolean autoCreate,
 			int initialNodeCapacity, int initialEdgeCapacity) {
 		super(id, strictChecking, autoCreate);
 		
 		bridgesMap=new HashMap<String, GoInBetweenBridge>(initialNodeCapacity*2);
 //		adjacencyMap=new HashMap<Node, Set<Node>>();
 		// All we need to do is to change the node & edge factory
-		setNodeFactory(new NodeFactory<BidirectedNode>() {
-			public BidirectedNode newInstance(String id, Graph graph) {
-				return new BidirectedNode((AbstractGraph) graph, id);
+		setNodeFactory(new NodeFactory<BDNode>() {
+			public BDNode newInstance(String id, Graph graph) {
+				return new BDNode((AbstractGraph) graph, id);
 			}
 		});
 
-		setEdgeFactory(new EdgeFactory<BidirectedEdge>() {
-			public BidirectedEdge newInstance(String id, Node src, Node dst, boolean directed) { //stupid??
-				return new BidirectedEdge(id, (AbstractNode)src, (AbstractNode)dst);
+		setEdgeFactory(new EdgeFactory<BDEdge>() {
+			public BDEdge newInstance(String id, Node src, Node dst, boolean directed) { //stupid??
+				return new BDEdge(id, (AbstractNode)src, (AbstractNode)dst);
 			}
 		});
 		
@@ -114,7 +113,7 @@ public class BidirectedGraph extends MultiGraph{
 	 *            automatically created when referenced when creating a edge,
 	 *            even if not yet inserted in the graph.
 	 */
-	public BidirectedGraph(String id, boolean strictChecking, boolean autoCreate) {
+	public BDGraph(String id, boolean strictChecking, boolean autoCreate) {
 		this(id, strictChecking, autoCreate, DEFAULT_NODE_CAPACITY,
 				DEFAULT_EDGE_CAPACITY);
 	}
@@ -125,21 +124,21 @@ public class BidirectedGraph extends MultiGraph{
 	 * @param id
 	 *            Unique identifier of the graph.
 	 */
-	public BidirectedGraph(String id) {
+	public BDGraph(String id) {
 		this(id, true, false, 1000, 10000);
 	}
 	
-    public BidirectedGraph(){
+    public BDGraph(){
     	this("Assembly graph",true,false, 1000, 10000);
     }
 	
-	protected BidirectedEdge addEdge(AbstractNode src, AbstractNode dst, boolean dir0, boolean dir1){
-		BidirectedEdge tmp = (BidirectedEdge) addEdge(BidirectedEdge.createID(src, dst, dir0, dir1), src, dst);
+	protected BDEdge addEdge(AbstractNode src, AbstractNode dst, boolean dir0, boolean dir1){
+		BDEdge tmp = (BDEdge) addEdge(BDEdge.createID(src, dst, dir0, dir1), src, dst);
 		return tmp;
 	}
 	
 	
-	public String printEdgesOfNode(BidirectedNode node){
+	public String printEdgesOfNode(BDNode node){
 		Stream<Edge> 	ins = getNode(node.getId()).enteringEdges(),
 						outs = getNode(node.getId()).leavingEdges();
 		String retval=node.getId() + ": IN={ ";
@@ -170,10 +169,10 @@ public class BidirectedGraph extends MultiGraph{
     
 	
     public static int getKmerSize(){
-    	return BidirectedGraph.KMER;
+    	return BDGraph.KMER;
     }
     public static void setKmerSize(int kmer){
-    	BidirectedGraph.KMER=kmer;
+    	BDGraph.KMER=kmer;
     }
     
     /**************************************************************************************************
@@ -229,11 +228,11 @@ public class BidirectedGraph extends MultiGraph{
     }
     
     //when there is a path that could represent a bridge (half or full)
-    synchronized protected void updateBridgesMap(BidirectedPath path){
+    synchronized protected void updateBridgesMap(BDPath path){
     	if(path==null || path.size() < 2)
     		return;
     	try{
-	    	BidirectedNode 	startNode=path.getFirstNode(),
+	    	BDNode 	startNode=path.getFirstNode(),
 	    					endNode=path.getLastNode();
 	    	boolean startNodeDir=path.getFirstNodeDirection(),
 	    			endNodeDir=path.getLastNodeDirection();
@@ -296,7 +295,7 @@ public class BidirectedGraph extends MultiGraph{
 //    				falseBridgeFrom.getBestPath().revert();
 //    			  		
 //    			falseBridgeFrom.halfPaths.addAll(falseBridgeFrom.fullPaths);
-//    			falseBridgeFrom.fullPaths=new ArrayList<BidirectedPath>();
+//    			falseBridgeFrom.fullPaths=new ArrayList<BDPath>();
 //    			//todo: remove 2 entries from bridgeMap here...
 //    			
 //    		}else{    		
@@ -312,7 +311,7 @@ public class BidirectedGraph extends MultiGraph{
 //    				falseBridgeTo.getBestPath().revert();
 //    			  		
 //    			falseBridgeTo.halfPaths.addAll(falseBridgeTo.fullPaths);
-//    			falseBridgeTo.fullPaths=new ArrayList<BidirectedPath>();
+//    			falseBridgeTo.fullPaths=new ArrayList<BDPath>();
 //    			//todo: remove 2 entries from bridgeMap here...
 //
 //    		}else{    		
@@ -330,29 +329,29 @@ public class BidirectedGraph extends MultiGraph{
 
     
     
-    synchronized ArrayList<BidirectedPath> DFSAllPaths(Alignment from, Alignment to){
+    synchronized ArrayList<BDPath> DFSAllPaths(Alignment from, Alignment to){
     	assert from.readID==to.readID && to.compareTo(from)>=0:"Illegal alignment pair to find path!"; 	
     	int distance=to.readAlignmentStart()-from.readAlignmentEnd();
-    	BidirectedNode srcNode = from.node,
+    	BDNode srcNode = from.node,
 						dstNode = to.node;
     	boolean srcDir = from.strand, dstDir = !to.strand;
     	return DFSAllPaths(srcNode, dstNode, srcDir, dstDir, distance, Math.min(from.quality, to.quality) >= Alignment.GOOD_QUAL);
     }
     
-	synchronized ArrayList<BidirectedPath> DFSAllPaths(BidirectedNode srcNode, BidirectedNode dstNode, boolean srcDir, boolean dstDir, int distance, boolean assureFlag)
+	synchronized ArrayList<BDPath> DFSAllPaths(BDNode srcNode, BDNode dstNode, boolean srcDir, boolean dstDir, int distance, boolean assureFlag)
 	{
-    	if(distance>BidirectedGraph.D_LIMIT)
+    	if(distance>BDGraph.D_LIMIT)
     		return null;
     	System.out.printf("Looking for DFS path between %s%s to %s%s with distance=%d\n",srcNode.getId(), srcDir?"o":"i", dstNode.getId(), dstDir?"o":"i" ,distance);
-		ArrayList<BidirectedPath> possiblePaths = new ArrayList<BidirectedPath>(), 
-									retval=new ArrayList<BidirectedPath>();
+		ArrayList<BDPath> possiblePaths = new ArrayList<BDPath>(), 
+									retval=new ArrayList<BDPath>();
 		//1. First build shortest tree from dstNode 		
 		HashMap<String,Integer> shortestMap = getShortestTreeFromNode(dstNode, dstDir, distance);
-		BidirectedPath 	path = new BidirectedPath();
+		BDPath 	path = new BDPath();
 		path.setRoot(srcNode);  		
 
 		//2. DFS from srcNode with the distance info above
-		NodeDirection curNodeState = new NodeDirection(srcNode, !srcDir); // first node is special
+		BDNodeState curNodeState = new BDNodeState(srcNode, !srcDir); // first node is special
 		if(shortestMap.containsKey(curNodeState.toString())) {
 			
 			Stack<List<Edge>> stack = new Stack<>();
@@ -362,7 +361,7 @@ public class BidirectedGraph extends MultiGraph{
 			int shortestDist2Dest = shortestMap.get(curNodeState.toString());
 			int tolerance = A_TOL, 
 				delta;
-			BidirectedEdge curEdge = null;
+			BDEdge curEdge = null;
 			System.out.println("Found " + curNodeState.toString() + " with shortest distance=" + shortestDist2Dest);
 			
 			while(true) {
@@ -383,20 +382,20 @@ public class BidirectedGraph extends MultiGraph{
 						break;
 					stack.pop();
 //					System.out.print("removing edge " + path.peekEdge().getId());
-					distance += (int)path.peekNode().getNumber("len") + ((BidirectedEdge) path.popEdge()).getLength();
+					distance += (int)path.peekNode().getNumber("len") + ((BDEdge) path.popEdge()).getLength();
 //					System.out.println(" -> distance = " + distance);
 				}else {
-					curEdge=(BidirectedEdge) curList.remove(0);
-					BidirectedNode from = (BidirectedNode) path.peekNode(),
-									to = (BidirectedNode) curEdge.getOpposite(from);
+					curEdge=(BDEdge) curList.remove(0);
+					BDNode from = (BDNode) path.peekNode(),
+									to = (BDNode) curEdge.getOpposite(from);
 					boolean dir = curEdge.getDir(to);
 
 					AtomicInteger limit = new AtomicInteger(distance + tolerance);
 			    	stack.push(
 			    			(curEdge.getDir(to)?to.enteringEdges():to.leavingEdges())
 			    			.filter(e->{
-			    				BidirectedNode n=(BidirectedNode) e.getOpposite(to);
-			    				NodeDirection ns = new NodeDirection(n, ((BidirectedEdge) e).getDir(n));
+			    				BDNode n=(BDNode) e.getOpposite(to);
+			    				BDNodeState ns = new BDNodeState(n, ((BDEdge) e).getDir(n));
 			    				
 			    				return shortestMap.containsKey(ns.toString()) && shortestMap.get(ns.toString()) < limit.get();
 			    			})
@@ -410,7 +409,7 @@ public class BidirectedGraph extends MultiGraph{
 					if(to==dstNode && dir==dstDir && delta < tolerance){ 
 //					if(to==dstNode && dir==dstDir){ 
 
-				    	BidirectedPath 	tmpPath=new BidirectedPath(path);
+				    	BDPath 	tmpPath=new BDPath(path);
 				    	tmpPath.setDeviation(delta);
 				    	
 				    	//insert to the list with sorting
@@ -442,7 +441,7 @@ public class BidirectedGraph extends MultiGraph{
 			if(SimpleBinner.getBinIfUnique(srcNode)!=null && SimpleBinner.getBinIfUnique(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 && assureFlag){
 				//save the corresponding content of long reads to this edge
 				//TODO: save nanopore reads into this pseudo edge to run consensus later
-				BidirectedEdge pseudoEdge = addEdge(srcNode, dstNode, srcDir, dstDir);
+				BDEdge pseudoEdge = addEdge(srcNode, dstNode, srcDir, dstDir);
 				pseudoEdge.setAttribute("dist", distance);
 				path.add(pseudoEdge);
 				possiblePaths.add(path);
@@ -457,7 +456,7 @@ public class BidirectedGraph extends MultiGraph{
 		double bestScore=possiblePaths.get(0).getDeviation();
 		int keepMax = MAX_DFS_PATHS;//only keep this many possible paths 
 		for(int i=0;i<possiblePaths.size();i++){
-			BidirectedPath p = possiblePaths.get(i);
+			BDPath p = possiblePaths.get(i);
 			if(p.getDeviation()>bestScore+Math.abs(distance+getKmerSize())*R_TOL || i>=keepMax)
 				break;
 			retval.add(p);
@@ -472,19 +471,19 @@ public class BidirectedGraph extends MultiGraph{
      * Get a map showing shortest distances from surrounding nodes to a *rootNode* expanding to a *direction*, within a *distance*
      * based on Dijkstra algorithm
      */
-    public HashMap<String, Integer> getShortestTreeFromNode(BidirectedNode rootNode, boolean expDir, int distance){
-		PriorityQueue<NodeDirection> pq = new PriorityQueue<>();
+    public HashMap<String, Integer> getShortestTreeFromNode(BDNode rootNode, boolean expDir, int distance){
+		PriorityQueue<BDNodeState> pq = new PriorityQueue<>();
 		HashMap<String,Integer> retval = new HashMap<>();
 		
 		int curDistance=(int) -rootNode.getNumber("len"), newDistance=0;
-		NodeDirection curND = new NodeDirection(rootNode, expDir, curDistance);
+		BDNodeState curND = new BDNodeState(rootNode, expDir, curDistance);
 		pq.add(curND);
 		
 		System.out.println("Building shortest tree for " + rootNode.getId() + " with distance=" + distance);
 		retval.put(curND.toString(), curDistance); // direction from the point of srcNode
 		while(!pq.isEmpty()) {
 //			System.out.println("Current queue: ");
-//			for(NodeState n:pq) {
+//			for(BDNodeVecState n:pq) {
 //				System.out.printf("%s:%d\t", n.toString(), n.getWeight());
 //			}
 //			System.out.println();
@@ -493,15 +492,15 @@ public class BidirectedGraph extends MultiGraph{
 
 			Iterator<Edge> ite=curND.getDir()?curND.getNode().leavingEdges().iterator():curND.getNode().enteringEdges().iterator();
 			while(ite.hasNext()) {
-	    		BidirectedEdge edge = (BidirectedEdge) ite.next();
-	    		BidirectedNode nextNode = (BidirectedNode) edge.getOpposite(curND.getNode());
+	    		BDEdge edge = (BDEdge) ite.next();
+	    		BDNode nextNode = (BDNode) edge.getOpposite(curND.getNode());
 	    		boolean direction =  !edge.getDir(nextNode);
 	    		newDistance=curDistance+edge.getLength()+(int)curND.getNode().getNumber("len");
 //	    		if(newDistance > distance+A_TOL)
-    			if(newDistance-distance > BidirectedGraph.A_TOL && GraphUtil.approxCompare(newDistance, distance)>0)
+    			if(newDistance-distance > BDGraph.A_TOL && GraphUtil.approxCompare(newDistance, distance)>0)
 	    			continue;
 	    		
-	    		NodeDirection nextND = new NodeDirection(nextNode, direction, newDistance);
+	    		BDNodeState nextND = new BDNodeState(nextNode, direction, newDistance);
 	    		String key=nextND.toString();
 	    		if(retval.containsKey(key)) {
 	    			if(retval.get(key) > newDistance) {
@@ -533,7 +532,7 @@ public class BidirectedGraph extends MultiGraph{
      * Find bridges based on list of Alignments.
      * Return list of bridges with endings as markers and alignments of non-markers in-between.
      */ 
-    synchronized protected List<BidirectedPath> uniqueBridgesFinding(Sequence nnpRead, ArrayList<Alignment> alignments) {
+    synchronized protected List<BDPath> uniqueBridgesFinding(Sequence nnpRead, ArrayList<Alignment> alignments) {
  		if(nnpRead==null || alignments.size()<=1)
  			return null;
  		
@@ -558,7 +557,7 @@ public class BidirectedGraph extends MultiGraph{
  		if(rangeGroups.size() < 2)
  			return null;
 
- 		ArrayList<BidirectedPath> retrievedPaths = new ArrayList<>();
+ 		ArrayList<BDPath> retrievedPaths = new ArrayList<>();
 
  		List<Range> curRanges=rangeGroups.get(0);
  		AlignedRead	curBuildingBlocks; //building blocks for a bridge, taken from alignments with unique end(s)
@@ -634,8 +633,8 @@ public class BidirectedGraph extends MultiGraph{
  	}
   	
     
-    private List<BidirectedPath> buildBridge(AlignedRead read, PopBin bin){
-    	List<BidirectedPath> retval=new ArrayList<BidirectedPath>();
+    private List<BDPath> buildBridge(AlignedRead read, PopBin bin){
+    	List<BDPath> retval=new ArrayList<BDPath>();
 		GoInBetweenBridge 	storedBridge=getBridgeFromMap(read);
 		System.out.printf("+++%s <=> %s\n", read.getEndingsID(), storedBridge==null?"null":storedBridge.getEndingsID());
 		
@@ -650,17 +649,11 @@ public class BidirectedGraph extends MultiGraph{
 				
 				//scan for transformed unique nodes
 				if(storedBridge.getCompletionLevel()==1){
-					NodeVector prevRightMostMarker= storedBridge.steps.start;
-					if(storedBridge.steps.end!=null && storedBridge.steps.end.qc())
-						prevRightMostMarker=storedBridge.steps.end;
-					//TODO: gonna replace by this!!!
-//					if(storedBridge.segments!=null && !storedBridge.segments.isEmpty())
-//						prevRightMostMarker=storedBridge.segments.get(storedBridge.segments.size()-1).
-					
-					if(storedBridge.scanForAnEnd()){
+					BDNodeVecState prevRightMostMarker= storedBridge.getLastExtendedTip();					
+					if(prevRightMostMarker!=null&&storedBridge.scanForAnEnd()){
 						System.out.println("FOUND NEW TRANSFORMED END: " + storedBridge.steps.end.getNode().getId());
 						//selective connecting
-						if(storedBridge.steps.connectBridgeSteps(prevRightMostMarker, false)) {
+						if(storedBridge.steps.connectBridgeSteps(false)) {
 							//return appropriate path
 							if(storedBridge.countPathsBetween(prevRightMostMarker.getNode(), storedBridge.steps.end.getNode())==1)
 								retval.add(storedBridge.getBestPath(prevRightMostMarker.getNode(), storedBridge.steps.end.getNode()));
@@ -708,18 +701,18 @@ public class BidirectedGraph extends MultiGraph{
      * @param path: unique path to simplify the graph (from origGraph)
      */
     //This assuming path is surely unique!!!
-    public boolean reduceUniquePath(BidirectedPath path){
+    public boolean reduceUniquePath(BDPath path){
     	//do nothing if the path has only one node
     	if(path==null||path.getEdgeCount()<1)
     		return false;
     	else
     		System.out.println("Reducing path: " + path.getId());
     	//loop over the edges of path (like spelling())
-    	BidirectedNode 	startNode = (BidirectedNode) path.getRoot(),
-    					endNode = (BidirectedNode) path.peekNode();
+    	BDNode 	startNode = (BDNode) path.getRoot(),
+    					endNode = (BDNode) path.peekNode();
 	
-    	boolean startDir=((BidirectedEdge) path.getEdgePath().get(0)).getDir(startNode),
-    			endDir=((BidirectedEdge) path.peekEdge()).getDir(endNode);
+    	boolean startDir=((BDEdge) path.getEdgePath().get(0)).getDir(startNode),
+    			endDir=((BDEdge) path.peekEdge()).getDir(endNode);
 
     	Set<Edge> 	potentialRemovedEdges = binner.walkAlongUniquePath(path);
 		HashMap<PopBin, Integer> oneBin = new HashMap<>();
@@ -729,14 +722,14 @@ public class BidirectedGraph extends MultiGraph{
 	    	//remove appropriate edges
 	    	for(Edge e:potentialRemovedEdges){
 	    		LOG.info("REMOVING EDGE " + e.getId() + " from " + e.getNode0().getGraph().getId() + "-" + e.getNode1().getGraph().getId());
-	    		LOG.info("before: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
+	    		LOG.info("before: \n\t" + printEdgesOfNode((BDNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) e.getNode1()));
 	    		removeEdge(e.getId());
-	    		LOG.info("after: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
+	    		LOG.info("after: \n\t" + printEdgesOfNode((BDNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) e.getNode1()));
 	    	}
 	    	
 	    	//add appropriate edges
 
-    		BidirectedEdge reducedEdge = addEdge(startNode,endNode,startDir,endDir);
+    		BDEdge reducedEdge = addEdge(startNode,endNode,startDir,endDir);
     		LOG.info("ADDING EDGE " + reducedEdge.getId()+ " from " + reducedEdge.getNode0().getGraph().getId() + "-" + reducedEdge.getNode1().getGraph().getId());
     		
 			if(reducedEdge!=null){
@@ -759,23 +752,23 @@ public class BidirectedGraph extends MultiGraph{
     }
     
     // old reducing. Now use for SPAdes paths only
-    public boolean reduceFromSPAdesPath(BidirectedPath path){
+    public boolean reduceFromSPAdesPath(BDPath path){
     	//do nothing if the path has only one node
     	if(path==null || path.getEdgeCount()<1)
     		return false;
     	else
     		System.out.println("Input SPAdes path: " + path.getId());
     	//loop over the edges of path (like spelling())
-    	BidirectedNode 	markerNode = null,
-    			curNodeFromSimGraph = (BidirectedNode) path.getRoot();
+    	BDNode 	markerNode = null,
+    			curNodeFromSimGraph = (BDNode) path.getRoot();
 	
     	boolean markerDir=true, curDir;
     	PopBin 	curUniqueBin = SimpleBinner.getBinIfUnique(curNodeFromSimGraph);
     	if(curUniqueBin!=null){
     		markerNode=curNodeFromSimGraph;
-    		markerDir=((BidirectedEdge) path.getEdgePath().get(0)).getDir(markerNode);
+    		markerDir=((BDEdge) path.getEdgePath().get(0)).getDir(markerNode);
     	}
-    	BidirectedPath curPath = new BidirectedPath();
+    	BDPath curPath = new BDPath();
 		curPath.setRoot(curNodeFromSimGraph);
 
     	//search for an unique node as the marker. 
@@ -783,16 +776,16 @@ public class BidirectedGraph extends MultiGraph{
     								tobeAdded = new ArrayList<Edge>();
     	for(Edge edge:path.getEdgePath()){
     		curPath.add(edge);	
-    		curNodeFromSimGraph=(BidirectedNode) edge.getOpposite(curNodeFromSimGraph);
+    		curNodeFromSimGraph=(BDNode) edge.getOpposite(curNodeFromSimGraph);
     		   		
-    		curDir=((BidirectedEdge) edge).getDir(curNodeFromSimGraph);
+    		curDir=((BDEdge) edge).getDir(curNodeFromSimGraph);
     		
     		curUniqueBin = SimpleBinner.getBinIfUnique(curNodeFromSimGraph);
     		if(curUniqueBin!=null){//only when reach the end of path
 				curPath.setConsensusUniqueBinOfPath(curUniqueBin);
 				if(markerNode!=null){
 					//create an edge connect markerNode to curNode with curPath
-					BidirectedEdge reducedEdge = new BidirectedEdge(markerNode, curNodeFromSimGraph, markerDir, curDir);
+					BDEdge reducedEdge = new BDEdge(markerNode, curNodeFromSimGraph, markerDir, curDir);
 					reducedEdge.setAttribute("path", curPath);
 				
 //					reducedEdge.setAttribute("ui.label", reducedEdge.getId());
@@ -821,7 +814,7 @@ public class BidirectedGraph extends MultiGraph{
 				
 				markerNode=curNodeFromSimGraph;
         		markerDir=!curDir; //in-out, out-in
-				curPath= new BidirectedPath();
+				curPath= new BDPath();
 				curPath.setRoot(curNodeFromSimGraph);
 				curPath.setConsensusUniqueBinOfPath(curUniqueBin);
 
@@ -838,19 +831,19 @@ public class BidirectedGraph extends MultiGraph{
 	    	//remove appropriate edges
 	    	for(Edge e:tobeRemoved){
 	    		LOG.info("REMOVING EDGE " + e.getId() + " from " + e.getNode0().getGraph().getId() + "-" + e.getNode1().getGraph().getId());
-	    		LOG.info("before: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
+	    		LOG.info("before: \n\t" + printEdgesOfNode((BDNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) e.getNode1()));
 	    		removeEdge(e.getId());
-	    		LOG.info("after: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
+	    		LOG.info("after: \n\t" + printEdgesOfNode((BDNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) e.getNode1()));
 	    	}
 	    	
 	    	//add appropriate edges
 	    	for(Edge e:tobeAdded){
 	    		LOG.info("ADDING EDGE " + e.getId()+ " from " + e.getNode0().getGraph().getId() + "-" + e.getNode1().getGraph().getId());
-	    		LOG.info("before: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
+	    		LOG.info("before: \n\t" + printEdgesOfNode((BDNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) e.getNode1()));
 	    		
-	    		BidirectedEdge reducedEdge = addEdge((BidirectedNode)e.getSourceNode(),(BidirectedNode)e.getTargetNode(),((BidirectedEdge)e).getDir0(),((BidirectedEdge)e).getDir1());
+	    		BDEdge reducedEdge = addEdge((BDNode)e.getSourceNode(),(BDNode)e.getTargetNode(),((BDEdge)e).getDir0(),((BDEdge)e).getDir1());
 	    		
-	    		LOG.info("after: \n\t" + printEdgesOfNode((BidirectedNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BidirectedNode) e.getNode1()));
+	    		LOG.info("after: \n\t" + printEdgesOfNode((BDNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) e.getNode1()));
 	
 	    	}
 	    	return true;
@@ -859,17 +852,17 @@ public class BidirectedGraph extends MultiGraph{
 
     }
     //return path in the graph that contain only unique nodes
-    synchronized protected BidirectedPath getLongestLinearPathFromNode(BidirectedNode startNode, boolean direction){
+    synchronized protected BDPath getLongestLinearPathFromNode(BDNode startNode, boolean direction){
 //    	assert (direction?startNode.getOutDegree()<=1:startNode.getInDegree()<=1):" Node " + startNode.getId() + "has more than one possible extending way!";
-    	BidirectedPath retval = new BidirectedPath();
+    	BDPath retval = new BDPath();
     	retval.setRoot(startNode);
-    	BidirectedNode currentNode = startNode;
+    	BDNode currentNode = startNode;
     	boolean curDirection=direction;
     	while(curDirection?currentNode.getOutDegree()==1:currentNode.getInDegree()==1){
-    		BidirectedEdge curEdge=curDirection?currentNode.leavingEdges().toArray(BidirectedEdge[]::new)[0]
-    										:currentNode.enteringEdges().toArray(BidirectedEdge[]::new)[0];
+    		BDEdge curEdge=curDirection?currentNode.leavingEdges().toArray(BDEdge[]::new)[0]
+    										:currentNode.enteringEdges().toArray(BDEdge[]::new)[0];
     		retval.add(curEdge);
-    		currentNode=(BidirectedNode) curEdge.getOpposite(currentNode);
+    		currentNode=(BDNode) curEdge.getOpposite(currentNode);
     		curDirection=!curEdge.getDir(currentNode);
     	}
     	

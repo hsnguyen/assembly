@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.TreeSet;
 
 import org.graphstream.graph.Node;
-import org.graphstream.graph.implementations.AbstractNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,13 +15,13 @@ import org.slf4j.LoggerFactory;
 public class GoInBetweenBridge {
 	private static final Logger LOG = LoggerFactory.getLogger(GoInBetweenBridge.class);
 	
-	BidirectedGraph graph; //partial order graph saving possible paths
+	BDGraph graph; //partial order graph saving possible paths
 	PopBin bin;
-	BidirectedEdgePrototype pBridge; //note: the ending nodes must be unique, or else omitted
+	BDEdgePrototype pBridge; //note: the ending nodes must be unique, or else omitted
 	ArrayList<BridgeSegment> segments;
 	BridgeSteps steps;
 	
-	GoInBetweenBridge(BidirectedGraph graph, PopBin bin){
+	GoInBetweenBridge(BDGraph graph, PopBin bin){
 		this.graph=graph;
 //		segments=new ArrayList<>();
 //		steps=new BridgeSteps();
@@ -30,7 +29,7 @@ public class GoInBetweenBridge {
 	}
 	//This is for SPAdes path reader only. The input path must have at least one end unique.
 	//This unique ending node will be use as the first anchor of the bridge
-	GoInBetweenBridge (BidirectedGraph graph, BidirectedPath path){
+	GoInBetweenBridge (BDGraph graph, BDPath path){
 		this(graph,path.getConsensusUniqueBinOfPath());
 		if(	path.size()>1) {
 			if(SimpleBinner.getBinIfUnique(path.getRoot())!=null) {
@@ -41,7 +40,7 @@ public class GoInBetweenBridge {
 			}
 			
 			try {
-				pBridge=new BidirectedEdgePrototype(path.getFirstNode(), path.getFirstNodeDirection());
+				pBridge=new BDEdgePrototype(path.getFirstNode(), path.getFirstNodeDirection());
 			} catch (Exception e) {
 				System.err.println("Illegal path to construct pBridge: " + path.getId());
 				e.printStackTrace();
@@ -51,12 +50,12 @@ public class GoInBetweenBridge {
 
 	}
 	
-	public GoInBetweenBridge(BidirectedGraph graph, BridgeSteps steps, PopBin b){
+	public GoInBetweenBridge(BDGraph graph, BridgeSteps steps, PopBin b){
 		this(graph,b);
 		this.steps=steps;
 	}
 	
-	public GoInBetweenBridge(BidirectedGraph graph, AlignedRead bb, PopBin b) {
+	public GoInBetweenBridge(BDGraph graph, AlignedRead bb, PopBin b) {
 		this(graph, b);
 		steps=new BridgeSteps(bb);
 	}
@@ -70,7 +69,15 @@ public class GoInBetweenBridge {
 		return retval;
 	}
 	
-	
+	public BDNodeVecState getLastExtendedTip() {
+		BDNodeVecState retval= null;
+		if(steps!=null) {
+			retval=steps.start;
+		}
+		if(segments!=null && !segments.isEmpty())
+			retval=segments.get(segments.size()-1).endNV;
+		return retval;
+	}
 	/*
 	 * How complete this bridge is built. Level of completion is as follow:
 	 * 0: nothing, 1: one anchor, 2: two anchors determined, 3: bridge connected, 4: bridge completed
@@ -103,7 +110,7 @@ public class GoInBetweenBridge {
 		if(qBridge==null || qBridge.getCompletionLevel()==0 || getCompletionLevel()==4)
 			return false;
 		
-		NodeDirection 	sNode0=pBridge.n0,
+		BDNodeState 	sNode0=pBridge.n0,
 						sNode1=pBridge.n1,
 						qNode0=qBridge.pBridge.n0,
 						qNode1=qBridge.pBridge.n1;
@@ -135,8 +142,8 @@ public class GoInBetweenBridge {
 		
 		BridgeSteps qSteps=qBridge.steps;
 		
-		Iterator<NodeVector> iterator = qSteps.nodes.iterator();		
-		NodeVector 	current=null;
+		Iterator<BDNodeVecState> iterator = qSteps.nodes.iterator();		
+		BDNodeVecState 	current=null;
 		int lastIdx=0, numberOfAnchorsBefore=getNumberOfAnchors();
 		while(iterator.hasNext()){
 			current=iterator.next();
@@ -162,7 +169,7 @@ public class GoInBetweenBridge {
 		}	
 		
 		if(toConnect && getCompletionLevel()<3)
-			steps.connectBridgeSteps(steps.start, false);	
+			steps.connectBridgeSteps(false);	
 		
 		return getNumberOfAnchors()>numberOfAnchorsBefore;
 	}
@@ -174,10 +181,10 @@ public class GoInBetweenBridge {
 		if(read==null || read.getAlignmentRecords().size() < 2 || getCompletionLevel()==4)
 			return false;
 		
-		NodeDirection 	sNode0=pBridge.n0,
+		BDNodeState 	sNode0=pBridge.n0,
 						sNode1=pBridge.n1,
-						qNode0=new NodeDirection(read.getFirstAlignment().node, read.getFirstAlignment().strand),
-						qNode1=new NodeDirection(read.getLastAlignment().node, !read.getLastAlignment().strand);
+						qNode0=new BDNodeState(read.getFirstAlignment().node, read.getFirstAlignment().strand),
+						qNode1=new BDNodeState(read.getLastAlignment().node, !read.getLastAlignment().strand);
 
 		System.out.printf("Merging Bridge %s lvl=%d \n%s\nwith AlignedRead %s\n%s\n", getEndingsID(), getCompletionLevel(), getAllNodeVector(), read.getEndingsID(), read.getCompsString());
 //		System.out.println("sNode0=" + (sNode0==null?"null":sNode0.getId()));
@@ -205,10 +212,10 @@ public class GoInBetweenBridge {
 		}
 		
 		Alignment start=read.getFirstAlignment();
-		NodeVector 	current=null;
+		BDNodeVecState 	current=null;
 		int lastIdx=0, numOfAnchorsBefore=getNumberOfAnchors();
 		for(Alignment alg:read.getAlignmentRecords()) {
-			current=new NodeVector(alg.node, read.getVector(start,alg));
+			current=new BDNodeVecState(alg.node, read.getVector(start,alg));
 			if(segments!=null){ //&& !steps.nodes.contains(current)???
 				int prev=-1, cur;
 				for(int i=lastIdx; i<segments.size();i++) {
@@ -230,7 +237,7 @@ public class GoInBetweenBridge {
 			}
 		}
 		if(toConnect && getCompletionLevel()<3)
-			steps.connectBridgeSteps(steps.start, false);		
+			steps.connectBridgeSteps(false);		
 				
 		
 		System.out.printf("After merging: %s\nstart=%s\nend=%s\n", pBridge.toString(), (steps.start==null?"null":steps.start.toString()), (steps.end==null?"null":steps.end.toString()));
@@ -248,13 +255,13 @@ public class GoInBetweenBridge {
 		assert getNumberOfAnchors()==2:"Could only reverse a determined bridge (2 anchors)";
 //		System.out.printf("Reversing the bridge %s:\n%s\n", getEndingsID(), getAllNodeVector());
 
-		pBridge=new BidirectedEdgePrototype(pBridge.getNode1(), pBridge.getNode0(), pBridge.getDir1(), pBridge.getDir0());
+		pBridge=new BDEdgePrototype(pBridge.getNode1(), pBridge.getNode0(), pBridge.getDir1(), pBridge.getDir0());
 		//reverse the segments
 		if(segments!=null){
 			ArrayList<BridgeSegment> tmp = segments;
 			segments = new ArrayList<>();
 			if(!tmp.isEmpty()) {
-				ScaffoldVector brgVector=tmp.get(tmp.size()-1).endV;
+				ScaffoldVector brgVector=tmp.get(tmp.size()-1).getEndVector();
 				for(int i=tmp.size()-1; i>=0 ;i--)
 					addSegment(tmp.get(i).reverse(brgVector));
 			}
@@ -284,7 +291,7 @@ public class GoInBetweenBridge {
 			if(seg.getNumberOfPaths()==0)
 				retval += "()";
 			else
-				for(BidirectedPath path:seg.connectedPaths)
+				for(BDPath path:seg.connectedPaths)
 					retval+="( "+path.getId()+ " : vote=" + path.getVote() + " deviation=" + path.getDeviation() + " )";
 			retval+="\n";
 		}
@@ -298,8 +305,8 @@ public class GoInBetweenBridge {
 		return steps.toString();
 	}
 
-	public BidirectedPath getBestPath(Node startFrom, Node endAt) { //the markers must be (transformed) unique
-		BidirectedPath best=null,retval=null;
+	public BDPath getBestPath(Node startFrom, Node endAt) { //the markers must be (transformed) unique
+		BDPath best=null,retval=null;
 		boolean found=false;
 		for(BridgeSegment seg:segments) {
 			//finding the start node
@@ -314,7 +321,7 @@ public class GoInBetweenBridge {
 			
 			if(seg.getNumberOfPaths()>0){
 				if(seg.getNumberOfPaths()>1)
-					seg.connectedPaths.sort(Comparator.comparing(BidirectedPath::getVote, Comparator.reverseOrder()).thenComparing(BidirectedPath::getDeviation));	
+					seg.connectedPaths.sort(Comparator.comparing(BDPath::getVote, Comparator.reverseOrder()).thenComparing(BDPath::getDeviation));	
 				
 				best=seg.connectedPaths.get(0);
 				if(retval==null)
@@ -363,9 +370,9 @@ public class GoInBetweenBridge {
 	public boolean scanForAnEnd(){
 		if(steps==null)
 			return false;
-		Iterator<NodeVector> ite = steps.nodes.descendingIterator();
+		Iterator<BDNodeVecState> ite = steps.nodes.descendingIterator();
 		while(ite.hasNext()){
-			NodeVector tmp=ite.next();
+			BDNodeVecState tmp=ite.next();
 			if(!tmp.qc())
 				continue;
 			//TODO: find furthest or closest marker??
@@ -391,17 +398,18 @@ public class GoInBetweenBridge {
 	 ************************************************************************************************/
 	class BridgeSegment{
 //		ArrayList<Sequence> nnpReads; // to store nanopore data if needed
-		ArrayList<BidirectedPath> connectedPaths;
-		BidirectedEdgePrototype pSegment;
-		ScaffoldVector startV, endV; // from bridge anchor (always +) to this segment's end
+		ArrayList<BDPath> connectedPaths;
+		BDEdgePrototype pSegment;
+//		ScaffoldVector startV, endV; // from bridge anchor (always +) to this segment's end
+		BDNodeVecState startNV, endNV;
 		int bestElections=0;
 		BridgeSegment(){}
 
 		BridgeSegment(Alignment start, Alignment end, AlignedRead read){
-			pSegment=new BidirectedEdgePrototype(start.node, end.node, start.strand, !end.strand);
+			pSegment=new BDEdgePrototype(start.node, end.node, start.strand, !end.strand);
 			//invoke findPath()?
-			startV=read.getVector(read.getFirstAlignment(), start);
-			endV=read.getVector(read.getFirstAlignment(), end);
+			startNV=new BDNodeVecState(start.node, read.getVector(read.getFirstAlignment(), start));
+			endNV=new BDNodeVecState(start.node, read.getVector(read.getFirstAlignment(), end));
 			connectedPaths = graph.DFSAllPaths(start, end);
 			
 //			if(connectedPaths==null || connectedPaths.isEmpty())
@@ -409,20 +417,20 @@ public class GoInBetweenBridge {
 			
 		}
 		
-		BridgeSegment(AbstractNode node1, AbstractNode node2, boolean dir1, boolean dir2, ScaffoldVector v1, ScaffoldVector v2){
-			assert Math.abs(v1.getMagnitute()) < Math.abs(v2.magnitude): "Illegal order of node position!";
-			pSegment = new BidirectedEdgePrototype(node1,node2,dir1,dir2);
-			startV = v1; endV = v2;
-			int d = ScaffoldVector.composition(endV, ScaffoldVector.reverse(startV)).distance((BidirectedNode)node1, (BidirectedNode)node2);
-			connectedPaths = graph.DFSAllPaths((BidirectedNode)node1, (BidirectedNode)node2, dir1, dir2, d, false);
+		BridgeSegment(BDNodeVecState nv1, BDNodeVecState nv2, boolean dir1, boolean dir2){
+			assert Math.abs(nv1.getVector().getMagnitute()) < Math.abs(nv2.getVector().magnitude): "Illegal order of node position!";
+			pSegment = new BDEdgePrototype(nv1.getNode(),nv2.getNode(),dir1,dir2);
+			startNV = nv1; endNV = nv2;
+			int d = ScaffoldVector.composition(nv2.getVector(), ScaffoldVector.reverse(nv1.getVector())).distance(nv1.getNode(), nv2.getNode());
+			connectedPaths = graph.DFSAllPaths((BDNode)nv1.getNode(), (BDNode)nv2.getNode(), dir1, dir2, d, false);
 			
 //			if(connectedPaths==null || connectedPaths.isEmpty())
-//				connectedPaths = graph.getClosestPaths((BidirectedNode)node1, dir1, (BidirectedNode)node2, dir2, d, false);
+//				connectedPaths = graph.getClosestPaths((BDNode)node1, dir1, (BDNode)node2, dir2, d, false);
 		}
 		
-		BridgeSegment(BidirectedPath path){
+		BridgeSegment(BDPath path){
 			try {
-				pSegment=new BidirectedEdgePrototype(path);
+				pSegment=new BDEdgePrototype(path);
 				connectedPaths=new ArrayList<>();
 				connectedPaths.add(path);
 				
@@ -431,8 +439,8 @@ public class GoInBetweenBridge {
 						-(pSegment.getDir0()?0:pSegment.getNode0().getNumber("len"))
 						-(pSegment.getDir1()?0:pSegment.getNode1().getNumber("len")));
 				
-				startV=new ScaffoldVector(0,1);
-				endV=new ScaffoldVector(pSegment.getDir0()?dist:-dist, pSegment.getDir0()!=pSegment.getDir1()?1:-1);
+				startNV=new BDNodeVecState(pSegment.getNode0(),new ScaffoldVector(0,1));
+				endNV=new BDNodeVecState(pSegment.getNode1(), new ScaffoldVector(pSegment.getDir0()?dist:-dist, pSegment.getDir0()!=pSegment.getDir1()?1:-1));
 			} catch (Exception e) {
 				LOG.error("Cannot make bridge from this path!");
 				e.printStackTrace();
@@ -442,12 +450,12 @@ public class GoInBetweenBridge {
 		
 		BridgeSegment reverse(ScaffoldVector brgVector) {
 			BridgeSegment retval = new BridgeSegment();
-			retval.startV=ScaffoldVector.composition(endV, ScaffoldVector.reverse(brgVector));
-			retval.endV=ScaffoldVector.composition(startV, ScaffoldVector.reverse(brgVector));
-			retval.connectedPaths=new ArrayList<>();
-			for(BidirectedPath p:connectedPaths)
-				retval.connectedPaths.add(p.reverse());
 			retval.pSegment=pSegment.reverse();
+			retval.startNV=new BDNodeVecState(pSegment.getNode0(), ScaffoldVector.composition(getEndVector(), ScaffoldVector.reverse(brgVector)));
+			retval.endNV=new BDNodeVecState(pSegment.getNode1(), ScaffoldVector.composition(getStartVector(), ScaffoldVector.reverse(brgVector)));
+			retval.connectedPaths=new ArrayList<>();
+			for(BDPath p:connectedPaths)
+				retval.connectedPaths.add(p.reverse());
 			return retval;
 		}
 		
@@ -457,19 +465,17 @@ public class GoInBetweenBridge {
 		 * Return retval>0 if found in x paths
 		 * Return retval=0 if located in the interval of this segment but not found in any path 
 		 */
-		int locateAndVote(NodeVector nv) {
+		int locateAndVote(BDNodeVecState nv) {
 			int retval=-1;
 			if(!isConnected())
 				return retval;
 			
-			NodeVector 	start=new NodeVector((BidirectedNode) pSegment.getNode0(), startV),
-						end=new NodeVector((BidirectedNode) pSegment.getNode1(),endV);
-			List<BidirectedPath> tobeRemoved=new ArrayList<>();
-			if(nv.compareTo(start)*nv.compareTo(end)<=0) {
+			List<BDPath> tobeRemoved=new ArrayList<>();
+			if(nv.compareTo(startNV)*nv.compareTo(endNV)<=0) {
 				retval=0;
-				ScaffoldVector start2nv=ScaffoldVector.composition(nv.getVector(), ScaffoldVector.reverse(startV));
-				int d=start2nv.distance((BidirectedNode) pSegment.getNode0(), nv.getNode());
-				for(BidirectedPath p:connectedPaths) {
+				ScaffoldVector start2nv=ScaffoldVector.composition(nv.getVector(), ScaffoldVector.reverse(getStartVector()));
+				int d=start2nv.distance((BDNode) pSegment.getNode0(), nv.getNode());
+				for(BDPath p:connectedPaths) {
 					if(p.checkDistanceConsistency(pSegment.getNode0(), nv.getNode(), start2nv.direction>0, d) >= 0) {
 						p.upVote(1);
 						if(p.getVote() > bestElections)
@@ -478,7 +484,7 @@ public class GoInBetweenBridge {
 					}
 					else{
 						p.downVote(1);
-						if(p.getVote() < bestElections-BidirectedGraph.MAX_DIFF)
+						if(p.getVote() < bestElections-BDGraph.MAX_DIFF)
 							tobeRemoved.add(p);
 					}
 				}
@@ -502,10 +508,10 @@ public class GoInBetweenBridge {
 			return getNumberOfPaths()==1;
 		}
 		ScaffoldVector getEndVector() {
-			return endV;
+			return endNV.getVector();
 		}
 		ScaffoldVector getStartVector() {
-			return startV;
+			return startNV.getVector();
 		}
 		String getId() {
 			return pSegment.toString();
@@ -518,12 +524,12 @@ public class GoInBetweenBridge {
 	 * Used for determine segments 
 	 */
 	class BridgeSteps{
-		TreeSet<NodeVector> nodes;
+		TreeSet<BDNodeVecState> nodes;
 		//save the two unique nodes at 2 endings of the bridge. When end is covered more than threshold, pBridge is set
-		NodeVector start, end; 
+		BDNodeVecState start, end; 
 		
 		BridgeSteps(){
-			nodes=new TreeSet<NodeVector>();
+			nodes=new TreeSet<BDNodeVecState>();
 		}
 		
 		BridgeSteps(AlignedRead read){
@@ -540,12 +546,12 @@ public class GoInBetweenBridge {
 			Alignment 	firstAlg = read.getFirstAlignment(),
 						curAlg = null;				
 					
-			start=new NodeVector(firstAlg.node, new ScaffoldVector());
+			start=new BDNodeVecState(firstAlg.node, new ScaffoldVector());
 			nodes.add(start);
 				
 			for(int i=1;i<read.getAlignmentRecords().size();i++) {
 				curAlg = read.getAlignmentRecords().get(i);
-				NodeVector tmp=new NodeVector(curAlg.node, read.getVector(firstAlg, curAlg));
+				BDNodeVecState tmp=new BDNodeVecState(curAlg.node, read.getVector(firstAlg, curAlg));
 				nodes.add(tmp);
 				
 				if(SimpleBinner.getBinIfUnique(curAlg.node)!=null)
@@ -554,22 +560,22 @@ public class GoInBetweenBridge {
 			}
 			//update the pBridge accordingly
 			if(end!=null && end.qc()) {
-				pBridge=new BidirectedEdgePrototype(firstAlg.node, end.getNode(), firstAlg.strand, end.getDirection(firstAlg.strand));//getDirection doesn't work with self-vector
+				pBridge=new BDEdgePrototype(firstAlg.node, end.getNode(), firstAlg.strand, end.getDirection(firstAlg.strand));//getDirection doesn't work with self-vector
 			}else if(pBridge==null)
-				pBridge=new BidirectedEdgePrototype(firstAlg.node, firstAlg.strand);
+				pBridge=new BDEdgePrototype(firstAlg.node, firstAlg.strand);
 		}
 		
 	
 		
-		void addNode(NodeVector nv) {
+		void addNode(BDNodeVecState nv) {
 			//TODO: optimize it! hashmap??? not linear searching like this!
 			//FIXME: acting weird, not call equals() properly for 141o,20o: Because TreeSet used compareTo() instead of equals()!!! 
 			//(https://dzone.com/articles/the-hidden-contract-between-equals-and-comparable)
 			
-			Iterator<NodeVector> ite = nodes.iterator();
+			Iterator<BDNodeVecState> ite = nodes.iterator();
 			boolean found=false;
 			while(ite.hasNext()){
-				NodeVector tmp=ite.next();
+				BDNodeVecState tmp=ite.next();
 				if(tmp.merge(nv)){
 					//re-assign end node if there is another unique node with higher score
 					if(SimpleBinner.getBinIfUnique(tmp.getNode())!=null && !tmp.getVector().isIdentity()) {
@@ -602,9 +608,9 @@ public class GoInBetweenBridge {
 			
 //			if(nodes.contains(nv)){
 //				System.out.println("Found " + nv);
-//				Iterator<NodeVector> ite = nodes.iterator();
+//				Iterator<BDNodeVecState> ite = nodes.iterator();
 //				while(ite.hasNext()){
-//					NodeVector tmp=ite.next();
+//					BDNodeVecState tmp=ite.next();
 //					if(tmp.equals(nv)){
 //						tmp.score+=nv.score;
 //						//assign end node
@@ -636,10 +642,10 @@ public class GoInBetweenBridge {
 		
 		//Try to make the continuous segments (those that have paths connected 2 ends). Return true if it possible
 		//starting from a marker (unique or transformed unique node)
-		boolean connectBridgeSteps(NodeVector startFrom, boolean force){
+		boolean connectBridgeSteps(boolean force){
 			if(isIdentifiable()){
 				if(connectable() || force){
-					pBridge.n1=new NodeDirection(end.node, end.getDirection(pBridge.getDir0()));
+					pBridge.n1=new BDNodeState(end.node, end.getDirection(pBridge.getDir0()));
 				}else{
 					System.err.printf("Bridge %s is not qualified to connect yet: start=%s end=%s\n", pBridge.toString(), (start==null?"null":start.toString()), (end==null?"null":end.toString()));
 					return false;
@@ -650,13 +656,22 @@ public class GoInBetweenBridge {
 				return false;
 			}	
 			
-			System.out.println("Trying to connect bridge " + pBridge.toString() + " from "+ startFrom.getNode().getId() + ":\n" + getAllNodeVector());
+			BDNodeVecState startFrom= getLastExtendedTip();
+
+			
+			System.out.print("Trying to connect bridge " + pBridge.toString() + " from "+ startFrom.getNode().getId());
+			if(startFrom==end) {
+				System.out.println(": ignored!");
+				return false;
+			}else {
+				System.out.println("\n"+getAllNodeVector());
+			}
 			//First build shortest tree from the end
 			//TODO: optimize finding path by using this list
 			HashMap<String,Integer> shortestMap = 
-					graph.getShortestTreeFromNode(	(BidirectedNode)pBridge.getNode1(), 
+					graph.getShortestTreeFromNode(	(BDNode)pBridge.getNode1(), 
 													pBridge.getDir1(), 
-													end.getVector().distance((BidirectedNode)pBridge.getNode0(), (BidirectedNode)pBridge.getNode1()));
+													end.getVector().distance((BDNode)pBridge.getNode0(), (BDNode)pBridge.getNode1()));
 			String key=pBridge.getNode0().getId()+(pBridge.getDir0()?"i":"o");
 			if(!shortestMap.containsKey(key)){ //note the trick: direction BEFORE the path started
 				System.out.printf("Shortest tree couldn't reach to the other end: ");
@@ -673,12 +688,12 @@ public class GoInBetweenBridge {
 				System.out.printf("Shortest tree contain the other end: %s=%d\n", key, shortestMap.get(key));
 			}
 			
-			Iterator<NodeVector> iterator = nodes.iterator();
+			Iterator<BDNodeVecState> iterator = nodes.iterator();
 			
-			NodeVector 	prev=null, 
-						current=null;
+			BDNodeVecState 	prev=null, 
+							current=null;
 			boolean retval = false;
-			ArrayList<NodeVector> inbetween = new ArrayList<>();
+			ArrayList<BDNodeVecState> inbetween = new ArrayList<>();
 			while(iterator.hasNext()){
 				current=iterator.next();
 				if(prev==null){
@@ -692,15 +707,13 @@ public class GoInBetweenBridge {
 					if((force&&current==end) || current.qc()){
 						BridgeSegment seg = null;
 						if(prev.getVector().isIdentity())
-							seg=new BridgeSegment(	prev.getNode(), current.getNode(), 
+							seg=new BridgeSegment(	prev, current, 
 													pBridge.getDir0(), 
-													current.getDirection(pBridge.getDir0()), 
-													prev.getVector(), current.getVector());
+													current.getDirection(pBridge.getDir0()));
 						else
-							seg=new BridgeSegment(	prev.getNode(), current.getNode(), 
+							seg=new BridgeSegment(	prev, current, 
 									!prev.getDirection(pBridge.getDir0()), 
-									current.getDirection(pBridge.getDir0()), 
-									prev.getVector(), current.getVector());
+									current.getDirection(pBridge.getDir0()));
 						
 						System.out.print("...connecting " + seg.getId());
 						if(seg.isConnected()){
@@ -708,7 +721,7 @@ public class GoInBetweenBridge {
 							prev=current;
 							//use qc-failed nodes to vote
 							if(seg.getNumberOfPaths()>1)
-								for(NodeVector nv:inbetween)
+								for(BDNodeVecState nv:inbetween)
 									seg.locateAndVote(nv);
 							addSegment(seg);
 							if(current.equals(end)) {
@@ -750,11 +763,11 @@ public class GoInBetweenBridge {
 		}
 		void reverse() {
 			//reverse the nodes list
-			TreeSet<NodeVector> reversedSet = new TreeSet<NodeVector>();
+			TreeSet<BDNodeVecState> reversedSet = new TreeSet<BDNodeVecState>();
 			ScaffoldVector rev=ScaffoldVector.reverse(end.getVector());//anchors number = 2 so there exist end node
-			NodeVector tmp = null;
-			for(NodeVector nv:nodes) {
-				tmp=new NodeVector(nv.getNode(), ScaffoldVector.composition(nv.getVector(), rev), nv.nodeCover);
+			BDNodeVecState tmp = null;
+			for(BDNodeVecState nv:nodes) {
+				tmp=new BDNodeVecState(nv.getNode(), ScaffoldVector.composition(nv.getVector(), rev), nv.nodeCover);
 				reversedSet.add(tmp);
 
 			}
@@ -770,7 +783,7 @@ public class GoInBetweenBridge {
 		
 		public String toString(){
 			String retval="";
-			for(NodeVector nv:nodes)
+			for(BDNodeVecState nv:nodes)
 				retval+=nv.toString() + "\n";
 			return retval;
 		}
