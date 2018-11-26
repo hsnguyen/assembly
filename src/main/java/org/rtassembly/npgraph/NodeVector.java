@@ -29,9 +29,6 @@ public class NodeVector implements Comparable<NodeVector>{
 	public void setNode(BidirectedNode node){this.node=node;}
 	public void setVector(ScaffoldVector vector){this.vector=vector;}
 	
-//	public PopBin getUniqueBin(){
-//		return SimpleBinner.getUniqueBin(node);
-//	}
 	
 	//get the direction of a node based on the root direction (not apply for the root itself!!!)
 	public boolean getDirection(boolean rootDir){

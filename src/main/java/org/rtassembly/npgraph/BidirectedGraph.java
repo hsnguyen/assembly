@@ -653,6 +653,9 @@ public class BidirectedGraph extends MultiGraph{
 					NodeVector prevRightMostMarker= storedBridge.steps.start;
 					if(storedBridge.steps.end!=null && storedBridge.steps.end.qc())
 						prevRightMostMarker=storedBridge.steps.end;
+					//TODO: gonna replace by this!!!
+//					if(storedBridge.segments!=null && !storedBridge.segments.isEmpty())
+//						prevRightMostMarker=storedBridge.segments.get(storedBridge.segments.size()-1).
 					
 					if(storedBridge.scanForAnEnd()){
 						System.out.println("FOUND NEW TRANSFORMED END: " + storedBridge.steps.end.getNode().getId());

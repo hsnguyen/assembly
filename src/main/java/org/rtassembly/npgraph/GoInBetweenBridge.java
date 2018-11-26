@@ -5,7 +5,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.SortedSet;
 import java.util.TreeSet;
 
 import org.graphstream.graph.Node;
@@ -311,9 +310,7 @@ public class GoInBetweenBridge {
 				else
 					found=true;
 			}
-			//escape if end node is reached
-			if(seg.pSegment.getNode0()==endAt)
-				break;
+
 			
 			if(seg.getNumberOfPaths()>0){
 				if(seg.getNumberOfPaths()>1)
@@ -327,7 +324,9 @@ public class GoInBetweenBridge {
 			}else
 				return null;
 			
-
+			//escape if end node is reached
+			if(seg.pSegment.getNode1()==endAt)
+				break;
 		}
 		
 		if(retval!=null)
@@ -335,7 +334,7 @@ public class GoInBetweenBridge {
 		return retval;
 	}
 	
-	public int countPathsBetween(Node startFrom, Node endAt){
+	public int countPathsBetween(Node startFrom, Node endAt){ //the markers must be (transformed) unique
 		int retval=0;
 		boolean found=false;
 		for(BridgeSegment seg:segments) {
@@ -353,7 +352,7 @@ public class GoInBetweenBridge {
 			else
 				retval=seg.connectedPaths.size();
 			//escape if end node is reached
-			if(seg.pSegment.getNode1()!=endAt)
+			if(seg.pSegment.getNode1()==endAt)
 				break;
 		}
 		return retval;
