@@ -639,8 +639,8 @@ public class BDGraph extends MultiGraph{
 		System.out.printf("+++%s <=> %s\n", read.getEndingsID(), storedBridge==null?"null":storedBridge.getEndingsID());
 		
 		if(storedBridge!=null) {
-			if(storedBridge.getCompletionLevel()==4){
-				System.out.println(storedBridge.getEndingsID() + ": already solved: ignore!");
+			if(storedBridge.getCompletionLevel()==4){//important since it will ignore the wrong transformed unique nodes here!!!
+				System.out.println(storedBridge.getEndingsID() + ": already solved and reduced: ignore!");
 			}else{
 				System.out.println(storedBridge.getEndingsID() + ": already built: fortify!");
 				//update available bridge using alignments
@@ -650,7 +650,7 @@ public class BDGraph extends MultiGraph{
 				//scan for transformed unique nodes
 				if(storedBridge.getCompletionLevel()==1){
 					BDNodeVecState prevRightMostMarker= storedBridge.getLastExtendedTip();					
-					if(prevRightMostMarker!=null&&storedBridge.scanForAnEnd()){
+					if(prevRightMostMarker!=null&&storedBridge.scanForAnEnd(false)){
 						System.out.println("FOUND NEW TRANSFORMED END: " + storedBridge.steps.end.getNode().getId());
 						//selective connecting
 						if(storedBridge.steps.connectBridgeSteps(false)) {
@@ -659,6 +659,9 @@ public class BDGraph extends MultiGraph{
 								retval.add(storedBridge.getBestPath(prevRightMostMarker.getNode(), storedBridge.steps.end.getNode()));
 						}
 					}
+					
+					//TODO: scan the transformed bridge to return unique paths that can be reduced
+					
 				}
 				
     			if(storedBridge.getCompletionLevel()==4){

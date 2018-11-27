@@ -384,6 +384,15 @@ public class SimpleBinner {
 		
 		
 	}
+	/******************************************************
+	 ************** Utility functions *********************
+	 *****************************************************/
+	public boolean checkIfBinContainingNode(PopBin bin, Node node){
+		if(node2BinMap.containsKey(node)){
+			return node2BinMap.get(node).containsKey(bin) && node2BinMap.get(node).get(bin) > 0;
+		}else
+			return GraphUtil.approxCompare(bin.estCov, node.getNumber("cov"))>=0;
+	}
 	
 	//unique node from the beginning
 	static public PopBin getBinIfUnique(Node node){

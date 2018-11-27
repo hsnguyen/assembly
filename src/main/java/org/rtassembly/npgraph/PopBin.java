@@ -55,4 +55,5 @@ public class PopBin{
 		else
 			return GraphUtil.approxCompare(this.estCov, b.estCov)==0;
 	} 
+
 }

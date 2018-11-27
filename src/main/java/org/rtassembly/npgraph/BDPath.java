@@ -301,6 +301,7 @@ public class BDPath extends Path{
 			}
 			curNode=nextNode;
 		}
+		//return intact if no extra unique node has been found
 		if(retval.isEmpty())
 			retval.add(curPath);
 		return retval;

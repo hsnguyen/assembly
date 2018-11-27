@@ -306,6 +306,7 @@ public class GoInBetweenBridge {
 	}
 
 	public BDPath getBestPath(Node startFrom, Node endAt) { //the markers must be (transformed) unique
+		System.out.println("Finding best path from " + startFrom.getId() + " to " + endAt.getId() + " among: \n" + getAllPossiblePaths());
 		BDPath best=null,retval=null;
 		boolean found=false;
 		for(BridgeSegment seg:segments) {
@@ -365,15 +366,46 @@ public class GoInBetweenBridge {
 		return retval;
 	}
 	
+	//TODO: combination of getBestPath() + countPathsBeteen() + path.chopAtAnchors()
+	//return new unique path to reduce in a building bridge
+//	public ArrayList<BDPath> scanForNewUniquePaths(boolean force){
+//		if(segments==null || segments.isEmpty())
+//			return null;
+//		
+//		ArrayList<BDPath> retval = new ArrayList<>();
+//		BDPath curPath=null;
+//		SimpleBinner binner=graph.binner;
+//		PopBin sbin=null;
+//		for(BridgeSegment seg:segments){
+//			if(seg.isConnected() && seg.connectedPaths.size()==1){
+//				sbin=binner.getBinIfUniqueNow(seg.startNV.getNode());
+//				if(sbin!=null && sbin.isCloseTo(bin)){
+//					curPath=new BDPath(seg.startNV.getNode(), sbin);
+//				}
+//				
+//				if(curPath!=null)
+//					curPath.join(seg.connectedPaths.get(0));
+//					
+//			}else{
+//				curPath=null;
+//			}
+//		}
+//		
+//		if(curPath!=null && curPath.getEdgeCount()>0)
+//			retval.add(curPath);
+//		
+//		return retval;
+//	}
+	
 	//Try to look for an ending unique node of a unidentifiable bridge
 	//by using isUniqueNow()
-	public boolean scanForAnEnd(){
+	public boolean scanForAnEnd(boolean force){
 		if(steps==null)
 			return false;
 		Iterator<BDNodeVecState> ite = steps.nodes.descendingIterator();
 		while(ite.hasNext()){
 			BDNodeVecState tmp=ite.next();
-			if(!tmp.qc())
+			if(!tmp.qc() && !force)
 				continue;
 			//TODO: find furthest or closest marker??
 			if(tmp==steps.start || tmp==steps.end) //there is no (new) end detected
@@ -645,7 +677,7 @@ public class GoInBetweenBridge {
 		boolean connectBridgeSteps(boolean force){
 			if(isIdentifiable()){
 				if(connectable() || force){
-					pBridge.n1=new BDNodeState(end.node, end.getDirection(pBridge.getDir0()));
+//					pBridge.n1=new BDNodeState(end.node, end.getDirection(pBridge.getDir0()));
 				}else{
 					System.err.printf("Bridge %s is not qualified to connect yet: start=%s end=%s\n", pBridge.toString(), (start==null?"null":start.toString()), (end==null?"null":end.toString()));
 					return false;
@@ -683,7 +715,8 @@ public class GoInBetweenBridge {
 				System.out.printf("Shortest tree couldn't reach to the other end: ");
 
 				if(!force){
-					pBridge.n1=null;	
+//					pBridge.n1=null;	
+					nodes.remove(endAt);
 					System.out.println(" ignored!");
 					return false;
 				}else{
@@ -694,9 +727,6 @@ public class GoInBetweenBridge {
 				System.out.printf("Shortest tree contain the other end: %s=%d\n", key, shortestMapFromEnd.get(key));
 			}
 			
-//			HashMap<String,Integer> shortestMapFromStart = graph.getShortestTreeFromNode(startFrom.getNode(), 
-//							(startFrom.getNode()==pBridge.getNode0())?pBridge.getDir0():startFrom.getDirection(pBridge.getDir0()), 
-//							distance);
 			Iterator<BDNodeVecState> iterator = nodes.iterator();
 			
 			BDNodeVecState 	prev=null, 
@@ -712,10 +742,10 @@ public class GoInBetweenBridge {
 				}
 				key=current.getNode().getId() + (current.getDirection(pBridge.getDir0())?"o":"i");
 				//need a quality-checking here before including into a segment step
-				if(	shortestMapFromEnd.containsKey(current.getNode().getId() + (current.getDirection(pBridge.getDir0())?"o":"i")) 
-//					&& shortestMapFromStart.containsKey(current.getNode().getId() + (current.getDirection(pBridge.getDir0())?"i":"o"))
-					|| current==endAt){			 
-					if(current.qc()){
+				if(	(current==endAt || shortestMapFromEnd.containsKey(current.getNode().getId() + (current.getDirection(pBridge.getDir0())?"o":"i")) )
+					&& graph.binner.checkIfBinContainingNode(bin, current.getNode())
+					){			 
+					if(current.qc() || current==endAt){
 						BridgeSegment seg = null;
 						if(prev.getVector().isIdentity())
 							seg=new BridgeSegment(	prev, current, 
@@ -755,9 +785,9 @@ public class GoInBetweenBridge {
 				System.out.println("Failed to connect + " + pBridge.toString());
 				
 			}
-			//reset pBridge if end node is not real unique node (transformed)
-			if(SimpleBinner.getBinIfUnique(endAt.node)==null)
-				pBridge.n1=null;
+			//set pBridge end iff endAt node is original unique node
+			if(SimpleBinner.getBinIfUnique(endAt.node)!=null)
+				pBridge.n1=new BDNodeState(endAt.node, endAt.getDirection(pBridge.getDir0()));
 				
 			return retval;
 		}
