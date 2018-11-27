@@ -656,11 +656,12 @@ public class GoInBetweenBridge {
 				return false;
 			}	
 			
-			BDNodeVecState startFrom= getLastExtendedTip();
+			BDNodeVecState startFrom= getLastExtendedTip(),
+							endAt=end;
 
 			
-			System.out.print("Trying to connect bridge " + pBridge.toString() + " from "+ startFrom.getNode().getId());
-			if(startFrom==end) {
+			System.out.print("Trying to connect bridge " + pBridge.toString() + " from "+ startFrom.getNode().getId() + " to " + endAt.getNode().getId());
+			if(startFrom==endAt) {
 				System.out.println(": ignored!");
 				return false;
 			}else {
@@ -668,12 +669,17 @@ public class GoInBetweenBridge {
 			}
 			//First build shortest tree from the end
 			//TODO: optimize finding path by using this list
-			HashMap<String,Integer> shortestMap = 
-					graph.getShortestTreeFromNode(	(BDNode)pBridge.getNode1(), 
-													pBridge.getDir1(), 
-													end.getVector().distance((BDNode)pBridge.getNode0(), (BDNode)pBridge.getNode1()));
-			String key=pBridge.getNode0().getId()+(pBridge.getDir0()?"i":"o");
-			if(!shortestMap.containsKey(key)){ //note the trick: direction BEFORE the path started
+			int distance=ScaffoldVector.composition(endAt.getVector(), ScaffoldVector.reverse(startFrom.getVector())).distance(startFrom.getNode(), endAt.getNode());
+			HashMap<String,Integer> shortestMapFromEnd = graph.getShortestTreeFromNode(	endAt.getNode(), 
+																						endAt.getDirection(pBridge.getDir0()), 
+																						distance);
+
+			
+			String key=startFrom.getNode().getId()+(pBridge.getDir0()?"i":"o");
+			if(startFrom.getNode()!=pBridge.getNode0())
+				key=startFrom.getNode().getId()+(startFrom.getDirection(pBridge.getDir0())?"o":"i");
+			
+			if(!shortestMapFromEnd.containsKey(key)){ //note the trick: direction BEFORE the path started
 				System.out.printf("Shortest tree couldn't reach to the other end: ");
 
 				if(!force){
@@ -685,9 +691,12 @@ public class GoInBetweenBridge {
 
 				}
 			}else{
-				System.out.printf("Shortest tree contain the other end: %s=%d\n", key, shortestMap.get(key));
+				System.out.printf("Shortest tree contain the other end: %s=%d\n", key, shortestMapFromEnd.get(key));
 			}
 			
+//			HashMap<String,Integer> shortestMapFromStart = graph.getShortestTreeFromNode(startFrom.getNode(), 
+//							(startFrom.getNode()==pBridge.getNode0())?pBridge.getDir0():startFrom.getDirection(pBridge.getDir0()), 
+//							distance);
 			Iterator<BDNodeVecState> iterator = nodes.iterator();
 			
 			BDNodeVecState 	prev=null, 
@@ -703,8 +712,10 @@ public class GoInBetweenBridge {
 				}
 				key=current.getNode().getId() + (current.getDirection(pBridge.getDir0())?"o":"i");
 				//need a quality-checking here before including into a segment step
-				if(shortestMap.containsKey(key)){			 
-					if((force&&current==end) || current.qc()){
+				if(	shortestMapFromEnd.containsKey(current.getNode().getId() + (current.getDirection(pBridge.getDir0())?"o":"i")) 
+//					&& shortestMapFromStart.containsKey(current.getNode().getId() + (current.getDirection(pBridge.getDir0())?"i":"o"))
+					|| current==endAt){			 
+					if(current.qc()){
 						BridgeSegment seg = null;
 						if(prev.getVector().isIdentity())
 							seg=new BridgeSegment(	prev, current, 
@@ -724,7 +735,7 @@ public class GoInBetweenBridge {
 								for(BDNodeVecState nv:inbetween)
 									seg.locateAndVote(nv);
 							addSegment(seg);
-							if(current.equals(end)) {
+							if(current.equals(endAt)) {
 								retval=true;	
 								break;
 							}
@@ -745,7 +756,7 @@ public class GoInBetweenBridge {
 				
 			}
 			//reset pBridge if end node is not real unique node (transformed)
-			if(SimpleBinner.getBinIfUnique(end.node)==null)
+			if(SimpleBinner.getBinIfUnique(endAt.node)==null)
 				pBridge.n1=null;
 				
 			return retval;
