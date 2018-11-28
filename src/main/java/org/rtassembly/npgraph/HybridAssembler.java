@@ -285,19 +285,16 @@ public class HybridAssembler {
 //				brg.steps.connectBridgeSteps(true);
 //			}
 			
-			if(brg.getCompletionLevel()>=3) {
-				for(BDPath p:brg.getBestPath(brg.pBridge.getNode0(),brg.pBridge.getNode1()).chopPathAtAnchors())
-					simGraph.reduceUniquePath(p);
-			}
+			if(brg.getCompletionLevel()>=3) 
+				simGraph.chopPathAtAnchors(brg.getBestPath(brg.pBridge.getNode0(),brg.pBridge.getNode1())).stream().forEach(p->simGraph.reduceUniquePath(p));
 			else{
-				BDNodeVecState prevRightMostMarker= brg.getLastExtendedTip();
-				if(prevRightMostMarker!=null&&brg.scanForAnEnd(true)){
-					//selective connecting
-					if(brg.steps.connectBridgeSteps(true)) {
-						//return appropriate path
-						simGraph.reduceUniquePath(brg.getBestPath(prevRightMostMarker.getNode(), brg.steps.end.getNode()));
-					}
-				}else	
+				brg.scanForAnEnd(true);
+				//selective connecting
+				brg.steps.connectBridgeSteps(true);
+				//return appropriate path
+				if(brg.steps.isIdentifiable())
+					simGraph.chopPathAtAnchors(brg.getBestPath(brg.steps.start.getNode(),brg.steps.end.getNode())).stream().forEach(p->simGraph.reduceUniquePath(p));
+				else
 					System.out.printf("Last attempt failed \n");
 			}
 

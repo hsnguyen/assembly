@@ -644,43 +644,42 @@ public class BDGraph extends MultiGraph{
 			}else{
 				System.out.println(storedBridge.getEndingsID() + ": already built: fortify!");
 				//update available bridge using alignments
-				if(storedBridge.merge(read,true))
+				byte state=storedBridge.merge(read,true);
+				
+				if((state&0b10)>0)//number of anchors has changed after merging
 					updateBridgesMap(storedBridge);
 				
 				//scan for transformed unique nodes
+				boolean extend=false;
 				if(storedBridge.getCompletionLevel()==1){
-					BDNodeVecState prevRightMostMarker= storedBridge.getLastExtendedTip();					
-					if(prevRightMostMarker!=null&&storedBridge.scanForAnEnd(false)){
+					if(storedBridge.scanForAnEnd(false)){
 						System.out.println("FOUND NEW TRANSFORMED END: " + storedBridge.steps.end.getNode().getId());
-						//selective connecting
-						if(storedBridge.steps.connectBridgeSteps(false)) {
-							//return appropriate path
-							if(storedBridge.countPathsBetween(prevRightMostMarker.getNode(), storedBridge.steps.end.getNode())==1)
-								retval.add(storedBridge.getBestPath(prevRightMostMarker.getNode(), storedBridge.steps.end.getNode()));
-						}
-					}
-					
-					//TODO: scan the transformed bridge to return unique paths that can be reduced
-					
+						extend=storedBridge.steps.connectBridgeSteps(false);
+					}					
 				}
+				if((state&0b01)>0 || extend)
+					retval.addAll(storedBridge.scanForNewUniquePaths());
 				
-    			if(storedBridge.getCompletionLevel()==4){
-    				System.out.printf("=> final path: %s\n ", storedBridge.getAllPossiblePaths());
-    				retval.addAll(storedBridge.getBestPath(storedBridge.steps.start.getNode(), storedBridge.steps.end.getNode()).chopPathAtAnchors());
-    			}
+//    			if(storedBridge.getCompletionLevel()==4){
+//    				System.out.printf("=> final path: %s\n ", storedBridge.getAllPossiblePaths());
+//    				retval.addAll(chopPathAtAnchors(storedBridge.getBestPath(storedBridge.steps.start.getNode(), storedBridge.steps.end.getNode())));
+//    			}
 					
 //				//also update the reversed bridge: important e.g. Acinetobacter_AB30. WHY??? (already updated and merged 2 homo bridges)
 				if(read.getEFlag()==3) {
 					read.reverse();
 					GoInBetweenBridge anotherBridge = getBridgeFromMap(read);
 					if(anotherBridge!=storedBridge) {
-						if(anotherBridge.merge(read,true))
+						byte anotherState=anotherBridge.merge(read, true);
+						if((anotherState&0b10)>0)//number of anchors has changed after merging
 							updateBridgesMap(anotherBridge);											
 						
-						if(anotherBridge.getCompletionLevel()==4){
-							System.out.printf("=> final path: %s\n ", anotherBridge.getAllPossiblePaths());
-							retval.addAll(anotherBridge.getBestPath(anotherBridge.steps.start.getNode(), anotherBridge.steps.end.getNode()).chopPathAtAnchors());
-						}
+						if((anotherState&0b01)>0)
+							retval.addAll(anotherBridge.scanForNewUniquePaths());
+//						if(anotherBridge.getCompletionLevel()==4){
+//							System.out.printf("=> final path: %s\n ", anotherBridge.getAllPossiblePaths());
+//							retval.addAll(chopPathAtAnchors(anotherBridge.getBestPath(anotherBridge.steps.start.getNode(), anotherBridge.steps.end.getNode())));
+//						}
 					}
 				}
 			}			
@@ -871,4 +870,31 @@ public class BDGraph extends MultiGraph{
     	
     	return retval;
     }
+    
+	//Only call for the final reduce path with 2 unique ends: if path containing other unique nodes than 2 ends then we have list of paths to reduce
+	synchronized public ArrayList<BDPath> chopPathAtAnchors(BDPath path){
+		ArrayList<BDPath> retval=new ArrayList<>();
+		
+		BDPath curPath = new BDPath(path.getRoot(), path.getConsensusUniqueBinOfPath());
+		BDNode curNode = (BDNode) path.getRoot(), nextNode=null;
+		String id=null;
+		for(Edge e:path.getEdgePath()) {
+			nextNode=(BDNode) e.getOpposite(curNode);
+			curPath.add(e);
+			if(binner.getBinIfUniqueNow(nextNode)!=null) {
+				id=curPath.getEndingID();
+				if(id!=null&&getEdge(id)==null)
+					retval.add(curPath);		
+				curPath=new BDPath(nextNode, path.getConsensusUniqueBinOfPath());
+			}
+			curNode=nextNode;
+		}
+		//return intact if no extra unique node has been found
+		if(retval.isEmpty()) {
+			id=curPath.getEndingID();
+			if(id!=null&&getEdge(id)==null)
+				retval.add(curPath);
+		}
+		return retval;
+	}
 }

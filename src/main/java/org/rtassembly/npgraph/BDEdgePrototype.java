@@ -10,12 +10,10 @@ public class BDEdgePrototype{
 		n0=new BDNodeState(node1, dir1);
 		n1=new BDNodeState(node2,dir2);
 	}
-	public BDEdgePrototype(BDPath path) throws Exception {
-		if(path==null || path.size()<=1)
-			throw new Exception("Invalid path to make edge prototype!");
-		else{
+	public BDEdgePrototype(BDPath path) {
+		if(path==null || path.getEdgeCount()>0){
 			BDNode 	start=(BDNode) path.getRoot(),
-							end=(BDNode) path.peekNode();
+					end=(BDNode) path.peekNode();
 			boolean startDir=((BDEdge) path.getEdgePath().get(0)).getDir(start),
 					endDir=((BDEdge) path.peekEdge()).getDir(end);
 			n0=new BDNodeState(start,startDir);

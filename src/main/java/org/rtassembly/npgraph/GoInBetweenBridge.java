@@ -5,6 +5,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.TreeSet;
 
 import org.graphstream.graph.Node;
@@ -105,10 +106,11 @@ public class GoInBetweenBridge {
 							
 	//Merge 2 bridge (must share at least one same unique end-point) together
 	//Return true if merging make the bridge reaching new anchor
-	boolean merge(GoInBetweenBridge qBridge, boolean toConnect) {
-	
+	byte merge(GoInBetweenBridge qBridge, boolean toConnect) {
+		byte retval=0b00; //unchanged state
+
 		if(qBridge==null || qBridge.getCompletionLevel()==0 || getCompletionLevel()==4)
-			return false;
+			return retval;
 		
 		BDNodeState 	sNode0=pBridge.n0,
 						sNode1=pBridge.n1,
@@ -137,7 +139,7 @@ public class GoInBetweenBridge {
 		}
 		if(!found) {
 //			System.err.println("Not found common end point between merging bridges");
-			return false;
+			return retval;
 		}
 		
 		BridgeSteps qSteps=qBridge.steps;
@@ -151,7 +153,13 @@ public class GoInBetweenBridge {
 				int prev=-1, cur;
 				for(int i=lastIdx; i<segments.size();i++) {
 					BridgeSegment curSeg=segments.get(i);
+					int numPathsBefore=curSeg.connectedPaths.size();
 					cur=curSeg.locateAndVote(current);
+					int numPathsAfter=curSeg.connectedPaths.size();
+					
+					if(numPathsBefore!=1 && numPathsAfter==1)
+						retval=0b01;//code representing number of paths reduced to 1					
+					
 					if(cur<prev)
 						break;
 					else {
@@ -171,15 +179,18 @@ public class GoInBetweenBridge {
 		if(toConnect && getCompletionLevel()<3)
 			steps.connectBridgeSteps(false);	
 		
-		return getNumberOfAnchors()>numberOfAnchorsBefore;
+		if(getNumberOfAnchors()>numberOfAnchorsBefore)
+			retval=(byte)(retval+0b10);
+		
+		return retval;
 	}
 
 	//return true if there is change in the number of anchor from the updated bridge
 
-	boolean merge(AlignedRead read, boolean toConnect) {
-		
+	byte merge(AlignedRead read, boolean toConnect) {
+		byte retval=0b00; //unchanged state
 		if(read==null || read.getAlignmentRecords().size() < 2 || getCompletionLevel()==4)
-			return false;
+			return retval;
 		
 		BDNodeState 	sNode0=pBridge.n0,
 						sNode1=pBridge.n1,
@@ -208,7 +219,7 @@ public class GoInBetweenBridge {
 		}
 		if(!found) {
 //			System.err.println("Not found common end point to merge");
-			return false;
+			return retval;
 		}
 		
 		Alignment start=read.getFirstAlignment();
@@ -220,7 +231,13 @@ public class GoInBetweenBridge {
 				int prev=-1, cur;
 				for(int i=lastIdx; i<segments.size();i++) {
 					BridgeSegment curSeg=segments.get(i);
+					int numPathsBefore=curSeg.connectedPaths.size();
 					cur=curSeg.locateAndVote(current);
+					int numPathsAfter=curSeg.connectedPaths.size();
+					
+					if(numPathsBefore!=1 && numPathsAfter==1)
+						retval=0b01;//code representing number of paths reduced to 1
+					
 					if(cur<prev)
 						break;
 					else {
@@ -241,7 +258,10 @@ public class GoInBetweenBridge {
 				
 		
 		System.out.printf("After merging: %s\nstart=%s\nend=%s\n", pBridge.toString(), (steps.start==null?"null":steps.start.toString()), (steps.end==null?"null":steps.end.toString()));
-		return getNumberOfAnchors()>numOfAnchorsBefore;
+		if(getNumberOfAnchors()>numOfAnchorsBefore)
+			retval=(byte)(retval+0b10);
+		
+		return retval;
 	
 	}
 	
@@ -368,34 +388,37 @@ public class GoInBetweenBridge {
 	
 	//TODO: combination of getBestPath() + countPathsBeteen() + path.chopAtAnchors()
 	//return new unique path to reduce in a building bridge
-//	public ArrayList<BDPath> scanForNewUniquePaths(boolean force){
-//		if(segments==null || segments.isEmpty())
-//			return null;
-//		
-//		ArrayList<BDPath> retval = new ArrayList<>();
-//		BDPath curPath=null;
-//		SimpleBinner binner=graph.binner;
-//		PopBin sbin=null;
-//		for(BridgeSegment seg:segments){
-//			if(seg.isConnected() && seg.connectedPaths.size()==1){
-//				sbin=binner.getBinIfUniqueNow(seg.startNV.getNode());
-//				if(sbin!=null && sbin.isCloseTo(bin)){
-//					curPath=new BDPath(seg.startNV.getNode(), sbin);
-//				}
-//				
-//				if(curPath!=null)
-//					curPath.join(seg.connectedPaths.get(0));
-//					
-//			}else{
-//				curPath=null;
-//			}
-//		}
-//		
-//		if(curPath!=null && curPath.getEdgeCount()>0)
-//			retval.add(curPath);
-//		
-//		return retval;
-//	}
+	public List<BDPath> scanForNewUniquePaths(){
+		if(segments==null || segments.isEmpty())
+			return null;
+		
+		List<BDPath> retval = new ArrayList<>();
+		BDPath curPath=null;
+		SimpleBinner binner=graph.binner;
+		PopBin sbin=null;
+		for(BridgeSegment seg:segments){
+			if(seg.isConnected() && seg.connectedPaths.size()==1){
+				sbin=binner.getBinIfUniqueNow(seg.startNV.getNode());
+
+				if(sbin!=null && sbin.isCloseTo(bin)){
+					if(curPath!=null) 
+						graph.chopPathAtAnchors(curPath).stream().forEach(p->retval.add(p));
+					
+					curPath=seg.connectedPaths.get(0);
+				}else if(curPath!=null)
+					curPath.join(seg.connectedPaths.get(0));
+
+			}else{
+				curPath=null;
+			}
+		}
+		
+		if(curPath!=null && curPath.getEdgeCount()>0) {
+			graph.chopPathAtAnchors(curPath).stream().forEach(p->retval.add(p));
+		}
+		
+		return retval;
+	}
 	
 	//Try to look for an ending unique node of a unidentifiable bridge
 	//by using isUniqueNow()

@@ -286,26 +286,6 @@ public class BDPath extends Path{
 		return retval;
 	}
 	
-	//Only call for the final path with 2 unique ends: if path containing other unique nodes than 2 ends then we have list of paths to reduce
-	public ArrayList<BDPath> chopPathAtAnchors(){
-		ArrayList<BDPath> retval=new ArrayList<>();
-		
-		BDPath curPath = new BDPath(getRoot(), uniqueBin);
-		BDNode curNode = (BDNode) getRoot(), nextNode=null;
-		for(Edge e:getEdgePath()) {
-			nextNode=(BDNode) e.getOpposite(curNode);
-			curPath.add(e);
-			if(SimpleBinner.getBinIfUnique(nextNode)!=null) {
-				retval.add(curPath);		
-				curPath=new BDPath(nextNode, uniqueBin);
-			}
-			curNode=nextNode;
-		}
-		//return intact if no extra unique node has been found
-		if(retval.isEmpty())
-			retval.add(curPath);
-		return retval;
-	}
 //	/**
 //	 * Get the length-weighted coverage of all marker as an approximation for this path's coverage
 //	 * @return average depth of this path
@@ -338,4 +318,11 @@ public class BDPath extends Path{
 		return ((BDEdge) peekEdge()).getDir(getLastNode());
 	}
 	
+	public String getEndingID() {
+		try {
+			return BDEdge.createID(getFirstNode(), getLastNode(), getFirstNodeDirection(), getLastNodeDirection());
+		} catch (Exception e) {
+			return null;
+		}
+	}
 }
