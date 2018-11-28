@@ -33,13 +33,9 @@ public class BDPath extends Path{
     	len=(long) root.getNumber("len");
     }
     
-	public BDPath(){
-		super();
-	}
-	public BDPath(BDEdge e) {
-		super();
-		setRoot(e.getNode0());
-		add(e);
+
+	public BDPath(Node root){
+		this(root, SimpleBinner.getBinIfUnique(root));
 	}
 	public BDPath(Node root, PopBin bin) {
 		super();
@@ -56,6 +52,7 @@ public class BDPath extends Path{
 		deviation=p.deviation;
 		len=p.len;
 		vote=p.vote;
+		uniqueBin=p.uniqueBin;
 	}
 	
 	//This constructor is used e.g. to load in contigs.path from SPAdes
@@ -72,18 +69,21 @@ public class BDPath extends Path{
 		BDNode curNode = (BDNode) graph.getNode(curID.substring(0,curID.length()-1)),
 						nextNode;
 		setRoot(curNode);
+		PopBin pathBin=SimpleBinner.getBinIfUnique(curNode);
 		for(int i=1; i<comps.length; i++){
 			nextID = comps[i];
 			nextDir = nextID.contains("+")?true:false;
 			nextNode = (BDNode) graph.getNode(nextID.substring(0,nextID.length()-1));		
-			
-			BDEdge curEdge=(BDEdge) graph.getEdge(BDEdge.createID(curNode, nextNode, curDir, !nextDir));
+			if(pathBin==null)
+				pathBin=SimpleBinner.getBinIfUnique(nextNode);
+			String edgeID=BDEdge.createID(curNode, nextNode, curDir, !nextDir);
+			BDEdge curEdge=(BDEdge) graph.getEdge(edgeID);
 			if(curEdge!=null){
 				add(curEdge);
 				curDir=nextDir;
 				curNode=nextNode;
 			}else{
-				System.err.println("Graph " + graph.getId() + " doesn't contain " + BDEdge.createID(curNode, nextNode, curDir, !nextDir));
+				System.err.println("Graph " + graph.getId() + " doesn't contain " + edgeID);
 				break;
 			}
 		}
@@ -120,11 +120,9 @@ public class BDPath extends Path{
 		return "path:(" + getId() + ")";
 	}
 	//Get the norm path of edges and nodes from a recursive path 
-	public BDPath getPrimitivePath() {
-		BDPath retval = new BDPath();
+	public BDPath getPrimitivePath() {	
 		BDNode curNode = (BDNode) getRoot(), nextNode=null;
-
-		retval.setRoot(curNode);
+		BDPath retval = new BDPath(curNode);		
 		for(Edge e:getEdgePath()) {
 			nextNode=(BDNode) e.getOpposite(curNode);
 			if(e.hasAttribute("path")) {
@@ -189,7 +187,7 @@ public class BDPath extends Path{
 	  */
 	public BDPath join(BDPath newPath) {
 		
-		if(newPath==null || newPath.size() <=1 ){
+		if(newPath==null || newPath.getNodeCount() <=1 ){
 			return new BDPath(this); 
 		}else if(this.size() <=1 && this.getRoot() == newPath.getRoot())
 			return new BDPath(newPath);

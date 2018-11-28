@@ -134,6 +134,9 @@ public class AlignedRead{
 	}
 	//get ScaffoldVector a->b from two alignments of *this*
 	public ScaffoldVector getVector(Alignment a, Alignment b) {
+		if(a==b)
+			return new ScaffoldVector();
+		
 		int 	alignedReadLen = Math.abs(a.readEnd - a.readStart) + Math.abs(b.readEnd - b.readStart),
 				alignedRefLen = Math.abs(a.refEnd - a.refStart) + Math.abs(b.refEnd - b.refStart);
 		double rate = 1.0 * alignedRefLen/alignedReadLen;		

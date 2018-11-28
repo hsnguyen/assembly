@@ -347,8 +347,7 @@ public class BDGraph extends MultiGraph{
 									retval=new ArrayList<BDPath>();
 		//1. First build shortest tree from dstNode 		
 		HashMap<String,Integer> shortestMap = getShortestTreeFromNode(dstNode, dstDir, distance);
-		BDPath 	path = new BDPath();
-		path.setRoot(srcNode);  		
+		BDPath path = new BDPath(srcNode);
 
 		//2. DFS from srcNode with the distance info above
 		BDNodeState curNodeState = new BDNodeState(srcNode, !srcDir); // first node is special
@@ -657,7 +656,7 @@ public class BDGraph extends MultiGraph{
 						extend=storedBridge.steps.connectBridgeSteps(false);
 					}					
 				}
-				if((state&0b01)>0 || extend)
+				if(storedBridge.getCompletionLevel()==4 || (state&0b01)>0 || extend)
 					retval.addAll(storedBridge.scanForNewUniquePaths());
 				
 //    			if(storedBridge.getCompletionLevel()==4){
@@ -674,7 +673,7 @@ public class BDGraph extends MultiGraph{
 						if((anotherState&0b10)>0)//number of anchors has changed after merging
 							updateBridgesMap(anotherBridge);											
 						
-						if((anotherState&0b01)>0)
+						if(anotherBridge.getCompletionLevel()==4 || (anotherState&0b01)>0)
 							retval.addAll(anotherBridge.scanForNewUniquePaths());
 //						if(anotherBridge.getCompletionLevel()==4){
 //							System.out.printf("=> final path: %s\n ", anotherBridge.getAllPossiblePaths());
@@ -755,109 +754,24 @@ public class BDGraph extends MultiGraph{
     
     // old reducing. Now use for SPAdes paths only
     public boolean reduceFromSPAdesPath(BDPath path){
+    	boolean retval=false;
     	//do nothing if the path has only one node
     	if(path==null || path.getEdgeCount()<1)
-    		return false;
+    		return retval;
     	else
     		System.out.println("Input SPAdes path: " + path.getId());
     	//loop over the edges of path (like spelling())
-    	BDNode 	markerNode = null,
-    			curNodeFromSimGraph = (BDNode) path.getRoot();
-	
-    	boolean markerDir=true, curDir;
-    	PopBin 	curUniqueBin = SimpleBinner.getBinIfUnique(curNodeFromSimGraph);
-    	if(curUniqueBin!=null){
-    		markerNode=curNodeFromSimGraph;
-    		markerDir=((BDEdge) path.getEdgePath().get(0)).getDir(markerNode);
+    	for(BDPath p:chopPathAtAnchors(path)){
+    		if(reduceUniquePath(p))
+    			retval=true;
     	}
-    	BDPath curPath = new BDPath();
-		curPath.setRoot(curNodeFromSimGraph);
-
-    	//search for an unique node as the marker. 
-    	ArrayList<Edge> 	tobeRemoved = new ArrayList<Edge>(),
-    								tobeAdded = new ArrayList<Edge>();
-    	for(Edge edge:path.getEdgePath()){
-    		curPath.add(edge);	
-    		curNodeFromSimGraph=(BDNode) edge.getOpposite(curNodeFromSimGraph);
-    		   		
-    		curDir=((BDEdge) edge).getDir(curNodeFromSimGraph);
-    		
-    		curUniqueBin = SimpleBinner.getBinIfUnique(curNodeFromSimGraph);
-    		if(curUniqueBin!=null){//only when reach the end of path
-				curPath.setConsensusUniqueBinOfPath(curUniqueBin);
-				if(markerNode!=null){
-					//create an edge connect markerNode to curNode with curPath
-					BDEdge reducedEdge = new BDEdge(markerNode, curNodeFromSimGraph, markerDir, curDir);
-					reducedEdge.setAttribute("path", curPath);
-				
-//					reducedEdge.setAttribute("ui.label", reducedEdge.getId());
-//					reducedEdge.setAttribute("ui.style", "text-offset: -10; text-alignment: along;"); 
-//					reducedEdge.setAttribute("isReducedEdge", true);
-//					reducedEdge.setAttribute("ui.class", "marked");
-//					reducedEdge.setAttribute("layout.weight", 10);
-					
-					
-					tobeAdded.add(reducedEdge);
-					updateBridgesMap(curPath);
-					
-					Set<Edge> potentialRemovedEdges = binner.walkAlongUniquePath(curPath);
-					if(potentialRemovedEdges!=null)
-						tobeRemoved.addAll(potentialRemovedEdges);
-					
-					HashMap<PopBin, Integer> oneBin = new HashMap<>();
-					oneBin.put(curUniqueBin, 1);
-					binner.edge2BinMap.put(reducedEdge, oneBin);
-
-				}else{
-					if(curPath.size()>2)
-						updateBridgesMap(curPath);
-				}
-				
-				
-				markerNode=curNodeFromSimGraph;
-        		markerDir=!curDir; //in-out, out-in
-				curPath= new BDPath();
-				curPath.setRoot(curNodeFromSimGraph);
-				curPath.setConsensusUniqueBinOfPath(curUniqueBin);
-
-				
-    		}
-    		
-    		
-		}
-    	if(curPath.size() > 2)
-			updateBridgesMap(curPath);
-
-    	
-    	if(tobeRemoved.size()>0){
-	    	//remove appropriate edges
-	    	for(Edge e:tobeRemoved){
-	    		LOG.info("REMOVING EDGE " + e.getId() + " from " + e.getNode0().getGraph().getId() + "-" + e.getNode1().getGraph().getId());
-	    		LOG.info("before: \n\t" + printEdgesOfNode((BDNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) e.getNode1()));
-	    		removeEdge(e.getId());
-	    		LOG.info("after: \n\t" + printEdgesOfNode((BDNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) e.getNode1()));
-	    	}
-	    	
-	    	//add appropriate edges
-	    	for(Edge e:tobeAdded){
-	    		LOG.info("ADDING EDGE " + e.getId()+ " from " + e.getNode0().getGraph().getId() + "-" + e.getNode1().getGraph().getId());
-	    		LOG.info("before: \n\t" + printEdgesOfNode((BDNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) e.getNode1()));
-	    		
-	    		BDEdge reducedEdge = addEdge((BDNode)e.getSourceNode(),(BDNode)e.getTargetNode(),((BDEdge)e).getDir0(),((BDEdge)e).getDir1());
-	    		
-	    		LOG.info("after: \n\t" + printEdgesOfNode((BDNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) e.getNode1()));
-	
-	    	}
-	    	return true;
-    	}else
-    		return false;
+    	return retval;
 
     }
     //return path in the graph that contain only unique nodes
     synchronized protected BDPath getLongestLinearPathFromNode(BDNode startNode, boolean direction){
 //    	assert (direction?startNode.getOutDegree()<=1:startNode.getInDegree()<=1):" Node " + startNode.getId() + "has more than one possible extending way!";
-    	BDPath retval = new BDPath();
-    	retval.setRoot(startNode);
+    	BDPath retval = new BDPath(startNode);
     	BDNode currentNode = startNode;
     	boolean curDirection=direction;
     	while(curDirection?currentNode.getOutDegree()==1:currentNode.getInDegree()==1){
@@ -872,9 +786,9 @@ public class BDGraph extends MultiGraph{
     }
     
 	//Only call for the final reduce path with 2 unique ends: if path containing other unique nodes than 2 ends then we have list of paths to reduce
+    //exclude already-reduced path (by looking for corresponding reduce edge)
 	synchronized public ArrayList<BDPath> chopPathAtAnchors(BDPath path){
 		ArrayList<BDPath> retval=new ArrayList<>();
-		
 		BDPath curPath = new BDPath(path.getRoot(), path.getConsensusUniqueBinOfPath());
 		BDNode curNode = (BDNode) path.getRoot(), nextNode=null;
 		String id=null;
@@ -883,8 +797,11 @@ public class BDGraph extends MultiGraph{
 			curPath.add(e);
 			if(binner.getBinIfUniqueNow(nextNode)!=null) {
 				id=curPath.getEndingID();
-				if(id!=null&&getEdge(id)==null)
-					retval.add(curPath);		
+				if(id!=null){
+					Edge rdEdge = getEdge(id);
+					if(rdEdge==null || !rdEdge.hasAttribute("path"))
+						retval.add(curPath);		
+				}
 				curPath=new BDPath(nextNode, path.getConsensusUniqueBinOfPath());
 			}
 			curNode=nextNode;

@@ -60,9 +60,9 @@ public class GraphWatcher {
 		for (Iterator<ConnectedComponents.ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
 			ConnectedComponents.ConnectedComponent comp = compIter.next();
 			//check comp: should be linear paths, should start with node+
-			 repPath = new BDPath();
 			 Node node = comp.nodes().toArray(Node[]::new)[0];
-			 repPath.setRoot(node);
+			 repPath = new BDPath(node);
+
 			 boolean isCircular=false;
 			 if(comp.getEdgeCount()>=1){
 				 //extend to
@@ -223,10 +223,10 @@ public class GraphWatcher {
 		for (Iterator<ConnectedComponents.ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
 			ConnectedComponents.ConnectedComponent comp = compIter.next();
 			//check comp: should be linear paths, should start with node+
-			 repPath = new BDPath();
 			 Node node = comp.nodes().toArray(Node[]::new)[0];
-			 repPath.setRoot(node);
+			 repPath = new BDPath(node);
 			 boolean isCircular=false;
+			 
 			 if(comp.getEdgeCount()>=1){
 				 //extend to
 				 Node curNode=node;

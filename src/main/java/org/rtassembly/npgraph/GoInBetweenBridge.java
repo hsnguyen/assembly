@@ -5,7 +5,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 import java.util.TreeSet;
 
 import org.graphstream.graph.Node;
@@ -260,7 +259,7 @@ public class GoInBetweenBridge {
 		System.out.printf("After merging: %s\nstart=%s\nend=%s\n", pBridge.toString(), (steps.start==null?"null":steps.start.toString()), (steps.end==null?"null":steps.end.toString()));
 		if(getNumberOfAnchors()>numOfAnchorsBefore)
 			retval=(byte)(retval+0b10);
-		
+				
 		return retval;
 	
 	}
@@ -273,9 +272,9 @@ public class GoInBetweenBridge {
 	
 	private void reverse() {
 		assert getNumberOfAnchors()==2:"Could only reverse a determined bridge (2 anchors)";
-//		System.out.printf("Reversing the bridge %s:\n%s\n", getEndingsID(), getAllNodeVector());
+		System.out.printf("Reversing the bridge %s:\n%s\nstart=%s end=%s\n", getEndingsID(), getAllNodeVector(), steps.start.toString(), steps.end.toString());
 
-		pBridge=new BDEdgePrototype(pBridge.getNode1(), pBridge.getNode0(), pBridge.getDir1(), pBridge.getDir0());
+		pBridge=pBridge.reverse();
 		//reverse the segments
 		if(segments!=null){
 			ArrayList<BridgeSegment> tmp = segments;
@@ -289,7 +288,7 @@ public class GoInBetweenBridge {
 		//reverse the nodes list
 		steps.reverse();
 		
-//		System.out.printf("Reversed bridge %s:\n%s\n", getEndingsID(), getAllNodeVector());
+		System.out.printf("Reversed bridge %s:\n%s\nstart=%s end=%s\n", getEndingsID(), getAllNodeVector(), steps.start.toString(), steps.end.toString());
 
 	}
 	
@@ -328,6 +327,9 @@ public class GoInBetweenBridge {
 	public BDPath getBestPath(Node startFrom, Node endAt) { //the markers must be (transformed) unique
 		System.out.println("Finding best path from " + startFrom.getId() + " to " + endAt.getId() + " among: \n" + getAllPossiblePaths());
 		BDPath best=null,retval=null;
+		if(segments==null || segments.isEmpty())
+			return null;
+		
 		boolean found=false;
 		for(BridgeSegment seg:segments) {
 			//finding the start node
@@ -391,7 +393,7 @@ public class GoInBetweenBridge {
 	public List<BDPath> scanForNewUniquePaths(){
 		if(segments==null || segments.isEmpty())
 			return null;
-		
+		System.out.println("Scanning on bridge with segments:\n" + getAllPossiblePaths());
 		List<BDPath> retval = new ArrayList<>();
 		BDPath curPath=null;
 		SimpleBinner binner=graph.binner;
@@ -399,14 +401,18 @@ public class GoInBetweenBridge {
 		for(BridgeSegment seg:segments){
 			if(seg.isConnected() && seg.connectedPaths.size()==1){
 				sbin=binner.getBinIfUniqueNow(seg.startNV.getNode());
-
+				System.out.println("Tony Tony Chopper: " + (curPath==null?"null":curPath.getId()) + " seg=" + seg.getId() + " start node=" + seg.startNV.getNode().getId() + " bin=" + (sbin==null?"null":sbin.binID));
 				if(sbin!=null && sbin.isCloseTo(bin)){
-					if(curPath!=null) 
+					if(curPath!=null){ 
+//						System.out.println("Tony Tony Chopper: " + curPath.getId());
 						graph.chopPathAtAnchors(curPath).stream().forEach(p->retval.add(p));
+					}
 					
 					curPath=seg.connectedPaths.get(0);
+					curPath.setConsensusUniqueBinOfPath(bin);
+
 				}else if(curPath!=null)
-					curPath.join(seg.connectedPaths.get(0));
+					curPath=curPath.join(seg.connectedPaths.get(0));
 
 			}else{
 				curPath=null;
@@ -414,6 +420,7 @@ public class GoInBetweenBridge {
 		}
 		
 		if(curPath!=null && curPath.getEdgeCount()>0) {
+			System.out.println("Tony Tony Chopper: " + curPath.getId());
 			graph.chopPathAtAnchors(curPath).stream().forEach(p->retval.add(p));
 		}
 		
@@ -506,8 +513,8 @@ public class GoInBetweenBridge {
 		BridgeSegment reverse(ScaffoldVector brgVector) {
 			BridgeSegment retval = new BridgeSegment();
 			retval.pSegment=pSegment.reverse();
-			retval.startNV=new BDNodeVecState(pSegment.getNode0(), ScaffoldVector.composition(getEndVector(), ScaffoldVector.reverse(brgVector)));
-			retval.endNV=new BDNodeVecState(pSegment.getNode1(), ScaffoldVector.composition(getStartVector(), ScaffoldVector.reverse(brgVector)));
+			retval.startNV=new BDNodeVecState(pSegment.getNode1(), ScaffoldVector.composition(getEndVector(), ScaffoldVector.reverse(brgVector)));
+			retval.endNV=new BDNodeVecState(pSegment.getNode0(), ScaffoldVector.composition(getStartVector(), ScaffoldVector.reverse(brgVector)));
 			retval.connectedPaths=new ArrayList<>();
 			for(BDPath p:connectedPaths)
 				retval.connectedPaths.add(p.reverse());
@@ -634,13 +641,8 @@ public class GoInBetweenBridge {
 				if(tmp.merge(nv)){
 					//re-assign end node if there is another unique node with higher score
 					if(SimpleBinner.getBinIfUnique(tmp.getNode())!=null && !tmp.getVector().isIdentity()) {
-						if(!end.equals(tmp)){
-							if(end.nodeCover < tmp.nodeCover)
-								end=tmp;
-							else
-								System.out.println("Conflict detected on end node: " + tmp.toString() + " to " + end.toString());
-						}
-						
+						if(!end.equals(tmp) && (end.nodeCover < tmp.nodeCover))
+							end=tmp;		
 					}
 					//nv is already in the set
 					found=true;
@@ -831,8 +833,8 @@ public class GoInBetweenBridge {
 			ScaffoldVector rev=ScaffoldVector.reverse(end.getVector());//anchors number = 2 so there exist end node
 			BDNodeVecState tmp = null;
 			for(BDNodeVecState nv:nodes) {
-				tmp=new BDNodeVecState(nv.getNode(), ScaffoldVector.composition(nv.getVector(), rev), nv.nodeCover);
-				reversedSet.add(tmp);
+				nv.setVector(ScaffoldVector.composition(nv.getVector(), rev));
+				reversedSet.add(nv);
 
 			}
 			nodes=reversedSet;
@@ -840,9 +842,7 @@ public class GoInBetweenBridge {
 			tmp=start;
 			start=end;
 			end=tmp;
-			//change the vector also
-			start.setVector(new ScaffoldVector());
-			end.setVector(rev);
+
 		}
 		
 		public String toString(){
