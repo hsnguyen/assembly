@@ -28,13 +28,13 @@ public class SimpleBinner {
 								ANCHOR_CTG_LEN=1000, //surely length for the anchors; shorter anchors wouldn't be used until double-checked
 								TRANSFORMED_ANCHOR_CTG_LEN=2000; //same as UNIQUE_CTG_LEN: not work for old Kpn2146. Need more testing
 	
-	BidirectedGraph graph;
+	BDGraph graph;
 	ArrayList<PopBin> binList;
 	PopBin leastBin;
 	HashMap<Edge, HashMap<PopBin,Integer>> edge2BinMap;
 	HashMap<Node, HashMap<PopBin, Integer>> node2BinMap;
 	ArrayList<Edge> unresolvedEdges;
-	SimpleBinner(BidirectedGraph graph){
+	SimpleBinner(BDGraph graph){
 		this.graph = graph;
 		binList = new ArrayList<PopBin>();
 		leastBin = null;
@@ -112,7 +112,7 @@ public class SimpleBinner {
 				n1 = edge.getNode1();
 		System.out.printf("From edge %s%s: ", edge.getId(), getBinsOfEdge(edge));
 		if(!node2BinMap.containsKey(n0)){
-			boolean dir0 = ((BidirectedEdge)edge).getDir0();
+			boolean dir0 = ((BDEdge)edge).getDir0();
 			Stream<Edge> edgeSet0 = dir0?n0.leavingEdges():n0.enteringEdges();		
 			
 			ArrayList<Edge> edgeList0 = (ArrayList<Edge>) edgeSet0.collect(Collectors.toList());
@@ -145,7 +145,7 @@ public class SimpleBinner {
 		}
 		
 		if(!node2BinMap.containsKey(n1)){
-			boolean dir1 = ((BidirectedEdge)edge).getDir1();
+			boolean dir1 = ((BDEdge)edge).getDir1();
 			Stream<Edge> edgeSet1 = dir1?n1.leavingEdges():n1.enteringEdges();
 			
 			ArrayList<Edge> edgeList1 = (ArrayList<Edge>) edgeSet1.collect(Collectors.toList());
@@ -384,15 +384,24 @@ public class SimpleBinner {
 		
 		
 	}
+	/******************************************************
+	 ************** Utility functions *********************
+	 *****************************************************/
+	public boolean checkIfBinContainingNode(PopBin bin, Node node){
+		if(node2BinMap.containsKey(node)){
+			return node2BinMap.get(node).containsKey(bin) && node2BinMap.get(node).get(bin) > 0;
+		}else
+			return GraphUtil.approxCompare(bin.estCov, node.getNumber("cov"))>=0;
+	}
 	
 	//unique node from the beginning
 	static public PopBin getBinIfUnique(Node node){
 		return (PopBin)node.getAttribute("unique");
 	}
-	//node transformed to unique after reduced
+	//also take into account nodes that transformed to unique after reduced
 	public PopBin getBinIfUniqueNow(Node node){
-		PopBin retval=null;
-		if(node.getNumber("len") > TRANSFORMED_ANCHOR_CTG_LEN && node2BinMap.containsKey(node)){
+		PopBin retval=getBinIfUnique(node);
+		if(retval==null && node.getNumber("len") > TRANSFORMED_ANCHOR_CTG_LEN && node2BinMap.containsKey(node)){
 			HashMap<PopBin, Integer> bc = node2BinMap.get(node);
 			if(bc.values().stream().mapToInt(Integer::intValue).sum() == 1){
 				retval=Iterables.getOnlyElement(bc.keySet());
@@ -417,8 +426,8 @@ public class SimpleBinner {
 		return true;
 	}
 	//Traversal along a unique path (unique ends) and return list of unique edges
-	//Must only be called from BidirectedGraph.reduce()
-	synchronized public Set<Edge> walkAlongUniquePath(BidirectedPath path) {
+	//Must only be called from BDGraph.reduce()
+	synchronized public Set<Edge> walkAlongUniquePath(BDPath path) {
 		System.out.printf("Path %s being processed based on binning info...\n", path.getId());
 		Node  	curNode = path.getRoot(), nextNode;
 		PopBin 	uniqueBin=path.getConsensusUniqueBinOfPath(),
@@ -465,24 +474,24 @@ public class SimpleBinner {
 										nodeBinsCount;	
 			//remove faulty edge of unique nodes (that has degree=3)
 			if(getBinIfUnique(curNode)!=null || getBinIfUniqueNow(curNode)!=null){
-				if(curNode.getNumber("len") > UNIQUE_CTG_LEN){
-					boolean dir=((BidirectedEdge)ep).getDir((BidirectedNode)curNode);
+//				if(curNode.getNumber("len") > UNIQUE_CTG_LEN){
+					boolean dir=((BDEdge)ep).getDir((BDNode)curNode);
 					Stream<Edge> streamEdges=dir?curNode.leavingEdges():curNode.enteringEdges();
 					streamEdges.forEach(retval::add);
-				}else
-					retval.add(ep);
+//				}else
+//					retval.add(ep);
 			}
 			if(getBinIfUnique(nextNode)!=null || getBinIfUniqueNow(nextNode)!=null){
-				if(nextNode.getNumber("len") > UNIQUE_CTG_LEN){
-					boolean dir=((BidirectedEdge)ep).getDir((BidirectedNode)nextNode);
+//				if(nextNode.getNumber("len") > UNIQUE_CTG_LEN){
+					boolean dir=((BDEdge)ep).getDir((BDNode)nextNode);
 					Stream<Edge> streamEdges=dir?nextNode.leavingEdges():nextNode.enteringEdges();
 					streamEdges.forEach(retval::add);
-				}else
-					retval.add(ep);
+//				}else
+//					retval.add(ep);
 			}
 			
 //			if(getUniqueBin(ep.getNode0())!=null || getUniqueBin(ep.getNode1())!=null)
-//				retval.add((BidirectedEdge)ep);
+//				retval.add((BDEdge)ep);
 				
 			if(edge2BinMap.containsKey(ep)) {
 				edgeBinsCount=edge2BinMap.get(ep);
@@ -496,7 +505,7 @@ public class SimpleBinner {
 					edge2BinMap.replace(ep, bcMinusOne);				
 
 				}else {
-					System.err.printf("Conflict binning information on path %s, at edge %s: %s!\n", path.getId(), ep.getId(), getBinsOfEdge(ep));
+					System.err.printf("...not found appropriate binning information on path %s, at edge %s: %s!\n", path.getId(), ep.getId(), getBinsOfEdge(ep));
 //					edge2BinMap.remove(ep);
 				}
 		
@@ -508,12 +517,12 @@ public class SimpleBinner {
 
 //			//Heuristic attempts:
 //			if(bcMinusOne!=null && bcMinusOne.values().stream().mapToInt(Integer::intValue).sum() == 0) {
-//				retval.add((BidirectedEdge) ep);
+//				retval.add((BDEdge) ep);
 //			}
 //			
 ////			if(ep.getNumber("cov") < 0  && !unresolvedEdges.contains(ep)) //plasmid coverage is different!!!
 //			if(ep.getNumber("cov") <= BPOP*0.5  && !edge2BinMap.containsKey(ep)) //plasmid coverage is different!!!
-//				retval.add((BidirectedEdge) ep);
+//				retval.add((BDEdge) ep);
 			
 			bcMinusOne=null;
 			if(curNode!=path.getRoot() && curNode!=path.peekNode()) {
@@ -540,7 +549,7 @@ public class SimpleBinner {
 				curNode.setAttribute("cov", curNode.getNumber("cov")>aveCov?curNode.getNumber("cov")-aveCov:0);
 //				if(	(bcMinusOne!=null && bcMinusOne.values().stream().mapToInt(Integer::intValue).sum() == 0)
 //					|| curNode.getNumber("cov") < .1*aveCov) 
-//					curNode.edges().forEach(e->retval.add((BidirectedEdge) e));
+//					curNode.edges().forEach(e->retval.add((BDEdge) e));
 				
 			}
 			
@@ -553,10 +562,10 @@ public class SimpleBinner {
 		return retval;
 	}
 	
-//	private boolean checkEdgeSafeToRemove(BidirectedEdge edge) {
+//	private boolean checkEdgeSafeToRemove(BDEdge edge) {
 //		boolean retval=true;
-//		BidirectedNode 	n0=(BidirectedNode) edge.getNode0(),
-//						n1=(BidirectedNode) edge.getNode1();
+//		BDNode 	n0=(BDNode) edge.getNode0(),
+//						n1=(BDNode) edge.getNode1();
 //		boolean dir0=edge.getDir0(),
 //				dir1=edge.getDir1();
 //		double remainCov=0.0;

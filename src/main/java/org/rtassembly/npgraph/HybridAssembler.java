@@ -112,13 +112,13 @@ public class HybridAssembler {
 	//===============================================================================================//
 	
 	//Operational variables
-//	final BidirectedGraph origGraph;
-	public BidirectedGraph simGraph; //original and simplified graph should be separated, no???
+//	final BDGraph origGraph;
+	public BDGraph simGraph; //original and simplified graph should be separated, no???
 	public GraphWatcher observer;
 	
 	public HybridAssembler(){
-//		origGraph=new BidirectedGraph("batch");
-		simGraph=new BidirectedGraph("real");
+//		origGraph=new BDGraph("batch");
+		simGraph=new BDGraph("real");
 //		rtComponents = new ConnectedComponents();
 		
 		simGraph.setAttribute("ui.quality");
@@ -243,15 +243,15 @@ public class HybridAssembler {
 			
 			if (simGraph.getNode(refID)==null)
 				continue;
-			Alignment myRec = new Alignment(rec, (BidirectedNode) simGraph.getNode(refID)); 
+			Alignment myRec = new Alignment(rec, (BDNode) simGraph.getNode(refID)); 
 
 			//////////////////////////////////////////////////////////////////
 			
 			if (!readID.equals("") && !readID.equals(myRec.readID)) {	
 				synchronized(simGraph) {
-					List<BidirectedPath> paths=simGraph.uniqueBridgesFinding(nnpRead, samList);
+					List<BDPath> paths=simGraph.uniqueBridgesFinding(nnpRead, samList);
 					if(paths!=null){	
-						for(BidirectedPath path:paths) 
+						for(BDPath path:paths) 
 						{
 							//path here is already unique! (2 unique ending nodes)
 					    	if(simGraph.reduceUniquePath(path)) {
@@ -281,16 +281,22 @@ public class HybridAssembler {
 		//Take the current best path among the candidate of a bridge and connect the bridge(greedy)
 		for(GoInBetweenBridge brg:simGraph.getUnsolvedBridges()){
 			System.out.printf("Last attempt on incomplete bridge %s : anchors=%d \n %s \n", brg.getEndingsID(), brg.getNumberOfAnchors(), brg.getAllPossiblePaths());
-			if(brg.getCompletionLevel()<=2) {//examine bridge with completion level = 2 that unable to connected
-				brg.steps.connectBridgeSteps(true);
-			}
+//			if(brg.getCompletionLevel()<=2) {//examine bridge with completion level = 2 that unable to connected
+//				brg.steps.connectBridgeSteps(true);
+//			}
 			
-			if(brg.getCompletionLevel()>=3) {
-				for(BidirectedPath p:brg.getBestPath().chopPathAtAnchors())
-					simGraph.reduceUniquePath(p);
+			if(brg.getCompletionLevel()>=3) 
+				simGraph.chopPathAtAnchors(brg.getBestPath(brg.pBridge.getNode0(),brg.pBridge.getNode1())).stream().forEach(p->simGraph.reduceUniquePath(p));
+			else{
+				brg.scanForAnEnd(true);
+				//selective connecting
+				brg.steps.connectBridgeSteps(true);
+				//return appropriate path
+				if(brg.segments!=null)
+					simGraph.chopPathAtAnchors(brg.getBestPath(brg.steps.start.getNode(),brg.steps.end.getNode())).stream().forEach(p->simGraph.reduceUniquePath(p));
+				else
+					System.out.printf("Last attempt failed \n");
 			}
-			else
-				System.out.printf("Last attempt failed \n");
 
 
 		}

@@ -49,7 +49,7 @@ public class Alignment implements Comparable<Alignment> {
 	int quality;
 
 	public String readID;
-	BidirectedNode node;
+	BDNode node;
 
 	public int refStart, refEnd;  //1-based position on ref of the start and end of the alignment
 	
@@ -76,7 +76,7 @@ public class Alignment implements Comparable<Alignment> {
 	//public int readLeft, readRight, readAlign, refLeft, refRight, refAlign;
 	//left and right are in the direction of the reference sequence
 	public Alignment(String readID, int refStart, int refEnd, int readLength, 
-			int readStart, int readEnd, boolean strand, boolean useful, BidirectedNode node, int score){
+			int readStart, int readEnd, boolean strand, boolean useful, BDNode node, int score){
 		this.readID = readID;
 		this.refStart = refStart;
 		this.refEnd = refEnd;
@@ -90,7 +90,7 @@ public class Alignment implements Comparable<Alignment> {
 		this.score = score;
 	}
 	
-	public Alignment(SAMRecord sam, BidirectedNode node) {
+	public Alignment(SAMRecord sam, BDNode node) {
 //		readID = Integer.parseInt(sam.getReadName().split("_")[0]);
 		readID = sam.getReadName();
 		quality = sam.getMappingQuality();
@@ -152,7 +152,7 @@ public class Alignment implements Comparable<Alignment> {
 			readEnd = 1 + readLength - readEnd;
 		}
 		
-		int overhangTolerance = (int) Math.min(BidirectedGraph.A_TOL, BidirectedGraph.R_TOL*node.getNumber("len"));
+		int overhangTolerance = (int) Math.min(BDGraph.A_TOL, BDGraph.R_TOL*node.getNumber("len"));
 		if (
 				(readLeft < overhangTolerance || refLeft < overhangTolerance) &&
 				(readRight  < overhangTolerance || refRight < overhangTolerance)
@@ -161,7 +161,7 @@ public class Alignment implements Comparable<Alignment> {
 		
 		if	(	goodMargin
 				&& prime //TODO: there are useful secondary alignment!!!
-//				&& alignLength > BidirectedGraph.getKmerSize() //FIXME: 
+//				&& alignLength > BDGraph.getKmerSize() //FIXME: 
 				&& quality >= MIN_QUAL
 			)
 			useful = true;

@@ -7,31 +7,26 @@ import java.util.Objects;
  * Note: the direction here refers to the one of a ScaffoldVector, not bidirected-graph direction (in/out), neither sequence sense/antisense (+/-)
  * although we can translate into appropriate info
  */
-public class NodeVector implements Comparable<NodeVector>{
-	
-	BidirectedNode node;
+public class BDNodeVecState implements Comparable<BDNodeVecState>{
+	BDNode node;
 	ScaffoldVector vector;
 	int nodeCover=1; //alignment score + number of occurences?
 	
-	NodeVector(){}
-	NodeVector(BidirectedNode node, ScaffoldVector vector){
+	BDNodeVecState(BDNode node, ScaffoldVector vector){
 		this.node=node;
 		this.vector=vector;
 	}
 	
-	public NodeVector(BidirectedNode node, ScaffoldVector vector, int cov) {
+	public BDNodeVecState(BDNode node, ScaffoldVector vector, int cov) {
 		this(node, vector);
 		this.nodeCover=cov;
 	}
-	public BidirectedNode getNode(){return node;}
+	public BDNode getNode(){return node;}
 	public ScaffoldVector getVector(){return vector;}
 	
-	public void setNode(BidirectedNode node){this.node=node;}
+	public void setNode(BDNode node){this.node=node;}
 	public void setVector(ScaffoldVector vector){this.vector=vector;}
 	
-//	public PopBin getUniqueBin(){
-//		return SimpleBinner.getUniqueBin(node);
-//	}
 	
 	//get the direction of a node based on the root direction (not apply for the root itself!!!)
 	public boolean getDirection(boolean rootDir){
@@ -44,7 +39,7 @@ public class NodeVector implements Comparable<NodeVector>{
 	
 	//compare in term of distance to the root node: for sortedset
 	@Override
-	public int compareTo(NodeVector o) {
+	public int compareTo(BDNodeVecState o) {
 		if(equals(o))
 			return 0;
 		else if(vector.isIdentity())
@@ -69,10 +64,10 @@ public class NodeVector implements Comparable<NodeVector>{
         	return false; 
     	}
 
-        final NodeVector other = (NodeVector) obj;
+        final BDNodeVecState other = (BDNodeVecState) obj;
         
-        BidirectedNode 	thisNode=this.getNode(),
-        				thatNode=other.getNode();
+        BDNode 	thisNode=this.getNode(),
+				thatNode=other.getNode();
         
         if(!Objects.equals(thisNode, thatNode)){
         	return false;
@@ -80,8 +75,8 @@ public class NodeVector implements Comparable<NodeVector>{
         	boolean retval;
         	if(SimpleBinner.getBinIfUnique(thatNode)!=null) {
 //        		int dist=ScaffoldVector.composition(ScaffoldVector.reverse(other.getVector()), this.getVector()).distance(thatNode, thisNode);
-//        		retval=(dist < -BidirectedGraph.getKmerSize());
-        		retval= (Math.abs(this.getVector().relDistance(thisNode) - other.getVector().relDistance(thatNode)) < thisNode.getNumber("len") - BidirectedGraph.getKmerSize());
+//        		retval=(dist < -BDGraph.getKmerSize());
+        		retval= (Math.abs(this.getVector().relDistance(thisNode) - other.getVector().relDistance(thatNode)) < thisNode.getNumber("len") - BDGraph.getKmerSize());
         	}
         	else {
         		retval=this.getVector().consistentWith(other.getVector());
@@ -92,11 +87,11 @@ public class NodeVector implements Comparable<NodeVector>{
 
     }
 	public boolean qc() {
-		return nodeCover >= BidirectedGraph.MIN_COVER;
+		return nodeCover >= BDGraph.MIN_COVER;
 	}
 
 	//Merging 2 equal NodeVectors
-	public boolean merge(NodeVector nv){
+	public boolean merge(BDNodeVecState nv){
 		if(!this.equals(nv))
 			return false;
 

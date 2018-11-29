@@ -20,21 +20,21 @@ import org.apache.commons.math3.linear.LUDecomposition;
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Node;
 import org.jfree.util.Log;
-import org.rtassembly.npgraph.BidirectedEdge;
-import org.rtassembly.npgraph.BidirectedGraph;
-import org.rtassembly.npgraph.BidirectedNode;
+import org.rtassembly.npgraph.BDEdge;
+import org.rtassembly.npgraph.BDGraph;
+import org.rtassembly.npgraph.BDNode;
 import org.rtassembly.npgraph.HybridAssembler;
 
 
 public class CovEstimation {
 	static double alpha=.05; //confident level ~95%
 	
-	public static void initialGuess(BidirectedGraph graph) {
+	public static void initialGuess(BDGraph graph) {
 		Iterator<Edge> edgesIterator=graph.edges().iterator();
 		while(edgesIterator.hasNext()) {
 			Edge e = edgesIterator.next();
-    		BidirectedNode n0 = (BidirectedNode) e.getNode0(), n1=(BidirectedNode) e.getNode1();
-    		boolean dir0 = ((BidirectedEdge) e).getDir0(), dir1 = ((BidirectedEdge) e).getDir1();
+    		BDNode n0 = (BDNode) e.getNode0(), n1=(BDNode) e.getNode1();
+    		boolean dir0 = ((BDEdge) e).getDir0(), dir1 = ((BDEdge) e).getDir1();
     		n0.getInDegree();
     		double guess = 	(n0.getNumber("len")*n0.getNumber("cov")/(dir0?n0.getOutDegree():n0.getInDegree())
     						+n1.getNumber("len")*n1.getNumber("cov")/(dir1?n1.getOutDegree():n1.getInDegree()))
@@ -54,7 +54,7 @@ public class CovEstimation {
 		return new Ranger(lower,upper);
 	}
 	
-	void gradientDescent(BidirectedGraph graph) {
+	void gradientDescent(BDGraph graph) {
 		//function: \sum{i}{len_i*deg_i*((\sum{edges_in} - cov_i)^2 + (\sum{edges_out} - cov_i)^2)/4}
 		int 	maxIterations=500, 
 				eIteCount=0, nIteCount=0;
@@ -71,8 +71,8 @@ public class CovEstimation {
 				Iterator<Edge> edgesIterator=graph.edges().iterator();
 				while(edgesIterator.hasNext()) {
 					Edge e = edgesIterator.next();
-		    		BidirectedNode n0 = (BidirectedNode) e.getNode0(), n1=(BidirectedNode) e.getNode1();
-		    		boolean dir0 = ((BidirectedEdge) e).getDir0(), dir1 = ((BidirectedEdge) e).getDir1();
+		    		BDNode n0 = (BDNode) e.getNode0(), n1=(BDNode) e.getNode1();
+		    		boolean dir0 = ((BDEdge) e).getDir0(), dir1 = ((BDEdge) e).getDir1();
 		    		Iterator<Edge> 	ite0 = dir0?n0.leavingEdges().iterator():n0.enteringEdges().iterator(),
 		    						ite1 = dir1?n1.leavingEdges().iterator():n1.enteringEdges().iterator();
 		    		double sum0=0, sum1=0, tmp;
@@ -154,7 +154,7 @@ public class CovEstimation {
 		hbAss.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/W303-careful/assembly_graph.fastg");
 		hbAss.setShortReadsInputFormat("fastg");
 		hbAss.prepareShortReadsProcess(true);		
-		BidirectedGraph graph = hbAss.simGraph;
+		BDGraph graph = hbAss.simGraph;
 		CovEstimation est = new CovEstimation();
 		
 //		est.initialGuess(graph);

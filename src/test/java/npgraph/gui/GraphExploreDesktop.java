@@ -3,7 +3,7 @@ package npgraph.gui;
 import java.io.IOException;
 
 import org.graphstream.ui.view.Viewer;
-import org.rtassembly.npgraph.BidirectedGraph;
+import org.rtassembly.npgraph.BDGraph;
 import org.rtassembly.npgraph.GraphUtil;
 import org.rtassembly.npgraph.HybridAssembler;
 
@@ -55,14 +55,14 @@ public class GraphExploreDesktop {
 //    	String sample="E_coli_K-12_MG1655/";
 //    	String sample="E_coli_O25b_H4-ST131/";
 //    	String sample="Klebsiella_30660_NJST258_1/";
-    	String sample="Klebsiella_MGH_78578/"; //SimpleBinner.ANCHOR_CTG_LEN=500
+//    	String sample="Klebsiella_MGH_78578/"; //SimpleBinner.ANCHOR_CTG_LEN=500
 //    	String sample="Klebsiella_NTUH-K2044/";
 //    	String sample="Mycobacterium_tuberculosis_H37Rv/";
 //    	String sample="random_sequences_many_repeats/";
 //    	String sample="random_sequences_no_repeats/";
 //    	String sample="random_sequences_some_repeats/";
 //    	String sample="Saccharomyces_cerevisiae_S288c/";
-//    	String sample="Shigella_dysenteriae_Sd197/";
+    	String sample="Shigella_dysenteriae_Sd197/";
 //    	String sample="Shigella_sonnei_53G/";
 //    	String sample="Streptococcus_suis_BM407/";
     	
@@ -84,7 +84,7 @@ public class GraphExploreDesktop {
 		hbAss.setShortReadsInputFormat("fastg");
 		hbAss.prepareShortReadsProcess(false);
 		
-    	BidirectedGraph graph= hbAss.simGraph;
+    	BDGraph graph= hbAss.simGraph;
     	
     	GraphUtil.redrawGraphComponents(graph);
     	graph.setAttribute("ui.style", GraphUtil.styleSheet);
@@ -112,8 +112,8 @@ public class GraphExploreDesktop {
 //        HybridAssembler.promptEnterKey();
         hbAss.postProcessGraph();
         
-        HybridAssembler.promptEnterKey();
-        viewer.disableAutoLayout();
+//        HybridAssembler.promptEnterKey();
+//        viewer.disableAutoLayout();
         
        
     }

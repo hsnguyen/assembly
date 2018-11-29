@@ -14,17 +14,17 @@ import org.graphstream.graph.implementations.AbstractNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class BidirectedPath extends Path{
+public class BDPath extends Path{
 	//TODO: edit-distance(none from alignment) + coverage traversed??
 	private int deviation, vote=0; 
     private long len=0;
-	private static final Logger LOG = LoggerFactory.getLogger(BidirectedPath.class);
+	private static final Logger LOG = LoggerFactory.getLogger(BDPath.class);
     private PopBin uniqueBin;//the unique population bin that this path belongs to (can only be set from outside)
     @Override
     public void add(Edge edge) {
     	super.add(edge);
     	Node lastNode = peekNode();    	
-    	len+=((long)lastNode.getNumber("len"))+((BidirectedEdge)edge).getLength();
+    	len+=((long)lastNode.getNumber("len"))+((BDEdge)edge).getLength();
     	  	
     }
     @Override
@@ -33,20 +33,16 @@ public class BidirectedPath extends Path{
     	len=(long) root.getNumber("len");
     }
     
-	public BidirectedPath(){
-		super();
+
+	public BDPath(Node root){
+		this(root, SimpleBinner.getBinIfUnique(root));
 	}
-	public BidirectedPath(BidirectedEdge e) {
-		super();
-		setRoot(e.getNode0());
-		add(e);
-	}
-	public BidirectedPath(Node root, PopBin bin) {
+	public BDPath(Node root, PopBin bin) {
 		super();
 		setRoot(root);
 		uniqueBin=bin;
 	}
-	public BidirectedPath(BidirectedPath p){
+	public BDPath(BDPath p){
 		super();
 		if(p!=null && !p.empty()){
 			setRoot(p.getRoot());
@@ -56,11 +52,12 @@ public class BidirectedPath extends Path{
 		deviation=p.deviation;
 		len=p.len;
 		vote=p.vote;
+		uniqueBin=p.uniqueBin;
 	}
 	
 	//This constructor is used e.g. to load in contigs.path from SPAdes
 	//So no recursive path here (path contains all primitive edges)
-	public BidirectedPath(BidirectedGraph graph, String paths){
+	public BDPath(BDGraph graph, String paths){
 		super();
 //		paths=paths.replace(";", ","); //not yet process path with gap!!!
 		String[] comps = paths.split(",");
@@ -69,27 +66,30 @@ public class BidirectedPath extends Path{
 		String curID = comps[0], nextID;
 		boolean curDir = curID.contains("+")?true:false,
 				nextDir;
-		BidirectedNode curNode = (BidirectedNode) graph.getNode(curID.substring(0,curID.length()-1)),
+		BDNode curNode = (BDNode) graph.getNode(curID.substring(0,curID.length()-1)),
 						nextNode;
 		setRoot(curNode);
+		PopBin pathBin=SimpleBinner.getBinIfUnique(curNode);
 		for(int i=1; i<comps.length; i++){
 			nextID = comps[i];
 			nextDir = nextID.contains("+")?true:false;
-			nextNode = (BidirectedNode) graph.getNode(nextID.substring(0,nextID.length()-1));		
-			
-			BidirectedEdge curEdge=(BidirectedEdge) graph.getEdge(BidirectedEdge.createID(curNode, nextNode, curDir, !nextDir));
+			nextNode = (BDNode) graph.getNode(nextID.substring(0,nextID.length()-1));		
+			if(pathBin==null)
+				pathBin=SimpleBinner.getBinIfUnique(nextNode);
+			String edgeID=BDEdge.createID(curNode, nextNode, curDir, !nextDir);
+			BDEdge curEdge=(BDEdge) graph.getEdge(edgeID);
 			if(curEdge!=null){
 				add(curEdge);
 				curDir=nextDir;
 				curNode=nextNode;
 			}else{
-				System.err.println("Graph " + graph.getId() + " doesn't contain " + BidirectedEdge.createID(curNode, nextNode, curDir, !nextDir));
+				System.err.println("Graph " + graph.getId() + " doesn't contain " + edgeID);
 				break;
 			}
 		}
 	}
-	public BidirectedPath reverse(){
-		BidirectedPath rcPath = new BidirectedPath(this.peekNode(), uniqueBin);
+	public BDPath reverse(){
+		BDPath rcPath = new BDPath(this.peekNode(), uniqueBin);
 		List<Edge> edges = this.getEdgePath();
 		for(int i = edges.size()-1; i>=0; i--)
 			rcPath.add(edges.get(i));
@@ -99,17 +99,17 @@ public class BidirectedPath extends Path{
 	//It is not really ID because Path doesn't need an ID
 	public String getId(){
 		//need to make the Id unique for both sense and antisense spelling???
-		BidirectedNode curNode = (BidirectedNode) getRoot();
+		BDNode curNode = (BDNode) getRoot();
 		if(getEdgeCount()<1)
 			return curNode.getId();
 
 		String 	retval=curNode.getId(),
-				curDir=((BidirectedEdge) getEdgePath().get(0)).getDir(curNode)?"+":"-";
+				curDir=((BDEdge) getEdgePath().get(0)).getDir(curNode)?"+":"-";
 		retval+=curDir;
 		for(Edge e:getEdgePath()){
-			curNode=(BidirectedNode) e.getOpposite(curNode);
+			curNode=(BDNode) e.getOpposite(curNode);
 			retval+=","+curNode.getId();
-			curDir=((BidirectedEdge) e).getDir(curNode)?"-":"+"; //note that curNode is target node
+			curDir=((BDEdge) e).getDir(curNode)?"-":"+"; //note that curNode is target node
 			retval+=curDir;
 		}
 
@@ -120,18 +120,17 @@ public class BidirectedPath extends Path{
 		return "path:(" + getId() + ")";
 	}
 	//Get the norm path of edges and nodes from a recursive path 
-	public BidirectedPath getPrimitivePath() {
-		BidirectedPath retval = new BidirectedPath();
-		BidirectedNode curNode = (BidirectedNode) getRoot(), nextNode=null;
-
-		retval.setRoot(curNode);
+	public BDPath getPrimitivePath() {	
+		BDNode curNode = (BDNode) getRoot(), nextNode=null;
+		BDPath retval = new BDPath(curNode);		
 		for(Edge e:getEdgePath()) {
-			nextNode=(BidirectedNode) e.getOpposite(curNode);
+			nextNode=(BDNode) e.getOpposite(curNode);
 			if(e.hasAttribute("path")) {
-				BidirectedPath subPath=(BidirectedPath) e.getAttribute("path");
+				BDPath subPath=(BDPath) e.getAttribute("path");
 				if(subPath.getRoot()!=curNode)
 					subPath=subPath.reverse();
-				retval=retval.join(subPath);
+//				retval=retval.join(subPath);
+				retval=retval.join(subPath.getPrimitivePath());
 			}
 			else
 				retval.add(e);
@@ -142,37 +141,39 @@ public class BidirectedPath extends Path{
 		return retval;
 	}
 	public Sequence spelling(){
-		BidirectedPath realPath=getPrimitivePath();
+		BDPath realPath=getPrimitivePath();
 		
-		BidirectedNode curNode = (BidirectedNode) realPath.getRoot();
+		BDNode curNode = (BDNode) realPath.getRoot();
 		Sequence curSeq = (Sequence) curNode.getAttribute("seq");
 		if(realPath.getEdgeCount()==0)
 			return curSeq;
 		
-		SequenceBuilder seq = new SequenceBuilder(Alphabet.DNA16(), 1024*1024, toString());
+		SequenceBuilder seq = new SequenceBuilder(Alphabet.DNA5(), 1024*1024, toString());
 		seq.setDesc(realPath.toString());
-		boolean curDir=((BidirectedEdge) realPath.getEdgePath().get(0)).getDir(curNode);
+		boolean curDir=((BDEdge) realPath.getEdgePath().get(0)).getDir(curNode);
 		curSeq = curDir?curSeq:Alphabet.DNA.complement(curSeq);
 		//If path is circular: don't need to duplicate the closing node
 		if(realPath.getRoot() != realPath.peekNode())
 			seq.append(curSeq);
-		BidirectedNode nextNode=null;
+		BDNode nextNode=null;
 		for(Edge e:realPath.getEdgePath()){
-			nextNode=(BidirectedNode) e.getOpposite(curNode);
+			nextNode=(BDNode) e.getOpposite(curNode);
 
 			curSeq= (Sequence) nextNode.getAttribute("seq");
-			curDir=!((BidirectedEdge) e).getDir(nextNode);
+			curDir=!((BDEdge) e).getDir(nextNode);
 			curSeq = curDir?curSeq:Alphabet.DNA.complement(curSeq);
 			
 
-			int overlap=((BidirectedEdge) e).getLength();
-			//if length of edge > 0: should add NNNN...NN to seq
+			int overlap=((BDEdge) e).getLength();
+			//if length of edge > 0: should add NNNN...NN to seq (in case there are gaps in NGS assembly graph)
 			if(overlap < 0)
 				seq.append(curSeq.subSequence(-overlap, curSeq.length())); 
 			else {
 				String filler=new String(new char[overlap]).replace("\0", "N");
 				Sequence fillerSeq=new Sequence(Alphabet.DNA5(), filler, "gap");
-				seq.append(fillerSeq.concatenate(curSeq));
+				seq.append(fillerSeq.concatenate(curSeq));				
+				LOG.error("Edge {} has length={} > 0: filled with Ns", e.getId(), overlap);
+
 			}
 			
 			curNode=nextNode;
@@ -184,23 +185,23 @@ public class BidirectedPath extends Path{
 	  * Add a path to the current path. The path to be added must start with the last node
 	  * of the current path. Return TRUE if the joining valid and succeed.
 	  */
-	public BidirectedPath join(BidirectedPath newPath) {
+	public BDPath join(BDPath newPath) {
 		
-		if(newPath==null || newPath.size() <=1 ){
-			return new BidirectedPath(this); 
+		if(newPath==null || newPath.getNodeCount() <=1 ){
+			return new BDPath(this); 
 		}else if(this.size() <=1 && this.getRoot() == newPath.getRoot())
-			return new BidirectedPath(newPath);
+			return new BDPath(newPath);
 		
 		if(newPath.getRoot() != peekNode()){
 			LOG.error("Cannot join path {} to path {} with disagreed first node: {} != {}", newPath.getId(), this.getId(), newPath.getRoot().getId() ,peekNode().getId());
 			return null;
 		}
-		if(((BidirectedEdge) newPath.getEdgePath().get(0)).getDir((AbstractNode) newPath.getRoot())
-			== ((BidirectedEdge) peekEdge()).getDir((AbstractNode) peekNode())){
+		if(((BDEdge) newPath.getEdgePath().get(0)).getDir((AbstractNode) newPath.getRoot())
+			== ((BDEdge) peekEdge()).getDir((AbstractNode) peekNode())){
 			LOG.error("Conflict direction from the first node " + newPath.getRoot().getId());
 			return null;
 		}
-		BidirectedPath retval=new BidirectedPath(this);
+		BDPath retval=new BDPath(this);
 		//TODO: need a way to check coverage consistent (or make change less significant bin?)			
 		for(Edge e:newPath.getEdgePath()){
 			retval.add(e);
@@ -243,7 +244,7 @@ public class BidirectedPath extends Path{
 	public int checkDistanceConsistency(Node from, Node to, boolean direction, int distance){
 		int retval=-1;
 		boolean dirOfFrom, dirOfTo;
-		BidirectedPath ref=null;
+		BDPath ref=null;
 		
 		if(from==getRoot()){
 			ref=this;
@@ -254,15 +255,15 @@ public class BidirectedPath extends Path{
 			return retval;
 		}
 		int curDistance=0;
-		dirOfFrom = ((BidirectedEdge) ref.getEdgePath().get(0)).getDir((BidirectedNode)from);
+		dirOfFrom = ((BDEdge) ref.getEdgePath().get(0)).getDir((BDNode)from);
 
-		BidirectedNode curNode= (BidirectedNode)from;
+		BDNode curNode= (BDNode)from;
 		for(Edge e:ref.getEdgePath()){
-			curNode=(BidirectedNode) e.getOpposite(curNode);
-			curDistance+=((BidirectedEdge) e).getLength();
+			curNode=(BDNode) e.getOpposite(curNode);
+			curDistance+=((BDEdge) e).getLength();
 			if(curNode==to){
-				if(Math.abs(curDistance-distance) < BidirectedGraph.A_TOL || GraphUtil.approxCompare(curDistance, distance)==0){
-					dirOfTo=!((BidirectedEdge) e).getDir((BidirectedNode) curNode);
+				if(Math.abs(curDistance-distance) < BDGraph.A_TOL || GraphUtil.approxCompare(curDistance, distance)==0){
+					dirOfTo=!((BDEdge) e).getDir((BDNode) curNode);
 					if((dirOfFrom == dirOfTo) == direction) {
 						System.out.printf("|-> agree distance between node %s, node %s: %d and given distance %d\n",
 								from.getId(), to.getId(), curDistance, distance);
@@ -283,25 +284,6 @@ public class BidirectedPath extends Path{
 		return retval;
 	}
 	
-	//Only call for the final path with 2 unique ends: if path containing other unique nodes than 2 ends then we have list of paths to reduce
-	public ArrayList<BidirectedPath> chopPathAtAnchors(){
-		ArrayList<BidirectedPath> retval=new ArrayList<>();
-		
-		BidirectedPath curPath = new BidirectedPath(getRoot(), uniqueBin);
-		BidirectedNode curNode = (BidirectedNode) getRoot(), nextNode=null;
-		for(Edge e:getEdgePath()) {
-			nextNode=(BidirectedNode) e.getOpposite(curNode);
-			curPath.add(e);
-			if(SimpleBinner.getBinIfUnique(nextNode)!=null) {
-				retval.add(curPath);		
-				curPath=new BidirectedPath(nextNode, uniqueBin);
-			}
-			curNode=nextNode;
-		}
-		if(retval.isEmpty())
-			retval.add(curPath);
-		return retval;
-	}
 //	/**
 //	 * Get the length-weighted coverage of all marker as an approximation for this path's coverage
 //	 * @return average depth of this path
@@ -311,7 +293,7 @@ public class BidirectedPath extends Path{
 		double res=0;
 		for(Node n:getNodePath()){
 			Sequence seq = (Sequence) n.getAttribute("seq");
-			len+=(n==getRoot())?seq.length():seq.length()-BidirectedGraph.getKmerSize();
+			len+=(n==getRoot())?seq.length():seq.length()-BDGraph.getKmerSize();
 			res+=seq.length()*n.getNumber("cov");
 		}
 		return res/len;
@@ -321,17 +303,24 @@ public class BidirectedPath extends Path{
 		
 	}
 	
-	public BidirectedNode getFirstNode(){return (BidirectedNode) getRoot();} 
-	public BidirectedNode getLastNode(){return (BidirectedNode) peekNode();}
+	public BDNode getFirstNode(){return (BDNode) getRoot();} 
+	public BDNode getLastNode(){return (BDNode) peekNode();}
 	public boolean getFirstNodeDirection() throws Exception{
 		if(getEdgeCount()<1)
 			throw new Exception("Path has no edge!");
-		return ((BidirectedEdge)getEdgePath().get(0)).getDir(getFirstNode());
+		return ((BDEdge)getEdgePath().get(0)).getDir(getFirstNode());
 	}
 	public boolean getLastNodeDirection() throws Exception{
 		if(getEdgeCount()<1)
 			throw new Exception("Path has no edge!");
-		return ((BidirectedEdge) peekEdge()).getDir(getLastNode());
+		return ((BDEdge) peekEdge()).getDir(getLastNode());
 	}
 	
+	public String getEndingID() {
+		try {
+			return BDEdge.createID(getFirstNode(), getLastNode(), getFirstNodeDirection(), getLastNodeDirection());
+		} catch (Exception e) {
+			return null;
+		}
+	}
 }

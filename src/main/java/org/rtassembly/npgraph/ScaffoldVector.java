@@ -79,7 +79,7 @@ public class ScaffoldVector{
 	 * @return
 	 */
 	
-	public int distance(BidirectedNode tNode, BidirectedNode fNode){
+	public int distance(BDNode tNode, BDNode fNode){
 		
 		int tS = 0, tE = (int) tNode.getNumber("len"),
 			fS, fE;
@@ -98,9 +98,9 @@ public class ScaffoldVector{
 	}
 
 	//Just interested in the relatively position of the end node
-	public int relDistance(BidirectedNode fNode){
+	public int relDistance(BDNode fNode){
 		
-		int tS = 0, tE = BidirectedGraph.getKmerSize(), //just a random one
+		int tS = 0, tE = BDGraph.getKmerSize(), //just a random one
 			fS, fE;
 		
 		if (direction > 0){
@@ -163,7 +163,7 @@ public class ScaffoldVector{
 	public boolean consistentWith(ScaffoldVector aVector){
 		return (aVector.direction == direction)
 				&& (GraphUtil.approxCompare(magnitude, aVector.magnitude)==0 
-				|| (Math.abs(aVector.magnitude-magnitude) < BidirectedGraph.A_TOL)
+				|| (Math.abs(aVector.magnitude-magnitude) < BDGraph.A_TOL)
 				)
 				;
 	}

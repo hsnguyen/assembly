@@ -3,7 +3,7 @@ package npgraph.gui;
 import java.io.IOException;
 
 import org.graphstream.ui.view.Viewer;
-import org.rtassembly.npgraph.BidirectedGraph;
+import org.rtassembly.npgraph.BDGraph;
 import org.rtassembly.npgraph.GraphUtil;
 import org.rtassembly.npgraph.HybridAssembler;
 
@@ -29,28 +29,29 @@ public class GraphExploreLaptop {
     	/***********************************************************************
     	 * *********************    npscarf    *********************************
     	 ***********************************************************************/
-//    	String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/"; //dell FASTG
-////    	String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades_v3.10/"; //dell GFA
-//
+    	String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/"; //dell FASTG
+//    	String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades_v3.10/"; //dell GFA
+
 //    	String sample="EcK12S-careful";
-////    	String sample="Kp2146-careful";
-////    	String sample="Kp13883-careful";
-////
-////    	String sample="W303-careful";
-////    	String sample="meta-careful";
-////    	String sample="cp_S5";
-//    	
-//		String 	sInput=dataFolder+sample+"/assembly_graph.fastg",
-//    			lInput=dataFolder+sample+"/assembly_graph.sam";
+//    	String sample="Kp2146-careful";
+//    	String sample="Kp13883-careful";
+//
+    	String sample="W303-careful";
+//    	String sample="meta-careful";
+//    	String sample="cp_S5";
+    	
+		String 	sInput=dataFolder+sample+"/assembly_graph.fastg",
+    			lInput=dataFolder+sample+"/assembly_graph.sam";
     	
     	/***********************************************************************
     	 * *********************    unicycler    *******************************
     	 ***********************************************************************/
-    	String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/unicycler/"; //unicycler synthetic
-//    	String sample="Shigella_dysenteriae_Sd197/good";
-    	String sample="Shigella_sonnei_53G/good";
-    	String 	sInput=dataFolder+sample+"/spades/assembly_graph.fastg",
-    			lInput=dataFolder+sample+"/mm2.sam";
+//    	String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/unicycler/"; //unicycler synthetic
+//    	String sample="E_coli_O25b_H4-ST131/good";
+////    	String sample="Shigella_dysenteriae_Sd197/good";
+////    	String sample="Shigella_sonnei_53G/good";
+//    	String 	sInput=dataFolder+sample+"/spades/assembly_graph.fastg",
+//    			lInput=dataFolder+sample+"/mm2.sam";
 		
 		
 		/**********************************************************************************
@@ -63,7 +64,7 @@ public class GraphExploreLaptop {
 		hbAss.prepareShortReadsProcess(false);//change true/false to use/not use SPAdes path
 		
 		
-    	BidirectedGraph graph= hbAss.simGraph;
+    	BDGraph graph= hbAss.simGraph;
     	
     	GraphUtil.redrawGraphComponents(graph);
     	graph.setAttribute("ui.style", GraphUtil.styleSheet);
