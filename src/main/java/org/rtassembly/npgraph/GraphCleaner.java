@@ -1,9 +1,9 @@
 package org.rtassembly.npgraph;
 
 public class GraphCleaner {
-	private BidirectedGraph inputGraph;
+	private BDGraph inputGraph;
 	
-	public GraphCleaner(BidirectedGraph inputGraph){
+	public GraphCleaner(BDGraph inputGraph){
 		this.inputGraph=inputGraph;
 	}
 	

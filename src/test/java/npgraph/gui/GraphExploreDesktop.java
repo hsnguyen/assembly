@@ -3,7 +3,7 @@ package npgraph.gui;
 import java.io.IOException;
 
 import org.graphstream.ui.view.Viewer;
-import org.rtassembly.npgraph.BidirectedGraph;
+import org.rtassembly.npgraph.BDGraph;
 import org.rtassembly.npgraph.GraphUtil;
 import org.rtassembly.npgraph.HybridAssembler;
 
@@ -32,8 +32,8 @@ public class GraphExploreDesktop {
     	 */
 //    	String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/";
 //    	
-//    	String sample="EcK12S-careful";
-////    	String sample="Kp2146-careful";
+////    	String sample="EcK12S-careful";
+//    	String sample="Kp2146-careful";
 ////    	String sample="Kp13883-careful";
 // 
 ////    	String sample="W303-careful";
@@ -46,29 +46,23 @@ public class GraphExploreDesktop {
     	
     	
     	
-    	
-    	
-    	
-    	
     	/*
     	 * unicycler data set
     	 */
     	String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/unicycler/";
-    	
-    	
 //    	String sample="Acinetobacter_A1/";
-//    	String sample="Acinetobacter_AB30/";
+//    	String sample="Acinetobacter_AB30/"; //SimpleBinner.ANCHOR_CTG_LEN=2000 || Alignment.MIN_QUAL=10
 //    	String sample="E_coli_K-12_MG1655/";
 //    	String sample="E_coli_O25b_H4-ST131/";
 //    	String sample="Klebsiella_30660_NJST258_1/";
-//    	String sample="Klebsiella_MGH_78578/";
+//    	String sample="Klebsiella_MGH_78578/"; //SimpleBinner.ANCHOR_CTG_LEN=500
 //    	String sample="Klebsiella_NTUH-K2044/";
 //    	String sample="Mycobacterium_tuberculosis_H37Rv/";
 //    	String sample="random_sequences_many_repeats/";
 //    	String sample="random_sequences_no_repeats/";
 //    	String sample="random_sequences_some_repeats/";
-    	String sample="Saccharomyces_cerevisiae_S288c/";
-//    	String sample="Shigella_dysenteriae_Sd197/";
+//    	String sample="Saccharomyces_cerevisiae_S288c/";
+    	String sample="Shigella_dysenteriae_Sd197/";
 //    	String sample="Shigella_sonnei_53G/";
 //    	String sample="Streptococcus_suis_BM407/";
     	
@@ -79,8 +73,7 @@ public class GraphExploreDesktop {
 
     	String sInput=dataFolder+sample+quality+"spades/assembly_graph.fastg",
     			output=dataFolder+sample+quality+"/",
-    			lInput=dataFolder+sample+quality+"mm2.sam";
-    	
+    			lInput=dataFolder+sample+quality+"mm2.sam";	
     
     	/*
     	 * Share code
@@ -91,7 +84,7 @@ public class GraphExploreDesktop {
 		hbAss.setShortReadsInputFormat("fastg");
 		hbAss.prepareShortReadsProcess(false);
 		
-    	BidirectedGraph graph= hbAss.simGraph;
+    	BDGraph graph= hbAss.simGraph;
     	
     	GraphUtil.redrawGraphComponents(graph);
     	graph.setAttribute("ui.style", GraphUtil.styleSheet);
@@ -119,24 +112,10 @@ public class GraphExploreDesktop {
 //        HybridAssembler.promptEnterKey();
         hbAss.postProcessGraph();
         
-        HybridAssembler.promptEnterKey();
-        viewer.disableAutoLayout();
+//        HybridAssembler.promptEnterKey();
+//        viewer.disableAutoLayout();
         
-        
-        /*
-         * Testing BidirectedEdge id pattern
-         */
-//    	String pattern = "^\\[([0-9\\+\\-]*)\\]([oi])\\[([0-9\\+\\-]*)\\]([oi])$";
-//        // Create a Pattern object
-//        Pattern r = Pattern.compile(pattern);
-//        // Now create matcher object.
-//        String id="[3]i[4+8+]o";
-//        Matcher m = r.matcher(id);
-//         	
-//        if(m.find()){
-//        	System.out.println(m.group(1)+"|"+m.group(2)+"|"+m.group(3)+"|"+m.group(4));
-//        } else
-//        	System.out.println("Fuck");
+       
     }
     
 

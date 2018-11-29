@@ -9,20 +9,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
-public class BidirectedEdge extends AbstractEdge{
+public class BDEdge extends AbstractEdge{
 	protected boolean dir0, dir1;//true: outward, false: inward
 	//note that traversing direction (true: template, false: reverse complement) of destination node is opposite its defined direction (true: outward, false:inward) 
 	
-	private int length=-BidirectedGraph.getKmerSize();//length of the edge (distance between tips of seqs represented by 2 nodes)
-	
-	
-    private static final Logger LOG = LoggerFactory.getLogger(BidirectedEdge.class);
+    private static final Logger LOG = LoggerFactory.getLogger(BDEdge.class);
 
-	protected BidirectedEdge(String id, AbstractNode src, AbstractNode dst, boolean dir0, boolean dir1) {
+	protected BDEdge(String id, AbstractNode src, AbstractNode dst, boolean dir0, boolean dir1) {
 		// id fuck off!!! we'll make one for ourselves
 		this(src,dst,dir0,dir1);
 	}
-	protected BidirectedEdge(AbstractNode src, AbstractNode dst, boolean dir0, boolean dir1) {
+	protected BDEdge(AbstractNode src, AbstractNode dst, boolean dir0, boolean dir1) {
 		//this(createID(src,dst,dir0,dir1), src, dst);
 
 		super(createID(src,dst,dir0,dir1),src,dst,false);
@@ -35,7 +32,7 @@ public class BidirectedEdge extends AbstractEdge{
 	 * the constructor will translate the id to the direction property 
 	 * of the bidirected edge
 	 */
-//	protected BidirectedEdge(String id, AbstractNode source, AbstractNode dest){
+//	protected BDEdge(String id, AbstractNode source, AbstractNode dest){
 //		super(id, source, dest, false);
 //    	String pattern = "^\\[([0-9\\+\\-]*)\\]([oi])\\[([0-9\\+\\-]*)\\]([oi])$";
 //        // Create a Pattern object
@@ -69,7 +66,7 @@ public class BidirectedEdge extends AbstractEdge{
 	/*
 	 * To adapt Graph class from GraphStream library (called by newInstance())
 	 */
-	protected BidirectedEdge(String id, AbstractNode source, AbstractNode dest){
+	protected BDEdge(String id, AbstractNode source, AbstractNode dest){
 	super(id, source, dest, false);
 	
 	String pattern = "^([0-9]*)([+-]),([0-9]*)([+-])$";
@@ -100,17 +97,17 @@ public class BidirectedEdge extends AbstractEdge{
     }
 
 }
-//	protected BidirectedEdge(String id, AbstractNode source, AbstractNode dest){
+//	protected BDEdge(String id, AbstractNode source, AbstractNode dest){
 //		super(id, source, dest, false);
 //		
 //		assert (source.getGraph() == dest.getGraph()):"Nodes come from different graph " + source.getGraph().getId() + " and " + dest.getGraph().getId();
-//		BidirectedGraph g = (BidirectedGraph) source.getGraph();	
-//		path = new BidirectedPath(g,id);
-//		BidirectedNode 	n0 = (BidirectedNode) path.getRoot(),
-//						n1 = (BidirectedNode) path.peekNode();
+//		BDGraph g = (BDGraph) source.getGraph();	
+//		path = new BDPath(g,id);
+//		BDNode 	n0 = (BDNode) path.getRoot(),
+//						n1 = (BDNode) path.peekNode();
 //		
-//		BidirectedEdge 	firstEdge = (BidirectedEdge) path.getEdgePath().get(0),
-//						lastEdge = (BidirectedEdge) path.peekEdge();
+//		BDEdge 	firstEdge = (BDEdge) path.getEdgePath().get(0),
+//						lastEdge = (BDEdge) path.peekEdge();
 //		if(n0.getId().equals(source.getId())){
 //			dir0 = firstEdge.getDir(n0);
 //			dir1 = lastEdge.getDir(n1);
@@ -135,12 +132,12 @@ public class BidirectedEdge extends AbstractEdge{
 	
 	
 	//should have smt like this
-	public static BidirectedEdge makeEdge (AbstractNode src, AbstractNode dst, BidirectedPath path) {
-		return new BidirectedEdge(path.getId(), src, dst);
+	public static BDEdge makeEdge (AbstractNode src, AbstractNode dst, BDPath path) {
+		return new BDEdge(path.getId(), src, dst);
 	}
 
-//	public BidirectedEdge getReversedComplemented(){
-//		BidirectedEdge retval = makeEdge(getNode1(),getNode0(),path.getReversedComplemented());
+//	public BDEdge getReversedComplemented(){
+//		BDEdge retval = makeEdge(getNode1(),getNode0(),path.getReversedComplemented());
 //		
 //		return retval;
 //	}
@@ -163,12 +160,13 @@ public class BidirectedEdge extends AbstractEdge{
 	public boolean getDir1(){
 		return dir1;
 	}
-	//if kmer!=127 we need to set initial lengths of edges again (easy+tedious way)
-	public void changeKmerSize(int kmer){
-		length=-kmer;
-	}
+
 	public int getLength(){
-		return length;
+		if(this.hasAttribute("path")) {
+			BDPath tmp=(BDPath) this.getAttribute("path");
+			return (int)(tmp.getLength()-tmp.getFirstNode().getNumber("len")-tmp.getLastNode().getNumber("len"));
+		}else
+			return -BDGraph.getKmerSize();
 	}
 	
 	//TODO: include the case of tandem repeats

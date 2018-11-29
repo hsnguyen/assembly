@@ -4,26 +4,26 @@ import org.graphstream.graph.implementations.AbstractEdge;
 import org.graphstream.graph.implementations.AbstractGraph;
 import org.graphstream.graph.implementations.MultiNode;
 
-public class BidirectedNode extends MultiNode {
+public class BDNode extends MultiNode {
 
-//    private static final Logger LOG = LoggerFactory.getLogger(BidirectedNode.class);
-	protected BidirectedNode(AbstractGraph graph, String id) {
+//    private static final Logger LOG = LoggerFactory.getLogger(BDNode.class);
+	protected BDNode(AbstractGraph graph, String id) {
 		super(graph, id);
 	}
 
 	// *** Helpers ***
 	@Override
 	protected char edgeType(AbstractEdge e) {
-		BidirectedNode opposite = (BidirectedNode) e.getOpposite(this);
+		BDNode opposite = (BDNode) e.getOpposite(this);
 		
-		if(((BidirectedEdge) e).getDir(this)) {
-			if(this==opposite && ((BidirectedEdge) e).getDir0()!=((BidirectedEdge) e).getDir1())
+		if(((BDEdge) e).getDir(this)) {
+			if(this==opposite && ((BDEdge) e).getDir0()!=((BDEdge) e).getDir1())
 				return IO_EDGE;
 			else
 				return O_EDGE;
 		}
 		else {
-			if(this==opposite && ((BidirectedEdge) e).getDir0()!=((BidirectedEdge) e).getDir1())
+			if(this==opposite && ((BDEdge) e).getDir0()!=((BDEdge) e).getDir1())
 				return IO_EDGE;
 			else
 				return I_EDGE;

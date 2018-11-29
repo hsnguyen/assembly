@@ -47,7 +47,10 @@ public class AlignedRead{
 	 */
 	Sequence readSequence;		
 	private boolean sorted = false;
-
+	
+	//This is only used in uniqueBridgesFinding()
+	private int eFlag=0; // 0: both ends are from non-unique nodes; 1: start node is unique; 2: end node is unique; 3: both ends are from unique nodes
+	
 	ArrayList<Alignment> alignments;	
 
 	public AlignedRead(Sequence read, ArrayList<Alignment> alignmentList){
@@ -69,6 +72,9 @@ public class AlignedRead{
 	public void append(Alignment alg){
 		alignments.add(alg);
 	}
+	public void appendAll(ArrayList<Alignment> algs){
+		alignments.addAll(algs);
+	}
 	public Alignment getFirstAlignment(){
 		if(alignments==null || alignments.isEmpty())
 			return null;
@@ -79,7 +85,16 @@ public class AlignedRead{
 			return null;
 		return alignments.get(alignments.size()-1);
 	}
-	public AlignedRead reverse(){
+	
+	public void setEFlag(int flag){
+		eFlag=flag;
+	}
+	public int getEFlag(){
+		return eFlag;
+	}
+
+	
+	public void reverse(){
 		//return an (conceptually the same) read filling with the a reverse read
 		Sequence revRead = Alphabet.DNA.complement(readSequence);
 		revRead.setName("REV"+readSequence.getName());
@@ -88,8 +103,9 @@ public class AlignedRead{
 		for (Alignment alignment:alignments)
 			revAlignments.add(0,alignment.reverseRead());
 		
-		AlignedRead revFilling = new AlignedRead(revRead, revAlignments);		
-		return revFilling;
+		readSequence=revRead;
+		alignments=revAlignments;
+
 	}
 	
 	public void sortAlignment(){
@@ -102,7 +118,7 @@ public class AlignedRead{
 		if(alignments==null || alignments.isEmpty())
 			return "-,-";
 		else{
-			BidirectedEdgePrototype tmp = new BidirectedEdgePrototype(getFirstAlignment(),getLastAlignment());
+			BDEdgePrototype tmp = new BDEdgePrototype(getFirstAlignment(),getLastAlignment());
 			return tmp.toString();
 			
 		}
@@ -118,6 +134,9 @@ public class AlignedRead{
 	}
 	//get ScaffoldVector a->b from two alignments of *this*
 	public ScaffoldVector getVector(Alignment a, Alignment b) {
+		if(a==b)
+			return new ScaffoldVector();
+		
 		int 	alignedReadLen = Math.abs(a.readEnd - a.readStart) + Math.abs(b.readEnd - b.readStart),
 				alignedRefLen = Math.abs(a.refEnd - a.refStart) + Math.abs(b.refEnd - b.refStart);
 		double rate = 1.0 * alignedRefLen/alignedReadLen;		
