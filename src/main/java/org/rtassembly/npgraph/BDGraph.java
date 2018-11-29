@@ -34,7 +34,7 @@ public class BDGraph extends MultiGraph{
     //these should be changed in another thread, e.g. settings from GUI
 	public static volatile double ILLUMINA_READ_LENGTH=300; //Illumina MiSeq
     
-    public static final int D_LIMIT=10000; //distance bigger than this will be ignored
+    public static final int D_LIMIT=5000; //distance bigger than this will be ignored
     public static int S_LIMIT=215;// maximum number of DFS steps
     public static int MAX_DFS_PATHS=100; //maximum number of candidate DFS paths
     
@@ -329,18 +329,18 @@ public class BDGraph extends MultiGraph{
 
     
     
-    synchronized ArrayList<BDPath> DFSAllPaths(Alignment from, Alignment to){
+    synchronized ArrayList<BDPath> DFSAllPaths(Alignment from, Alignment to, boolean force){
     	assert from.readID==to.readID && to.compareTo(from)>=0:"Illegal alignment pair to find path!"; 	
     	int distance=to.readAlignmentStart()-from.readAlignmentEnd();
     	BDNode srcNode = from.node,
 						dstNode = to.node;
     	boolean srcDir = from.strand, dstDir = !to.strand;
-    	return DFSAllPaths(srcNode, dstNode, srcDir, dstDir, distance, Math.min(from.quality, to.quality) >= Alignment.GOOD_QUAL);
+    	return DFSAllPaths(srcNode, dstNode, srcDir, dstDir, distance, force);
     }
     
-	synchronized ArrayList<BDPath> DFSAllPaths(BDNode srcNode, BDNode dstNode, boolean srcDir, boolean dstDir, int distance, boolean assureFlag)
+	synchronized ArrayList<BDPath> DFSAllPaths(BDNode srcNode, BDNode dstNode, boolean srcDir, boolean dstDir, int distance, boolean force)
 	{
-    	if(distance>BDGraph.D_LIMIT)
+    	if(distance>BDGraph.D_LIMIT && !force)
     		return null;
     	System.out.printf("Looking for DFS path between %s%s to %s%s with distance=%d\n",srcNode.getId(), srcDir?"o":"i", dstNode.getId(), dstDir?"o":"i" ,distance);
 		ArrayList<BDPath> possiblePaths = new ArrayList<BDPath>(), 
@@ -437,7 +437,7 @@ public class BDGraph extends MultiGraph{
 		
 		
 		if(possiblePaths.isEmpty()){
-			if(SimpleBinner.getBinIfUnique(srcNode)!=null && SimpleBinner.getBinIfUnique(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 && assureFlag){
+			if(SimpleBinner.getBinIfUnique(srcNode)!=null && SimpleBinner.getBinIfUnique(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 && force){
 				//save the corresponding content of long reads to this edge
 				//TODO: save nanopore reads into this pseudo edge to run consensus later
 				BDEdge pseudoEdge = addEdge(srcNode, dstNode, srcDir, dstDir);
@@ -732,7 +732,6 @@ public class BDGraph extends MultiGraph{
 
     		BDEdge reducedEdge = addEdge(startNode,endNode,startDir,endDir);
     		LOG.info("ADDING EDGE " + reducedEdge.getId()+ " from " + reducedEdge.getNode0().getGraph().getId() + "-" + reducedEdge.getNode1().getGraph().getId());
-    		
 			if(reducedEdge!=null){
 //				reducedEdge.setAttribute("ui.label", path.getId());
 //				reducedEdge.setAttribute("ui.style", "text-offset: -10; text-alignment: along;"); 
@@ -743,7 +742,7 @@ public class BDGraph extends MultiGraph{
 				binner.edge2BinMap.put(reducedEdge, oneBin);
 //				updateGraphMap(reducedEdge, path);
 			}
-			
+    		LOG.info("after adding: \n\t" + printEdgesOfNode((BDNode) reducedEdge.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) reducedEdge.getNode1()));
 	    	return true;
     	}else {
     		LOG.info("Path {} has not reduced!", path.getId());

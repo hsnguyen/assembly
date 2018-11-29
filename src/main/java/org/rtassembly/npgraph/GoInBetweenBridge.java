@@ -467,24 +467,24 @@ public class GoInBetweenBridge {
 		int bestElections=0;
 		BridgeSegment(){}
 
-		BridgeSegment(Alignment start, Alignment end, AlignedRead read){
+		BridgeSegment(Alignment start, Alignment end, AlignedRead read, boolean force){
 			pSegment=new BDEdgePrototype(start.node, end.node, start.strand, !end.strand);
 			//invoke findPath()?
 			startNV=new BDNodeVecState(start.node, read.getVector(read.getFirstAlignment(), start));
 			endNV=new BDNodeVecState(start.node, read.getVector(read.getFirstAlignment(), end));
-			connectedPaths = graph.DFSAllPaths(start, end);
+			connectedPaths = graph.DFSAllPaths(start, end, force);
 			
 //			if(connectedPaths==null || connectedPaths.isEmpty())
 //				connectedPaths = graph.getClosestPaths(start, end);
 			
 		}
 		
-		BridgeSegment(BDNodeVecState nv1, BDNodeVecState nv2, boolean dir1, boolean dir2){
+		BridgeSegment(BDNodeVecState nv1, BDNodeVecState nv2, boolean dir1, boolean dir2, boolean force){
 			assert Math.abs(nv1.getVector().getMagnitute()) < Math.abs(nv2.getVector().magnitude): "Illegal order of node position!";
 			pSegment = new BDEdgePrototype(nv1.getNode(),nv2.getNode(),dir1,dir2);
 			startNV = nv1; endNV = nv2;
 			int d = ScaffoldVector.composition(nv2.getVector(), ScaffoldVector.reverse(nv1.getVector())).distance(nv1.getNode(), nv2.getNode());
-			connectedPaths = graph.DFSAllPaths((BDNode)nv1.getNode(), (BDNode)nv2.getNode(), dir1, dir2, d, false);
+			connectedPaths = graph.DFSAllPaths((BDNode)nv1.getNode(), (BDNode)nv2.getNode(), dir1, dir2, d, force);
 			
 //			if(connectedPaths==null || connectedPaths.isEmpty())
 //				connectedPaths = graph.getClosestPaths((BDNode)node1, dir1, (BDNode)node2, dir2, d, false);
@@ -775,11 +775,13 @@ public class GoInBetweenBridge {
 						if(prev.getVector().isIdentity())
 							seg=new BridgeSegment(	prev, current, 
 													pBridge.getDir0(), 
-													current.getDirection(pBridge.getDir0()));
+													current.getDirection(pBridge.getDir0()), 
+													force);
 						else
 							seg=new BridgeSegment(	prev, current, 
 									!prev.getDirection(pBridge.getDir0()), 
-									current.getDirection(pBridge.getDir0()));
+									current.getDirection(pBridge.getDir0()), 
+									force);
 						
 						System.out.print("...connecting " + seg.getId());
 						if(seg.isConnected()){

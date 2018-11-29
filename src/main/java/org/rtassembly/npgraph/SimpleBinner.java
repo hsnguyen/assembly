@@ -505,7 +505,7 @@ public class SimpleBinner {
 					edge2BinMap.replace(ep, bcMinusOne);				
 
 				}else {
-					System.err.printf("Conflict binning information on path %s, at edge %s: %s!\n", path.getId(), ep.getId(), getBinsOfEdge(ep));
+					System.err.printf("...not found appropriate binning information on path %s, at edge %s: %s!\n", path.getId(), ep.getId(), getBinsOfEdge(ep));
 //					edge2BinMap.remove(ep);
 				}
 		
