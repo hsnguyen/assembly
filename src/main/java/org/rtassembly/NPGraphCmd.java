@@ -1,22 +1,13 @@
 package org.rtassembly;
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import org.graphstream.graph.Edge;
-import org.graphstream.graph.Node;
-import org.graphstream.ui.view.Viewer;
 import org.rtassembly.gui.NPGraphFX;
 import org.rtassembly.npgraph.Alignment;
-import org.rtassembly.npgraph.BidirectedGraph;
+import org.rtassembly.npgraph.BDGraph;
 import org.rtassembly.npgraph.HybridAssembler;
 
-import japsa.seq.SequenceReader;
 import japsa.util.CommandLine;
 import javafx.application.Application;
-import npgraph.gui.GraphExploreDesktop;
 
 
 
@@ -33,7 +24,7 @@ public class NPGraphCmd extends CommandLine{
 		addBoolean("overwrite", false, "Whether to overwrite or reuse the intermediate file");
 		
 		addString("mm2Path","","Absolute path to the folder containing binary minimap2");
-		addString("mm2Opt", "-t4 -x map-ont", "Preset used by minimap2 to align long reads to the contigs");
+		addString("mm2Opt", "-t4 -x map-ont -k15 -w5", "Preset used by minimap2 to align long reads to the contigs");
 		
 		addInt("qual", 1, "Minimum quality of alignment to considered");
 		addInt("dfs", 15, "Number of DFS steps to search");
@@ -59,7 +50,7 @@ public class NPGraphCmd extends CommandLine{
 				gui = cmdLine.getBooleanVal("gui");
 			
 		Alignment.MIN_QUAL = cmdLine.getIntVal("qual");
-		BidirectedGraph.S_LIMIT=cmdLine.getIntVal("dfs");
+		BDGraph.S_LIMIT=cmdLine.getIntVal("dfs");
 		//Default output dir 
 		if(outputDir == null) {
 			outputDir = new File(shortReadsAssembly).getAbsoluteFile().getParent();
@@ -85,7 +76,7 @@ public class NPGraphCmd extends CommandLine{
 		hbAss.setOverwrite(overwrite);
 		
 		
-		BidirectedGraph graph = hbAss.simGraph;      
+		BDGraph graph = hbAss.simGraph;      
         
 		//4. Call the assembly function or invoke GUI to do so
         if(gui) {
@@ -97,7 +88,7 @@ public class NPGraphCmd extends CommandLine{
         }else {
 	        
 			try {
-				if(hbAss.prepareShortReadsProcess(true) &&	hbAss.prepareLongReadsProcess()) {
+				if(hbAss.prepareShortReadsProcess(false) &&	hbAss.prepareLongReadsProcess()) {
 					hbAss.assembly();
 					hbAss.postProcessGraph();
 				}
@@ -145,7 +136,7 @@ public class NPGraphCmd extends CommandLine{
 //		//For SAM file, run bwa first on the edited assembly_graph.fastg by running:
 //		//awk -F '[:;]' -v q=\' 'BEGIN{flag=0;}/^>/{if(index($1,q)!=0) flag=0; else flag=1;}{if(flag==1) print $1;}' ../EcK12S-careful/assembly_graph.fastg > Eck12-careful.fasta
 //		//TODO: need to make this easier
-//		BidirectedGraph graph= hbAss.simGraph;
+//		BDGraph graph= hbAss.simGraph;
 //		
 //        //graph.addAttribute("ui.quality");
 //        //graph.addAttribute("ui.antialias");
@@ -163,7 +154,7 @@ public class NPGraphCmd extends CommandLine{
 //            node.setAttribute("ui.style", "text-offset: -10;"); 
 //            node.addAttribute("layout.weight", 10); 
 //
-//            if(BidirectedGraph.isMarker(node))
+//            if(BDGraph.isMarker(node))
 //            	node.setAttribute("ui.class", "marked");
 //        }
 //

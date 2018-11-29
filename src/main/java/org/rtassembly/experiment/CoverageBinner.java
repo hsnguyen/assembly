@@ -13,27 +13,26 @@ import org.apache.commons.math3.ml.clustering.DBSCANClusterer;
 import org.apache.commons.math3.ml.clustering.DoublePoint;
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Node;
-import org.rtassembly.npgraph.BidirectedEdge;
-import org.rtassembly.npgraph.BidirectedGraph;
-import org.rtassembly.npgraph.BidirectedNode;
+import org.rtassembly.npgraph.BDEdge;
+import org.rtassembly.npgraph.BDGraph;
+import org.rtassembly.npgraph.BDNode;
 import org.rtassembly.npgraph.GraphUtil;
 import org.rtassembly.npgraph.HybridAssembler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import japsa.seq.Sequence;
-import npgraph.gui.GraphExploreDesktop;
 
 public class CoverageBinner {
     private static final Logger LOG = LoggerFactory.getLogger(CoverageBinner.class);
 	public static volatile int SIGNIFICANT_CTG_LEN=10000;
 	
-	BidirectedGraph graph;
+	BDGraph graph;
 	ArrayList<Bin> binList;
 	HashMap<Edge, HashMap<Bin,Integer>> edge2BinMap;
 	HashMap<Bin,ArrayList<Edge>> bin2EdgeMap;
 	
-	CoverageBinner(BidirectedGraph graph){
+	CoverageBinner(BDGraph graph){
 		this.graph = graph;
 		binList = new ArrayList<Bin>();
 		edge2BinMap = new HashMap<Edge, HashMap<Bin,Integer>>();
@@ -226,8 +225,8 @@ public class CoverageBinner {
 	private boolean assignEdgeBins(Edge e) {
 		//1. considering information from neighbors
 		//refer to the old balance() function!
-		BidirectedNode n0 = (BidirectedNode) e.getNode0(), n1=(BidirectedNode) e.getNode1();
-		boolean dir0 = ((BidirectedEdge) e).getDir0(), dir1 = ((BidirectedEdge) e).getDir1();
+		BDNode n0 = (BDNode) e.getNode0(), n1=(BDNode) e.getNode1();
+		boolean dir0 = ((BDEdge) e).getDir0(), dir1 = ((BDEdge) e).getDir1();
 		Iterator<Edge> 	in0 = n0.enteringEdges().iterator(), out0 = n0.leavingEdges().iterator(),
 						in1 = n1.enteringEdges().iterator(), out1 = n1.leavingEdges().iterator();
 		int unknwIn0 = 0, unknwOut0 = 0, unknwIn1  = 0, unknwOut1 = 0;
@@ -355,11 +354,11 @@ public class CoverageBinner {
 
 	public static void main(String[] args) throws IOException {
 		HybridAssembler hbAss = new HybridAssembler();
-		hbAss.setShortReadsInput(GraphExploreDesktop.dataFolder+"EcK12S-careful/assembly_graph.fastg");
+		hbAss.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/EcK12S-careful/assembly_graph.fastg");
 		hbAss.setShortReadsInputFormat("fastg");
 		hbAss.prepareShortReadsProcess(true);
 		
-		BidirectedGraph graph = hbAss.simGraph;		
+		BDGraph graph = hbAss.simGraph;		
 		CoverageBinner binner = new CoverageBinner(graph);
 		binner.estimatePathsByCoverage();
 		System.out.println("=> number of bin = " + binner.binList.size());
