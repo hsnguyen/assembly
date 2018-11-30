@@ -5,9 +5,12 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import org.graphstream.algorithm.ConnectedComponents;
+import org.graphstream.algorithm.ConnectedComponents.ConnectedComponent;
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Node;
 
@@ -20,17 +23,19 @@ public class GraphWatcher {
 	ConnectedComponents rtComponents;
 	HashSet<BDEdge> cutEdges;
 	int numberOfComponents=0;
+	Set<Integer> rubbish; //save id of insignificant components
 	
 	public GraphWatcher(BDGraph graph) {
 		this.inputGraph=graph;
 		rtComponents = new ConnectedComponents();
 		rtComponents.init(graph);
 		rtComponents.setCutAttribute("cut");
-
+		rubbish=new TreeSet<Integer>();	
 		numberOfComponents=rtComponents.getConnectedComponentsCount();
 	}
 
 	//Remove nodes with degree <=1 and length || cov low
+	//TODO: should just hide them
 	private void cleanInsignificantNodes(){
 		List<Node> badNodes = inputGraph.nodes()
 						.filter(n->(inputGraph.binner.checkRemovableNode(n)))
@@ -46,36 +51,29 @@ public class GraphWatcher {
 		}
 	}
 
-	synchronized void forFunUpdate() {
-//		This is just for fun
+	synchronized boolean checkGoodComponent(ConnectedComponent comp) {
 //		LOG.info("==========================================================================");
 //		LOG.info("\nTotal number of components: {} \ncomponents containing more than 1: {} \nsize of biggest component: {}", 
 //					rtComponents.getConnectedComponentsCount(),rtComponents.getConnectedComponentsCount(2),rtComponents.getGiantComponent().size());					    		
 //		LOG.info("==========================================================================");    		
-		if(numberOfComponents != rtComponents.getConnectedComponentsCount()) {
-			numberOfComponents = rtComponents.getConnectedComponentsCount();
 
-    		//Hide components with no markers! Optimize it to work dynamically
-    		ArrayList<Node> cleanup = new ArrayList<>();
-    		for (Iterator<ConnectedComponents.ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
-    			ConnectedComponents.ConnectedComponent comp = compIter.next();
+		//Hide components with no markers! Optimize it to work dynamically
+		boolean retval=true;
+		ArrayList<Node> cleanup = new ArrayList<>();
 
-    			AtomicDouble lengthWeightedCov = new AtomicDouble(0.0);
-    			ArrayList<Node> tmp = new ArrayList<>();
-    			comp.nodes().forEach(n->{
-    				lengthWeightedCov.getAndAdd(n.getNumber("cov")*(n.getNumber("len")-BDGraph.getKmerSize()));
-    				tmp.add(n);
-    			});
-    			if(lengthWeightedCov.get() < 10000*inputGraph.binner.leastBin.estCov)
-    				cleanup.addAll(tmp);
-    		}
-    		for(Node n:cleanup) {
-				n.setAttribute("ui.hide");
-				n.edges().forEach(e->e.setAttribute("ui.hide"));
-////			inputGraph.removeNode(n); //this faster but careful here!!!
-    		}
-		}
+		AtomicDouble lengthWeightedCov = new AtomicDouble(0.0);
+		ArrayList<Node> tmp = new ArrayList<>();
+		comp.nodes().forEach(n->{
+			lengthWeightedCov.getAndAdd(n.getNumber("cov")*(n.getNumber("len")-BDGraph.getKmerSize()));
+			tmp.add(n);
+		});
+		if(lengthWeightedCov.get() < 10000*inputGraph.binner.leastBin.estCov){
+			cleanup.addAll(tmp);
+			retval=false;
+		}		
+		return retval;
 	}
+	
 	
 	/*
 	 * TODO: replace linearComponentsDecomposition() with this + real-time + threads...
@@ -83,13 +81,6 @@ public class GraphWatcher {
 	 * Should merge with updating the GUI (colors, labels...)???
 	 */
 	synchronized void update() {
-//		//1. clean it first
-//		cleanInsignificantNodes();
-//		
-//		//computing the connected components
-//		rtComponents.compute();
-
-		//2. then decompose it (using cut attribute instead of removing edges)
 		//reset
 		cutEdges = new HashSet<BDEdge>();
 		inputGraph.edges().filter(e->e.hasAttribute("cut")).forEach(e->{e.removeAttribute("cut"); e.removeAttribute("ui.hide");});;
@@ -103,14 +94,26 @@ public class GraphWatcher {
 				n.leavingEdges().forEach(e->{e.setAttribute("ui.hide");e.setAttribute("cut");cutEdges.add((BDEdge) e);});
 
 		});
+		
 		outputGraph=new BDGraph();
 		BDPath repPath=null; //representative path of a component
 		System.out.println("Another round of updating connected components: " + rtComponents.getConnectedComponentsCount());
 
-		for (Iterator<ConnectedComponents.ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
-			ConnectedComponents.ConnectedComponent comp = compIter.next();
-			System.out.printf("... id=%s edges=%d nodes=%d \n", comp.id, comp.getEdgeCount(), comp.getNodeCount());
-
+		for (Iterator<ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
+			ConnectedComponent comp = compIter.next();
+//			System.out.printf("... id=%s edges=%d nodes=%d \n", comp.id, comp.getEdgeCount(), comp.getNodeCount());
+			
+			if(rubbish.contains(comp.id))
+				continue;
+			if(!checkGoodComponent(comp)){
+				//hide all nodes and edges from this comp
+				comp.nodes().forEach(n->n.setAttribute("ui.hide"));
+				comp.edges().forEach(e->e.setAttribute("ui.hide"));
+				rubbish.add(comp.id);
+				continue;
+			}
+			
+			//Start analyzing significant components from here
 			//check comp: should be linear paths, should start with node+
 			 Node node = comp.nodes().toArray(Node[]::new)[0];
 			 repPath = new BDPath(node);
