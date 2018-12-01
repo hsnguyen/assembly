@@ -7,6 +7,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import org.graphstream.algorithm.ConnectedComponents;
@@ -23,19 +24,17 @@ public class GraphWatcher {
 	ConnectedComponents rtComponents;
 	HashSet<BDEdge> cutEdges;
 	int numberOfComponents=0;
-	Set<Integer> rubbish; //save id of insignificant components
 	
 	public GraphWatcher(BDGraph graph) {
 		this.inputGraph=graph;
 		rtComponents = new ConnectedComponents();
 		rtComponents.init(graph);
 		rtComponents.setCutAttribute("cut");
-		rubbish=new TreeSet<Integer>();	
 		numberOfComponents=rtComponents.getConnectedComponentsCount();
 	}
 
 	//Remove nodes with degree <=1 and length || cov low
-	//TODO: should just hide them
+	//TODO: use for posprocess only???
 	private void cleanInsignificantNodes(){
 		List<Node> badNodes = inputGraph.nodes()
 						.filter(n->(inputGraph.binner.checkRemovableNode(n)))
@@ -51,27 +50,25 @@ public class GraphWatcher {
 		}
 	}
 
-	synchronized boolean checkGoodComponent(ConnectedComponent comp) {
-//		LOG.info("==========================================================================");
-//		LOG.info("\nTotal number of components: {} \ncomponents containing more than 1: {} \nsize of biggest component: {}", 
-//					rtComponents.getConnectedComponentsCount(),rtComponents.getConnectedComponentsCount(2),rtComponents.getGiantComponent().size());					    		
-//		LOG.info("==========================================================================");    		
-
-		//Hide components with no markers! Optimize it to work dynamically
-		boolean retval=true;
-		ArrayList<Node> cleanup = new ArrayList<>();
-
-		AtomicDouble lengthWeightedCov = new AtomicDouble(0.0);
-		ArrayList<Node> tmp = new ArrayList<>();
-		comp.nodes().forEach(n->{
-			lengthWeightedCov.getAndAdd(n.getNumber("cov")*(n.getNumber("len")-BDGraph.getKmerSize()));
-			tmp.add(n);
-		});
-		if(lengthWeightedCov.get() < 10000*inputGraph.binner.leastBin.estCov){
-			cleanup.addAll(tmp);
-			retval=false;
-		}		
-		return retval;
+	synchronized private void removeBadComponents() {
+		List<Node> 	removeNodes=new ArrayList<Node>();
+		
+		for (Iterator<ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
+			ConnectedComponent comp = compIter.next();
+			AtomicDouble lengthWeightedCov = new AtomicDouble(0.0);
+			AtomicInteger length = new AtomicInteger(0);
+			comp.nodes().forEach(n->{
+				int len = (int) (n.getNumber("len")-BDGraph.getKmerSize());
+				length.getAndAdd(len);
+				lengthWeightedCov.getAndAdd(n.getNumber("cov")*len);
+			});
+			double aveCov=lengthWeightedCov.get()/length.get();
+			if(GraphUtil.approxCompare(aveCov, inputGraph.binner.leastBin.estCov) < 0 || length.get() < SimpleBinner.ANCHOR_CTG_LEN)
+				comp.nodes().forEach(n->removeNodes.add(n));
+				
+		}
+		//Remove abundant components here
+		removeNodes.stream().forEach(n->inputGraph.removeNode(n));
 	}
 	
 	
@@ -80,39 +77,36 @@ public class GraphWatcher {
 	 * Update the outputGraph to show statistics and current output
 	 * Should merge with updating the GUI (colors, labels...)???
 	 */
-	synchronized void update() {
-		//reset
+	synchronized void update(boolean last) {
+		//cleaning...
+		removeBadComponents();
+//		if(last)
+//			cleanInsignificantNodes();
+		
 		cutEdges = new HashSet<BDEdge>();
-		inputGraph.edges().filter(e->e.hasAttribute("cut")).forEach(e->{e.removeAttribute("cut"); e.removeAttribute("ui.hide");});;
-
-		//the set the cut edges
+		//then set the cut edges: just for outputGraph stats (will reset after)
 		inputGraph.nodes()
 		.forEach(n->{
 			if(n.getInDegree()>=2)
-				n.enteringEdges().forEach(e->{e.setAttribute("ui.hide");e.setAttribute("cut");cutEdges.add((BDEdge) e);});
+				n.enteringEdges().forEach(e->{if(last) e.setAttribute("ui.hide");e.setAttribute("cut");cutEdges.add((BDEdge) e);});
 			if(n.getOutDegree()>=2)
-				n.leavingEdges().forEach(e->{e.setAttribute("ui.hide");e.setAttribute("cut");cutEdges.add((BDEdge) e);});
+				n.leavingEdges().forEach(e->{if(last) e.setAttribute("ui.hide");e.setAttribute("cut");cutEdges.add((BDEdge) e);});
 
 		});
+		
+		if(last){
+			removeBadComponents();
+		}
 		
 		outputGraph=new BDGraph();
 		BDPath repPath=null; //representative path of a component
 		System.out.println("Another round of updating connected components: " + rtComponents.getConnectedComponentsCount());
 
+
 		for (Iterator<ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
 			ConnectedComponent comp = compIter.next();
-//			System.out.printf("... id=%s edges=%d nodes=%d \n", comp.id, comp.getEdgeCount(), comp.getNodeCount());
-			
-			if(rubbish.contains(comp.id))
-				continue;
-			if(!checkGoodComponent(comp)){
-				//hide all nodes and edges from this comp
-				comp.nodes().forEach(n->n.setAttribute("ui.hide"));
-				comp.edges().forEach(e->e.setAttribute("ui.hide"));
-				rubbish.add(comp.id);
-				continue;
-			}
-			
+			System.out.printf("... id=%s edges=%d nodes=%d \n", comp.id, comp.getEdgeCount(), comp.getNodeCount());
+					
 			//Start analyzing significant components from here
 			//check comp: should be linear paths, should start with node+
 			 Node node = comp.nodes().toArray(Node[]::new)[0];
@@ -172,6 +166,8 @@ public class GraphWatcher {
 //			 System.out.println("\n" + seq.getName() + ":" + repPath.getId() + "\n=> "+ repPath.getPrimitivePath().getId());
 
 		}
+
+
 		//now set the edge of outputGraph based on the cut edges
 		for(Edge e:cutEdges) {
 			Node n0=e.getNode0(), n1=e.getNode1();
@@ -196,6 +192,11 @@ public class GraphWatcher {
 		}
 		
 		System.out.printf("Output stats: %d sequences (%d circular) N50=%.2f\n", getNumberOfSequences(), getNumberOfCircularSequences(), getN50());
+		
+		//reset the cutting attributes
+//		inputGraph.edges().filter(e->e.hasAttribute("cut")).forEach(e->{e.removeAttribute("cut"); e.removeAttribute("ui.hide");});;
+		inputGraph.edges().filter(e->e.hasAttribute("cut")).forEach(e->{e.removeAttribute("cut");});;
+
 	}
 	synchronized int getNumberOfSequences() {
 		return outputGraph.getNodeCount();
