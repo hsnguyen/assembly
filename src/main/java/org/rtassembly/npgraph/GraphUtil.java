@@ -107,7 +107,7 @@ public class GraphUtil {
 			}
 		}
 		//rough estimation of kmer used
-		if((shortestLen-1) != BDGraph.getKmerSize()){
+		if((shortestLen-1) < BDGraph.getKmerSize()){
 			BDGraph.setKmerSize(shortestLen-1);
 		}
 		
@@ -146,29 +146,31 @@ public class GraphUtil {
 		
 		for (Node node:graph) {
 			Sequence nseq = (Sequence) node.getAttribute("seq");
-			int estcov=(int) Math.round(node.getNumber("cov")/BDGraph.RCOV);
 			double astats=-1;
-			int i=0;
-			//get the first positive astats, if > 10 then assign its multiplicity (not work with different pops) 
-			while(astats<0){
-				i++;
-				astats = nseq.length()*BDGraph.RCOV/BDGraph.ILLUMINA_READ_LENGTH
-				+Math.log((i+1)*1.0/(i+2))*node.getNumber("cov")*nseq.length()/BDGraph.ILLUMINA_READ_LENGTH;
-				astats*=Math.log10(Math.E);				
-			}
-			normalizedCoverage(node);			
-			if(astats>10)
-				LOG.info("{} Normalized coverage={} Length={} Coverage={} A-stats={}", node.getAttribute("name"), node.getNumber("cov"), node.getNumber("len"), estcov, astats );
-			else
-				LOG.info("{} Normalized coverage={} Length={}", node.getAttribute("name"), node.getNumber("cov"), node.getNumber("len") );
 
-			
-//			double astats = nseq.length()*BDGraph.RCOV/BDGraph.ILLUMINA_READ_LENGTH
-//							-Math.log(2)*node.getNumber("cov")*nseq.length()/BDGraph.ILLUMINA_READ_LENGTH;
-//			astats*=Math.log10(Math.E);
-//			node.setAttribute("astats", astats);
-//			normalizedCoverage(node);
-//			LOG.info("{} Normalized coverage = {} Length = {} \nA-stats = {}", node.getAttribute("name"), node.getNumber("cov"), node.getNumber("len"), astats);
+//			int estcov=(int) Math.round(node.getNumber("cov")/BDGraph.RCOV);
+//			//get the first positive astats, if > 10 then assign its multiplicity (not work with different pops) 
+//			int i=0;
+//			while(astats<0){
+//				i++;
+//				astats = nseq.length()*BDGraph.RCOV/BDGraph.ILLUMINA_READ_LENGTH
+//				+Math.log((i+1)*1.0/(i+2))*node.getNumber("cov")*nseq.length()/BDGraph.ILLUMINA_READ_LENGTH;
+//				astats*=Math.log10(Math.E);		
+//				System.out.printf("...A-stat at iteration %d: %.2f\n", i, astats);
+//			}
+//			normalizedCoverage(node);			
+//			if(astats>10)
+//				LOG.info("{} Normalized coverage={} Length={} Coverage={} A-stats={}", node.getAttribute("name"), node.getNumber("cov"), node.getNumber("len"), estcov, astats );
+//			else
+//				LOG.info("{} Normalized coverage={} Length={}", node.getAttribute("name"), node.getNumber("cov"), node.getNumber("len") );
+
+			//calculate 1 astat as normal
+			astats = nseq.length()*BDGraph.RCOV/BDGraph.ILLUMINA_READ_LENGTH
+							-Math.log(2)*node.getNumber("cov")*nseq.length()/BDGraph.ILLUMINA_READ_LENGTH;
+			astats*=Math.log10(Math.E);
+			node.setAttribute("astats", astats);
+			normalizedCoverage(node);
+			LOG.info("{} Normalized coverage = {} Length = {} \nA-stats = {}", node.getAttribute("name"), node.getNumber("cov"), node.getNumber("len"), astats);
 		}
 		
 		LOG.info("No of nodes= {} No of edges = {} Estimated avg. read coverage = {} (normalized to 100.0) Total contigs length = {}", graph.getNodeCount(), graph.getEdgeCount(), BDGraph.RCOV, totContigsLen );
@@ -302,7 +304,7 @@ public class GraphUtil {
 		reader.close();
 
 		//rough estimation of kmer used
-		if((shortestLen-1) != BDGraph.getKmerSize()){
+		if((shortestLen-1) < BDGraph.getKmerSize()){
 			BDGraph.setKmerSize(shortestLen-1);
 
 		}
