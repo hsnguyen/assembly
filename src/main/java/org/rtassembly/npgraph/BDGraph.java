@@ -2,6 +2,7 @@ package org.rtassembly.npgraph;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -812,5 +813,26 @@ public class BDGraph extends MultiGraph{
 				retval.add(curPath);
 		}
 		return retval;
+	}
+	
+	public synchronized int getN50(){
+		int count=0, numOfNodes=getNodeCount();
+		int [] lengths = new int[numOfNodes];
+		double sum = 0;
+		for(Node n:nodes().collect(Collectors.toList())) {
+			int nlen=(int)n.getNumber("len"); 
+			lengths[count++]=nlen; 
+			sum+=nlen;
+		}
+		Arrays.sort(lengths);
+
+		int index = lengths.length;
+		double contains = 0;
+		while (contains < sum/2){
+			index --;
+			contains += lengths[index];
+		}
+
+		return lengths[index];	
 	}
 }

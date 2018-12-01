@@ -255,8 +255,7 @@ public class HybridAssembler {
 						{
 							//path here is already unique! (2 unique ending nodes)
 					    	if(simGraph.reduceUniquePath(path)) {
-					    		//TODO: replace with proper observer.update()
-//					    		observer.forFunUpdate();					    		
+					    		observer.update(false);					    		
 					    		GraphUtil.redrawGraphComponents(simGraph);
 					    	}
 						}
@@ -307,8 +306,8 @@ public class HybridAssembler {
 		
 		//Finally redraw the graph and output
 		GraphUtil.redrawGraphComponents(simGraph);
-		
-        observer.linearComponentsDecomposition();
+        //update for the last time
+        observer.update(true);
 		observer.outputFASTA(getPrefix()+"npgraph_assembly.fasta");
 
 	}
