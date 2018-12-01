@@ -419,7 +419,7 @@ public class SimpleBinner {
 			if(node2BinMap.get(node).values().stream().mapToInt(Integer::intValue).sum() != 0)
 				return false;
 		}
-		else if(GraphUtil.approxCompare(node.getNumber("cov"),leastBin.estCov)<0) {
+		else if(GraphUtil.approxCompare(node.getNumber("cov"),leastBin.estCov)>=0) {
 			return false;
 		}
 			
