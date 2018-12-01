@@ -43,6 +43,7 @@ import org.graphstream.ui.fx_viewer.FxDefaultView;
 import org.graphstream.ui.fx_viewer.FxViewer;
 import org.graphstream.ui.javafx.FxGraphRenderer;
 import org.graphstream.ui.view.Viewer;
+import org.graphstream.ui.view.Viewer.CloseFramePolicy;
 import org.rtassembly.npgraph.Alignment;
 import org.rtassembly.npgraph.GraphUtil;
 import org.rtassembly.npgraph.HybridAssembler;
@@ -158,8 +159,8 @@ public class NPGraphFX extends Application{
 					myass.postProcessGraph();
 				}catch (Exception e){
 					System.err.println(e.getMessage());
-					e.getStackTrace();
-					interupt(e);
+					e.printStackTrace();
+//					interupt(e);
 				}
 
 			}
@@ -761,6 +762,7 @@ public class NPGraphFX extends Application{
 		FxDefaultView view = new FxDefaultView(graphViewer, "npGraph", new FxGraphRenderer());
 		graphViewer.addView(view);
 		graphViewer.enableAutoLayout();
+		graphViewer.setCloseFramePolicy(CloseFramePolicy.CLOSE_VIEWER);
 		
 		mainGrid.getChildren().add(view);
 		
@@ -875,13 +877,13 @@ public class NPGraphFX extends Application{
 	public static void main(String[] args) {
 		HybridAssembler hbAss = new HybridAssembler();
 		
-		hbAss.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/EcK12S-careful/assembly_graph.gfa");
+		hbAss.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/EcK12S-careful/assembly_graph.gfa");
 //		hbAss.setShortReadsInputFormat("fastg");
 //		hbAss.setLongReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/EcK12S-careful/assembly_graph.sam");
 //		hbAss.setLongReadsInputFormat("sam");
-		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/reads/EcK12S_ONT.fastq");
+		hbAss.setLongReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/Eck12_ONT.fasta");
 //		hbAss.setLongReadsInputFormat("fastq");
-		 
+		hbAss.setMinimapPath("/home/sonhoanghguyen/.usr/local/bin/"); 
 		
 		NPGraphFX.setAssembler(hbAss);
 		Application.launch(NPGraphFX.class,args);

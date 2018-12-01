@@ -77,7 +77,7 @@ public class GraphWatcher {
 	 * Update the outputGraph to show statistics and current output
 	 * Should merge with updating the GUI (colors, labels...)???
 	 */
-	synchronized void update(boolean last) {
+	synchronized void update(boolean lastTime) {
 		//cleaning...
 		removeBadComponents();
 //		if(last)
@@ -88,13 +88,14 @@ public class GraphWatcher {
 		inputGraph.nodes()
 		.forEach(n->{
 			if(n.getInDegree()>=2)
-				n.enteringEdges().forEach(e->{if(last) e.setAttribute("ui.hide");e.setAttribute("cut");cutEdges.add((BDEdge) e);});
+				n.enteringEdges().forEach(e->{if(lastTime) e.setAttribute("ui.hide");e.setAttribute("cut");cutEdges.add((BDEdge) e);});
 			if(n.getOutDegree()>=2)
-				n.leavingEdges().forEach(e->{if(last) e.setAttribute("ui.hide");e.setAttribute("cut");cutEdges.add((BDEdge) e);});
+				n.leavingEdges().forEach(e->{if(lastTime) e.setAttribute("ui.hide");e.setAttribute("cut");cutEdges.add((BDEdge) e);});
 
 		});
 		
-		if(last){
+		if(lastTime){
+			//TODO: only remove low cov edges+nodes
 			removeBadComponents();
 		}
 		
@@ -102,10 +103,9 @@ public class GraphWatcher {
 		BDPath repPath=null; //representative path of a component
 		System.out.println("Another round of updating connected components: " + rtComponents.getConnectedComponentsCount());
 
-
 		for (Iterator<ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
 			ConnectedComponent comp = compIter.next();
-			System.out.printf("... id=%s edges=%d nodes=%d \n", comp.id, comp.getEdgeCount(), comp.getNodeCount());
+//			System.out.printf("... id=%s edges=%d nodes=%d \n", comp.id, comp.getEdgeCount(), comp.getNodeCount());
 					
 			//Start analyzing significant components from here
 			//check comp: should be linear paths, should start with node+
@@ -172,8 +172,12 @@ public class GraphWatcher {
 		for(Edge e:cutEdges) {
 			Node n0=e.getNode0(), n1=e.getNode1();
 			//get corresponding grouped nodes in outputGraph
-			Node 	nn0=outputGraph.getNode(Integer.toString(rtComponents.getConnectedComponentOf(n0).id)),
-					nn1=outputGraph.getNode(Integer.toString(rtComponents.getConnectedComponentOf(n1).id));
+			ConnectedComponent 	comp0=rtComponents.getConnectedComponentOf(n0),
+								comp1=rtComponents.getConnectedComponentOf(n1);
+			if(comp0==null || comp1==null)
+				continue;
+			Node 	nn0=outputGraph.getNode(Integer.toString(comp0.id)),
+					nn1=outputGraph.getNode(Integer.toString(comp1.id));
 			if(nn0!=null && nn1!=null) {
 				boolean dir0=((BDEdge)e).getDir((BDNode)n0),
 						dir1=((BDEdge)e).getDir((BDNode)n1);
