@@ -30,7 +30,7 @@ public class HybridAssembler {
 	//setting parameter for the GUI
     private boolean ready=false, overwrite=false;
     private String prefix = "/tmp/";
-	private String 	mm2Path="", 
+	private String 	mm2Path="/usr/bin/", 
 					mm2Opt="-t4 -x map-ont -k15 -w5";
 
 	private String shortReadsInput="", longReadsInput="";

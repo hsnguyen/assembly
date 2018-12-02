@@ -98,119 +98,81 @@ public class NPGraphFX extends Application{
 	}
     
     public void start(Stage primaryStage){  	 
+    	Stage graphStage = new Stage();
     	
-        running(primaryStage);
-    }
-    
-	private void running(Stage stage){
-    	//Start with a BorderPane as root
-	    BorderPane border = new BorderPane();
-	    // Put start/stop button here  
-	    HBox hbox = addHBox();
-	    border.setTop(hbox);
-	    
-	    // All the parameters setting to the left 
-	    leftBox=addVBox(stage);
-	    border.setLeft(leftBox);
-	        
-	    // Add a stack to the HBox in the top region with Restart button.
-	    // Uncomment this and line 332 (buttonRestart.setDisability(true)) 
-	    // to have the function
-        // addStackPane(hbox, stage);  
-        
-        // Here the main content    
-        tabPane = new TabPane();
-        statsTab = new Tab("Assembly statistics",addAssemblyStatsPane());
-        graphTab = new Tab("Assembly graph",addGraphResolverPane());
-        tabPane.getTabs().addAll(statsTab,graphTab);
-        
-        graphTab.disableProperty().bind(graphCB.selectedProperty().not());     
-        border.setCenter(tabPane);
-        
-     
-        Scene scene = new Scene(border);
-        stage.setScene(scene);
-        stage.setTitle("npGraph");
-        stage.setOnCloseRequest(e -> {
-            Platform.exit();
-            System.exit(0);
-        });
-	    stage.show();
-			
-	    new Thread(new Runnable(){
+        try {
+        	/*
+        	 * Setup graph stage here
+        	 */
+            BorderPane gBorder = new BorderPane();
+            gBorder.setCenter(addGraphResolverPane());
+            Scene gscene = new Scene(gBorder);
+            graphStage.setScene(gscene);
+            graphStage.setTitle("Assembly graph");
+//            graphStage.show();
+            
+            
+            /*
+             * Setup primary stage here
+             */
+        	//Start with a BorderPane as root
+    	    BorderPane pBorder = new BorderPane();
+    	    // Put start/stop button here  
+    	    HBox hbox = addHBox();
+    	    pBorder.setTop(hbox);
+    	    // All the parameters setting to the left 
+    	    //TODO: pass graphStage here to bind with graph file being loaded
+    	    leftBox=addVBox(primaryStage, graphStage);
+    	    pBorder.setLeft(leftBox);
+            
+            // Here the main content    
+            pBorder.setCenter(addAssemblyStatsPane());
+            
+            Scene pscene = new Scene(pBorder);
+            primaryStage.setScene(pscene);
+            primaryStage.setTitle("Main");
+            primaryStage.setOnCloseRequest(e -> {
+                Platform.exit();
+                System.exit(0);
+            });
+            primaryStage.show();
+        	
+            
+            /*
+             * A thread to run the algorithm
+             */
+    	    new Thread(new Runnable(){
 
-			@Override
-			public void run() {
-				while (!myass.getReady()){
-					//LOG.info("NOT READY");
-					try {
-						Thread.sleep(1000);
-					} catch (InterruptedException e) {					
-						e.printStackTrace();
-					}			
-				}
-				// TODO Auto-generated method stub
-				LOG.info("GO");
+    			@Override
+    			public void run() {
+    				while (!myass.getReady()){
+    					//LOG.info("NOT READY");
+    					try {
+    						Thread.sleep(1000);
+    					} catch (InterruptedException e) {					
+    						e.printStackTrace();
+    					}			
+    				}
+    				LOG.info("GO");
+//    				updateData();
+    				try{
+    					myass.assembly();
+    					myass.postProcessGraph();
+    				}catch (Exception e){
+    					System.err.println(e.getMessage());
+    					e.printStackTrace();
+    				}
 
-//				updateData();
-				try{
-					myass.assembly();
-					myass.postProcessGraph();
-				}catch (Exception e){
-					System.err.println(e.getMessage());
-					e.printStackTrace();
-//					interupt(e);
-				}
-
-			}
-			
-		}).start();
-	     
-    }
-    
-    private void reset(){
-//    	buttonStart.setDisable(false);
-//    	buttonStop.setDisable(true);
-//    	leftBox.setDisable(false);
-//    		
-//    	allReadsCount = new TimeTableXYDataset();
-//    	demultiplexedStackReadsCount = new TimeTableXYDataset();
-//		histoLengthDataSet = new DynamicHistogram(); 
-//		histoQualDataSet = new DynamicHistogram();
-    	 
-		HybridAssembler newAss = new HybridAssembler();
-		//assembler.getTime = time;
-//    	newAss.number = assembler.number;
-//    	newAss.minLength = assembler.minLength;
-//    	newAss.interval = assembler.interval;
-//    	newAss.age = assembler.age;
-//    	newAss.folder = assembler.folder;		
-//    	newAss.doFail = assembler.doFail;
-//    	newAss.output = assembler.output;
-//    	newAss.format = assembler.format.toLowerCase();
-//    	newAss.realtime = assembler.realtime;
-//    	newAss.streamServers = assembler.streamServers;
-//    	newAss.exhaustive = assembler.exhaustive;
-//    	newAss.realtime = true;
-//		newAss.stats = true;//GUI implies stats
-//		newAss.ready = false;//wait for the command from GUI
-//		newAss.updateDemultiplexFile(assembler.getBCFileName());
-    	
-		setAssembler(newAss);
-		
-//		txtCompReads.setText("0");
-//		txtTempReads.setText("0");
-//		txt2DReads.setText("0");
-//		txtPFiles.setText("0");
-//		txtFFiles.setText("0"); 
-//		txtTFiles.setText("0");
+    			}
+    			
+    		}).start();
+            
+        } catch (Exception exc) {
+            exc.printStackTrace();
+        }
     	
     }
     
-    private void restart(Stage stage){
-    	reset();
-    	running(stage);
-    }
     /*
      * Components from left pane
      */
@@ -360,7 +322,7 @@ public class NPGraphFX extends Application{
     /*
      * Creates a VBox with a list of parameter settings
      */
-    private VBox addVBox(Stage stage) {
+    private VBox addVBox(Stage pStage, Stage gStage) {
         
         VBox vbox = new VBox();
         vbox.setPadding(new Insets(10)); // Set all sides to 10
@@ -373,25 +335,26 @@ public class NPGraphFX extends Application{
         sep1.setMaxWidth(LeftPaneWidth);
         vbox.getChildren().add(1, sep1);
         
-        vbox.getChildren().add(addInputPane(stage));
+        vbox.getChildren().add(addInputPane(pStage, gStage));
         vbox.setSpacing(5);
         final Separator sep2 = new Separator();
         sep2.setMaxWidth(LeftPaneWidth);
         vbox.getChildren().add(3, sep2);
 
         
-        vbox.getChildren().add(addOutputPane(stage));
+        vbox.getChildren().add(addOutputPane(pStage));
         vbox.setSpacing(5);
         final Separator sep3 = new Separator();
         sep3.setMaxWidth(LeftPaneWidth);
         vbox.getChildren().add(5, sep3);
         
-        vbox.getChildren().add(addOptionPane(stage));
+        vbox.getChildren().add(addOptionPane(pStage));
                
         
         return vbox;
     }
-    private GridPane addInputPane(Stage stage) {
+    //TODO: put load graph button here to link with gStage.show()
+    private GridPane addInputPane(Stage pStage, Stage gStage) {
     	GridPane inputPane = createFixGridPane(LeftPaneWidth, 5);
     	
     	final Label inputLabel = new Label("Input:");
@@ -442,7 +405,7 @@ public class NPGraphFX extends Application{
     			chooser.setInitialDirectory(defaultFile.getParentFile());
     		chooser.setSelectedExtensionFilter(
     				new ExtensionFilter("Assembly graph", 	"*.fastg", "*.FASTG", "*.gfa", "*.GFA"));
-    		File selectedFile = chooser.showOpenDialog(stage);
+    		File selectedFile = chooser.showOpenDialog(pStage);
     		if(selectedFile != null){				
 				try {
 					myass.setShortReadsInput(selectedFile.getCanonicalPath());
@@ -508,7 +471,7 @@ public class NPGraphFX extends Application{
     		chooser.setSelectedExtensionFilter(
     				new ExtensionFilter("Long-reads data", 	"*.fastq", "*.fasta", "*.fq", "*.fa", "*.fna", "*.sam", "*.bam" , 
     														"*.FASTQ", "*.FASTA", "*.FQ", "*.FA", "*.FNA", "*.SAM", "*.BAM"));
-    		File selectedFile = chooser.showOpenDialog(stage);
+    		File selectedFile = chooser.showOpenDialog(pStage);
     		if(selectedFile != null){
 				try {
 					myass.setLongReadsInput(selectedFile.getCanonicalPath());
@@ -698,34 +661,6 @@ public class NPGraphFX extends Application{
         gridpane.setVgap(5);
         gridpane.setHgap(5);
         return gridpane;
-    }
-	/*
-     * Restart button locates here
-     * @param hb HBox to add the stack to
-     */
-    private void addStackPane(HBox hb, Stage stage) {
- 
-        StackPane stack = new StackPane();
-        
-        Image imageStart = new Image(getClass().getResourceAsStream("icons/restart.png"));
-        ImageView viewStart = new ImageView(imageStart); 
-        viewStart.setFitWidth(20);
-        viewStart.setFitHeight(20);
-        buttonRestart = new Button("Restart", viewStart);
-        buttonRestart.setOnAction(e ->{
-        	restart(stage);
-        });
-        buttonRestart.setDisable(true);
-        
-        stack.getChildren().add(buttonRestart);
-        stack.setAlignment(Pos.CENTER_RIGHT);
-        // Add offset to right for question mark to compensate for RIGHT 
-        // alignment of all nodes
-        //StackPane.setMargin(buttonRestart, new Insets(0, 10, 0, 0));
-        
-        hb.getChildren().add(stack);
-        HBox.setHgrow(stack, Priority.ALWAYS);
-                
     }
      
     /*
