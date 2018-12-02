@@ -90,7 +90,6 @@ import javafx.stage.Stage;
 public class NPGraphFX extends Application{
     private static final Logger LOG = LoggerFactory.getLogger(NPGraphFX.class);
 
-
 	static HybridAssembler myass = new HybridAssembler();
 	static Viewer graphViewer;
 	
@@ -606,6 +605,8 @@ public class NPGraphFX extends Application{
     	
        	mm2PathTF = new TextField("");
        	mm2PathTF.setPromptText("Enter path to minimap2...");
+       	if(!myass.getMinimapPath().isEmpty())
+       		mm2PathTF.setText(myass.getMinimapPath());
        	mm2PathTF.setOnKeyPressed(e -> {
             if (e.getCode() == KeyCode.ENTER)  {
             	myass.setMinimapPath(mm2PathTF.getText());
@@ -878,11 +879,7 @@ public class NPGraphFX extends Application{
 		HybridAssembler hbAss = new HybridAssembler();
 		
 		hbAss.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/EcK12S-careful/assembly_graph.gfa");
-//		hbAss.setShortReadsInputFormat("fastg");
-//		hbAss.setLongReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/EcK12S-careful/assembly_graph.sam");
-//		hbAss.setLongReadsInputFormat("sam");
 		hbAss.setLongReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/Eck12_ONT.fasta");
-//		hbAss.setLongReadsInputFormat("fastq");
 		hbAss.setMinimapPath("/home/sonhoanghguyen/.usr/local/bin/"); 
 		
 		NPGraphFX.setAssembler(hbAss);
