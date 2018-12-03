@@ -220,7 +220,7 @@ public class GraphUtil {
 			}
 			pathReader.close();
 			if(changed)
-				redrawGraphComponents(graph);
+				graph.redrawGraphComponents();
 		}
     }
     
@@ -364,7 +364,7 @@ public class GraphUtil {
 				if(graph.reduceFromSPAdesPath(p))
 					changed=true;
 			if(changed)
-				redrawGraphComponents(graph);
+				graph.redrawGraphComponents();
 		}
     }
     
@@ -651,61 +651,7 @@ public class GraphUtil {
 		
 		return retval;
     }
-    
-    
-    /***********************************************************************
-     * TODO: merge this with GraphWatcher.update()
-     **********************************************************************/
-    
-    public static void redrawGraphComponents(BDGraph graph) {
-//      graph.addAttribute("ui.quality");
-//      graph.addAttribute("ui.antialias");
-//    	graph.addAttribute("ui.default.title", "New real-time hybrid assembler");
-
-    	for (Node node : graph) {
-
-    		Sequence seq = (Sequence) node.getAttribute("seq");
-    		double lengthScale = 1+(Math.log10(seq.length())-2)/3.5; //100->330,000
-          
-			if(lengthScale<1) lengthScale=1;
-			else if(lengthScale>2) lengthScale=2;
-	          
-			int covScale = (int) Math.round(node.getNumber("cov")/100.0);
-			SimpleBinner binner=graph.binner;
-	          
-			String[] palette= {"grey","blue","yellow","orange","green","pink","magenta","red"};
-			String color=null;
-			
-			if(binner.node2BinMap.containsKey(node)){
-				covScale=binner.node2BinMap.get(node).values().stream().mapToInt(Integer::intValue).sum();
-				if(covScale>=palette.length)
-					color=palette[palette.length-1];
-				else
-					color=palette[covScale];
-			}else
-				color="white";
-          
-//          node.addAttribute("ui.color", color);
-//          node.addAttribute("ui.size", lengthScale+"gu");
-          
-//          node.addAttribute("ui.label", covScale);
-          
-			node.setAttribute("ui.label", node.getId());
-//			node.addAttribute("ui.label", (int)(node.getNumber("cov")));
-
-
-			node.setAttribute("ui.style", "	size: " + lengthScale + "gu;" +
-        		  						"	fill-color: "+color+";" +
-        		  			            " 	stroke-mode: plain;" +
-        		  			            "	stroke-color: black;" +
-        		  			            "	stroke-width: 2px;");
-    	}
-    	
-//    	graph.edges().forEach(e->e.setAttribute("ui.label", (int) e.getNumber("cov")));
-
-    	
-    
-    }
+   
     
 
     public static void sleep() {
