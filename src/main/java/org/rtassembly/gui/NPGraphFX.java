@@ -37,6 +37,10 @@ import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
 
 import org.graphstream.stream.thread.ThreadProxyPipe;
 import org.graphstream.ui.fx_viewer.FxDefaultView;
@@ -45,7 +49,6 @@ import org.graphstream.ui.javafx.FxGraphRenderer;
 import org.graphstream.ui.view.Viewer;
 import org.graphstream.ui.view.Viewer.CloseFramePolicy;
 import org.rtassembly.npgraph.Alignment;
-import org.rtassembly.npgraph.GraphUtil;
 import org.rtassembly.npgraph.HybridAssembler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,15 +59,12 @@ import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
-import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
-import javafx.scene.control.Tab;
-import javafx.scene.control.TabPane;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -72,14 +72,17 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
 import javafx.scene.layout.RowConstraints;
-import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
+
+import javafx.scene.chart.XYChart;
+import javafx.animation.AnimationTimer;
+import javafx.scene.chart.LineChart;
+import javafx.scene.chart.NumberAxis;
+
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
@@ -118,19 +121,21 @@ public class NPGraphFX extends Application{
         	//Start with a BorderPane as root
     	    BorderPane pBorder = new BorderPane();
     	    // Put start/stop button here  
-    	    HBox hbox = addHBox();
-    	    pBorder.setTop(hbox);
     	    // All the parameters setting to the left 
-    	    //TODO: pass graphStage here to bind with graph file being loaded
-    	    leftBox=addVBox(primaryStage, graphStage);
-    	    pBorder.setLeft(leftBox);
+    	    graphInputPane = addGraphInputPane(primaryStage, graphStage);
+    	    longInputPane = addLongReadInputPane(primaryStage);
+    	    outputPane = addOutputPane(primaryStage);
+    	    alignmentPane = addAlignmentOptionPane(primaryStage);
+    	    controlPane = addControlPane();
+    	    
+    	    pBorder.setLeft(addVBox());
             
             // Here the main content    
             pBorder.setCenter(addAssemblyStatsPane());
             
             Scene pscene = new Scene(pBorder);
             primaryStage.setScene(pscene);
-            primaryStage.setTitle("Main");
+            primaryStage.setTitle("npGraph Dashboard");
             primaryStage.setOnCloseRequest(e -> {
                 Platform.exit();
                 System.exit(0);
@@ -176,68 +181,10 @@ public class NPGraphFX extends Application{
     /*
      * Components from left pane
      */
-    private VBox leftBox;
-    private TabPane tabPane; 
-    private Tab statsTab, graphTab;
-    private Button 	buttonStart, buttonStop, buttonRestart,
-    				shortInputBrowseButton, longReadsBrowseButton, outputBrowseButton, mm2BrowseButton;
-    private TextField shortInputTF, longInputTF, outputTF, minQualTF, mm2PathTF, mm2OptTF;
-    private CheckBox graphCB, overwriteCB;
-    private ComboBox<String> shortInputFormatCombo, longInputFormatCombo;
-    /*
-     * Creates an HBox with two buttons for the top region
-     */
-        
-    private HBox addHBox() {
- 
-        HBox hbox = new HBox();
-        hbox.setPadding(new Insets(15, 12, 15, 12));
-        hbox.setSpacing(10);   // Gap between nodes
-        hbox.setStyle("-fx-background-color: #336699;");
- 
+    private Button 	buttonStart, buttonStop, buttonGraph;
+    private ComboBox<String> longInputFormatCombo;
+    private GridPane graphInputPane, longInputPane, outputPane, alignmentPane, controlPane;
 
-        Image imageStart = new Image(getClass().getResourceAsStream("/start.png"));
-        ImageView viewStart = new ImageView(imageStart); 
-        viewStart.setFitWidth(20);
-        viewStart.setFitHeight(20);
-        buttonStart = new Button("Start", viewStart);
-        buttonStart.setPrefSize(100, 20);
-        buttonStart.setOnAction((event) -> {
-        	if(!checkingAndSetting())
-        		return;
-        	
-			//Start running
-			leftBox.setDisable(true);
-			//TODO: leftbox slide away
-			buttonStart.setDisable(true);;
-			buttonStop.setDisable(false);
-		});
-        
-        Image imageStop = new Image(getClass().getResourceAsStream("/stop.png"));
-        ImageView viewStop = new ImageView(imageStop); 
-        viewStop.setFitWidth(20);
-        viewStop.setFitHeight(20);
-        buttonStop = new Button("Stop", viewStop);
-        buttonStop.setPrefSize(100, 20);
-        buttonStop.setDisable(true);
-        buttonStop.setOnAction((event) -> {
-			String confirm = FxDialogs.showConfirm( "STOP button just being hit...", "Do you really want to stop the process?", "No", "Yes");
-			if(confirm.equals("No")){
-				return;
-			}
-			myass.setStopSignal(true);
-        	buttonStop.setDisable(true);
-
-
-        	//buttonRestart.setDisable(false);
-
-        });
-        
-        
-        hbox.getChildren().addAll(buttonStart, buttonStop);
-        
-        return hbox;
-    }
     private boolean checkFileFromTextField(TextField tf) {
 		String _path = tf.getText().trim();				
 		if (_path.equals("")){
@@ -268,53 +215,6 @@ public class NPGraphFX extends Application{
 		}
 		return true;
     }
-    private boolean checkingAndSetting() {	
-    	if(myass==null)
-    		myass=new HybridAssembler();
-		//1. validate short-read assembly input
-		if(!checkFileFromTextField(shortInputTF))
-			return false;
-		myass.setShortReadsInput(shortInputTF.getText());
-		if(!checkFileFromTextField(longInputTF))
-			return false;
-		myass.setLongReadsInput(longInputTF.getText());
-		if(!checkFolderFromTextField(outputTF))
-			return false;
-		myass.setPrefix(outputTF.getText());
-		if(shortInputFormatCombo.getValue().equals("fasta/fastq")) {
-			if(!checkFolderFromTextField(mm2PathTF))
-				return false;
-			if(!myass.checkMinimap2())
-				return false;
-			myass.setMinimapPath(mm2PathTF.getText());
-			myass.setMinimapOpts(mm2OptTF.getText());
-			
-			Alignment.MIN_QUAL=Integer.valueOf(minQualTF.getText());
-		}
-		try{
-			System.setProperty("usr.dir", myass.getPrefix());
-		}
-		catch(NullPointerException | IllegalArgumentException | SecurityException e ){
-			e.printStackTrace();
-			FxDialogs.showWarning("Illegal output folder!", "Please specify another output destination");
-			outputTF.requestFocus();
-			return false;
-		}
-		
-		if(!myass.prepareShortReadsProcess(true)) {
-			FxDialogs.showWarning("Warning", "Problems preparing assembly graph file. Check stderr!");
-			return false;
-		}
-
-		if(!myass.prepareLongReadsProcess()) {
-			FxDialogs.showWarning("Warning", "Problems preparing long-reads data. Check stderr");
-			return false;
-		}
-
-    	GraphUtil.redrawGraphComponents(myass.simGraph);
-    	myass.setReady(true);
-    	return true;
-    }
     
     
     private final int LeftPaneWidth=360;
@@ -322,7 +222,7 @@ public class NPGraphFX extends Application{
     /*
      * Creates a VBox with a list of parameter settings
      */
-    private VBox addVBox(Stage pStage, Stage gStage) {
+    private VBox addVBox() {
         
         VBox vbox = new VBox();
         vbox.setPadding(new Insets(10)); // Set all sides to 10
@@ -335,40 +235,58 @@ public class NPGraphFX extends Application{
         sep1.setMaxWidth(LeftPaneWidth);
         vbox.getChildren().add(1, sep1);
         
-        vbox.getChildren().add(addInputPane(pStage, gStage));
+        vbox.getChildren().add(graphInputPane);
         vbox.setSpacing(5);
         final Separator sep2 = new Separator();
         sep2.setMaxWidth(LeftPaneWidth);
         vbox.getChildren().add(3, sep2);
-
         
-        vbox.getChildren().add(addOutputPane(pStage));
+        vbox.getChildren().add(longInputPane);
         vbox.setSpacing(5);
         final Separator sep3 = new Separator();
-        sep3.setMaxWidth(LeftPaneWidth);
+        sep2.setMaxWidth(LeftPaneWidth);
         vbox.getChildren().add(5, sep3);
+
         
-        vbox.getChildren().add(addOptionPane(pStage));
+        vbox.getChildren().add(outputPane);
+        vbox.setSpacing(5);
+        final Separator sep4 = new Separator();
+        sep4.setMaxWidth(LeftPaneWidth);
+        vbox.getChildren().add(7, sep4);
+        
+        vbox.getChildren().add(alignmentPane);
+        vbox.setSpacing(5);
+        final Separator sep5 = new Separator();
+        sep4.setMaxWidth(LeftPaneWidth);
+        vbox.getChildren().add(9, sep5);
                
-        
+        vbox.getChildren().add(controlPane);
         return vbox;
     }
     //TODO: put load graph button here to link with gStage.show()
-    private GridPane addInputPane(Stage pStage, Stage gStage) {
+    private GridPane addGraphInputPane(Stage pStage, Stage gStage) {
     	GridPane inputPane = createFixGridPane(LeftPaneWidth, 5);
     	
-    	final Label inputLabel = new Label("Input:");
+    	final Label inputLabel = new Label("Assembly graph:");
     	inputLabel.setFont(Font.font("Roman", FontWeight.BOLD, 12));
     	inputLabel.setStyle("-fx-underline:true");
-    	GridPane.setConstraints(inputLabel, 0,0);
+    	GridPane.setConstraints(inputLabel, 0,0,2,1);
     	inputPane.getChildren().add(inputLabel);
-    	   		
-    	final Label shortInputLabel = new Label("1. Pre-assemblies:");
-    	shortInputLabel.setFont(Font.font("Roman", FontWeight.SEMI_BOLD, 12));
-    	GridPane.setConstraints(shortInputLabel, 0,1,2,1);
-    	inputPane.getChildren().add(shortInputLabel);
     	
-    	shortInputFormatCombo=new ComboBox<String>();
+        TextField shortInputTF = new TextField("");
+    	shortInputTF.setPromptText("Enter file name for assembly graph...");
+    	if(!myass.getShortReadsInput().isEmpty())
+    		shortInputTF.setText(myass.getShortReadsInput());
+    	shortInputTF.setOnKeyPressed(e -> {
+            if (e.getCode() == KeyCode.ENTER)  {
+                buttonGraph.requestFocus();
+            }
+    	});
+    	//textField.setPrefWidth(250);
+    	GridPane.setConstraints(shortInputTF, 0,1,4,1);
+    	inputPane.getChildren().add(shortInputTF);
+    	
+    	ComboBox<String> shortInputFormatCombo=new ComboBox<String>();
         shortInputFormatCombo.getItems().addAll("fastg", "gfa");   
         shortInputFormatCombo.setValue(myass.getShortReadsInputFormat());
         shortInputFormatCombo.valueProperty().addListener((obs_val, old_val, new_val) -> {
@@ -376,24 +294,10 @@ public class NPGraphFX extends Application{
         	shortInputTF.setText("");
         	myass.setShortReadsInput("");
         });
-        GridPane.setConstraints(shortInputFormatCombo, 2, 1, 2, 1);
+        GridPane.setConstraints(shortInputFormatCombo, 2, 0, 2, 1);
         inputPane.getChildren().add(shortInputFormatCombo);
-    	
-    	shortInputTF = new TextField("");
-    	shortInputTF.setPromptText("Enter file name for assembly graph...");
-    	if(!myass.getShortReadsInput().isEmpty())
-    		shortInputTF.setText(myass.getShortReadsInput());
-    	shortInputTF.setOnKeyPressed(e -> {
-            if (e.getCode() == KeyCode.ENTER)  {
-                buttonStart.requestFocus();
-            }
-    	});
-    	//textField.setPrefWidth(250);
-    	GridPane.setConstraints(shortInputTF, 0,2,4,1);
-    	inputPane.getChildren().add(shortInputTF);
-    	
 
-    	shortInputBrowseButton = new ImageButton("/folder.png");
+    	Button shortInputBrowseButton = new ImageButton("/folder.png");
     	shortInputBrowseButton.setPrefSize(10, 10);
     	shortInputBrowseButton.setOnAction((event) -> {
        		FileChooser chooser = new FileChooser();
@@ -419,20 +323,73 @@ public class NPGraphFX extends Application{
 
     		}
         });
-    	GridPane.setConstraints(shortInputBrowseButton, 4,2);
+    	GridPane.setConstraints(shortInputBrowseButton, 4,1);
     	GridPane.setHalignment(shortInputBrowseButton,HPos.LEFT);
     	inputPane.getChildren().add(shortInputBrowseButton);
     	//inputPane.setGridLinesVisible(true);
 
-    	graphCB = new CheckBox("Show assembly graph");
+    	CheckBox graphCB = new CheckBox("Show graph");
     	graphCB.setSelected(myass.simGraph!=null);
-    	GridPane.setConstraints(graphCB, 0,3,5,1);
+    	GridPane.setConstraints(graphCB, 0,2,2,1);
     	inputPane.getChildren().add(graphCB);
+
     	
-    	final Label longInputLabel = new Label("2. Long-reads data:");
-    	longInputLabel.setFont(Font.font("Roman", FontWeight.SEMI_BOLD, 12));
-    	GridPane.setConstraints(longInputLabel, 0,4,2,1);
-    	inputPane.getChildren().add(longInputLabel);
+        Image imageLoad = new Image(getClass().getResourceAsStream("/load.png"));
+        ImageView viewLoad = new ImageView(imageLoad); 
+        viewLoad.setFitWidth(20);
+        viewLoad.setFitHeight(20);
+        buttonGraph = new Button("Load", viewLoad);
+        buttonGraph.setPrefSize(100, 20);
+        buttonGraph.setOnAction((event) -> {
+        	if(!checkFileFromTextField(shortInputTF)) {
+    			return;       	
+        	}
+    		myass.setShortReadsInput(shortInputTF.getText());
+    		if(!myass.prepareShortReadsProcess(true)) {
+    			FxDialogs.showWarning("Warning", "Problems preparing assembly graph file. Check stderr!");
+    			return;
+    		}
+    		myass.simGraph.redrawGraphComponents();
+    		
+        	if(graphCB.isSelected())
+        		gStage.show();        	
+			//TODO: unhide further controls
+        	longInputPane.setDisable(false);
+        	outputPane.setDisable(false);
+        	controlPane.setDisable(false);
+        	graphInputPane.setDisable(true);
+        	updateData();
+        	
+		});
+    	GridPane.setConstraints(buttonGraph, 2,2,2,1);
+    	inputPane.getChildren().add(buttonGraph);
+    	
+		return inputPane;
+	}
+    
+    private GridPane addLongReadInputPane(Stage pStage) {
+    	GridPane inputPane = createFixGridPane(LeftPaneWidth, 5);
+    	
+    	final Label inputLabel = new Label("Long-read data:");
+    	inputLabel.setFont(Font.font("Roman", FontWeight.BOLD, 12));
+    	inputLabel.setStyle("-fx-underline:true");
+    	GridPane.setConstraints(inputLabel, 0,0,2,1);
+    	inputPane.getChildren().add(inputLabel);  	
+    	
+    	TextField longInputTF = new TextField("");
+    	longInputTF.setPromptText("Enter file name of long-reads data...");
+    	if(!myass.getLongReadsInput().isEmpty())
+    		longInputTF.setText(myass.getLongReadsInput());
+    	longInputTF.setOnKeyPressed(e -> {
+            if (e.getCode() == KeyCode.ENTER)  {
+        		if(!checkFileFromTextField(longInputTF))
+        			return;
+            	myass.setLongReadsInput(longInputTF.getText());
+//                buttonStart.requestFocus();
+            }
+    	});
+    	GridPane.setConstraints(longInputTF, 0,1,4,1);
+    	inputPane.getChildren().add(longInputTF);
     	
     	longInputFormatCombo = new ComboBox<>();
         longInputFormatCombo.getItems().addAll("fasta/fastq", "sam/bam");   
@@ -442,24 +399,11 @@ public class NPGraphFX extends Application{
         	longInputTF.setText("");
         	myass.setLongReadsInput("");
         });
-        GridPane.setConstraints(longInputFormatCombo, 2, 4, 2, 1);
+        GridPane.setConstraints(longInputFormatCombo, 2, 0, 2, 1);
         inputPane.getChildren().add(longInputFormatCombo);
     	
-    	longInputTF = new TextField("");
-    	longInputTF.setPromptText("Enter file name of long-reads data...");
-    	if(!myass.getLongReadsInput().isEmpty())
-    		longInputTF.setText(myass.getLongReadsInput());
-    	longInputTF.setOnKeyPressed(e -> {
-            if (e.getCode() == KeyCode.ENTER)  {
-                buttonStart.requestFocus();
-            }
-    	});
-    	GridPane.setConstraints(longInputTF, 0,5,4,1);
-    	inputPane.getChildren().add(longInputTF);
-    	
-    	longReadsBrowseButton = new ImageButton("/folder.png");
+    	Button longReadsBrowseButton = new ImageButton("/folder.png");
     	longReadsBrowseButton.setPrefSize(10, 10);
-    	longReadsBrowseButton.setDisable(!graphCB.isSelected());
     	longReadsBrowseButton.setOnAction((event) -> {
     		FileChooser chooser = new FileChooser();
     		chooser.setTitle("Select long-reads data file");
@@ -486,17 +430,14 @@ public class NPGraphFX extends Application{
         });
     	
     	
-    	GridPane.setConstraints(longReadsBrowseButton, 4,5);
+    	GridPane.setConstraints(longReadsBrowseButton, 4,1);
     	GridPane.setHalignment(longReadsBrowseButton,HPos.LEFT);
     	inputPane.getChildren().add(longReadsBrowseButton);
     	
-    	graphCB.selectedProperty().addListener(
-                (obs_val,old_val,new_val) -> {
-                	tabPane.getSelectionModel().select(0);
-                });	
-    	
+    	inputPane.setDisable(true);
 		return inputPane;
 	}
+    
     private GridPane addOutputPane(Stage stage) {
     	GridPane outputPane = createFixGridPane(LeftPaneWidth, 5);
     	
@@ -506,20 +447,32 @@ public class NPGraphFX extends Application{
     	GridPane.setConstraints(outputLabel, 0,0);
     	outputPane.getChildren().add(outputLabel);
     	
-    	outputTF = new TextField("");
+    	TextField outputTF = new TextField("");
     	if(!myass.getPrefix().isEmpty())
     		outputTF.setText(myass.getPrefix());
     	outputTF.setPromptText("Enter name for output file...");
     	outputTF.setOnKeyPressed(e -> {
             if (e.getCode() == KeyCode.ENTER)  {
-                buttonStart.requestFocus();
+        		if(!checkFolderFromTextField(outputTF))
+        			return;
+        		myass.setPrefix(outputTF.getText());
+        		
+        		try{
+        			System.setProperty("usr.dir", myass.getPrefix());
+        		}
+        		catch(NullPointerException | IllegalArgumentException | SecurityException exception ){
+        			exception.printStackTrace();
+        			FxDialogs.showWarning("Illegal output folder!", "Please specify another output destination");
+        			return;
+        		}
+//                buttonStart.requestFocus();
             }
     	});
     	GridPane.setConstraints(outputTF, 0,1,4,1);
     	outputPane.getChildren().add(outputTF);
     	
 
-    	outputBrowseButton = new ImageButton("/folder.png");
+    	Button outputBrowseButton = new ImageButton("/folder.png");
     	outputBrowseButton.setPrefSize(10, 10);
 //    	outputBrowseButton.setDisable(assembler.output.equals("-"));
     	outputBrowseButton.setOnAction((event) -> {
@@ -532,6 +485,14 @@ public class NPGraphFX extends Application{
     		if(selectedDirectory != null) {
     			myass.setPrefix(selectedDirectory.getPath());
     			outputTF.setText(myass.getPrefix());
+        		try{
+        			System.setProperty("usr.dir", myass.getPrefix());
+        		}
+        		catch(NullPointerException | IllegalArgumentException | SecurityException exception ){
+        			exception.printStackTrace();
+        			FxDialogs.showWarning("Illegal output folder!", "Please specify another output destination");
+        			return;
+        		}
     		}
 
         });
@@ -539,7 +500,8 @@ public class NPGraphFX extends Application{
     	GridPane.setHalignment(outputBrowseButton, HPos.LEFT);
     	outputPane.getChildren().add(outputBrowseButton);
     	
-    	overwriteCB = new CheckBox("Overwrite existing files if needed");
+    	CheckBox overwriteCB = new CheckBox("Overwrite existing index files");
+    	overwriteCB.setSelected(myass.getOverwrite());
     	overwriteCB.selectedProperty().addListener(
     			(obs_val, old_val, new_val) -> {
     				myass.setOverwrite(new_val);
@@ -548,9 +510,10 @@ public class NPGraphFX extends Application{
     	GridPane.setConstraints(overwriteCB, 0, 2, 4, 1);
     	outputPane.getChildren().add(overwriteCB);
     	
+    	outputPane.setDisable(true);
 		return outputPane;
 	}
-    private GridPane addOptionPane(Stage stage) {
+    private GridPane addAlignmentOptionPane(Stage stage) {
     	GridPane optionPane = createFixGridPane(LeftPaneWidth, 5);
     	
     	final Label optLabel = new Label("Alignment options:");
@@ -566,21 +529,23 @@ public class NPGraphFX extends Application{
     	GridPane.setConstraints(label1, 0,1,4,1);
     	optionPane.getChildren().add(label1);
     	
-       	mm2PathTF = new TextField("");
+       	TextField mm2PathTF = new TextField("");
        	mm2PathTF.setPromptText("Enter path to minimap2...");
        	if(!myass.getMinimapPath().isEmpty())
        		mm2PathTF.setText(myass.getMinimapPath());
        	mm2PathTF.setOnKeyPressed(e -> {
             if (e.getCode() == KeyCode.ENTER)  {
-            	myass.setMinimapPath(mm2PathTF.getText());
-                buttonStart.requestFocus();
+    			if(!checkFolderFromTextField(mm2PathTF))
+    				return;
+    			myass.setMinimapPath(mm2PathTF.getText());
+//                buttonStart.requestFocus();
             }
     	});
     	GridPane.setConstraints(mm2PathTF, 0,2,4,1);
     	optionPane.getChildren().add(mm2PathTF);
     	
 
-    	mm2BrowseButton = new ImageButton("/folder.png");
+    	Button mm2BrowseButton = new ImageButton("/folder.png");
     	mm2BrowseButton.setPrefSize(10, 10);
     	mm2BrowseButton.setOnAction((event) -> {
     		DirectoryChooser chooser = new DirectoryChooser();
@@ -589,9 +554,9 @@ public class NPGraphFX extends Application{
     		if(defaultDirectory.isDirectory())
     			chooser.setInitialDirectory(defaultDirectory);
     		File selectedDirectory=chooser.showDialog(stage);
-    		if(selectedDirectory != null) {
+    		if(selectedDirectory != null) {		   
     			myass.setMinimapPath(selectedDirectory.getPath());
-    			mm2PathTF.setText(myass.getMinimapPath());
+    			mm2PathTF.setText(myass.getMinimapPath());   			
     		}
 
         });
@@ -601,13 +566,13 @@ public class NPGraphFX extends Application{
     	GridPane.setConstraints(label2, 0,3,4,1);
     	optionPane.getChildren().add(label2);
     	
-       	mm2OptTF = new TextField("");
+       	TextField mm2OptTF = new TextField("");
        	mm2OptTF.setPromptText("Enter options to minimap2...");
        	if(!myass.getMinimapOpts().isEmpty())
        		mm2OptTF.setText(myass.getMinimapOpts());
        	mm2OptTF.setOnKeyPressed(e -> {
             if (e.getCode() == KeyCode.ENTER)  {
-            	myass.setMinimapPath(mm2OptTF.getText());
+            	myass.setMinimapOpts(mm2OptTF.getText());
                 buttonStart.requestFocus();
             }
     	});
@@ -619,7 +584,7 @@ public class NPGraphFX extends Application{
     	GridPane.setConstraints(labelQual, 0,6,3,1);
     	optionPane.getChildren().add(labelQual);
     	
-    	minQualTF = new TextField("");
+    	TextField minQualTF = new TextField("");
     	minQualTF.setPromptText("min.");
     	minQualTF.setText(Integer.toString(Alignment.MIN_QUAL));
     	minQualTF.setOnKeyPressed(e -> {
@@ -630,9 +595,81 @@ public class NPGraphFX extends Application{
     	GridPane.setConstraints(minQualTF, 3,6);
     	optionPane.getChildren().add(minQualTF);
     	
-    	optionPane.disableProperty().bind(longInputFormatCombo.valueProperty().isEqualTo("sam/bam"));  
+    	optionPane.disableProperty().bind(	longInputPane.disabledProperty()
+    										.or(longInputFormatCombo.valueProperty().isEqualTo("sam/bam")));  
 		return optionPane;
 	}
+    
+    private GridPane addControlPane() {
+    	GridPane controlPane = createFixGridPane(LeftPaneWidth, 5);
+    	
+        Image imageStart = new Image(getClass().getResourceAsStream("/start.png"));
+        ImageView viewStart = new ImageView(imageStart); 
+        viewStart.setFitWidth(20);
+        viewStart.setFitHeight(20);
+        buttonStart = new Button("Start", viewStart);
+        buttonStart.setPrefSize(100, 20);
+        buttonStart.setOnAction((event) -> {
+        	//checking & settings
+    		if(myass.getLongReadsInput().isEmpty())	{
+    			FxDialogs.showWarning("Warning", "Please specify the long read data!");
+    			return;
+    		}  		
+    		if(myass.getLongReadsInputFormat().isEmpty()) {
+    			FxDialogs.showWarning("Warning", "Please specify the long read format!");
+    			return;
+    		}
+    		if(!myass.prepareLongReadsProcess()) {
+    			FxDialogs.showWarning("Warning", "Problems preparing long-reads data. Please try again!");
+    			return;
+    		}
+    		
+    		if(myass.getLongReadsInputFormat().equals("fasta/fastq")) {   			
+    			if(!myass.checkMinimap2()) {
+    				FxDialogs.showError("Error finding minimap2 at " + myass.getMinimapPath(), "Please try again!");
+    				return;
+    			}
+    		}
+
+
+        	myass.setReady(true);
+        	
+			//Start running
+			longInputPane.setDisable(true);
+			outputPane.setDisable(true);
+			
+			buttonStart.setDisable(true);
+			buttonStop.setDisable(false);
+			
+		});
+        GridPane.setConstraints(buttonStart, 0,0,2,1);
+    	controlPane.getChildren().add(buttonStart);
+        
+        Image imageStop = new Image(getClass().getResourceAsStream("/stop.png"));
+        ImageView viewStop = new ImageView(imageStop); 
+        viewStop.setFitWidth(20);
+        viewStop.setFitHeight(20);
+        buttonStop = new Button("Stop", viewStop);
+        buttonStop.setPrefSize(100, 20);
+        buttonStop.setDisable(true);
+        buttonStop.setOnAction((event) -> {
+			String confirm = FxDialogs.showConfirm( "STOP button just being hit...", "Do you really want to stop the process?", "No", "Yes");
+			if(confirm.equals("No")){
+				return;
+			}
+			myass.setStopSignal(true);
+        	buttonStop.setDisable(true);
+
+
+        	//buttonRestart.setDisable(false);
+
+        });
+        GridPane.setConstraints(buttonStop, 3,0,2,1);
+    	controlPane.getChildren().add(buttonStop);
+    	
+    	controlPane.setDisable(true);
+        return controlPane;
+    }
     
     private GridPane createFixGridPane(int width, int ncols){
         GridPane gridpane = new GridPane();
@@ -663,28 +700,99 @@ public class NPGraphFX extends Application{
         return gridpane;
     }
      
-    /*
-     * Creates a grid for the center region with 2 columns and 2 rows
-     */
-    private GridPane addAssemblyStatsPane() {
-    	
- 	   GridPane mainGrid = createAutoresizeGridPane(1,2);
+    
+    /************************************************************************
+     ********************** This is for the stats panel *********************
+     ************************************************************************/
+    private static final int MAX_DATA_POINTS = 500;
+    
+    private int xSeriesData = 0;
+    private XYChart.Series<Number, Number> seriesN50 = new XYChart.Series<>();
+    private XYChart.Series<Number, Number> seriesN75 = new XYChart.Series<>();
+    private XYChart.Series<Number, Number> seriesMax = new XYChart.Series<>();
+    private XYChart.Series<Number, Number> seriesNumCtgs = new XYChart.Series<>();
+    private XYChart.Series<Number, Number> seriesNumCircularCtgs = new XYChart.Series<>();
+    private ExecutorService executor;
+    private ConcurrentLinkedQueue<Number> dataN50 = new ConcurrentLinkedQueue<>();
+    private ConcurrentLinkedQueue<Number> dataN75 = new ConcurrentLinkedQueue<>();
+    private ConcurrentLinkedQueue<Number> dataMax = new ConcurrentLinkedQueue<>();
+    private ConcurrentLinkedQueue<Number> dataNumCtgs = new ConcurrentLinkedQueue<>();
+    private ConcurrentLinkedQueue<Number> dataNumCircularCtgs = new ConcurrentLinkedQueue<>();
+
+    private NumberAxis xAxis;
+    
+    @SuppressWarnings("unchecked")
+	private GridPane addAssemblyStatsPane(){
+	   GridPane mainGrid = createAutoresizeGridPane(1,2);
        mainGrid.setStyle("-fx-background-color: #C0C0C0;");
        mainGrid.setPadding(new Insets(5, 100, 5, 100));
        mainGrid.setVgap(5);
        mainGrid.setHgap(5);
        
-//     GridPane.setConstraints(countPane, 0, 1);
-//     mainGrid.getChildren().add(countPane);
-     
-//     mainGrid.setGridLinesVisible(true);
+       xAxis = new NumberAxis(0, MAX_DATA_POINTS, MAX_DATA_POINTS / 10);
+       xAxis.setForceZeroInRange(false);
+       xAxis.setAutoRanging(false);
+       xAxis.setTickLabelsVisible(false);
+       xAxis.setTickMarkVisible(false);
+       xAxis.setMinorTickVisible(false);
+       
+       /*
+        * Length stats chart
+        */
+       NumberAxis yAxis = new NumberAxis();
+       // Create a LineChart
+       final LineChart<Number, Number> lengthChart = new LineChart<Number, Number>(xAxis, yAxis) {
+           // Override to remove symbols on each data point
+           @Override
+           protected void dataItemAdded(Series<Number, Number> series, int itemIndex, Data<Number, Number> item) {
+           }
+       };
+       
+       lengthChart.setAnimated(false);
+       lengthChart.setTitle("Length (bp) stats over time");
+       lengthChart.setHorizontalGridLinesVisible(true);
+
+
+       // Set Name for Series
+       seriesN50.setName("N50");
+       seriesN75.setName("N75");
+       seriesMax.setName("Max length");
+
+       // Add Chart Series
+       lengthChart.getData().addAll(seriesN50, seriesN75, seriesMax);
+       
+   		GridPane.setConstraints(lengthChart, 0,0);
+   		mainGrid.getChildren().add(lengthChart);	
    		
+   		/*
+   		 * Number of contigs chart
+   		 */
+   		yAxis = new NumberAxis();
+        final LineChart<Number, Number> numChart = new LineChart<Number, Number>(xAxis, yAxis) {
+            // Override to remove symbols on each data point
+            @Override
+            protected void dataItemAdded(Series<Number, Number> series, int itemIndex, Data<Number, Number> item) {
+            }
+        };       
+        
+        numChart.setAnimated(false);
+        numChart.setTitle("Number of contigs over time");
+        numChart.setHorizontalGridLinesVisible(true);
+        
+        seriesNumCtgs.setName("Number of contigs");
+        seriesNumCircularCtgs.setName("Number of CIRCULAR contigs");
+        
+        numChart.getData().addAll(seriesNumCtgs, seriesNumCircularCtgs);
+   		GridPane.setConstraints(numChart, 0,1);
+   		mainGrid.getChildren().add(numChart);   	
+
    		return mainGrid;
     }
     
-    /*
-     * Create a Grid Pane for barcode analysis
-     */
+
+    /******************************************************************************************
+     * ************ Create a Grid Pane for assembly graph *************************************
+     ******************************************************************************************/
     private GridPane addGraphResolverPane(){  		
     	GridPane mainGrid = createAutoresizeGridPane(1,1);
 		mainGrid.setStyle("-fx-background-color: #C0C0C0;");
@@ -708,15 +816,66 @@ public class NPGraphFX extends Application{
     /******************************************************************************************
      * ** Here are variables and controls for all plots ***************************************
      ******************************************************************************************/
-	final TextField txtCompReads= new TextField("0"), 
-					txtTempReads= new TextField("0"), 
-					txt2DReads= new TextField("0");
-	final TextField txtPFiles= new TextField("0"), 
-					txtFFiles= new TextField("0"), 
-					txtTFiles= new TextField("0");
-
 	//private static boolean stillRun = true;
+    private class AddToQueue implements Runnable {
+        public void run() {
+            try {
+                // add a item of random data to queue
+                dataN50.add(myass.observer.getN50());
+                dataN75.add(myass.observer.getN75());
+                dataMax.add(myass.observer.getLongestContig());
+                dataNumCtgs.add(myass.observer.getNumberOfSequences());
+                dataNumCircularCtgs.add(myass.observer.getNumberOfCircularSequences());
 
+                Thread.sleep(500);
+                executor.execute(this);
+            } catch (InterruptedException ex) {
+                ex.printStackTrace();
+            }
+        }
+    }
+
+    //-- Timeline gets called in the JavaFX Main thread
+    private void prepareTimeline() {
+        // Every frame to take any data from queue and add to chart
+        new AnimationTimer() {
+            @Override
+            public void handle(long now) {
+                addDataToSeries();
+            }
+        }.start();
+    }
+
+    private void addDataToSeries() {
+        for (int i = 0; i < 20; i++) { //-- add 20 numbers to the plot+
+            if (dataN50.isEmpty()) break;
+            seriesN50.getData().add(new XYChart.Data<>(xSeriesData, dataN50.remove()));
+            seriesN75.getData().add(new XYChart.Data<>(xSeriesData, dataN75.remove()));
+            seriesMax.getData().add(new XYChart.Data<>(xSeriesData, dataMax.remove()));
+            seriesNumCtgs.getData().add(new XYChart.Data<>(xSeriesData, dataNumCtgs.remove()));
+            seriesNumCircularCtgs.getData().add(new XYChart.Data<>(xSeriesData++, dataNumCircularCtgs.remove()));
+        }
+        // remove points to keep us at no more than MAX_DATA_POINTS
+        if (seriesN50.getData().size() > MAX_DATA_POINTS) {
+        	seriesN50.getData().remove(0, seriesN50.getData().size() - MAX_DATA_POINTS);
+        }
+        if (seriesN75.getData().size() > MAX_DATA_POINTS) {
+        	seriesN75.getData().remove(0, seriesN75.getData().size() - MAX_DATA_POINTS);
+        }
+        if (seriesMax.getData().size() > MAX_DATA_POINTS) {
+        	seriesMax.getData().remove(0, seriesMax.getData().size() - MAX_DATA_POINTS);
+        }
+        if (seriesNumCtgs.getData().size() > MAX_DATA_POINTS) {
+        	seriesNumCtgs.getData().remove(0, seriesNumCtgs.getData().size() - MAX_DATA_POINTS);
+        }
+        if (seriesNumCircularCtgs.getData().size() > MAX_DATA_POINTS) {
+        	seriesNumCircularCtgs.getData().remove(0, seriesNumCircularCtgs.getData().size() - MAX_DATA_POINTS);
+        }
+        // update
+        xAxis.setLowerBound(xSeriesData - MAX_DATA_POINTS);
+        xAxis.setUpperBound(xSeriesData - 1);
+    }
+    
 	public static void interupt(Exception e){
 		//stillRun = false;
 //		assembler.wait = false;
@@ -724,98 +883,35 @@ public class NPGraphFX extends Application{
 	}
 	
 	private void updateData(){
-		 
-        final ScheduledExecutorService scheduler 
-            = Executors.newScheduledThreadPool(1);
- 
-//        scheduler.scheduleAtFixedRate(
-//                new Runnable(){         
-//            		int lastIndexLengths = 0;//, lastIndexLengths2D = 0, lastIndexLengthsComp = 0, lastIndexLengthsTemp = 0;
-//            		int lastIndexQual2D = 0, lastIndexQualComp = 0, lastIndexQualTemp = 0;
-//                    @Override
-//                    public void run() {
-//                    	if(!assembler.wait)
-//                    		scheduler.shutdown();
-//                    	
-//            			Second period = new Second();
-//            			allReadsCount.add(period, assembler.twoDCount,"2D");
-//            			allReadsCount.add(period, assembler.tempCount,"template");
-//            			allReadsCount.add(period, assembler.compCount,"complement");
-//
-//            
-//            			Demultiplexer myDmplx = assembler.dmplx;
-//            			if(myDmplx!=null){
-//            				for(int i=0;i<myDmplx.readCount.length;i++){
-//            					demultiplexedStackReadsCount.add(period, myDmplx.readCount[i], myDmplx.barCodes.get(i).getName());
-//            					
-//            					demultiplexedBarReadsCount.setValue(myDmplx.readCount[i], "Count", myDmplx.barCodes.get(i).getName());
-//            				}
-//            				
-//            			}
-//            			
-//            			txtTFiles.setText(assembler.getTotalFilesNumber()+"");	                
-//            			txtPFiles.setText(assembler.getOKFilesNumber()+"");
-//            			txtFFiles.setText(assembler.getSkippedFilesNumber()+"");
-//            
-//            			txt2DReads.setText(assembler.twoDCount+"");
-//            			txtTempReads.setText(assembler.tempCount+"");
-//            			txtCompReads.setText(assembler.compCount+"");
-//
-//            
-//            			int currentIndex = assembler.lengths.size();
-//            
-//            			if (currentIndex > lastIndexLengths){			
-//            				int index = histoLengthDataSet.getSeriesIndex("Read Length");
-//            				for (int i = lastIndexLengths; i < currentIndex;i++)
-//            					histoLengthDataSet.addSeries(index, assembler.lengths.get(i));
-//            
-//            				lastIndexLengths = currentIndex;
-//            
-//            				histoLengthDataSet.notifyChanged();
-//            			}
-//            
-//            			currentIndex = assembler.qual2D.size();
-//            			if (currentIndex > lastIndexQual2D){
-//            				int index = histoQualDataSet.getSeriesIndex("2D");
-//            				for (int i = lastIndexQual2D; i < currentIndex;i++)
-//            					histoQualDataSet.addSeries(index, assembler.qual2D.get(i));
-//            
-//            				lastIndexQual2D = currentIndex;
-//            				histoQualDataSet.notifyChanged();
-//            			}
-//            			currentIndex = assembler.qualTemp.size();
-//            			if (currentIndex > lastIndexQualTemp){
-//            				int index = histoQualDataSet.getSeriesIndex("template");
-//            				for (int i = lastIndexQualTemp; i < currentIndex;i++)
-//            					histoQualDataSet.addSeries(index, assembler.qualTemp.get(i));
-//            
-//            				lastIndexQualTemp = currentIndex;
-//            				histoQualDataSet.notifyChanged();
-//            			}
-//            			currentIndex = assembler.qualComp.size();
-//            			if (currentIndex > lastIndexQualComp){
-//            				int index = histoQualDataSet.getSeriesIndex("complement");
-//            				for (int i = lastIndexQualComp; i < currentIndex;i++)
-//            					histoQualDataSet.addSeries(index, assembler.qualComp.get(i));
-//            
-//            				lastIndexQualComp = currentIndex;
-//            				histoQualDataSet.notifyChanged();
-//            			}          
-//                        
-//                    }
-//                }, 
-//                1, 
-//                1, 
-//                TimeUnit.SECONDS);     
+        executor = Executors.newCachedThreadPool(new ThreadFactory() {
+            @Override
+            public Thread newThread(Runnable r) {
+                Thread thread = new Thread(r);
+                thread.setDaemon(true);
+                return thread;
+            }
+        });
+
+        AddToQueue addToQueue = new AddToQueue();
+        executor.execute(addToQueue);
+        //-- Prepare Timeline
+        prepareTimeline();  
 	}
 
 
 	public static void main(String[] args) {
 		HybridAssembler hbAss = new HybridAssembler();
 		
-		hbAss.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/EcK12S-careful/assembly_graph.gfa");
-		hbAss.setLongReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/Eck12_ONT.fasta");
-		hbAss.setMinimapPath("/home/sonhoanghguyen/.usr/local/bin/"); 
+//		//desktop IMB
+//		hbAss.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/EcK12S-careful/assembly_graph.gfa");
+//		hbAss.setLongReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/Eck12_ONT.fasta");
+//		hbAss.setMinimapPath("/home/sonhoanghguyen/.usr/local/bin/"); 
+		
+		//laptop Dell
+		hbAss.setShortReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/EcK12S-careful/assembly_graph.fastg");
+//		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/reads/EcK12S_ONT.fastq");		
+		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/EcK12S-careful/assembly_graph.sam");
+		hbAss.setMinimapPath("/home/s_hoangnguyen/workspace/minimap2/"); 
 		
 		NPGraphFX.setAssembler(hbAss);
 		Application.launch(NPGraphFX.class,args);

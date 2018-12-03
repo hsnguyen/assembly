@@ -28,7 +28,7 @@ import japsa.seq.SequenceReader;
 public class HybridAssembler {
     private static final Logger LOG = LoggerFactory.getLogger(HybridAssembler.class);
 	//setting parameter for the GUI
-    private boolean ready=false, overwrite=false;
+    private boolean ready=false, overwrite=true;
     private String prefix = "/tmp/";
 	private String 	mm2Path="/usr/bin/", 
 					mm2Opt="-t4 -x map-ont -k15 -w5";
@@ -166,7 +166,7 @@ public class HybridAssembler {
 			System.err.println("Issue when loading pre-assembly: \n" + e.getMessage());
 			return false;
 		}
-		
+		simGraph.updateStats();
 		observer = new GraphWatcher(simGraph);
 		return true;
 	}
@@ -256,7 +256,6 @@ public class HybridAssembler {
 							//path here is already unique! (2 unique ending nodes)
 					    	if(simGraph.reduceUniquePath(path)) {
 					    		observer.update(false);					    		
-					    		GraphUtil.redrawGraphComponents(simGraph);
 					    	}
 						}
 					}
@@ -300,12 +299,6 @@ public class HybridAssembler {
 
 		}
 		
-		//TODO: traverse for the last time,remove redundant edges
-		//may want to run consensus to determine the final path
-		
-		
-		//Finally redraw the graph and output
-		GraphUtil.redrawGraphComponents(simGraph);
         //update for the last time
         observer.update(true);
 		observer.outputFASTA(getPrefix()+"npgraph_assembly.fasta");

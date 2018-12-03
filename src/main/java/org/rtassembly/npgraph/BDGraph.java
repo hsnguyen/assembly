@@ -835,4 +835,96 @@ public class BDGraph extends MultiGraph{
 
 		return lengths[index];	
 	}
+	
+    /***********************************************************************
+     * TODO: merge this with GraphWatcher.update()
+     **********************************************************************/
+    int n50, n75, maxl;
+    int numOfCtgs, numOfCircularCtgs;
+    public synchronized void updateStats() {
+    	numOfCtgs=getNodeCount();
+		int count=0;
+		numOfCircularCtgs=0;
+		maxl=0;
+		int [] lengths = new int[numOfCtgs];
+		double sum = 0;		
+    	for (Node node : this) {
+    		/*
+    		 * Re-calculate stats
+    		 */
+			int nlen=(int)node.getNumber("len"); 
+			if(maxl < nlen)
+				maxl=nlen;
+			if(node.hasAttribute("circular"))
+				numOfCircularCtgs++;
+			
+			lengths[count++]=nlen; 
+			sum+=nlen;	
+    	}
+    	
+    	/*
+    	 * Calculate N50, N75
+    	 */
+		Arrays.sort(lengths);
+
+		int i50 = lengths.length,
+			i75 = lengths.length;
+		double contains = 0;
+		while (true){
+			if(contains < .5*sum)
+				i50 --;
+			if(contains < .75*sum) {
+				i75--;
+			}else
+				break;
+			contains += lengths[i75];
+		}
+		n50=lengths[i50];
+		n75=lengths[i75];
+
+    }
+    
+    public synchronized void redrawGraphComponents() {	
+    	for (Node node : this) {		
+    		/*
+    		 * Re-assign colors based on coverage/length
+    		 */
+    		Sequence seq = (Sequence) node.getAttribute("seq");
+    		double lengthScale = 1+(Math.log10(seq.length())-2)/3.5; //100->330,000
+          
+			if(lengthScale<1) lengthScale=1;
+			else if(lengthScale>2) lengthScale=2;
+	          
+			int covScale = (int) Math.round(node.getNumber("cov")/100.0);
+	          
+			String[] palette= {"grey","blue","yellow","orange","green","pink","magenta","red"};
+			String color=null;
+			
+			if(binner.node2BinMap.containsKey(node)){
+				covScale=binner.node2BinMap.get(node).values().stream().mapToInt(Integer::intValue).sum();
+				if(covScale>=palette.length)
+					color=palette[palette.length-1];
+				else
+					color=palette[covScale];
+			}else
+				color="white";
+          
+//          node.addAttribute("ui.color", color);
+//          node.addAttribute("ui.size", lengthScale+"gu");
+          
+//          node.addAttribute("ui.label", covScale);
+          
+			node.setAttribute("ui.label", node.getId());
+//			node.addAttribute("ui.label", (int)(node.getNumber("cov")));
+
+
+			node.setAttribute("ui.style", "	size: " + lengthScale + "gu;" +
+        		  						"	fill-color: "+color+";" +
+        		  			            " 	stroke-mode: plain;" +
+        		  			            "	stroke-color: black;" +
+        		  			            "	stroke-width: 2px;");
+    	}
+//    	graph.edges().forEach(e->e.setAttribute("ui.label", (int) e.getNumber("cov")));
+
+    }
 }

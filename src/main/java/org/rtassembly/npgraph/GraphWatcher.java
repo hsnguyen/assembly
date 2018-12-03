@@ -194,27 +194,35 @@ public class GraphWatcher {
 //							nn1.getId(),((BDPath)nn1.getAttribute("path")).getId());
 			}
 		}
-		
-		System.out.printf("Output stats: %d sequences (%d circular) N50=%.2f\n", getNumberOfSequences(), getNumberOfCircularSequences(), getN50());
+		outputGraph.updateStats();
+		System.out.printf("Output stats: %d sequences (%d circular) N50=%d N75=%d Max=%d\n", getNumberOfSequences(), getNumberOfCircularSequences(), getN50(), getN75(), getLongestContig());
 		
 		//reset the cutting attributes
 //		inputGraph.edges().filter(e->e.hasAttribute("cut")).forEach(e->{e.removeAttribute("cut"); e.removeAttribute("ui.hide");});;
 		inputGraph.edges().filter(e->e.hasAttribute("cut")).forEach(e->{e.removeAttribute("cut");});;
+		inputGraph.redrawGraphComponents();
 
 	}
-	synchronized int getNumberOfSequences() {
-		return outputGraph.getNodeCount();
+	
+	synchronized public int getN50() {
+		return outputGraph==null?inputGraph.n50:outputGraph.n50;
 	}
-	synchronized double getN50() {
-		return outputGraph.getN50();
+	synchronized public int getN75() {
+		return outputGraph==null?inputGraph.n75:outputGraph.n75;
 	}
-	synchronized int getNumberOfCircularSequences() {
-		return (int) outputGraph.nodes().filter(n->n.hasAttribute("circular")).count();
+	synchronized public int getLongestContig() {
+		return outputGraph==null?inputGraph.maxl:outputGraph.maxl;
 	}
-	synchronized void outputGFA() {
+	synchronized public int getNumberOfSequences() {
+		return outputGraph==null?inputGraph.numOfCtgs:outputGraph.numOfCtgs;
+	}
+	synchronized public int getNumberOfCircularSequences() {
+		return outputGraph==null?inputGraph.numOfCircularCtgs:outputGraph.numOfCircularCtgs;
+	}
+	synchronized public void outputGFA() {
 		//TODO: output GFA of outputGraph or inputGraph?
 	}
-	synchronized void outputFASTA(String fileName) throws IOException {
+	synchronized public void outputFASTA(String fileName) throws IOException {
 		outputGraph.outputFASTA(fileName);
 	}
 }
