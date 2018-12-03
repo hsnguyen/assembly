@@ -20,16 +20,17 @@ import htsjdk.samtools.SamInputResource;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
-
+import japsa.seq.Alphabet;
+import japsa.seq.Sequence;
 import japsa.seq.SequenceReader;
 
 
 public class HybridAssembler {
     private static final Logger LOG = LoggerFactory.getLogger(HybridAssembler.class);
 	//setting parameter for the GUI
-    private boolean ready=false, overwrite=false;
+    private boolean ready=false, overwrite=true;
     private String prefix = "/tmp/";
-	private String 	mm2Path="", 
+	private String 	mm2Path="/usr/bin/", 
 					mm2Opt="-t4 -x map-ont -k15 -w5";
 
 	private String shortReadsInput="", longReadsInput="";
@@ -111,13 +112,13 @@ public class HybridAssembler {
 	//===============================================================================================//
 	
 	//Operational variables
-//	final BidirectedGraph origGraph;
-	public BidirectedGraph simGraph; //original and simplified graph should be separated, no???
-	public GraphStalker observer;
+//	final BDGraph origGraph;
+	public BDGraph simGraph; //original and simplified graph should be separated, no???
+	public GraphWatcher observer;
 	
 	public HybridAssembler(){
-//		origGraph=new BidirectedGraph("batch");
-		simGraph=new BidirectedGraph("real");
+//		origGraph=new BDGraph("batch");
+		simGraph=new BDGraph("real");
 //		rtComponents = new ConnectedComponents();
 		
 		simGraph.setAttribute("ui.quality");
@@ -165,8 +166,8 @@ public class HybridAssembler {
 			System.err.println("Issue when loading pre-assembly: \n" + e.getMessage());
 			return false;
 		}
-		
-		observer = new GraphStalker(simGraph);
+		simGraph.updateStats();
+		observer = new GraphWatcher(simGraph);
 		return true;
 	}
 
@@ -223,6 +224,7 @@ public class HybridAssembler {
 		SAMRecordIterator iter = reader.iterator();
 
 		String readID = "";
+		Sequence nnpRead = null;
 		ArrayList<Alignment> samList =  new ArrayList<Alignment>();// alignment record of the same read;	
 		
 		while (iter.hasNext()) {
@@ -241,26 +243,25 @@ public class HybridAssembler {
 			
 			if (simGraph.getNode(refID)==null)
 				continue;
-			Alignment myRec = new Alignment(rec, (BidirectedNode) simGraph.getNode(refID)); 
+			Alignment myRec = new Alignment(rec, (BDNode) simGraph.getNode(refID)); 
 
 			//////////////////////////////////////////////////////////////////
-			//FIXME: optimize
-			// make list of alignments of the same (Nanopore) read. 
-			//not the first occurrance				
+			
 			if (!readID.equals("") && !readID.equals(myRec.readID)) {	
 				synchronized(simGraph) {
-					List<BidirectedPath> paths=simGraph.uniqueBridgesFinding(samList);
-					if(paths!=null)						
-						for(BidirectedPath path:paths) 
+					List<BDPath> paths=simGraph.uniqueBridgesFinding(nnpRead, samList);
+					if(paths!=null){	
+						for(BDPath path:paths) 
 						{
 							//path here is already unique! (2 unique ending nodes)
 					    	if(simGraph.reduceUniquePath(path)) {
-					    		observer.forFunUpdate();
-					    		GraphUtil.redrawGraphComponents(simGraph);
+					    		observer.update(false);					    		
 					    	}
 						}
+					}
 				}
 				samList = new ArrayList<Alignment>();
+				nnpRead = new Sequence(Alphabet.DNA5(), rec.getReadString(), "R" + readID);
 			}	
 			readID = myRec.readID;
 			samList.add(myRec); 
@@ -275,18 +276,31 @@ public class HybridAssembler {
 	}
 	
 	public void postProcessGraph() throws IOException{
-		//TODO: traverse for the last time,remove redundant edges, infer the path...
-		//may want to run consensus to determine the final path
-		for(BidirectedBridge brg:simGraph.getUnsolvedBridges()){
-			System.out.println("Last attempt: " + brg.getBridgeString());
-			if(brg.getBridgeStatus()==0)
-				simGraph.reduceUniquePath(brg.fullPaths.get(0));
-			else
-				System.out.println("bridge contain no path! ignored");
+		//Take the current best path among the candidate of a bridge and connect the bridge(greedy)
+		for(GoInBetweenBridge brg:simGraph.getUnsolvedBridges()){
+			System.out.printf("Last attempt on incomplete bridge %s : anchors=%d \n %s \n", brg.getEndingsID(), brg.getNumberOfAnchors(), brg.getAllPossiblePaths());
+//			if(brg.getCompletionLevel()<=2) {//examine bridge with completion level = 2 that unable to connected
+//				brg.steps.connectBridgeSteps(true);
+//			}
+			
+			if(brg.getCompletionLevel()>=3) 
+				simGraph.chopPathAtAnchors(brg.getBestPath(brg.pBridge.getNode0(),brg.pBridge.getNode1())).stream().forEach(p->simGraph.reduceUniquePath(p));
+			else{
+				brg.scanForAnEnd(true);
+				//selective connecting
+				brg.steps.connectBridgeSteps(true);
+				//return appropriate path
+				if(brg.segments!=null)
+					simGraph.chopPathAtAnchors(brg.getBestPath(brg.steps.start.getNode(),brg.steps.end.getNode())).stream().forEach(p->simGraph.reduceUniquePath(p));
+				else
+					System.out.printf("Last attempt failed \n");
+			}
+
+
 		}
-		GraphUtil.redrawGraphComponents(simGraph);
 		
-        observer.linearComponentsDecomposition();
+        //update for the last time
+        observer.update(true);
 		observer.outputFASTA(getPrefix()+"npgraph_assembly.fasta");
 
 	}
