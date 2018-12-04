@@ -581,27 +581,31 @@ public class NPGraphFX extends Application{
     	
        	TextField algPathTF = new TextField("");
        	algPathTF.setPromptText("Specify the aligner binary...");
-       	if(!myass.getAlignerPath().isEmpty())
-       		algPathTF.setText(myass.getAlignerPath());
-       	algPathTF.setOnKeyPressed(e -> {
-            if (e.getCode() == KeyCode.ENTER)  {
-    			if(!checkFolderFromTextField(algPathTF))
-    				return;
-    			myass.setAlignerPath(algPathTF.getText());
-//                buttonStart.requestFocus();
-            }
-    	});
+//       	if(!myass.getAlignerPath().isEmpty())
+//       		algPathTF.setText(myass.getAlignerPath());
+//       	
+//       	algPathTF.setOnKeyPressed(e -> {
+//            if (e.getCode() == KeyCode.ENTER)  {
+//    			if(!checkFolderFromTextField(algPathTF))
+//    				return;
+//    			myass.setAlignerPath(algPathTF.getText());
+////                buttonStart.requestFocus();
+//            }
+//    	});
+       	
+       	algPathTF.textProperty().bindBidirectional(myass.alignerPathProperty());
     	GridPane.setConstraints(algPathTF, 0,2,4,1);
     	optionPane.getChildren().add(algPathTF);
     	
     	ComboBox<String> algCombo=new ComboBox<String>();
     	algCombo.getItems().addAll("minimap2", "bwa");   
-    	algCombo.setValue(myass.getAligner());
-    	algCombo.valueProperty().addListener((obs_val, old_val, new_val) -> {
-        	myass.setAligner(new_val);
-        	algPathTF.setText("");
-        	myass.setAlignerPath("");
-        });
+//    	algCombo.setValue(myass.getAligner());
+//    	algCombo.valueProperty().addListener((obs_val, old_val, new_val) -> {
+//        	myass.setAligner(new_val);
+//        	algPathTF.setText("");
+//        	myass.setAlignerPath("");
+//        });
+    	algCombo.valueProperty().bindBidirectional(myass.alignerProperty());
         GridPane.setConstraints(algCombo, 2, 0, 2, 1);
         optionPane.getChildren().add(algCombo);
          	
@@ -622,7 +626,7 @@ public class NPGraphFX extends Application{
     		if(selectedFile != null){			
     			try {
 					myass.setAlignerPath(selectedFile.getCanonicalPath());
-					algPathTF.setText(myass.getAlignerPath()); 
+//					algPathTF.setText(myass.getAlignerPath()); 
 				} catch (IOException e1) {
 					e1.printStackTrace();
 					return;
@@ -638,14 +642,15 @@ public class NPGraphFX extends Application{
     	
        	TextField algOptTF = new TextField("");
        	algOptTF.setPromptText("Enter options to aligner...");
-       	if(!myass.getAlignerOpts().isEmpty())
-       		algOptTF.setText(myass.getAlignerOpts());
-       	algOptTF.setOnKeyPressed(e -> {
-            if (e.getCode() == KeyCode.ENTER)  {
-            	myass.setAlignerOpts(algOptTF.getText());
-                buttonStart.requestFocus();
-            }
-    	});
+//       	if(!myass.getAlignerOpts().isEmpty())
+//       		algOptTF.setText(myass.getAlignerOpts());
+//       	algOptTF.setOnKeyPressed(e -> {
+//            if (e.getCode() == KeyCode.ENTER)  {
+//            	myass.setAlignerOpts(algOptTF.getText());
+//                buttonStart.requestFocus();
+//            }
+//    	});
+       	algOptTF.textProperty().bindBidirectional(myass.alignerOptProperty());
     	GridPane.setConstraints(algOptTF, 0,4,4,1);
     	optionPane.getChildren().add(algOptTF);
     	
@@ -665,8 +670,8 @@ public class NPGraphFX extends Application{
     	GridPane.setConstraints(minQualTF, 3,6);
     	optionPane.getChildren().add(minQualTF);
     	
-    	algPathTF.disableProperty().bind(algCombo.itemsProperty().isEqualTo(""));
-    	algBrowseButton.disableProperty().bind(algCombo.itemsProperty().isEqualTo(""));
+    	algPathTF.disableProperty().bind(algCombo.itemsProperty().asString().isEqualTo(""));
+    	algBrowseButton.disableProperty().bind(algCombo.itemsProperty().asString().isEqualTo(""));
     	
     	optionPane.disableProperty().bind(	longInputPane.disabledProperty()
     										.or(longInputFormatCombo.valueProperty().isEqualTo("sam/bam")));  
@@ -698,8 +703,12 @@ public class NPGraphFX extends Application{
     		}
     		
     		if(myass.getLongReadsInputFormat().equals("fasta/fastq")) {   			
-    			if(!myass.checkMinimap2()) {
+    			if(myass.getAligner().equals("minimap2") && !myass.checkMinimap2()) {
     				FxDialogs.showError("Error finding minimap2 at " + myass.getAlignerPath(), "Please try again!");
+    				return;
+    			}
+    			if(myass.getAligner().equals("bwa") && !myass.checkBWA()) {
+    				FxDialogs.showError("Error finding bwa at " + myass.getAlignerPath(), "Please try again!");
     				return;
     			}
     		}
@@ -975,21 +984,21 @@ public class NPGraphFX extends Application{
 	public static void main(String[] args) {
 		HybridAssembler hbAss = new HybridAssembler();
 		
-//		//desktop IMB
-//		hbAss.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/EcK12S-careful/assembly_graph.gfa");
-//		hbAss.setLongReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/Eck12_ONT.fasta");
-//		hbAss.setMinimapPath("/home/sonhoanghguyen/.usr/local/bin/"); 
+		//desktop IMB
+		hbAss.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/EcK12S-careful/assembly_graph.gfa");
+		hbAss.setLongReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/Eck12_ONT.fasta");
+		hbAss.setAlignerPath("/home/sonhoanghguyen/.usr/local/bin/"); 
 		
-		//laptop Dell
-		hbAss.setShortReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/EcK12S-careful/assembly_graph.fastg");
-//		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/reads/EcK12S_ONT.fastq");		
-		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/EcK12S-careful/assembly_graph.sam");
-		
-//		//shigella
-//		hbAss.setShortReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/unicycler/Shigella_sonnei_53G/good/spades/assembly_graph.fastg");
+//		//laptop Dell
+//		hbAss.setShortReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/EcK12S-careful/assembly_graph.fastg");
 ////		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/reads/EcK12S_ONT.fastq");		
-//		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/unicycler/Shigella_sonnei_53G/good/mm2.sam");
+//		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/EcK12S-careful/assembly_graph.sam");
 //		
+////		//shigella
+////		hbAss.setShortReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/unicycler/Shigella_sonnei_53G/good/spades/assembly_graph.fastg");
+//////		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/reads/EcK12S_ONT.fastq");		
+////		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/unicycler/Shigella_sonnei_53G/good/mm2.sam");
+////		
 //		hbAss.setAlignerPath("/home/s_hoangnguyen/workspace/minimap2/"); 
 		
 		NPGraphFX.setAssembler(hbAss);
