@@ -29,13 +29,14 @@ public class HybridAssembler {
     private static final Logger LOG = LoggerFactory.getLogger(HybridAssembler.class);
 	//setting parameter for the GUI
     private boolean ready=false, overwrite=true;
-    private String prefix = "/tmp/";
-	private String 	mm2Path="/usr/bin/", 
-					mm2Opt="-t4 -x map-ont -k15 -w5";
+    private String 	prefix = "/tmp/";
+    private String 	aligner = "";
+	private String 	alignerPath="", 
+					alignOpt="";
 
-	private String shortReadsInput="", longReadsInput="";
+	private String shortReadsInput="", binReadsInput="", longReadsInput="";
 	private String shortReadsInputFormat="", longReadsInputFormat="";
-	Process mm2Process = null;
+	Process alignmentProcess = null;
 	private boolean stop=false;
 	//Getters and Setters
 	//==============================================================================================//
@@ -48,12 +49,30 @@ public class HybridAssembler {
 	public void setPrefix(String prefix) {this.prefix=prefix;}
 	public String getPrefix() {return prefix;}
 	
-	public void setMinimapPath(String path) {mm2Path=path;}
-	public String getMinimapPath() {return mm2Path;}
+	public void setAligner(String aligner) {
+		if(aligner.toLowerCase().equals("bwa"))
+			setAlignerOpts("-t4 -x map-ont -k15 -w5");
+		else if (aligner.toLowerCase().equals("minimap2"))
+			setAlignerOpts("-t4 -k11 -W20 -r10 -A1 -B1 -O1 -E1 -L0 -a -Y");
+		else {
+			LOG.error("Unsupport aligner {}", aligner);
+			return;
+		} 
+			
+		this.aligner=aligner;
+	}
+	public String getAligner() {return aligner;}
 	
-	public void setMinimapOpts(String setting) {mm2Opt=setting;}
-	public String getMinimapOpts() {return mm2Opt;}
+	public void setAlignerPath(String path) {alignerPath=path;}
+	public String getAlignerPath() {return alignerPath;}
 	
+	public void setAlignerOpts(String setting) {alignOpt=setting;}
+	public String getAlignerOpts() {return alignOpt;}
+	
+	public void setBinReadsInput(String brInput) {
+		binReadsInput=brInput;
+	}
+	public String getBinReadsInput() {return binReadsInput;}
 	
 	public void setShortReadsInput(String srInput) {
 		File shortReadsInputFile = new File(srInput);
@@ -131,23 +150,48 @@ public class HybridAssembler {
 	public boolean prepareLongReadsProcess(){
 		//if long reads data not given in SAM/BAM, need to invoke minimap2
         if(longReadsInputFormat.toLowerCase().startsWith("fast")) {
-			File indexFile=new File(prefix+"/assembly_graph.mmi");
-			if(overwrite || !indexFile.exists()) {						
-				try{
-					simGraph.outputFASTA(prefix+"/assembly_graph.fasta");
-					if(!checkMinimap2()) {
-							LOG.error("Dependancy check failed! Please config to the right version of minimap2!");
-							return false;
+        	if(aligner.equals("minimap2")) { 	
+				File indexFile=new File(prefix+"/assembly_graph.mmi");
+				if(overwrite || !indexFile.exists()) {						
+					try{
+						simGraph.outputFASTA(prefix+"/assembly_graph.fasta");
+						if(!checkMinimap2()) {
+								LOG.error("Dependancy check failed! Please config to the right version of minimap2!");
+								return false;
+						}
+						ProcessBuilder pb = new ProcessBuilder(alignerPath+"/minimap2", alignOpt,"-d", prefix+"/assembly_graph.mmi",prefix+"/assembly_graph.fasta");
+						Process indexProcess =  pb.start();
+						indexProcess.waitFor();
+						
+					}catch (IOException | InterruptedException e){
+						LOG.error("Issue when indexing with minimap2: \n" + e.getMessage());
+						return false;
 					}
-					ProcessBuilder pb = new ProcessBuilder(mm2Path+"/minimap2", mm2Opt,"-d", prefix+"/assembly_graph.mmi",prefix+"/assembly_graph.fasta");
-					Process indexProcess =  pb.start();
-					indexProcess.waitFor();
-					
-				}catch (IOException | InterruptedException e){
-					System.err.println("Issue when indexing with minimap2: \n" + e.getMessage());
-					return false;
 				}
-			}
+        	}else if(aligner.equals("bwa")) {
+				File indexFile=new File(prefix+"/assembly_graph.fasta.bwt");
+				if(overwrite || !indexFile.exists()) {						
+					try{
+						simGraph.outputFASTA(prefix+"/assembly_graph.fasta");
+						if(!checkBWA()) {
+								LOG.error("Dependancy check failed! Please config to the right version of bwa!");
+								return false;
+						}
+						ProcessBuilder pb = new ProcessBuilder(alignerPath,"index", prefix+"/assembly_graph.fasta");
+						Process indexProcess =  pb.start();
+						indexProcess.waitFor();
+						
+					}catch (IOException | InterruptedException e){
+						LOG.error("Issue when indexing with minimap2: \n" + e.getMessage());
+						return false;
+					}
+				}
+        	}else {
+        		LOG.error("Unknown aligner!");
+        		return false;
+        	}
+			
+			
         }
         return true;
 	}
@@ -156,9 +200,9 @@ public class HybridAssembler {
 	public boolean prepareShortReadsProcess(boolean useSPAdesPaths) {
 		try {
 			if(shortReadsInputFormat.toLowerCase().equals("gfa")) 
-				GraphUtil.loadFromGFA(shortReadsInput, simGraph, useSPAdesPaths);
+				GraphUtil.loadFromGFA(shortReadsInput, binReadsInput, simGraph, useSPAdesPaths);
 			else if(shortReadsInputFormat.toLowerCase().equals("fastg"))
-				GraphUtil.loadFromFASTG(shortReadsInput, simGraph, useSPAdesPaths);
+				GraphUtil.loadFromFASTG(shortReadsInput, binReadsInput, simGraph, useSPAdesPaths);
 			else 				
 				throw new IOException("assembly graph file must have .gfa or .fastg extension!");
 			
@@ -166,6 +210,8 @@ public class HybridAssembler {
 			System.err.println("Issue when loading pre-assembly: \n" + e.getMessage());
 			return false;
 		}
+		
+		
 		simGraph.updateStats();
 		observer = new GraphWatcher(simGraph);
 		return true;
@@ -190,35 +236,56 @@ public class HybridAssembler {
 			else
 				reader = SamReaderFactory.makeDefault().open(new File(longReadsInput));	
 		}else{
-			LOG.info("Starting alignment by minimap2 at {}", new Date());
+			LOG.info("Starting alignment by {} at {}", aligner, new Date());
 			ProcessBuilder pb = null;
 			if ("-".equals(longReadsInput)){
-				pb = new ProcessBuilder(mm2Path+"/minimap2", 
-						"-a",
-						mm2Opt,
-						"-K",
-						"20000",
-						prefix+"/assembly_graph.mmi",
-						"-"
-						).
-						redirectInput(Redirect.INHERIT);
+				if(aligner.equals("minimap2"))
+					pb = new ProcessBuilder(alignerPath, 
+							"-a",
+							alignOpt,
+							"-K",
+							"20000",
+							prefix+"/assembly_graph.mmi",
+							"-"
+							).
+							redirectInput(Redirect.INHERIT);
+				else if(aligner.equals("bwa"))
+					pb = new ProcessBuilder(alignerPath, 
+							"mem",
+							alignOpt,
+							"-K",
+							"20000",
+							prefix+"/assembly_graph.fasta",
+							"-"
+							).
+							redirectInput(Redirect.INHERIT);
 			}else{
-				pb = new ProcessBuilder(mm2Path+"/minimap2", 
-						"-a",
-						mm2Opt,
-						"-K",
-						"20000",
-						prefix+"/assembly_graph.mmi",
-						longReadsInput
-						);
+				if(aligner.equals("minimap2"))
+					pb = new ProcessBuilder(alignerPath, 
+							"-a",
+							alignOpt,
+							"-K",
+							"20000",
+							prefix+"/assembly_graph.mmi",
+							longReadsInput
+							);
+				else if(aligner.equals("bwa"))
+					pb = new ProcessBuilder(alignerPath, 
+							"mem",
+							alignOpt,
+							"-K",
+							"20000",
+							prefix+"/assembly_graph.fasta",
+							longReadsInput
+							);
 			}
 
-//			mm2Process  = pb.redirectError(ProcessBuilder.Redirect.to(new File("/dev/null"))).start();
-			mm2Process  = pb.redirectError(ProcessBuilder.Redirect.to(new File(prefix+"/mm2.log"))).start();
+//			alignmentProcess  = pb.redirectError(ProcessBuilder.Redirect.to(new File("/dev/null"))).start();
+			alignmentProcess  = pb.redirectError(ProcessBuilder.Redirect.to(new File(prefix+"/alignment.log"))).start();
 
-			LOG.info("minimap2 started!");			
+			LOG.info("{} started!", aligner);			
 
-			reader = SamReaderFactory.makeDefault().open(SamInputResource.of(mm2Process.getInputStream()));
+			reader = SamReaderFactory.makeDefault().open(SamInputResource.of(alignmentProcess.getInputStream()));
 
 		}
 		SAMRecordIterator iter = reader.iterator();
@@ -269,8 +336,8 @@ public class HybridAssembler {
 		iter.close();
 		reader.close();
 
-		if (mm2Process != null){
-			mm2Process.destroy();
+		if (alignmentProcess != null){
+			alignmentProcess.destroy();
 		}	
 
 	}
@@ -317,12 +384,10 @@ public class HybridAssembler {
     
     
     public boolean checkMinimap2() {    		
-		ProcessBuilder pb = new ProcessBuilder(mm2Path+"/minimap2","-V").redirectErrorStream(true);
+		ProcessBuilder pb = new ProcessBuilder(alignerPath).redirectErrorStream(true);
 		Process process;
 		try {
 			process = pb.start();
-
-			//Allen changes: BWA process doesn't produce gzip-compressed output
 			BufferedReader bf = SequenceReader.openInputStream(process.getInputStream());
 	
 	
@@ -355,8 +420,51 @@ public class HybridAssembler {
 			}
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
-			System.err.println("Error running: " + mm2Path + "/minimap2 \n" + e.getMessage());
+			System.err.println("Error running: " + alignerPath + "\n" + e.getMessage());
 			e.printStackTrace();			
+			return false;
+		}
+		
+		return true;
+			
+    }
+    
+    public boolean checkBWA() {    		
+		try{
+			ProcessBuilder pb = new ProcessBuilder(alignerPath).redirectErrorStream(true);
+			Process process =  pb.start();
+			BufferedReader bf = SequenceReader.openInputStream(process.getInputStream());
+
+
+			String line;
+			String version = "";
+			Pattern versionPattern = Pattern.compile("^Version:\\s(\\d+\\.\\d+\\.\\d+).*");
+			Matcher matcher=versionPattern.matcher("");
+			
+			while ((line = bf.readLine())!=null){				
+				matcher.reset(line);
+				if (matcher.find()){
+				    version = matcher.group(1);
+				    break;//while
+				}
+				
+								
+			}	
+			bf.close();
+			
+			if (version.length() == 0){
+				LOG.error(alignerPath + " is not the right path to BWA!");
+				System.exit(1);
+			}else{
+				LOG.info("bwa version: " + version);
+				if (version.compareTo("0.7.11") < 0){
+					LOG.error(" Require bwa of 0.7.11 or above");
+					System.exit(1);
+				}
+			}
+
+		}catch (IOException e){
+			System.err.println(e.getMessage());
 			return false;
 		}
 		
