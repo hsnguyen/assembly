@@ -289,7 +289,7 @@ public class HybridAssembler {
 //			alignmentProcess  = pb.redirectError(ProcessBuilder.Redirect.to(new File("/dev/null"))).start();
 			alignmentProcess  = pb.redirectError(ProcessBuilder.Redirect.to(new File(prefix+"/alignment.log"))).start();
 
-			LOG.info("{} started!", aligner);			
+			LOG.info("{} started!", getAligner());			
 
 			reader = SamReaderFactory.makeDefault().open(SamInputResource.of(alignmentProcess.getInputStream()));
 
@@ -314,8 +314,10 @@ public class HybridAssembler {
 			String refName = rec.getReferenceName();
 			String refID = refName.split("_").length > 1 ? refName.split("_")[1]:refName;
 			
-			if (simGraph.getNode(refID)==null)
+			if (simGraph.getNode(refID)==null) {
+				LOG.error("Node {} not found from the graph!", refID);
 				continue;
+			}
 			Alignment myRec = new Alignment(rec, (BDNode) simGraph.getNode(refID)); 
 
 			//////////////////////////////////////////////////////////////////
