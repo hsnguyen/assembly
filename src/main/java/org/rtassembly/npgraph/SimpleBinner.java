@@ -1,12 +1,13 @@
 package org.rtassembly.npgraph;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -34,7 +35,7 @@ public class SimpleBinner {
 	HashMap<Edge, HashMap<PopBin,Integer>> edge2BinMap;
 	HashMap<Node, HashMap<PopBin, Integer>> node2BinMap;
 	ArrayList<Edge> unresolvedEdges;
-	SimpleBinner(BDGraph graph){
+	public SimpleBinner(BDGraph graph){
 		this.graph = graph;
 		binList = new ArrayList<PopBin>();
 		leastBin = null;
@@ -42,6 +43,18 @@ public class SimpleBinner {
 		node2BinMap = new HashMap<Node, HashMap<PopBin, Integer>>();
 		unresolvedEdges = new ArrayList<Edge>(graph.edges().collect(Collectors.toList()));
 	}
+
+	public SimpleBinner(BDGraph graph, String binFileName, String gformat) {
+		this(graph);
+		if(binFileName!=null && !binFileName.isEmpty())
+			try {
+				readBinningFromFile(binFileName,gformat);
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+	}
+
 
 	/*
 	 * When a node bin is set, traverse the graph to assign edges if possible
@@ -271,14 +284,52 @@ public class SimpleBinner {
 
 	}
 	
+	//read binning file from metaBAT
+	private void readBinningFromFile(String binFileName, String graphFormat) throws Exception {
+
+		BufferedReader binReader = new BufferedReader(new FileReader(binFileName));
+		HashMap<String, PopBin> bins = new HashMap<>();
+		String line="", nodeID="", binID="";
+		Node node=null;
+		PopBin bin=null;
+		//Read contigs from contigs.paths
+		while((line=binReader.readLine()) != null){			
+			String[] comps= line.split("\\s+");
+			binID=comps[1];
+			if(binID.equals("0"))
+				continue;
+			
+			nodeID=comps[0];
+			if(graphFormat.toLowerCase().equals("fastg"))
+				nodeID=comps[0].split("_")[1];		
+			
+			if(bins.containsKey(binID))
+				bin=bins.get(binID);
+			else {
+				bin=new PopBin(Integer.parseInt(binID));
+				bins.put(binID, bin);
+				binList.add(bin);
+			}
+			
+			node = (BDNode) graph.getNode(nodeID);
+			bin.addCoreNode(node);
+		}
+		
+		binList.stream().forEach(b->{if(leastBin==null || leastBin.estCov>b.estCov) leastBin=b;});
+		binReader.close();
+		
+	}
 	
 	//Now traverse and clustering the edges (+assign cov)
 	public void estimatePathsByCoverage() {
 		//1.first clustering the biggest nodes into populations
-		nodesClustering();
+		if(binList.isEmpty())
+			nodesClustering();
+		
 		//2. assign edges and nodes coverage based on original nodes coverage and graph topo
 		GraphUtil.gradientDescent(graph);
 		graph.edges().forEach(e->System.out.println("Edge " + e.getId() + " cov=" + e.getNumber("cov")));
+		
 		//3.1.First round of assigning unit cov: from binned significant nodes
 		for(PopBin b:binList) {
 			for(Node n:b.getCoreNodes()) {
