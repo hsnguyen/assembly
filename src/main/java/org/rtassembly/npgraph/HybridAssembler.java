@@ -204,7 +204,7 @@ public class HybridAssembler {
 			System.setProperty("usr.dir", getPrefix());
 		}
 		catch(NullPointerException | IllegalArgumentException | SecurityException exception ){
-			LOG.error("Fail to set working directory usr.dir to {}", getPrefix());
+			setErrorLog("Fail to set working directory usr.dir to " + getPrefix());
 			return false;
 		}
 		
@@ -215,16 +215,15 @@ public class HybridAssembler {
 				if(getOverwrite() || !indexFile.exists()) {						
 					try{
 						simGraph.outputFASTA(getPrefix()+"/assembly_graph.fasta");
-						if(!checkMinimap2()) {
-								LOG.error("Dependancy check failed! Please config to the right version of minimap2!");
+						if(!checkMinimap2()) 
 								return false;
-						}
+						
 						ProcessBuilder pb = new ProcessBuilder(getFullPathOfAligner(), getAlignerOpts(),"-d", getPrefix()+"/assembly_graph.mmi",prefix+"/assembly_graph.fasta");
 						Process indexProcess =  pb.start();
 						indexProcess.waitFor();
 						
 					}catch (IOException | InterruptedException e){
-						LOG.error("Issue when indexing with minimap2: \n" + e.getMessage());
+						setErrorLog("Issue when indexing with minimap2: \n" + e.getMessage());
 						return false;
 					}
 				}
@@ -233,24 +232,22 @@ public class HybridAssembler {
 				if(getOverwrite() || !indexFile.exists()) {						
 					try{
 						simGraph.outputFASTA(getPrefix()+"/assembly_graph.fasta");
-						if(!checkBWA()) {
-								LOG.error("Dependancy check failed! Please config to the right version of bwa!");
+						if(!checkBWA()) 
 								return false;
-						}
+						
 						ProcessBuilder pb = new ProcessBuilder(getFullPathOfAligner(),"index", getPrefix()+"/assembly_graph.fasta");
 						Process indexProcess =  pb.start();
 						indexProcess.waitFor();
 						
 					}catch (IOException | InterruptedException e){
-						LOG.error("Issue when indexing with bwa: \n" + e.getMessage());
+						setErrorLog("Issue when indexing with bwa: \n" + e.getMessage());
 						return false;
 					}
 				}
         	}else {
-        		LOG.error("Unknown aligner!");
+        		setErrorLog("Unsupported aligner! Only BWA or minimap2 please!");
         		return false;
         	}
-			
 			
         }
         return true;
@@ -267,10 +264,10 @@ public class HybridAssembler {
 			else if(getShortReadsInputFormat().toLowerCase().equals("fastg"))
 				GraphUtil.loadFromFASTG(getShortReadsInput(), getBinReadsInput(), simGraph, useSPAdesPaths);
 			else 				
-				throw new IOException("assembly graph file must have .gfa or .fastg extension!");
+				throw new IOException("Assembly graph file must have .gfa or .fastg extension!");
 			
 		}catch(IOException e) {
-			System.err.println("Issue when loading pre-assembly: \n" + e.getMessage());
+			setErrorLog("Issue when loading pre-assembly: \n" + e.getMessage());
 			return false;
 		}
 		
@@ -473,18 +470,17 @@ public class HybridAssembler {
 			bf.close();
 			
 			if (version.length() == 0){
-				LOG.error(getFullPathOfAligner() + " is not the right path to minimap2!");
+				setErrorLog("Command " + getFullPathOfAligner() + " -V doesn't give version info. Check version failed!");
 				return false;
 			}else{
-				System.out.println("minimap version: " + version);
 				if (version.compareTo("2.0") < 0){
-					LOG.error("Require minimap version 2 or above!");
+					setErrorLog("Require minimap version 2 or above!");
 					return false;
 				}
 			}
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
-			LOG.error("Error running: " + getFullPathOfAligner() + "\n" + e.getMessage());
+			setErrorLog("Error running: " + getFullPathOfAligner() + "\n" + e.getMessage());
 			return false;
 		}
 		
@@ -516,18 +512,18 @@ public class HybridAssembler {
 			bf.close();
 			
 			if (version.length() == 0){
-				LOG.error(getFullPathOfAligner() + " is not the right path to BWA!");
+				setErrorLog("Command " + getFullPathOfAligner() + " doesn't give version info. Check version failed!");
 				return false;
 			}else{
 				LOG.info("bwa version: " + version);
 				if (version.compareTo("0.7.11") < 0){
-					LOG.error(" Require bwa of 0.7.11 or above");
+					setErrorLog(" Require bwa of 0.7.11 or above");
 					return false;
 				}
 			}
 
 		}catch (IOException e){
-			LOG.error("Error running: " + getFullPathOfAligner() + "\n" + e.getMessage());
+			setErrorLog("Error running: " + getFullPathOfAligner() + "\n" + e.getMessage());
 			return false;
 		}
 		
