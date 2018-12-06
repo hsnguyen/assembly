@@ -20,12 +20,13 @@ public class NPGraphCmd extends CommandLine{
 		addString("li", "-", "Name of the long-read data input file, - for stdin.", true);
 		addString("lf", "fastq", "Format of the long-read data input file. This may be FASTQ/FASTA (MinION reads) or SAM/BAM (aligned with the assembly graph already)", true);
 		addString("output", "npgraph", "Name of the output folder.", true);
+				
+		addString("alg","","Absolute path to the folder containing binary minimap2",true);
+
+		addString("algPath","","Absolute path to the binary aligner file");
+		addString("algOpt", "", "Settings used by aligner to align long reads to the contigs");
 		
 		addBoolean("overwrite", false, "Whether to overwrite or reuse the intermediate file");
-		
-		addString("mm2Path","","Absolute path to the folder containing binary minimap2");
-		addString("mm2Opt", "-t4 -x map-ont -k15 -w5", "Preset used by minimap2 to align long reads to the contigs");
-		
 		addInt("qual", 1, "Minimum quality of alignment to considered");
 		addInt("dfs", 15, "Number of DFS steps to search");
 
@@ -44,8 +45,9 @@ public class NPGraphCmd extends CommandLine{
 				longReadsInput = cmdLine.getStringVal("li"),
 				longReadsInputFormat = cmdLine.getStringVal("lf"),
 				outputDir = cmdLine.getStringVal("output"),
-				mm2Path = cmdLine.getStringVal("mm2Path"),
-				mm2Opt = cmdLine.getStringVal("mm2Opt");
+				alg=cmdLine.getStringVal("alg"),
+				algPath = cmdLine.getStringVal("algPath"),
+				algOpt = cmdLine.getStringVal("algOpt");
 		boolean overwrite = cmdLine.getBooleanVal("overwrite"),
 				gui = cmdLine.getBooleanVal("gui");
 			
@@ -59,7 +61,7 @@ public class NPGraphCmd extends CommandLine{
 		if(!outDir.exists())
 			outDir.mkdirs();
 		
-		mm2Path+=mm2Path.isEmpty()?"":"/";
+//		algPath+=algPath.isEmpty()?"":"/";
 		
 		//1. Create an assembler object with appropriate file loader
 		HybridAssembler hbAss = new HybridAssembler();
@@ -70,9 +72,9 @@ public class NPGraphCmd extends CommandLine{
 		
 		hbAss.setPrefix(outputDir);
 		
-		hbAss.setMinimapPath(mm2Path);
-		hbAss.setMinimapOpts(mm2Opt);
-		
+		hbAss.setAlignerPath(algPath);
+		hbAss.setAlignerOpts(algOpt);
+		hbAss.setAligner(alg);
 		hbAss.setOverwrite(overwrite);
 		
 		

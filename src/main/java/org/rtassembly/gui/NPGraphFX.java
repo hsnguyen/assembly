@@ -36,9 +36,7 @@ package org.rtassembly.gui;
 import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 
@@ -275,25 +273,14 @@ public class NPGraphFX extends Application{
     	
         TextField shortInputTF = new TextField("");
     	shortInputTF.setPromptText("Enter file name for assembly graph...");
-    	if(!myass.getShortReadsInput().isEmpty())
-    		shortInputTF.setText(myass.getShortReadsInput());
-    	shortInputTF.setOnKeyPressed(e -> {
-            if (e.getCode() == KeyCode.ENTER)  {
-                buttonGraph.requestFocus();
-            }
-    	});
-    	//textField.setPrefWidth(250);
+    	shortInputTF.textProperty().bind(myass.shortReadsInputProperty());
     	GridPane.setConstraints(shortInputTF, 0,1,4,1);
     	inputPane.getChildren().add(shortInputTF);
     	
     	ComboBox<String> shortInputFormatCombo=new ComboBox<String>();
         shortInputFormatCombo.getItems().addAll("fastg", "gfa");   
-        shortInputFormatCombo.setValue(myass.getShortReadsInputFormat());
-        shortInputFormatCombo.valueProperty().addListener((obs_val, old_val, new_val) -> {
-        	myass.setShortReadsInputFormat(new_val);
-        	shortInputTF.setText("");
-        	myass.setShortReadsInput("");
-        });
+        shortInputFormatCombo.valueProperty().bindBidirectional(myass.shortReadsInputFormatProperty());
+
         GridPane.setConstraints(shortInputFormatCombo, 2, 0, 2, 1);
         inputPane.getChildren().add(shortInputFormatCombo);
 
@@ -302,7 +289,7 @@ public class NPGraphFX extends Application{
     	shortInputBrowseButton.setOnAction((event) -> {
        		FileChooser chooser = new FileChooser();
     		chooser.setTitle("Select assembly graph file");
-    		File defaultFile = new File(shortInputTF.getText());
+    		File defaultFile = new File(myass.getShortReadsInput());
     		if(defaultFile.isFile())
     			chooser.setInitialFileName(defaultFile.getName());
     		if(defaultFile.getParentFile() !=null && defaultFile.getParentFile().isDirectory())
@@ -314,10 +301,8 @@ public class NPGraphFX extends Application{
 				try {
 					myass.setShortReadsInput(selectedFile.getCanonicalPath());
 					shortInputFormatCombo.setValue(myass.getShortReadsInputFormat());
-					
-					shortInputTF.setText(myass.getShortReadsInput());
 				} catch (IOException e1) {
-					// TODO Auto-generated catch block
+	    			FxDialogs.showWarning("Warning", "Error loading graph file. Please try again!");
 					e1.printStackTrace();
 				}	
 
@@ -328,9 +313,50 @@ public class NPGraphFX extends Application{
     	inputPane.getChildren().add(shortInputBrowseButton);
     	//inputPane.setGridLinesVisible(true);
 
+    	CheckBox binCB = new CheckBox("Use external binning information");
+    	binCB.setSelected(false);
+    	GridPane.setConstraints(binCB, 0,2,4,1);
+    	inputPane.getChildren().add(binCB);
+    	
+    	TextField binInputTF = new TextField("");
+    	binInputTF.setPromptText("Enter file name binning information...");
+    	binInputTF.textProperty().bind(myass.binReadsInputProperty());
+    	binInputTF.disableProperty().bind(binCB.selectedProperty().not());
+    	GridPane.setConstraints(binInputTF, 0,3,4,1);
+    	inputPane.getChildren().add(binInputTF);
+    	
+
+    	Button binInputBrowseButton = new ImageButton("/folder.png");
+    	binInputBrowseButton.setPrefSize(10, 10);
+    	binInputBrowseButton.setOnAction((event) -> {
+       		FileChooser chooser = new FileChooser();
+    		chooser.setTitle("Select metaBAT bin file");
+    		File defaultFile = new File(binInputTF.getText());
+    		if(defaultFile.isFile())
+    			chooser.setInitialFileName(defaultFile.getName());
+    		if(defaultFile.getParentFile() !=null && defaultFile.getParentFile().isDirectory())
+    			chooser.setInitialDirectory(defaultFile.getParentFile());
+    		File selectedFile = chooser.showOpenDialog(pStage);
+    		if(selectedFile != null){				
+				try {
+					myass.setBinReadsInput(selectedFile.getCanonicalPath());
+				} catch (IOException e1) {
+	    			FxDialogs.showWarning("Warning", "Error loading bin file. Please try again!");
+	    			e1.printStackTrace();
+				}	
+
+    		}
+        });
+    	binInputBrowseButton.disableProperty().bind(binCB.selectedProperty().not());
+    	GridPane.setConstraints(binInputBrowseButton, 4,3);
+    	GridPane.setHalignment(binInputBrowseButton,HPos.LEFT);
+    	inputPane.getChildren().add(binInputBrowseButton);
+    	
+    	
+    	
     	CheckBox graphCB = new CheckBox("Show graph");
     	graphCB.setSelected(myass.simGraph!=null);
-    	GridPane.setConstraints(graphCB, 0,2,2,1);
+    	GridPane.setConstraints(graphCB, 0,4,2,1);
     	inputPane.getChildren().add(graphCB);
 
     	
@@ -345,7 +371,7 @@ public class NPGraphFX extends Application{
     			return;       	
         	}
     		myass.setShortReadsInput(shortInputTF.getText());
-    		if(!myass.prepareShortReadsProcess(true)) {
+    		if(!myass.prepareShortReadsProcess(false)) { //true if using SPAdes path (not necessary)
     			FxDialogs.showWarning("Warning", "Problems preparing assembly graph file. Check stderr!");
     			return;
     		}
@@ -361,7 +387,7 @@ public class NPGraphFX extends Application{
         	updateData();
         	
 		});
-    	GridPane.setConstraints(buttonGraph, 2,2,2,1);
+    	GridPane.setConstraints(buttonGraph, 2,4,2,1);
     	inputPane.getChildren().add(buttonGraph);
     	
 		return inputPane;
@@ -378,27 +404,13 @@ public class NPGraphFX extends Application{
     	
     	TextField longInputTF = new TextField("");
     	longInputTF.setPromptText("Enter file name of long-reads data...");
-    	if(!myass.getLongReadsInput().isEmpty())
-    		longInputTF.setText(myass.getLongReadsInput());
-    	longInputTF.setOnKeyPressed(e -> {
-            if (e.getCode() == KeyCode.ENTER)  {
-        		if(!checkFileFromTextField(longInputTF))
-        			return;
-            	myass.setLongReadsInput(longInputTF.getText());
-//                buttonStart.requestFocus();
-            }
-    	});
+    	longInputTF.textProperty().bindBidirectional(myass.longReadsInputProperty());
     	GridPane.setConstraints(longInputTF, 0,1,4,1);
     	inputPane.getChildren().add(longInputTF);
     	
     	longInputFormatCombo = new ComboBox<>();
         longInputFormatCombo.getItems().addAll("fasta/fastq", "sam/bam");   
-        longInputFormatCombo.setValue(myass.getLongReadsInputFormat());
-        longInputFormatCombo.valueProperty().addListener((obs_val, old_val, new_val) -> {
-        	myass.setLongReadsInputFormat(new_val);
-        	longInputTF.setText("");
-        	myass.setLongReadsInput("");
-        });
+        longInputFormatCombo.valueProperty().bindBidirectional(myass.longReadsInputFormatProperty());
         GridPane.setConstraints(longInputFormatCombo, 2, 0, 2, 1);
         inputPane.getChildren().add(longInputFormatCombo);
     	
@@ -407,7 +419,7 @@ public class NPGraphFX extends Application{
     	longReadsBrowseButton.setOnAction((event) -> {
     		FileChooser chooser = new FileChooser();
     		chooser.setTitle("Select long-reads data file");
-    		File defaultFile = new File(longInputTF.getText());
+    		File defaultFile = new File(myass.getLongReadsInput());
     		if(defaultFile.isFile())
     			chooser.setInitialFileName(defaultFile.getName());
     		if(defaultFile.getParentFile()!=null && defaultFile.getParentFile().isDirectory())
@@ -419,10 +431,8 @@ public class NPGraphFX extends Application{
     		if(selectedFile != null){
 				try {
 					myass.setLongReadsInput(selectedFile.getCanonicalPath());
-					longInputFormatCombo.setValue(myass.getLongReadsInputFormat());
-					longInputTF.setText(myass.getLongReadsInput());	
 				} catch (IOException e1) {
-					// TODO Auto-generated catch block
+        			FxDialogs.showWarning("File not found!", "Please specify another long-read data file!");
 					e1.printStackTrace();
 				}
 
@@ -448,26 +458,8 @@ public class NPGraphFX extends Application{
     	outputPane.getChildren().add(outputLabel);
     	
     	TextField outputTF = new TextField("");
-    	if(!myass.getPrefix().isEmpty())
-    		outputTF.setText(myass.getPrefix());
     	outputTF.setPromptText("Enter name for output file...");
-    	outputTF.setOnKeyPressed(e -> {
-            if (e.getCode() == KeyCode.ENTER)  {
-        		if(!checkFolderFromTextField(outputTF))
-        			return;
-        		myass.setPrefix(outputTF.getText());
-        		
-        		try{
-        			System.setProperty("usr.dir", myass.getPrefix());
-        		}
-        		catch(NullPointerException | IllegalArgumentException | SecurityException exception ){
-        			exception.printStackTrace();
-        			FxDialogs.showWarning("Illegal output folder!", "Please specify another output destination");
-        			return;
-        		}
-//                buttonStart.requestFocus();
-            }
-    	});
+    	outputTF.textProperty().bindBidirectional(myass.prefixProperty());
     	GridPane.setConstraints(outputTF, 0,1,4,1);
     	outputPane.getChildren().add(outputTF);
     	
@@ -501,12 +493,7 @@ public class NPGraphFX extends Application{
     	outputPane.getChildren().add(outputBrowseButton);
     	
     	CheckBox overwriteCB = new CheckBox("Overwrite existing index files");
-    	overwriteCB.setSelected(myass.getOverwrite());
-    	overwriteCB.selectedProperty().addListener(
-    			(obs_val, old_val, new_val) -> {
-    				myass.setOverwrite(new_val);
-    			}		
-		);
+    	overwriteCB.selectedProperty().bindBidirectional(myass.overwriteProperty());
     	GridPane.setConstraints(overwriteCB, 0, 2, 4, 1);
     	outputPane.getChildren().add(overwriteCB);
     	
@@ -523,61 +510,76 @@ public class NPGraphFX extends Application{
     	GridPane.setConstraints(optLabel, 0,0,4,1);
     	optionPane.getChildren().add(optLabel);
     	
-    	final Label label1 = new Label("Path to ./minimap2: "),
+    	final Label label1 = new Label("Choose aligner: "),
 					label2= new Label("Parameters setting:");
     	
     	GridPane.setConstraints(label1, 0,1,4,1);
     	optionPane.getChildren().add(label1);
     	
-       	TextField mm2PathTF = new TextField("");
-       	mm2PathTF.setPromptText("Enter path to minimap2...");
-       	if(!myass.getMinimapPath().isEmpty())
-       		mm2PathTF.setText(myass.getMinimapPath());
-       	mm2PathTF.setOnKeyPressed(e -> {
-            if (e.getCode() == KeyCode.ENTER)  {
-    			if(!checkFolderFromTextField(mm2PathTF))
-    				return;
-    			myass.setMinimapPath(mm2PathTF.getText());
-//                buttonStart.requestFocus();
-            }
-    	});
-    	GridPane.setConstraints(mm2PathTF, 0,2,4,1);
-    	optionPane.getChildren().add(mm2PathTF);
+       	TextField algPathTF = new TextField("");
+       	algPathTF.setPromptText("Specify the aligner binary...");
+//       	if(!myass.getAlignerPath().isEmpty())
+//       		algPathTF.setText(myass.getAlignerPath());
+//       	
+//       	algPathTF.setOnKeyPressed(e -> {
+//            if (e.getCode() == KeyCode.ENTER)  {
+//    			if(!checkFolderFromTextField(algPathTF))
+//    				return;
+//    			myass.setAlignerPath(algPathTF.getText());
+////                buttonStart.requestFocus();
+//            }
+//    	});
+       	
+       	algPathTF.textProperty().bindBidirectional(myass.alignerPathProperty());
+    	GridPane.setConstraints(algPathTF, 0,2,4,1);
+    	optionPane.getChildren().add(algPathTF);
     	
+    	ComboBox<String> algCombo=new ComboBox<String>();
+    	algCombo.getItems().addAll("minimap2", "bwa");   
+//    	algCombo.setValue(myass.getAligner());
+//    	algCombo.valueProperty().addListener((obs_val, old_val, new_val) -> {
+//        	myass.setAligner(new_val);
+//        	algPathTF.setText("");
+//        	myass.setAlignerPath("");
+//        });
+    	algCombo.valueProperty().bindBidirectional(myass.alignerProperty());
+        GridPane.setConstraints(algCombo, 2, 0, 2, 1);
+        optionPane.getChildren().add(algCombo);
+         	
 
-    	Button mm2BrowseButton = new ImageButton("/folder.png");
-    	mm2BrowseButton.setPrefSize(10, 10);
-    	mm2BrowseButton.setOnAction((event) -> {
+    	Button algBrowseButton = new ImageButton("/folder.png");
+    	algBrowseButton.setPrefSize(10, 10);
+    	algBrowseButton.setOnAction((event) -> {    		
     		DirectoryChooser chooser = new DirectoryChooser();
-    		chooser.setTitle("Folder containing minimap2");
-    		File defaultDirectory=new File(mm2PathTF.getText());
+    		chooser.setTitle("Path to folder containing the aligner");
+    		File defaultDirectory=new File(algPathTF.getText());
     		if(defaultDirectory.isDirectory())
     			chooser.setInitialDirectory(defaultDirectory);
     		File selectedDirectory=chooser.showDialog(stage);
     		if(selectedDirectory != null) {		   
-    			myass.setMinimapPath(selectedDirectory.getPath());
-    			mm2PathTF.setText(myass.getMinimapPath());   			
+    			myass.setAlignerPath(selectedDirectory.getPath());
     		}
 
         });
-    	GridPane.setConstraints(mm2BrowseButton,4,2);
-    	optionPane.getChildren().add(mm2BrowseButton);
+    	GridPane.setConstraints(algBrowseButton,4,2);
+    	optionPane.getChildren().add(algBrowseButton);
     	
     	GridPane.setConstraints(label2, 0,3,4,1);
     	optionPane.getChildren().add(label2);
     	
-       	TextField mm2OptTF = new TextField("");
-       	mm2OptTF.setPromptText("Enter options to minimap2...");
-       	if(!myass.getMinimapOpts().isEmpty())
-       		mm2OptTF.setText(myass.getMinimapOpts());
-       	mm2OptTF.setOnKeyPressed(e -> {
-            if (e.getCode() == KeyCode.ENTER)  {
-            	myass.setMinimapOpts(mm2OptTF.getText());
-                buttonStart.requestFocus();
-            }
-    	});
-    	GridPane.setConstraints(mm2OptTF, 0,4,4,1);
-    	optionPane.getChildren().add(mm2OptTF);
+       	TextField algOptTF = new TextField("");
+       	algOptTF.setPromptText("Enter options to aligner...");
+//       	if(!myass.getAlignerOpts().isEmpty())
+//       		algOptTF.setText(myass.getAlignerOpts());
+//       	algOptTF.setOnKeyPressed(e -> {
+//            if (e.getCode() == KeyCode.ENTER)  {
+//            	myass.setAlignerOpts(algOptTF.getText());
+//                buttonStart.requestFocus();
+//            }
+//    	});
+       	algOptTF.textProperty().bindBidirectional(myass.alignerOptProperty());
+    	GridPane.setConstraints(algOptTF, 0,4,4,1);
+    	optionPane.getChildren().add(algOptTF);
     	
     	
     	final Label labelQual = new Label("Must have quality greater than ");
@@ -594,6 +596,9 @@ public class NPGraphFX extends Application{
     	});
     	GridPane.setConstraints(minQualTF, 3,6);
     	optionPane.getChildren().add(minQualTF);
+    	
+    	algPathTF.disableProperty().bind(algCombo.itemsProperty().asString().isEqualTo(""));
+    	algBrowseButton.disableProperty().bind(algCombo.itemsProperty().asString().isEqualTo(""));
     	
     	optionPane.disableProperty().bind(	longInputPane.disabledProperty()
     										.or(longInputFormatCombo.valueProperty().isEqualTo("sam/bam")));  
@@ -625,8 +630,12 @@ public class NPGraphFX extends Application{
     		}
     		
     		if(myass.getLongReadsInputFormat().equals("fasta/fastq")) {   			
-    			if(!myass.checkMinimap2()) {
-    				FxDialogs.showError("Error finding minimap2 at " + myass.getMinimapPath(), "Please try again!");
+    			if(myass.getAligner().equals("minimap2") && !myass.checkMinimap2()) {
+    				FxDialogs.showError("Error finding minimap2 at " + myass.getAlignerPath(), "Please try again!");
+    				return;
+    			}
+    			if(myass.getAligner().equals("bwa") && !myass.checkBWA()) {
+    				FxDialogs.showError("Error finding bwa at " + myass.getAlignerPath(), "Please try again!");
     				return;
     			}
     		}
@@ -905,13 +914,19 @@ public class NPGraphFX extends Application{
 //		//desktop IMB
 //		hbAss.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/EcK12S-careful/assembly_graph.gfa");
 //		hbAss.setLongReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/Eck12_ONT.fasta");
-//		hbAss.setMinimapPath("/home/sonhoanghguyen/.usr/local/bin/"); 
+//		hbAss.setAlignerPath("/home/sonhoanghguyen/.usr/local/bin/"); 
 		
-		//laptop Dell
-		hbAss.setShortReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/EcK12S-careful/assembly_graph.fastg");
-//		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/reads/EcK12S_ONT.fastq");		
-		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/EcK12S-careful/assembly_graph.sam");
-		hbAss.setMinimapPath("/home/s_hoangnguyen/workspace/minimap2/"); 
+//		//laptop Dell
+//		hbAss.setShortReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/EcK12S-careful/assembly_graph.fastg");
+////		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/reads/EcK12S_ONT.fastq");		
+//		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/EcK12S-careful/assembly_graph.sam");
+//		
+////		//shigella
+////		hbAss.setShortReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/unicycler/Shigella_sonnei_53G/good/spades/assembly_graph.fastg");
+//////		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/reads/EcK12S_ONT.fastq");		
+////		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/unicycler/Shigella_sonnei_53G/good/mm2.sam");
+////		
+//		hbAss.setAlignerPath("/home/s_hoangnguyen/workspace/minimap2/"); 
 		
 		NPGraphFX.setAssembler(hbAss);
 		Application.launch(NPGraphFX.class,args);
