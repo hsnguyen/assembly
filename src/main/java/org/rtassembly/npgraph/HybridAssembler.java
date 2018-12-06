@@ -23,22 +23,27 @@ import htsjdk.samtools.ValidationStringency;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceReader;
-
 import javafx.beans.property.StringProperty;
 import javafx.beans.property.SimpleStringProperty;
-
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.SimpleBooleanProperty;
 @SuppressWarnings("restriction")
 public class HybridAssembler {
     private static final Logger LOG = LoggerFactory.getLogger(HybridAssembler.class);
 	//setting parameter for the GUI
-    private boolean ready=false, overwrite=true;
-    private String 	prefix = "/tmp/";
-    private StringProperty 	aligner = new SimpleStringProperty();
-	private StringProperty 	alignerPath = new SimpleStringProperty(), 
-							alignerOpt = new SimpleStringProperty();
-
-	private String shortReadsInput="", binReadsInput="", longReadsInput="";
-	private String shortReadsInputFormat="", longReadsInputFormat="";
+    private boolean ready=false;
+    private BooleanProperty overwrite;
+    private StringProperty 	prefix,
+    						aligner,
+    						alignerPath, 
+							alignerOpt,
+							errorLog,
+							shortReadsInput, 
+							binReadsInput, 
+							longReadsInput,
+							shortReadsInputFormat, 
+							longReadsInputFormat;
+	
 	Process alignmentProcess = null;
 	private boolean stop=false;
 	//Getters and Setters
@@ -46,24 +51,15 @@ public class HybridAssembler {
 	public void setReady(boolean isReady) {ready=isReady;}
 	public boolean getReady() {return ready;}
 	
-	public void setOverwrite(boolean overwrite) {this.overwrite=overwrite;}
-	public boolean getOverwrite() {return overwrite;}
+	public final void setOverwrite(boolean owr) {overwrite.set(owr);}
+	public final boolean getOverwrite() {return overwrite.get();}
+	public BooleanProperty overwriteProperty() {return overwrite;}
 	
-	public void setPrefix(String prefix) {this.prefix=prefix;}
-	public String getPrefix() {return prefix;}
+	public final void setPrefix(String output) {prefix.set(output);}
+	public final String getPrefix() {return prefix.get();}
+	public StringProperty prefixProperty() {return prefix;}
 	
-	public final void setAligner(String aligner) {
-		if(aligner.toLowerCase().equals("bwa"))
-			setAlignerOpts("-t4 -x map-ont -k15 -w5");
-		else if (aligner.toLowerCase().equals("minimap2"))
-			setAlignerOpts("-t4 -k11 -W20 -r10 -A1 -B1 -O1 -E1 -L0 -a -Y");
-		else {
-			LOG.error("Unsupport aligner {}", aligner);
-			return;
-		} 
-			
-		this.aligner.set(aligner);
-	}
+	public final void setAligner(String tool) {	aligner.set(tool);}
 	public final String getAligner() {return aligner.get();}
 	public StringProperty alignerProperty(){return aligner;}
 	
@@ -75,62 +71,35 @@ public class HybridAssembler {
 	public final String getAlignerOpts() {return alignerOpt.get();}
 	public StringProperty alignerOptProperty(){return alignerOpt;}
 	
-	public void setBinReadsInput(String brInput) {
-		binReadsInput=brInput;
+	public final void setErrorLog(String log) {errorLog.set(log);}
+	public final String getErrorLog() {return errorLog.get();}
+	public StringProperty errorLogProperty(){return errorLog;}
+	
+	public final String getFullPathOfAligner() {return getAlignerPath()+"/"+getAligner();}
+	
+	public final void setBinReadsInput(String brInput) {binReadsInput.set(brInput);}
+	public final String getBinReadsInput() {return binReadsInput.get();}
+	public StringProperty binReadsInputProperty() {return binReadsInput;}
+	
+	public final void setShortReadsInput(String srInput) {
+		shortReadsInput.set(srInput);
 	}
-	public String getBinReadsInput() {return binReadsInput;}
+	public final String getShortReadsInput() {return shortReadsInput.get();}
+	public StringProperty shortReadsInputProperty() {return shortReadsInput;}
 	
-	public void setShortReadsInput(String srInput) {
-		File shortReadsInputFile = new File(srInput);
-		if(shortReadsInputFile.isFile()) {
-			try {
-				shortReadsInput=shortReadsInputFile.getCanonicalPath();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-				return;
-			}
-			String fn = srInput.toLowerCase();
-			if(	fn.endsWith(".fastg")) 
-				setShortReadsInputFormat("fastg");
-			else if(fn.endsWith(".gfa"))
-				setShortReadsInputFormat("gfa");
-			else
-				setShortReadsInputFormat("");
-		}
+	public final void setLongReadsInput(String lrInput) {
+		longReadsInput.set(lrInput);
 	}
-	public String getShortReadsInput() {return shortReadsInput;}
+	public final String getLongReadsInput() {return longReadsInput.get();}
+	public StringProperty longReadsInputProperty() {return longReadsInput;}
 	
-	public void setLongReadsInput(String lrInput) {
-		File longReadsInputFile = new File(lrInput);
-		if(longReadsInputFile.isFile()) {
-			try {
-				longReadsInput=longReadsInputFile.getCanonicalPath();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-				return;
-			}
-			String fn = lrInput.toLowerCase();
-			if(	fn.endsWith(".fasta") || fn.endsWith(".fa") || fn.endsWith("fna")
-				|| fn.endsWith(".fastq") || fn.endsWith(".fq")
-				|| fn.endsWith(".fasta.gz") || fn.endsWith(".fa.gz") || fn.endsWith("fna.gz")
-				|| fn.endsWith(".fastq.gz") || fn.endsWith(".fq.gz") 
-				) 
-				setLongReadsInputFormat("fasta/fastq");
-			else if(fn.endsWith(".sam") || fn.endsWith(".bam")) 
-				setLongReadsInputFormat("sam/bam");
-			else
-				setLongReadsInputFormat("");
-		}
-	}
-	public String getLongReadsInput() {return longReadsInput;}
+	public final void setShortReadsInputFormat(String srInputFormat) {shortReadsInputFormat.set(srInputFormat);}
+	public final String getShortReadsInputFormat() {return shortReadsInputFormat.get();}
+	public StringProperty shortReadsInputFormatProperty() {return shortReadsInputFormat;}
 	
-	public void setShortReadsInputFormat(String srInputFormat) {shortReadsInputFormat=srInputFormat;}
-	public String getShortReadsInputFormat() {return shortReadsInputFormat;}
-	
-	public void setLongReadsInputFormat(String lrInputFormat) {longReadsInputFormat=lrInputFormat;}
-	public String getLongReadsInputFormat() {return longReadsInputFormat;}
+	public final void setLongReadsInputFormat(String lrInputFormat) {longReadsInputFormat.set(lrInputFormat);}
+	public final String getLongReadsInputFormat() {return longReadsInputFormat.get();}
+	public StringProperty longReadsInputFormatProperty() {return longReadsInputFormat;}
 	
 	public synchronized void setStopSignal(boolean stop) {this.stop=stop;}
 	public synchronized boolean getStopSignal() {return stop;}
@@ -145,27 +114,112 @@ public class HybridAssembler {
 //		origGraph=new BDGraph("batch");
 		simGraph=new BDGraph("real");
 //		rtComponents = new ConnectedComponents();
-		
 		simGraph.setAttribute("ui.quality");
 		simGraph.setAttribute("ui.antialias");
 		
+		overwrite = new SimpleBooleanProperty(true);
+	    prefix = new SimpleStringProperty("/tmp/");
+	    aligner = new SimpleStringProperty("");
+		alignerPath = new SimpleStringProperty(); 
+		alignerOpt = new SimpleStringProperty();
+		errorLog = new SimpleStringProperty();	
+		
+		shortReadsInput = new SimpleStringProperty(""); 
+		binReadsInput = new SimpleStringProperty(""); 
+		longReadsInput = new SimpleStringProperty("");
+		shortReadsInputFormat = new SimpleStringProperty(); 
+		longReadsInputFormat = new SimpleStringProperty();
+		
+		//set all binding options here...
+        shortReadsInput.addListener((observable, oldValue, newValue) -> 
+			{
+				String fn = ((String)observable.getValue()).toLowerCase();
+				if(	fn.endsWith(".fastg")) 
+					setShortReadsInputFormat("fastg");
+				else if(fn.endsWith(".gfa"))
+					setShortReadsInputFormat("gfa");
+			}	 
+
+        );
+        
+        shortReadsInputFormat.addListener((observable, oldValue, newValue) -> 
+			{
+				if(!getShortReadsInput().toLowerCase().endsWith(newValue))
+					setShortReadsInput("");
+			}	 
+
+        );
+		
+        longReadsInput.addListener( (observable, oldValue, newValue) -> 
+    		{
+				String fn = ((String)observable.getValue()).toLowerCase();
+				if(	fn.endsWith(".fasta") || fn.endsWith(".fa") || fn.endsWith("fna")
+					|| fn.endsWith(".fastq") || fn.endsWith(".fq")
+					|| fn.endsWith(".fasta.gz") || fn.endsWith(".fa.gz") || fn.endsWith("fna.gz")
+					|| fn.endsWith(".fastq.gz") || fn.endsWith(".fq.gz") 
+					) 
+					setLongReadsInputFormat("fasta/fastq");
+				else if(fn.endsWith(".sam") || fn.endsWith(".bam")) 
+					setLongReadsInputFormat("sam/bam");		
+    		}	 
+        );
+        
+        longReadsInputFormat.addListener((observable, oldValue, newValue) -> 
+			{
+				String oldFile=getLongReadsInput().toLowerCase();
+				if(	newValue.equals("fasta/fastq") && !oldFile.endsWith(".fasta") && !oldFile.endsWith(".fa") && !oldFile.endsWith("fna")
+							 && !oldFile.endsWith(".fastq") && !oldFile.endsWith(".fq")
+							 && !oldFile.endsWith(".fasta.gz") && !oldFile.endsWith(".fa.gz") && !oldFile.endsWith("fna.gz")
+							 && !oldFile.endsWith(".fastq.gz") && !oldFile.endsWith(".fq.gz") 
+							) 
+					setLongReadsInput("");
+						
+				if(newValue.equals("sam/bam") && !oldFile.endsWith(".sam") && !oldFile.endsWith(".bam"))
+					setLongReadsInput("");
+			}	 
+
+        );
+        
+        aligner.addListener( (observable, oldValue, newValue) ->
+        	{
+				String aligner=(String)observable.getValue();
+				if(aligner.toLowerCase().equals("minimap2"))
+					setAlignerOpts("-t4 -x map-ont -k15 -w5");
+				else if (aligner.toLowerCase().equals("bwa"))
+					setAlignerOpts("-t4 -k11 -W20 -r10 -A1 -B1 -O1 -E1 -L0 -a -Y");			
+			}	 
+
+        );
+        
+
 	}
 		
 	
 	//Indexing reference, prepare for alignment...
 	public boolean prepareLongReadsProcess(){
+		//TODO: check all the fields filled up correctly...
+		
+		
+		try{
+			System.setProperty("usr.dir", getPrefix());
+		}
+		catch(NullPointerException | IllegalArgumentException | SecurityException exception ){
+			LOG.error("Fail to set working directory usr.dir to {}", getPrefix());
+			return false;
+		}
+		
 		//if long reads data not given in SAM/BAM, need to invoke minimap2
-        if(longReadsInputFormat.toLowerCase().startsWith("fast")) {
+        if(getLongReadsInputFormat().toLowerCase().startsWith("fast")) {
         	if(getAligner().equals("minimap2")) { 	
-				File indexFile=new File(prefix+"/assembly_graph.mmi");
-				if(overwrite || !indexFile.exists()) {						
+				File indexFile=new File(getPrefix()+"/assembly_graph.mmi");
+				if(getOverwrite() || !indexFile.exists()) {						
 					try{
-						simGraph.outputFASTA(prefix+"/assembly_graph.fasta");
+						simGraph.outputFASTA(getPrefix()+"/assembly_graph.fasta");
 						if(!checkMinimap2()) {
 								LOG.error("Dependancy check failed! Please config to the right version of minimap2!");
 								return false;
 						}
-						ProcessBuilder pb = new ProcessBuilder(getAlignerPath(), getAlignerOpts(),"-d", prefix+"/assembly_graph.mmi",prefix+"/assembly_graph.fasta");
+						ProcessBuilder pb = new ProcessBuilder(getFullPathOfAligner(), getAlignerOpts(),"-d", getPrefix()+"/assembly_graph.mmi",prefix+"/assembly_graph.fasta");
 						Process indexProcess =  pb.start();
 						indexProcess.waitFor();
 						
@@ -175,15 +229,15 @@ public class HybridAssembler {
 					}
 				}
         	}else if(getAligner().equals("bwa")) {
-				File indexFile=new File(prefix+"/assembly_graph.fasta.bwt");
-				if(overwrite || !indexFile.exists()) {						
+				File indexFile=new File(getPrefix()+"/assembly_graph.fasta.bwt");
+				if(getOverwrite() || !indexFile.exists()) {						
 					try{
-						simGraph.outputFASTA(prefix+"/assembly_graph.fasta");
+						simGraph.outputFASTA(getPrefix()+"/assembly_graph.fasta");
 						if(!checkBWA()) {
 								LOG.error("Dependancy check failed! Please config to the right version of bwa!");
 								return false;
 						}
-						ProcessBuilder pb = new ProcessBuilder(getAlignerPath(),"index", prefix+"/assembly_graph.fasta");
+						ProcessBuilder pb = new ProcessBuilder(getFullPathOfAligner(),"index", getPrefix()+"/assembly_graph.fasta");
 						Process indexProcess =  pb.start();
 						indexProcess.waitFor();
 						
@@ -204,11 +258,14 @@ public class HybridAssembler {
 	//Loading the graph, doing preprocessing
 	//binning, ...
 	public boolean prepareShortReadsProcess(boolean useSPAdesPaths) {
+		//TODO: check all the fields filled up correctly...
+
+		//try to read input file
 		try {
-			if(shortReadsInputFormat.toLowerCase().equals("gfa")) 
-				GraphUtil.loadFromGFA(shortReadsInput, binReadsInput, simGraph, useSPAdesPaths);
-			else if(shortReadsInputFormat.toLowerCase().equals("fastg"))
-				GraphUtil.loadFromFASTG(shortReadsInput, binReadsInput, simGraph, useSPAdesPaths);
+			if(getShortReadsInputFormat().toLowerCase().equals("gfa")) 
+				GraphUtil.loadFromGFA(getShortReadsInput(), getBinReadsInput(), simGraph, useSPAdesPaths);
+			else if(getShortReadsInputFormat().toLowerCase().equals("fastg"))
+				GraphUtil.loadFromFASTG(getShortReadsInput(), getBinReadsInput(), simGraph, useSPAdesPaths);
 			else 				
 				throw new IOException("assembly graph file must have .gfa or .fastg extension!");
 			
@@ -236,58 +293,58 @@ public class HybridAssembler {
 		SamReaderFactory.setDefaultValidationStringency(ValidationStringency.SILENT);
 		SamReader reader = null;
 
-		if (longReadsInputFormat.endsWith("am")){//bam or sam
-			if ("-".equals(longReadsInput))
+		if (getLongReadsInputFormat().endsWith("am")){//bam or sam
+			if ("-".equals(getLongReadsInput()))
 				reader = SamReaderFactory.makeDefault().open(SamInputResource.of(System.in));
 			else
-				reader = SamReaderFactory.makeDefault().open(new File(longReadsInput));	
+				reader = SamReaderFactory.makeDefault().open(new File(getLongReadsInput()));	
 		}else{
 			LOG.info("Starting alignment by {} at {}", getAligner(), new Date());
 			ProcessBuilder pb = null;
-			if ("-".equals(longReadsInput)){
+			if ("-".equals(getLongReadsInput())){
 				if(getAligner().equals("minimap2"))
-					pb = new ProcessBuilder(getAlignerPath(), 
+					pb = new ProcessBuilder(getFullPathOfAligner(), 
 							"-a",
 							getAlignerOpts(),
 							"-K",
 							"20000",
-							prefix+"/assembly_graph.mmi",
+							getPrefix()+"/assembly_graph.mmi",
 							"-"
 							).
 							redirectInput(Redirect.INHERIT);
 				else if(getAligner().equals("bwa"))
-					pb = new ProcessBuilder(getAlignerPath(), 
+					pb = new ProcessBuilder(getFullPathOfAligner(), 
 							"mem",
 							getAlignerOpts(),
 							"-K",
 							"20000",
-							prefix+"/assembly_graph.fasta",
+							getPrefix()+"/assembly_graph.fasta",
 							"-"
 							).
 							redirectInput(Redirect.INHERIT);
 			}else{
 				if(getAligner().equals("minimap2"))
-					pb = new ProcessBuilder(getAlignerPath(), 
+					pb = new ProcessBuilder(getFullPathOfAligner(), 
 							"-a",
 							getAlignerOpts(),
 							"-K",
 							"20000",
-							prefix+"/assembly_graph.mmi",
-							longReadsInput
+							getPrefix()+"/assembly_graph.mmi",
+							getLongReadsInput()
 							);
 				else if(getAligner().equals("bwa"))
-					pb = new ProcessBuilder(getAlignerPath(), 
+					pb = new ProcessBuilder(getFullPathOfAligner(), 
 							"mem",
 							getAlignerOpts(),
 							"-K",
 							"20000",
-							prefix+"/assembly_graph.fasta",
-							longReadsInput
+							getPrefix()+"/assembly_graph.fasta",
+							getLongReadsInput()
 							);
 			}
 
 //			alignmentProcess  = pb.redirectError(ProcessBuilder.Redirect.to(new File("/dev/null"))).start();
-			alignmentProcess  = pb.redirectError(ProcessBuilder.Redirect.to(new File(prefix+"/alignment.log"))).start();
+			alignmentProcess  = pb.redirectError(ProcessBuilder.Redirect.to(new File(getPrefix()+"/alignment.log"))).start();
 
 			LOG.info("{} started!", getAligner());			
 
@@ -392,7 +449,7 @@ public class HybridAssembler {
     
     
     public boolean checkMinimap2() {    		
-		ProcessBuilder pb = new ProcessBuilder(getAlignerPath(),"-V").redirectErrorStream(true);
+		ProcessBuilder pb = new ProcessBuilder(getFullPathOfAligner(),"-V").redirectErrorStream(true);
 		Process process;
 		try {
 			process = pb.start();
@@ -416,7 +473,7 @@ public class HybridAssembler {
 			bf.close();
 			
 			if (version.length() == 0){
-				LOG.error(getAlignerPath() + " is not the right path to minimap2!");
+				LOG.error(getFullPathOfAligner() + " is not the right path to minimap2!");
 				return false;
 			}else{
 				System.out.println("minimap version: " + version);
@@ -427,7 +484,7 @@ public class HybridAssembler {
 			}
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
-			LOG.error("Error running: " + getAlignerPath() + "\n" + e.getMessage());
+			LOG.error("Error running: " + getFullPathOfAligner() + "\n" + e.getMessage());
 			return false;
 		}
 		
@@ -437,7 +494,7 @@ public class HybridAssembler {
     
     public boolean checkBWA() {    		
 		try{
-			ProcessBuilder pb = new ProcessBuilder(getAlignerPath()).redirectErrorStream(true);
+			ProcessBuilder pb = new ProcessBuilder(getFullPathOfAligner()).redirectErrorStream(true);
 			Process process =  pb.start();
 			BufferedReader bf = SequenceReader.openInputStream(process.getInputStream());
 
@@ -459,7 +516,7 @@ public class HybridAssembler {
 			bf.close();
 			
 			if (version.length() == 0){
-				LOG.error(getAlignerPath() + " is not the right path to BWA!");
+				LOG.error(getFullPathOfAligner() + " is not the right path to BWA!");
 				return false;
 			}else{
 				LOG.info("bwa version: " + version);
@@ -470,7 +527,7 @@ public class HybridAssembler {
 			}
 
 		}catch (IOException e){
-			LOG.error("Error running: " + getAlignerPath() + "\n" + e.getMessage());
+			LOG.error("Error running: " + getFullPathOfAligner() + "\n" + e.getMessage());
 			return false;
 		}
 		
