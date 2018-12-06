@@ -18,7 +18,12 @@ public class PopBin{
 		coreNodes = new ArrayList<Node>();
 	
 	}
-	
+	//this constructor for reading from file with assigned binID
+	public PopBin(int binID) {
+		this.binID=binID;
+		coreNodes = new ArrayList<Node>();
+
+	}
 	public int getId() {
 		return binID;
 	}
