@@ -877,12 +877,6 @@ public class BDGraph extends MultiGraph{
 		}
 		n50=lengths[i50];
 		n75=lengths[i75];
-
-		
-		//convert to Kbp
-		maxl/=1000;
-		n50/=1000;
-		n75/=1000;
     }
     
     public synchronized void redrawGraphComponents() {	

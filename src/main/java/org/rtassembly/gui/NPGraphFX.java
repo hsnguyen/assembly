@@ -135,7 +135,7 @@ public class NPGraphFX extends Application{
             pBorder.setCenter(addAssemblyStatsBox());
             
             Scene pscene = new Scene(pBorder);
-            pscene.getStylesheets().add("/chart.css"); 
+//            pscene.getStylesheets().add("/main.css");
             primaryStage.setScene(pscene);
             primaryStage.setTitle("npGraph Dashboard");
             primaryStage.setOnCloseRequest(e -> {
@@ -486,31 +486,13 @@ public class NPGraphFX extends Application{
     	optionPane.getChildren().add(label1);
     	
        	TextField algPathTF = new TextField("");
-       	algPathTF.setPromptText("Specify the aligner binary...");
-//       	if(!myass.getAlignerPath().isEmpty())
-//       		algPathTF.setText(myass.getAlignerPath());
-//       	
-//       	algPathTF.setOnKeyPressed(e -> {
-//            if (e.getCode() == KeyCode.ENTER)  {
-//    			if(!checkFolderFromTextField(algPathTF))
-//    				return;
-//    			myass.setAlignerPath(algPathTF.getText());
-////                buttonStart.requestFocus();
-//            }
-//    	});
-       	
+       	algPathTF.setPromptText("Specify the aligner binary...");       	
        	algPathTF.textProperty().bindBidirectional(myass.alignerPathProperty());
     	GridPane.setConstraints(algPathTF, 0,2,4,1);
     	optionPane.getChildren().add(algPathTF);
     	
     	ComboBox<String> algCombo=new ComboBox<String>();
     	algCombo.getItems().addAll("minimap2", "bwa");   
-//    	algCombo.setValue(myass.getAligner());
-//    	algCombo.valueProperty().addListener((obs_val, old_val, new_val) -> {
-//        	myass.setAligner(new_val);
-//        	algPathTF.setText("");
-//        	myass.setAlignerPath("");
-//        });
     	algCombo.valueProperty().bindBidirectional(myass.alignerProperty());
         GridPane.setConstraints(algCombo, 2, 0, 2, 1);
         optionPane.getChildren().add(algCombo);
@@ -538,14 +520,6 @@ public class NPGraphFX extends Application{
     	
        	TextField algOptTF = new TextField("");
        	algOptTF.setPromptText("Enter options to aligner...");
-//       	if(!myass.getAlignerOpts().isEmpty())
-//       		algOptTF.setText(myass.getAlignerOpts());
-//       	algOptTF.setOnKeyPressed(e -> {
-//            if (e.getCode() == KeyCode.ENTER)  {
-//            	myass.setAlignerOpts(algOptTF.getText());
-//                buttonStart.requestFocus();
-//            }
-//    	});
        	algOptTF.textProperty().bindBidirectional(myass.alignerOptProperty());
     	GridPane.setConstraints(algOptTF, 0,4,4,1);
     	optionPane.getChildren().add(algOptTF);
@@ -615,8 +589,9 @@ public class NPGraphFX extends Application{
 				return;
 			}
 			myass.setStopSignal(true);
+			if(!executor.isTerminated())
+				executor.shutdown();
         	buttonStop.setDisable(true);
-
 
         	//buttonRestart.setDisable(false);
 
@@ -681,7 +656,7 @@ public class NPGraphFX extends Application{
     @SuppressWarnings("unchecked")
 	private VBox addAssemblyStatsBox(){
         VBox vbox = new VBox();
-        vbox.setPadding(new Insets(10)); // Set all sides to 10
+        vbox.setPadding(new Insets(20)); // Set all sides to 10
         vbox.setSpacing(8);              // Gap between nodes
         
         xAxis = new NumberAxis(0, MAX_DATA_POINTS, MAX_DATA_POINTS / 10);
@@ -706,7 +681,6 @@ public class NPGraphFX extends Application{
         };
         
         lengthChart.setAnimated(false);
-//        lengthChart.setTitle("Length (bp) stats over time");
         lengthChart.setHorizontalGridLinesVisible(true);
         lengthChart.legendSideProperty().set(Side.TOP);
 
@@ -734,16 +708,19 @@ public class NPGraphFX extends Application{
          };       
          
          numChart.setAnimated(false);
-//         numChart.setTitle("Number of contigs over time");
          numChart.setHorizontalGridLinesVisible(true);
          
-         seriesNumCtgs.setName("Number of contigs");
-         seriesNumCircularCtgs.setName("Number of CIRCULAR contigs");
+         seriesNumCtgs.setName("All contigs");
+         seriesNumCircularCtgs.setName("Circular contigs");
          
          numChart.getData().addAll(seriesNumCtgs, seriesNumCircularCtgs);
          
          vbox.getChildren().add(numChart);
-        return vbox;
+        
+         lengthChart.getStylesheets().add("/chart1.css");
+         numChart.getStylesheets().add("/chart2.css");
+
+         return vbox;
     }
 
     /******************************************************************************************
@@ -776,15 +753,16 @@ public class NPGraphFX extends Application{
     private class AddToQueue implements Runnable {
         public void run() {
             try {
-                // add a item of random data to queue
-                dataN50.add(myass.observer.getN50());
-                dataN75.add(myass.observer.getN75());
-                dataMax.add(myass.observer.getLongestContig());
+                // add a item of data to queue
+                dataN50.add(myass.observer.getN50()/1000); //because unit is Kbp
+                dataN75.add(myass.observer.getN75()/1000);
+                dataMax.add(myass.observer.getLongestContig()/1000);
                 dataNumCtgs.add(myass.observer.getNumberOfSequences());
                 dataNumCircularCtgs.add(myass.observer.getNumberOfCircularSequences());
 
                 Thread.sleep(500);
-                executor.execute(this);
+                if(executor!=null && !executor.isShutdown())
+                	executor.execute(this);
             } catch (InterruptedException ex) {
                 ex.printStackTrace();
             }
@@ -832,11 +810,6 @@ public class NPGraphFX extends Application{
         xAxis.setUpperBound(xSeriesData - 1);
     }
     
-	public static void interupt(Exception e){
-		//stillRun = false;
-//		assembler.wait = false;
-		FxDialogs.showError("Unexpected errors happened!", e.getMessage());
-	}
 	
 	private void updateData(){
         executor = Executors.newCachedThreadPool(new ThreadFactory() {
@@ -858,10 +831,10 @@ public class NPGraphFX extends Application{
 	public static void main(String[] args) {
 		HybridAssembler hbAss = new HybridAssembler();
 		
-//		//desktop IMB
-//		hbAss.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/EcK12S-careful/assembly_graph.gfa");
-//		hbAss.setLongReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/Eck12_ONT.fasta");
-//		hbAss.setAlignerPath("/home/sonhoanghguyen/.usr/local/bin/"); 
+		//desktop IMB
+		hbAss.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/EcK12S-careful/assembly_graph.gfa");
+		hbAss.setLongReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/Eck12_ONT.fasta");
+		hbAss.setAlignerPath("/home/sonhoanghguyen/.usr/local/bin/"); 
 		
 //		//laptop Dell
 //		hbAss.setShortReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/EcK12S-careful/assembly_graph.fastg");

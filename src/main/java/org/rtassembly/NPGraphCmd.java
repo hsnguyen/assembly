@@ -41,8 +41,8 @@ public class NPGraphCmd extends CommandLine{
 		args = cmdLine.stdParseLine(args);
 
 		/***********************************************************************/
-		String 	shortReadsAssembly = cmdLine.getStringVal("si"),
-				shortReadsAssemblyFormat = cmdLine.getStringVal("sf"),
+		String 	shortReadsInput = cmdLine.getStringVal("si"),
+				shortReadsInputFormat = cmdLine.getStringVal("sf"),
 				longReadsInput = cmdLine.getStringVal("li"),
 				longReadsInputFormat = cmdLine.getStringVal("lf"),
 				outputDir = cmdLine.getStringVal("output"),
@@ -56,18 +56,16 @@ public class NPGraphCmd extends CommandLine{
 		BDGraph.S_LIMIT=cmdLine.getIntVal("dfs");
 		//Default output dir 
 		if(outputDir == null) {
-			outputDir = new File(shortReadsAssembly).getAbsoluteFile().getParent();
+			outputDir = new File(shortReadsInput).getAbsoluteFile().getParent();
 		}
 		File outDir = new File(outputDir);
 		if(!outDir.exists())
 			outDir.mkdirs();
-		
-//		algPath+=algPath.isEmpty()?"":"/";
-		
+			
 		//1. Create an assembler object with appropriate file loader
 		HybridAssembler hbAss = new HybridAssembler();
-		hbAss.setShortReadsInput(shortReadsAssembly);
-		hbAss.setShortReadsInputFormat(shortReadsAssemblyFormat);
+		hbAss.setShortReadsInput(shortReadsInput);
+		hbAss.setShortReadsInputFormat(shortReadsInputFormat);
 		hbAss.setLongReadsInput(longReadsInput);
 		hbAss.setLongReadsInputFormat(longReadsInputFormat);
 		
@@ -90,12 +88,11 @@ public class NPGraphCmd extends CommandLine{
 					hbAss.postProcessGraph();
 				}
 				else{
-					System.err.println("Error with pre-processing step! Config and try again!");
+					System.err.println("Error with pre-processing step: \n" + hbAss.getErrorLog());
 					System.exit(1);
 				}
 					
 			} catch (InterruptedException|IOException e) {
-				// TODO Auto-generated catch block
 				System.err.println("Issue when assembly: \n" + e.getMessage());
 				e.printStackTrace();
 				System.exit(1);
