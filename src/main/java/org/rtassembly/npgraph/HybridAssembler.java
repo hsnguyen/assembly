@@ -37,7 +37,6 @@ public class HybridAssembler {
     						aligner,
     						alignerPath, 
 							alignerOpt,
-							errorLog,
 							shortReadsInput, 
 							binReadsInput, 
 							longReadsInput,
@@ -46,6 +45,7 @@ public class HybridAssembler {
 	
 	Process alignmentProcess = null;
 	private boolean stop=false;
+	private String errorLog="";
 	//Getters and Setters
 	//==============================================================================================//
 	public void setReady(boolean isReady) {ready=isReady;}
@@ -71,9 +71,8 @@ public class HybridAssembler {
 	public final String getAlignerOpts() {return alignerOpt.get();}
 	public StringProperty alignerOptProperty(){return alignerOpt;}
 	
-	public final void setErrorLog(String log) {errorLog.set(log);}
-	public final String getErrorLog() {return errorLog.get();}
-	public StringProperty errorLogProperty(){return errorLog;}
+	public final void setErrorLog(String log) {errorLog=log;}
+	public final String getErrorLog() {return errorLog;}
 	
 	public final String getFullPathOfAligner() {return getAlignerPath()+"/"+getAligner();}
 	
@@ -120,15 +119,14 @@ public class HybridAssembler {
 		overwrite = new SimpleBooleanProperty(true);
 	    prefix = new SimpleStringProperty("/tmp/");
 	    aligner = new SimpleStringProperty("");
-		alignerPath = new SimpleStringProperty(); 
-		alignerOpt = new SimpleStringProperty();
-		errorLog = new SimpleStringProperty();	
+		alignerPath = new SimpleStringProperty(""); 
+		alignerOpt = new SimpleStringProperty("");
 		
 		shortReadsInput = new SimpleStringProperty(""); 
 		binReadsInput = new SimpleStringProperty(""); 
 		longReadsInput = new SimpleStringProperty("");
-		shortReadsInputFormat = new SimpleStringProperty(); 
-		longReadsInputFormat = new SimpleStringProperty();
+		shortReadsInputFormat = new SimpleStringProperty(""); 
+		longReadsInputFormat = new SimpleStringProperty("");
 		
 		//set all binding options here...
         shortReadsInput.addListener((observable, oldValue, newValue) -> 
@@ -193,12 +191,40 @@ public class HybridAssembler {
         
 
 	}
-		
+	
+    private boolean checkFile(String _path) {
+		if (_path.equals("")){
+			setErrorLog("Empty file \"" + _path + "\"");
+			return false;
+		}
+		File _file = new File(_path);
+		if (!_file.isFile()){
+			setErrorLog("File \"" + _path + "\" is not valid!");
+			return false;
+		}
+		return true;
+    }
+    private boolean checkFolder(String _path) {
+		if (_path.equals("")){
+			setErrorLog("Empty directory \"" + _path + "\"");
+			return false;
+		}
+		File _file = new File(_path);
+		if (!_file.isDirectory()){
+			setErrorLog("Directory \"" + _path + "\" is not valid!");
+			return false;
+		}
+		return true;
+    }	
 	
 	//Indexing reference, prepare for alignment...
 	public boolean prepareLongReadsProcess(){
-		//TODO: check all the fields filled up correctly...
-		
+		if(!getLongReadsInputFormat().equals("fasta/fastq") && !getLongReadsInputFormat().equals("sam/bam")){
+			setErrorLog("Please specify a correct format of long read data (FASTA/FASTQ or BAM/SAM)!");
+			return false;
+		}
+		if(!checkFile(getLongReadsInput()) || !checkFolder(getPrefix()))
+			return false;
 		
 		try{
 			System.setProperty("usr.dir", getPrefix());
@@ -218,7 +244,7 @@ public class HybridAssembler {
 						if(!checkMinimap2()) 
 								return false;
 						
-						ProcessBuilder pb = new ProcessBuilder(getFullPathOfAligner(), getAlignerOpts(),"-d", getPrefix()+"/assembly_graph.mmi",prefix+"/assembly_graph.fasta");
+						ProcessBuilder pb = new ProcessBuilder(getFullPathOfAligner(), getAlignerOpts(),"-d", getPrefix()+"/assembly_graph.mmi",getPrefix()+"/assembly_graph.fasta");
 						Process indexProcess =  pb.start();
 						indexProcess.waitFor();
 						
@@ -245,7 +271,7 @@ public class HybridAssembler {
 					}
 				}
         	}else {
-        		setErrorLog("Unsupported aligner! Only BWA or minimap2 please!");
+        		setErrorLog("Invalide aligner! Set to BWA or minimap2 please!");
         		return false;
         	}
 			
@@ -255,8 +281,14 @@ public class HybridAssembler {
 	//Loading the graph, doing preprocessing
 	//binning, ...
 	public boolean prepareShortReadsProcess(boolean useSPAdesPaths) {
-		//TODO: check all the fields filled up correctly...
-
+		if(!getShortReadsInputFormat().equals("fastg") && !getShortReadsInputFormat().equals("gfa")){
+			setErrorLog("Please specify a correct format of graph file!");
+			return false;
+		}
+			
+		if(!checkFile(getShortReadsInput()))
+			return false;
+		
 		//try to read input file
 		try {
 			if(getShortReadsInputFormat().toLowerCase().equals("gfa")) 
@@ -473,13 +505,13 @@ public class HybridAssembler {
 				setErrorLog("Command " + getFullPathOfAligner() + " -V doesn't give version info. Check version failed!");
 				return false;
 			}else{
+				LOG.info("minimap version: " + version);
 				if (version.compareTo("2.0") < 0){
 					setErrorLog("Require minimap version 2 or above!");
 					return false;
 				}
 			}
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			setErrorLog("Error running: " + getFullPathOfAligner() + "\n" + e.getMessage());
 			return false;
 		}

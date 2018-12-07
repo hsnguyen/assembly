@@ -79,7 +79,10 @@ import javafx.scene.text.Text;
 import javafx.scene.chart.XYChart;
 import javafx.animation.AnimationTimer;
 import javafx.scene.chart.LineChart;
+import javafx.scene.chart.AreaChart;
 import javafx.scene.chart.NumberAxis;
+import javafx.geometry.Side;
+import javafx.geometry.NodeOrientation;
 
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
@@ -129,9 +132,10 @@ public class NPGraphFX extends Application{
     	    pBorder.setLeft(addVBox());
             
             // Here the main content    
-            pBorder.setCenter(addAssemblyStatsPane());
+            pBorder.setCenter(addAssemblyStatsBox());
             
             Scene pscene = new Scene(pBorder);
+            pscene.getStylesheets().add("/chart.css"); 
             primaryStage.setScene(pscene);
             primaryStage.setTitle("npGraph Dashboard");
             primaryStage.setOnCloseRequest(e -> {
@@ -182,37 +186,6 @@ public class NPGraphFX extends Application{
     private Button 	buttonStart, buttonStop, buttonGraph;
     private ComboBox<String> longInputFormatCombo;
     private GridPane graphInputPane, longInputPane, outputPane, alignmentPane, controlPane;
-
-    private boolean checkFileFromTextField(TextField tf) {
-		String _path = tf.getText().trim();				
-		if (_path.equals("")){
-			FxDialogs.showWarning("File not found!", "Text field must not be empty!");
-			tf.requestFocus();
-			return false;
-		}
-		File _file = new File(_path);
-		if (!_file.isFile()){
-			FxDialogs.showWarning("File not found!", "File \"" + _path + "\" does not exist!");
-			tf.requestFocus();
-			return false;
-		}
-		return true;
-    }
-    private boolean checkFolderFromTextField(TextField tf) {
-		String _path = tf.getText().trim();				
-		if (_path.equals("")){
-			FxDialogs.showWarning("Directory not found!", "Text field must not be empty!");
-			tf.requestFocus();
-			return false;
-		}
-		File _file = new File(_path);
-		if (!_file.isDirectory()){
-			FxDialogs.showWarning("File not found!", "Directory \"" + _path + "\" does not exist!");
-			tf.requestFocus();
-			return false;
-		}
-		return true;
-    }
     
     
     private final int LeftPaneWidth=360;
@@ -367,12 +340,8 @@ public class NPGraphFX extends Application{
         buttonGraph = new Button("Load", viewLoad);
         buttonGraph.setPrefSize(100, 20);
         buttonGraph.setOnAction((event) -> {
-        	if(!checkFileFromTextField(shortInputTF)) {
-    			return;       	
-        	}
-    		myass.setShortReadsInput(shortInputTF.getText());
     		if(!myass.prepareShortReadsProcess(false)) { //true if using SPAdes path (not necessary)
-    			FxDialogs.showWarning("Warning", "Problems preparing assembly graph file. Check stderr!");
+    			FxDialogs.showWarning("Warning", myass.getErrorLog());
     			return;
     		}
     		myass.simGraph.redrawGraphComponents();
@@ -615,31 +584,10 @@ public class NPGraphFX extends Application{
         buttonStart = new Button("Start", viewStart);
         buttonStart.setPrefSize(100, 20);
         buttonStart.setOnAction((event) -> {
-        	//checking & settings
-    		if(myass.getLongReadsInput().isEmpty())	{
-    			FxDialogs.showWarning("Warning", "Please specify the long read data!");
-    			return;
-    		}  		
-    		if(myass.getLongReadsInputFormat().isEmpty()) {
-    			FxDialogs.showWarning("Warning", "Please specify the long read format!");
-    			return;
-    		}
     		if(!myass.prepareLongReadsProcess()) {
-    			FxDialogs.showWarning("Warning", "Problems preparing long-reads data. Please try again!");
+    			FxDialogs.showWarning("Warning", myass.getErrorLog());
     			return;
     		}
-    		
-    		if(myass.getLongReadsInputFormat().equals("fasta/fastq")) {   			
-    			if(myass.getAligner().equals("minimap2") && !myass.checkMinimap2()) {
-    				FxDialogs.showError("Error finding minimap2 at " + myass.getAlignerPath(), "Please try again!");
-    				return;
-    			}
-    			if(myass.getAligner().equals("bwa") && !myass.checkBWA()) {
-    				FxDialogs.showError("Error finding bwa at " + myass.getAlignerPath(), "Please try again!");
-    				return;
-    			}
-    		}
-
 
         	myass.setReady(true);
         	
@@ -731,73 +679,72 @@ public class NPGraphFX extends Application{
     private NumberAxis xAxis;
     
     @SuppressWarnings("unchecked")
-	private GridPane addAssemblyStatsPane(){
-	   GridPane mainGrid = createAutoresizeGridPane(1,2);
-       mainGrid.setStyle("-fx-background-color: #C0C0C0;");
-       mainGrid.setPadding(new Insets(5, 100, 5, 100));
-       mainGrid.setVgap(5);
-       mainGrid.setHgap(5);
-       
-       xAxis = new NumberAxis(0, MAX_DATA_POINTS, MAX_DATA_POINTS / 10);
-       xAxis.setForceZeroInRange(false);
-       xAxis.setAutoRanging(false);
-       xAxis.setTickLabelsVisible(false);
-       xAxis.setTickMarkVisible(false);
-       xAxis.setMinorTickVisible(false);
-       
-       /*
-        * Length stats chart
-        */
-       NumberAxis yAxis = new NumberAxis();
-       // Create a LineChart
-       final LineChart<Number, Number> lengthChart = new LineChart<Number, Number>(xAxis, yAxis) {
-           // Override to remove symbols on each data point
-           @Override
-           protected void dataItemAdded(Series<Number, Number> series, int itemIndex, Data<Number, Number> item) {
-           }
-       };
-       
-       lengthChart.setAnimated(false);
-       lengthChart.setTitle("Length (bp) stats over time");
-       lengthChart.setHorizontalGridLinesVisible(true);
-
-
-       // Set Name for Series
-       seriesN50.setName("N50");
-       seriesN75.setName("N75");
-       seriesMax.setName("Max length");
-
-       // Add Chart Series
-       lengthChart.getData().addAll(seriesN50, seriesN75, seriesMax);
-       
-   		GridPane.setConstraints(lengthChart, 0,0);
-   		mainGrid.getChildren().add(lengthChart);	
-   		
-   		/*
-   		 * Number of contigs chart
-   		 */
-   		yAxis = new NumberAxis();
-        final LineChart<Number, Number> numChart = new LineChart<Number, Number>(xAxis, yAxis) {
+	private VBox addAssemblyStatsBox(){
+        VBox vbox = new VBox();
+        vbox.setPadding(new Insets(10)); // Set all sides to 10
+        vbox.setSpacing(8);              // Gap between nodes
+        
+        xAxis = new NumberAxis(0, MAX_DATA_POINTS, MAX_DATA_POINTS / 10);
+        xAxis.setForceZeroInRange(false);
+        xAxis.setAutoRanging(false);
+        xAxis.setTickLabelsVisible(false);
+        xAxis.setTickMarkVisible(false);
+        xAxis.setMinorTickVisible(false);
+        
+        /*
+         * Length stats chart
+         */
+        NumberAxis yAxis = new NumberAxis();
+        yAxis.setTickLabelRotation(270);
+        yAxis.setLabel("length (Kbp)");
+        // Create a LineChart
+        final AreaChart<Number, Number> lengthChart = new AreaChart<Number, Number>(xAxis, yAxis) {
             // Override to remove symbols on each data point
             @Override
             protected void dataItemAdded(Series<Number, Number> series, int itemIndex, Data<Number, Number> item) {
             }
-        };       
+        };
         
-        numChart.setAnimated(false);
-        numChart.setTitle("Number of contigs over time");
-        numChart.setHorizontalGridLinesVisible(true);
-        
-        seriesNumCtgs.setName("Number of contigs");
-        seriesNumCircularCtgs.setName("Number of CIRCULAR contigs");
-        
-        numChart.getData().addAll(seriesNumCtgs, seriesNumCircularCtgs);
-   		GridPane.setConstraints(numChart, 0,1);
-   		mainGrid.getChildren().add(numChart);   	
+        lengthChart.setAnimated(false);
+//        lengthChart.setTitle("Length (bp) stats over time");
+        lengthChart.setHorizontalGridLinesVisible(true);
+        lengthChart.legendSideProperty().set(Side.TOP);
 
-   		return mainGrid;
+        // Set Name for Series
+        seriesN50.setName("N50");
+        seriesN75.setName("N75");
+        seriesMax.setName("Max length");
+
+        // Add Chart Series
+        lengthChart.getData().addAll(seriesN50, seriesN75, seriesMax);
+        
+        vbox.getChildren().add(lengthChart);
+		
+		/*
+		 * Number of contigs chart
+		 */
+		yAxis = new NumberAxis();
+        yAxis.setTickLabelRotation(270);
+        yAxis.setLabel("number of contigs");
+         final AreaChart<Number, Number> numChart = new AreaChart<Number, Number>(xAxis, yAxis) {
+             // Override to remove symbols on each data point
+             @Override
+             protected void dataItemAdded(Series<Number, Number> series, int itemIndex, Data<Number, Number> item) {
+             }
+         };       
+         
+         numChart.setAnimated(false);
+//         numChart.setTitle("Number of contigs over time");
+         numChart.setHorizontalGridLinesVisible(true);
+         
+         seriesNumCtgs.setName("Number of contigs");
+         seriesNumCircularCtgs.setName("Number of CIRCULAR contigs");
+         
+         numChart.getData().addAll(seriesNumCtgs, seriesNumCircularCtgs);
+         
+         vbox.getChildren().add(numChart);
+        return vbox;
     }
-    
 
     /******************************************************************************************
      * ************ Create a Grid Pane for assembly graph *************************************
