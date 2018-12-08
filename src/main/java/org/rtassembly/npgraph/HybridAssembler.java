@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.ProcessBuilder.Redirect;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Scanner;
@@ -37,7 +38,6 @@ public class HybridAssembler {
     						aligner,
     						alignerPath, 
 							alignerOpt,
-							errorLog,
 							shortReadsInput, 
 							binReadsInput, 
 							longReadsInput,
@@ -46,6 +46,7 @@ public class HybridAssembler {
 	
 	Process alignmentProcess = null;
 	private boolean stop=false;
+	private String errorLog="";
 	//Getters and Setters
 	//==============================================================================================//
 	public void setReady(boolean isReady) {ready=isReady;}
@@ -71,9 +72,8 @@ public class HybridAssembler {
 	public final String getAlignerOpts() {return alignerOpt.get();}
 	public StringProperty alignerOptProperty(){return alignerOpt;}
 	
-	public final void setErrorLog(String log) {errorLog.set(log);}
-	public final String getErrorLog() {return errorLog.get();}
-	public StringProperty errorLogProperty(){return errorLog;}
+	public final void setErrorLog(String log) {errorLog=log;}
+	public final String getErrorLog() {return errorLog;}
 	
 	public final String getFullPathOfAligner() {return getAlignerPath()+"/"+getAligner();}
 	
@@ -120,15 +120,14 @@ public class HybridAssembler {
 		overwrite = new SimpleBooleanProperty(true);
 	    prefix = new SimpleStringProperty("/tmp/");
 	    aligner = new SimpleStringProperty("");
-		alignerPath = new SimpleStringProperty(); 
-		alignerOpt = new SimpleStringProperty();
-		errorLog = new SimpleStringProperty();	
+		alignerPath = new SimpleStringProperty(""); 
+		alignerOpt = new SimpleStringProperty("");
 		
 		shortReadsInput = new SimpleStringProperty(""); 
 		binReadsInput = new SimpleStringProperty(""); 
 		longReadsInput = new SimpleStringProperty("");
-		shortReadsInputFormat = new SimpleStringProperty(); 
-		longReadsInputFormat = new SimpleStringProperty();
+		shortReadsInputFormat = new SimpleStringProperty(""); 
+		longReadsInputFormat = new SimpleStringProperty("");
 		
 		//set all binding options here...
         shortReadsInput.addListener((observable, oldValue, newValue) -> 
@@ -193,18 +192,46 @@ public class HybridAssembler {
         
 
 	}
-		
+	
+    private boolean checkFile(String _path) {
+		if (_path.equals("")){
+			setErrorLog("Empty file \"" + _path + "\"");
+			return false;
+		}
+		File _file = new File(_path);
+		if (!_file.isFile()){
+			setErrorLog("File \"" + _path + "\" is not valid!");
+			return false;
+		}
+		return true;
+    }
+    private boolean checkFolder(String _path) {
+		if (_path.equals("")){
+			setErrorLog("Empty directory \"" + _path + "\"");
+			return false;
+		}
+		File _file = new File(_path);
+		if (!_file.isDirectory()){
+			setErrorLog("Directory \"" + _path + "\" is not valid!");
+			return false;
+		}
+		return true;
+    }	
 	
 	//Indexing reference, prepare for alignment...
 	public boolean prepareLongReadsProcess(){
-		//TODO: check all the fields filled up correctly...
-		
+		if(!getLongReadsInputFormat().equals("fasta/fastq") && !getLongReadsInputFormat().equals("sam/bam")){
+			setErrorLog("Please specify a correct format of long read data (FASTA/FASTQ or BAM/SAM)!");
+			return false;
+		}
+		if(!checkFile(getLongReadsInput()) || !checkFolder(getPrefix()))
+			return false;
 		
 		try{
 			System.setProperty("usr.dir", getPrefix());
 		}
 		catch(NullPointerException | IllegalArgumentException | SecurityException exception ){
-			LOG.error("Fail to set working directory usr.dir to {}", getPrefix());
+			setErrorLog("Fail to set working directory usr.dir to " + getPrefix());
 			return false;
 		}
 		
@@ -215,16 +242,15 @@ public class HybridAssembler {
 				if(getOverwrite() || !indexFile.exists()) {						
 					try{
 						simGraph.outputFASTA(getPrefix()+"/assembly_graph.fasta");
-						if(!checkMinimap2()) {
-								LOG.error("Dependancy check failed! Please config to the right version of minimap2!");
+						if(!checkMinimap2()) 
 								return false;
-						}
-						ProcessBuilder pb = new ProcessBuilder(getFullPathOfAligner(), getAlignerOpts(),"-d", getPrefix()+"/assembly_graph.mmi",prefix+"/assembly_graph.fasta");
+						
+						ProcessBuilder pb = new ProcessBuilder(getFullPathOfAligner(), getAlignerOpts(),"-d", getPrefix()+"/assembly_graph.mmi",getPrefix()+"/assembly_graph.fasta");
 						Process indexProcess =  pb.start();
 						indexProcess.waitFor();
 						
 					}catch (IOException | InterruptedException e){
-						LOG.error("Issue when indexing with minimap2: \n" + e.getMessage());
+						setErrorLog("Issue when indexing with minimap2: \n" + e.getMessage());
 						return false;
 					}
 				}
@@ -233,24 +259,22 @@ public class HybridAssembler {
 				if(getOverwrite() || !indexFile.exists()) {						
 					try{
 						simGraph.outputFASTA(getPrefix()+"/assembly_graph.fasta");
-						if(!checkBWA()) {
-								LOG.error("Dependancy check failed! Please config to the right version of bwa!");
+						if(!checkBWA()) 
 								return false;
-						}
+						
 						ProcessBuilder pb = new ProcessBuilder(getFullPathOfAligner(),"index", getPrefix()+"/assembly_graph.fasta");
 						Process indexProcess =  pb.start();
 						indexProcess.waitFor();
 						
 					}catch (IOException | InterruptedException e){
-						LOG.error("Issue when indexing with bwa: \n" + e.getMessage());
+						setErrorLog("Issue when indexing with bwa: \n" + e.getMessage());
 						return false;
 					}
 				}
         	}else {
-        		LOG.error("Unknown aligner!");
+        		setErrorLog("Invalide aligner! Set to BWA or minimap2 please!");
         		return false;
         	}
-			
 			
         }
         return true;
@@ -258,8 +282,14 @@ public class HybridAssembler {
 	//Loading the graph, doing preprocessing
 	//binning, ...
 	public boolean prepareShortReadsProcess(boolean useSPAdesPaths) {
-		//TODO: check all the fields filled up correctly...
-
+		if(!getShortReadsInputFormat().equals("fastg") && !getShortReadsInputFormat().equals("gfa")){
+			setErrorLog("Please specify a correct format of graph file!");
+			return false;
+		}
+			
+		if(!checkFile(getShortReadsInput()))
+			return false;
+		
 		//try to read input file
 		try {
 			if(getShortReadsInputFormat().toLowerCase().equals("gfa")) 
@@ -267,10 +297,10 @@ public class HybridAssembler {
 			else if(getShortReadsInputFormat().toLowerCase().equals("fastg"))
 				GraphUtil.loadFromFASTG(getShortReadsInput(), getBinReadsInput(), simGraph, useSPAdesPaths);
 			else 				
-				throw new IOException("assembly graph file must have .gfa or .fastg extension!");
+				throw new IOException("Assembly graph file must have .gfa or .fastg extension!");
 			
 		}catch(IOException e) {
-			System.err.println("Issue when loading pre-assembly: \n" + e.getMessage());
+			setErrorLog("Issue when loading pre-assembly: \n" + e.getMessage());
 			return false;
 		}
 		
@@ -301,46 +331,27 @@ public class HybridAssembler {
 		}else{
 			LOG.info("Starting alignment by {} at {}", getAligner(), new Date());
 			ProcessBuilder pb = null;
+			List<String> command = new ArrayList<>();
+			command.add(getFullPathOfAligner());
+			if(getAligner().equals("minimap2")) {
+				command.add("-a");
+				command.addAll(Arrays.asList(getAlignerOpts().split("\\s")));
+				command.add("-K20000");
+				command.add(getPrefix()+"/assembly_graph.mmi");
+				command.add(getLongReadsInput());
+			}
+			else if(getAligner().equals("bwa")) {
+				command.add("mem");
+				command.addAll(Arrays.asList(getAlignerOpts().split("\\s")));
+				command.add("-K20000");
+				command.add(getPrefix()+"/assembly_graph.fasta");
+				command.add(getLongReadsInput());
+			}
+			
 			if ("-".equals(getLongReadsInput())){
-				if(getAligner().equals("minimap2"))
-					pb = new ProcessBuilder(getFullPathOfAligner(), 
-							"-a",
-							getAlignerOpts(),
-							"-K",
-							"20000",
-							getPrefix()+"/assembly_graph.mmi",
-							"-"
-							).
-							redirectInput(Redirect.INHERIT);
-				else if(getAligner().equals("bwa"))
-					pb = new ProcessBuilder(getFullPathOfAligner(), 
-							"mem",
-							getAlignerOpts(),
-							"-K",
-							"20000",
-							getPrefix()+"/assembly_graph.fasta",
-							"-"
-							).
-							redirectInput(Redirect.INHERIT);
+				pb = new ProcessBuilder(command).redirectInput(Redirect.INHERIT);
 			}else{
-				if(getAligner().equals("minimap2"))
-					pb = new ProcessBuilder(getFullPathOfAligner(), 
-							"-a",
-							getAlignerOpts(),
-							"-K",
-							"20000",
-							getPrefix()+"/assembly_graph.mmi",
-							getLongReadsInput()
-							);
-				else if(getAligner().equals("bwa"))
-					pb = new ProcessBuilder(getFullPathOfAligner(), 
-							"mem",
-							getAlignerOpts(),
-							"-K",
-							"20000",
-							getPrefix()+"/assembly_graph.fasta",
-							getLongReadsInput()
-							);
+				pb = new ProcessBuilder(command);
 			}
 
 //			alignmentProcess  = pb.redirectError(ProcessBuilder.Redirect.to(new File("/dev/null"))).start();
@@ -473,18 +484,17 @@ public class HybridAssembler {
 			bf.close();
 			
 			if (version.length() == 0){
-				LOG.error(getFullPathOfAligner() + " is not the right path to minimap2!");
+				setErrorLog("Command " + getFullPathOfAligner() + " -V doesn't give version info. Check version failed!");
 				return false;
 			}else{
-				System.out.println("minimap version: " + version);
+				LOG.info("minimap version: " + version);
 				if (version.compareTo("2.0") < 0){
-					LOG.error("Require minimap version 2 or above!");
+					setErrorLog("Require minimap version 2 or above!");
 					return false;
 				}
 			}
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			LOG.error("Error running: " + getFullPathOfAligner() + "\n" + e.getMessage());
+			setErrorLog("Error running: " + getFullPathOfAligner() + "\n" + e.getMessage());
 			return false;
 		}
 		
@@ -516,18 +526,18 @@ public class HybridAssembler {
 			bf.close();
 			
 			if (version.length() == 0){
-				LOG.error(getFullPathOfAligner() + " is not the right path to BWA!");
+				setErrorLog("Command " + getFullPathOfAligner() + " doesn't give version info. Check version failed!");
 				return false;
 			}else{
 				LOG.info("bwa version: " + version);
 				if (version.compareTo("0.7.11") < 0){
-					LOG.error(" Require bwa of 0.7.11 or above");
+					setErrorLog(" Require bwa of 0.7.11 or above");
 					return false;
 				}
 			}
 
 		}catch (IOException e){
-			LOG.error("Error running: " + getFullPathOfAligner() + "\n" + e.getMessage());
+			setErrorLog("Error running: " + getFullPathOfAligner() + "\n" + e.getMessage());
 			return false;
 		}
 		
