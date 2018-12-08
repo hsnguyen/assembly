@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.ProcessBuilder.Redirect;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Scanner;
@@ -330,46 +331,27 @@ public class HybridAssembler {
 		}else{
 			LOG.info("Starting alignment by {} at {}", getAligner(), new Date());
 			ProcessBuilder pb = null;
+			List<String> command = new ArrayList<>();
+			command.add(getFullPathOfAligner());
+			if(getAligner().equals("minimap2")) {
+				command.add("-a");
+				command.addAll(Arrays.asList(getAlignerOpts().split("\\s")));
+				command.add("-K20000");
+				command.add(getPrefix()+"/assembly_graph.mmi");
+				command.add(getLongReadsInput());
+			}
+			else if(getAligner().equals("bwa")) {
+				command.add("mem");
+				command.addAll(Arrays.asList(getAlignerOpts().split("\\s")));
+				command.add("-K20000");
+				command.add(getPrefix()+"/assembly_graph.fasta");
+				command.add(getLongReadsInput());
+			}
+			
 			if ("-".equals(getLongReadsInput())){
-				if(getAligner().equals("minimap2"))
-					pb = new ProcessBuilder(getFullPathOfAligner(), 
-							"-a",
-							getAlignerOpts(),
-							"-K",
-							"20000",
-							getPrefix()+"/assembly_graph.mmi",
-							"-"
-							).
-							redirectInput(Redirect.INHERIT);
-				else if(getAligner().equals("bwa"))
-					pb = new ProcessBuilder(getFullPathOfAligner(), 
-							"mem",
-							getAlignerOpts(),
-							"-K",
-							"20000",
-							getPrefix()+"/assembly_graph.fasta",
-							"-"
-							).
-							redirectInput(Redirect.INHERIT);
+				pb = new ProcessBuilder(command).redirectInput(Redirect.INHERIT);
 			}else{
-				if(getAligner().equals("minimap2"))
-					pb = new ProcessBuilder(getFullPathOfAligner(), 
-							"-a",
-							getAlignerOpts(),
-							"-K",
-							"20000",
-							getPrefix()+"/assembly_graph.mmi",
-							getLongReadsInput()
-							);
-				else if(getAligner().equals("bwa"))
-					pb = new ProcessBuilder(getFullPathOfAligner(), 
-							"mem",
-							getAlignerOpts(),
-							"-K",
-							"20000",
-							getPrefix()+"/assembly_graph.fasta",
-							getLongReadsInput()
-							);
+				pb = new ProcessBuilder(command);
 			}
 
 //			alignmentProcess  = pb.redirectError(ProcessBuilder.Redirect.to(new File("/dev/null"))).start();
