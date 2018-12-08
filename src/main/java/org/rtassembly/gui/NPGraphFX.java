@@ -79,7 +79,10 @@ import javafx.scene.text.Text;
 import javafx.scene.chart.XYChart;
 import javafx.animation.AnimationTimer;
 import javafx.scene.chart.LineChart;
+import javafx.scene.chart.AreaChart;
 import javafx.scene.chart.NumberAxis;
+import javafx.geometry.Side;
+import javafx.geometry.NodeOrientation;
 
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
@@ -129,9 +132,10 @@ public class NPGraphFX extends Application{
     	    pBorder.setLeft(addVBox());
             
             // Here the main content    
-            pBorder.setCenter(addAssemblyStatsPane());
+            pBorder.setCenter(addAssemblyStatsBox());
             
             Scene pscene = new Scene(pBorder);
+//            pscene.getStylesheets().add("/main.css");
             primaryStage.setScene(pscene);
             primaryStage.setTitle("npGraph Dashboard");
             primaryStage.setOnCloseRequest(e -> {
@@ -182,37 +186,6 @@ public class NPGraphFX extends Application{
     private Button 	buttonStart, buttonStop, buttonGraph;
     private ComboBox<String> longInputFormatCombo;
     private GridPane graphInputPane, longInputPane, outputPane, alignmentPane, controlPane;
-
-    private boolean checkFileFromTextField(TextField tf) {
-		String _path = tf.getText().trim();				
-		if (_path.equals("")){
-			FxDialogs.showWarning("File not found!", "Text field must not be empty!");
-			tf.requestFocus();
-			return false;
-		}
-		File _file = new File(_path);
-		if (!_file.isFile()){
-			FxDialogs.showWarning("File not found!", "File \"" + _path + "\" does not exist!");
-			tf.requestFocus();
-			return false;
-		}
-		return true;
-    }
-    private boolean checkFolderFromTextField(TextField tf) {
-		String _path = tf.getText().trim();				
-		if (_path.equals("")){
-			FxDialogs.showWarning("Directory not found!", "Text field must not be empty!");
-			tf.requestFocus();
-			return false;
-		}
-		File _file = new File(_path);
-		if (!_file.isDirectory()){
-			FxDialogs.showWarning("File not found!", "Directory \"" + _path + "\" does not exist!");
-			tf.requestFocus();
-			return false;
-		}
-		return true;
-    }
     
     
     private final int LeftPaneWidth=360;
@@ -367,12 +340,8 @@ public class NPGraphFX extends Application{
         buttonGraph = new Button("Load", viewLoad);
         buttonGraph.setPrefSize(100, 20);
         buttonGraph.setOnAction((event) -> {
-        	if(!checkFileFromTextField(shortInputTF)) {
-    			return;       	
-        	}
-    		myass.setShortReadsInput(shortInputTF.getText());
     		if(!myass.prepareShortReadsProcess(false)) { //true if using SPAdes path (not necessary)
-    			FxDialogs.showWarning("Warning", "Problems preparing assembly graph file. Check stderr!");
+    			FxDialogs.showWarning("Warning", myass.getErrorLog());
     			return;
     		}
     		myass.simGraph.redrawGraphComponents();
@@ -517,31 +486,13 @@ public class NPGraphFX extends Application{
     	optionPane.getChildren().add(label1);
     	
        	TextField algPathTF = new TextField("");
-       	algPathTF.setPromptText("Specify the aligner binary...");
-//       	if(!myass.getAlignerPath().isEmpty())
-//       		algPathTF.setText(myass.getAlignerPath());
-//       	
-//       	algPathTF.setOnKeyPressed(e -> {
-//            if (e.getCode() == KeyCode.ENTER)  {
-//    			if(!checkFolderFromTextField(algPathTF))
-//    				return;
-//    			myass.setAlignerPath(algPathTF.getText());
-////                buttonStart.requestFocus();
-//            }
-//    	});
-       	
+       	algPathTF.setPromptText("Specify the aligner binary...");       	
        	algPathTF.textProperty().bindBidirectional(myass.alignerPathProperty());
     	GridPane.setConstraints(algPathTF, 0,2,4,1);
     	optionPane.getChildren().add(algPathTF);
     	
     	ComboBox<String> algCombo=new ComboBox<String>();
     	algCombo.getItems().addAll("minimap2", "bwa");   
-//    	algCombo.setValue(myass.getAligner());
-//    	algCombo.valueProperty().addListener((obs_val, old_val, new_val) -> {
-//        	myass.setAligner(new_val);
-//        	algPathTF.setText("");
-//        	myass.setAlignerPath("");
-//        });
     	algCombo.valueProperty().bindBidirectional(myass.alignerProperty());
         GridPane.setConstraints(algCombo, 2, 0, 2, 1);
         optionPane.getChildren().add(algCombo);
@@ -569,14 +520,6 @@ public class NPGraphFX extends Application{
     	
        	TextField algOptTF = new TextField("");
        	algOptTF.setPromptText("Enter options to aligner...");
-//       	if(!myass.getAlignerOpts().isEmpty())
-//       		algOptTF.setText(myass.getAlignerOpts());
-//       	algOptTF.setOnKeyPressed(e -> {
-//            if (e.getCode() == KeyCode.ENTER)  {
-//            	myass.setAlignerOpts(algOptTF.getText());
-//                buttonStart.requestFocus();
-//            }
-//    	});
        	algOptTF.textProperty().bindBidirectional(myass.alignerOptProperty());
     	GridPane.setConstraints(algOptTF, 0,4,4,1);
     	optionPane.getChildren().add(algOptTF);
@@ -615,31 +558,10 @@ public class NPGraphFX extends Application{
         buttonStart = new Button("Start", viewStart);
         buttonStart.setPrefSize(100, 20);
         buttonStart.setOnAction((event) -> {
-        	//checking & settings
-    		if(myass.getLongReadsInput().isEmpty())	{
-    			FxDialogs.showWarning("Warning", "Please specify the long read data!");
-    			return;
-    		}  		
-    		if(myass.getLongReadsInputFormat().isEmpty()) {
-    			FxDialogs.showWarning("Warning", "Please specify the long read format!");
-    			return;
-    		}
     		if(!myass.prepareLongReadsProcess()) {
-    			FxDialogs.showWarning("Warning", "Problems preparing long-reads data. Please try again!");
+    			FxDialogs.showWarning("Warning", myass.getErrorLog());
     			return;
     		}
-    		
-    		if(myass.getLongReadsInputFormat().equals("fasta/fastq")) {   			
-    			if(myass.getAligner().equals("minimap2") && !myass.checkMinimap2()) {
-    				FxDialogs.showError("Error finding minimap2 at " + myass.getAlignerPath(), "Please try again!");
-    				return;
-    			}
-    			if(myass.getAligner().equals("bwa") && !myass.checkBWA()) {
-    				FxDialogs.showError("Error finding bwa at " + myass.getAlignerPath(), "Please try again!");
-    				return;
-    			}
-    		}
-
 
         	myass.setReady(true);
         	
@@ -667,8 +589,9 @@ public class NPGraphFX extends Application{
 				return;
 			}
 			myass.setStopSignal(true);
+			if(!executor.isTerminated())
+				executor.shutdown();
         	buttonStop.setDisable(true);
-
 
         	//buttonRestart.setDisable(false);
 
@@ -731,73 +654,74 @@ public class NPGraphFX extends Application{
     private NumberAxis xAxis;
     
     @SuppressWarnings("unchecked")
-	private GridPane addAssemblyStatsPane(){
-	   GridPane mainGrid = createAutoresizeGridPane(1,2);
-       mainGrid.setStyle("-fx-background-color: #C0C0C0;");
-       mainGrid.setPadding(new Insets(5, 100, 5, 100));
-       mainGrid.setVgap(5);
-       mainGrid.setHgap(5);
-       
-       xAxis = new NumberAxis(0, MAX_DATA_POINTS, MAX_DATA_POINTS / 10);
-       xAxis.setForceZeroInRange(false);
-       xAxis.setAutoRanging(false);
-       xAxis.setTickLabelsVisible(false);
-       xAxis.setTickMarkVisible(false);
-       xAxis.setMinorTickVisible(false);
-       
-       /*
-        * Length stats chart
-        */
-       NumberAxis yAxis = new NumberAxis();
-       // Create a LineChart
-       final LineChart<Number, Number> lengthChart = new LineChart<Number, Number>(xAxis, yAxis) {
-           // Override to remove symbols on each data point
-           @Override
-           protected void dataItemAdded(Series<Number, Number> series, int itemIndex, Data<Number, Number> item) {
-           }
-       };
-       
-       lengthChart.setAnimated(false);
-       lengthChart.setTitle("Length (bp) stats over time");
-       lengthChart.setHorizontalGridLinesVisible(true);
-
-
-       // Set Name for Series
-       seriesN50.setName("N50");
-       seriesN75.setName("N75");
-       seriesMax.setName("Max length");
-
-       // Add Chart Series
-       lengthChart.getData().addAll(seriesN50, seriesN75, seriesMax);
-       
-   		GridPane.setConstraints(lengthChart, 0,0);
-   		mainGrid.getChildren().add(lengthChart);	
-   		
-   		/*
-   		 * Number of contigs chart
-   		 */
-   		yAxis = new NumberAxis();
-        final LineChart<Number, Number> numChart = new LineChart<Number, Number>(xAxis, yAxis) {
+	private VBox addAssemblyStatsBox(){
+        VBox vbox = new VBox();
+        vbox.setPadding(new Insets(20)); // Set all sides to 10
+        vbox.setSpacing(8);              // Gap between nodes
+        
+        xAxis = new NumberAxis(0, MAX_DATA_POINTS, MAX_DATA_POINTS / 10);
+        xAxis.setForceZeroInRange(false);
+        xAxis.setAutoRanging(false);
+        xAxis.setTickLabelsVisible(false);
+        xAxis.setTickMarkVisible(false);
+        xAxis.setMinorTickVisible(false);
+        
+        /*
+         * Length stats chart
+         */
+        NumberAxis yAxis = new NumberAxis();
+        yAxis.setTickLabelRotation(270);
+        yAxis.setLabel("length (Kbp)");
+        // Create a LineChart
+        final AreaChart<Number, Number> lengthChart = new AreaChart<Number, Number>(xAxis, yAxis) {
             // Override to remove symbols on each data point
             @Override
             protected void dataItemAdded(Series<Number, Number> series, int itemIndex, Data<Number, Number> item) {
             }
-        };       
+        };
         
-        numChart.setAnimated(false);
-        numChart.setTitle("Number of contigs over time");
-        numChart.setHorizontalGridLinesVisible(true);
-        
-        seriesNumCtgs.setName("Number of contigs");
-        seriesNumCircularCtgs.setName("Number of CIRCULAR contigs");
-        
-        numChart.getData().addAll(seriesNumCtgs, seriesNumCircularCtgs);
-   		GridPane.setConstraints(numChart, 0,1);
-   		mainGrid.getChildren().add(numChart);   	
+        lengthChart.setAnimated(false);
+        lengthChart.setHorizontalGridLinesVisible(true);
+        lengthChart.legendSideProperty().set(Side.TOP);
 
-   		return mainGrid;
+        // Set Name for Series
+        seriesN50.setName("N50");
+        seriesN75.setName("N75");
+        seriesMax.setName("Max length");
+
+        // Add Chart Series
+        lengthChart.getData().addAll(seriesN50, seriesN75, seriesMax);
+        
+        vbox.getChildren().add(lengthChart);
+		
+		/*
+		 * Number of contigs chart
+		 */
+		yAxis = new NumberAxis();
+        yAxis.setTickLabelRotation(270);
+        yAxis.setLabel("number of contigs");
+         final AreaChart<Number, Number> numChart = new AreaChart<Number, Number>(xAxis, yAxis) {
+             // Override to remove symbols on each data point
+             @Override
+             protected void dataItemAdded(Series<Number, Number> series, int itemIndex, Data<Number, Number> item) {
+             }
+         };       
+         
+         numChart.setAnimated(false);
+         numChart.setHorizontalGridLinesVisible(true);
+         
+         seriesNumCtgs.setName("All contigs");
+         seriesNumCircularCtgs.setName("Circular contigs");
+         
+         numChart.getData().addAll(seriesNumCtgs, seriesNumCircularCtgs);
+         
+         vbox.getChildren().add(numChart);
+        
+         lengthChart.getStylesheets().add("/chart1.css");
+         numChart.getStylesheets().add("/chart2.css");
+
+         return vbox;
     }
-    
 
     /******************************************************************************************
      * ************ Create a Grid Pane for assembly graph *************************************
@@ -829,15 +753,16 @@ public class NPGraphFX extends Application{
     private class AddToQueue implements Runnable {
         public void run() {
             try {
-                // add a item of random data to queue
-                dataN50.add(myass.observer.getN50());
-                dataN75.add(myass.observer.getN75());
-                dataMax.add(myass.observer.getLongestContig());
+                // add a item of data to queue
+                dataN50.add(myass.observer.getN50()/1000); //because unit is Kbp
+                dataN75.add(myass.observer.getN75()/1000);
+                dataMax.add(myass.observer.getLongestContig()/1000);
                 dataNumCtgs.add(myass.observer.getNumberOfSequences());
                 dataNumCircularCtgs.add(myass.observer.getNumberOfCircularSequences());
 
                 Thread.sleep(500);
-                executor.execute(this);
+                if(executor!=null && !executor.isShutdown())
+                	executor.execute(this);
             } catch (InterruptedException ex) {
                 ex.printStackTrace();
             }
@@ -885,11 +810,6 @@ public class NPGraphFX extends Application{
         xAxis.setUpperBound(xSeriesData - 1);
     }
     
-	public static void interupt(Exception e){
-		//stillRun = false;
-//		assembler.wait = false;
-		FxDialogs.showError("Unexpected errors happened!", e.getMessage());
-	}
 	
 	private void updateData(){
         executor = Executors.newCachedThreadPool(new ThreadFactory() {
@@ -916,17 +836,17 @@ public class NPGraphFX extends Application{
 //		hbAss.setLongReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/Eck12_ONT.fasta");
 //		hbAss.setAlignerPath("/home/sonhoanghguyen/.usr/local/bin/"); 
 		
-//		//laptop Dell
-//		hbAss.setShortReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/EcK12S-careful/assembly_graph.fastg");
-////		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/reads/EcK12S_ONT.fastq");		
+		//laptop Dell
+		hbAss.setShortReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/EcK12S-careful/assembly_graph.fastg");
+		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/reads/EcK12S_ONT.fastq");		
 //		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/EcK12S-careful/assembly_graph.sam");
+		
+//		//shigella
+//		hbAss.setShortReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/unicycler/Shigella_sonnei_53G/good/spades/assembly_graph.fastg");
+////		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/reads/EcK12S_ONT.fastq");		
+//		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/unicycler/Shigella_sonnei_53G/good/mm2.sam");
 //		
-////		//shigella
-////		hbAss.setShortReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/unicycler/Shigella_sonnei_53G/good/spades/assembly_graph.fastg");
-//////		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/reads/EcK12S_ONT.fastq");		
-////		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/unicycler/Shigella_sonnei_53G/good/mm2.sam");
-////		
-//		hbAss.setAlignerPath("/home/s_hoangnguyen/workspace/minimap2/"); 
+		hbAss.setAlignerPath("/home/s_hoangnguyen/workspace/minimap2/"); 
 		
 		NPGraphFX.setAssembler(hbAss);
 		Application.launch(NPGraphFX.class,args);

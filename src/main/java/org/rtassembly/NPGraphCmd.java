@@ -35,13 +35,14 @@ public class NPGraphCmd extends CommandLine{
 		addStdHelp();
 	}
 	
+	@SuppressWarnings("restriction")
 	public static void main(String[] args) throws IOException{
 		CommandLine cmdLine = new NPGraphCmd();		
 		args = cmdLine.stdParseLine(args);
 
 		/***********************************************************************/
-		String 	shortReadsAssembly = cmdLine.getStringVal("si"),
-				shortReadsAssemblyFormat = cmdLine.getStringVal("sf"),
+		String 	shortReadsInput = cmdLine.getStringVal("si"),
+				shortReadsInputFormat = cmdLine.getStringVal("sf"),
 				longReadsInput = cmdLine.getStringVal("li"),
 				longReadsInputFormat = cmdLine.getStringVal("lf"),
 				outputDir = cmdLine.getStringVal("output"),
@@ -55,18 +56,16 @@ public class NPGraphCmd extends CommandLine{
 		BDGraph.S_LIMIT=cmdLine.getIntVal("dfs");
 		//Default output dir 
 		if(outputDir == null) {
-			outputDir = new File(shortReadsAssembly).getAbsoluteFile().getParent();
+			outputDir = new File(shortReadsInput).getAbsoluteFile().getParent();
 		}
 		File outDir = new File(outputDir);
 		if(!outDir.exists())
 			outDir.mkdirs();
-		
-//		algPath+=algPath.isEmpty()?"":"/";
-		
+			
 		//1. Create an assembler object with appropriate file loader
 		HybridAssembler hbAss = new HybridAssembler();
-		hbAss.setShortReadsInput(shortReadsAssembly);
-		hbAss.setShortReadsInputFormat(shortReadsAssemblyFormat);
+		hbAss.setShortReadsInput(shortReadsInput);
+		hbAss.setShortReadsInputFormat(shortReadsInputFormat);
 		hbAss.setLongReadsInput(longReadsInput);
 		hbAss.setLongReadsInputFormat(longReadsInputFormat);
 		
@@ -76,15 +75,9 @@ public class NPGraphCmd extends CommandLine{
 		hbAss.setAlignerOpts(algOpt);
 		hbAss.setAligner(alg);
 		hbAss.setOverwrite(overwrite);
-		
-		
-		BDGraph graph = hbAss.simGraph;      
-        
+		        
 		//4. Call the assembly function or invoke GUI to do so
         if(gui) {
-        	//settings...
-//        	GraphExplore.redrawGraphComponents(graph);
-//            graph.display();
 			NPGraphFX.setAssembler(hbAss);
 			Application.launch(NPGraphFX.class,args);
         }else {
@@ -95,12 +88,11 @@ public class NPGraphCmd extends CommandLine{
 					hbAss.postProcessGraph();
 				}
 				else{
-					System.err.println("Error with pre-processing step! Config and try again!");
+					System.err.println("Error with pre-processing step: \n" + hbAss.getErrorLog());
 					System.exit(1);
 				}
 					
 			} catch (InterruptedException|IOException e) {
-				// TODO Auto-generated catch block
 				System.err.println("Issue when assembly: \n" + e.getMessage());
 				e.printStackTrace();
 				System.exit(1);
@@ -109,71 +101,4 @@ public class NPGraphCmd extends CommandLine{
 		
 	}
 	
-	
-//	public static void main(String[] args) throws IOException{
-//		CommandLine cmdLine = new NPGraphCmd ();
-//		args = cmdLine.stdParseLine(args);
-//
-//		Alignment.MIN_QUAL = cmdLine.getIntVal("qual");
-//		String fastgFile = cmdLine.getStringVal("fastg");
-//		String samFile = cmdLine.getStringVal("sam");
-//		String pathFile = cmdLine.getStringVal("path");
-//		String name = cmdLine.getStringVal("title");
-//		
-//		String styleSheet =
-//			        "node {" +
-//			        "	fill-color: black; z-index: 0;" +
-//			        "}" +
-//			        "edge {" +
-//			        "	text-alignment: along;" +
-//			        "}" +
-//			        "node.marked {" +
-//			        "	fill-color: red;" +
-//			        "}" +
-//			        "edge.marked {" +
-//			        "	fill-color: red;" +
-//			        "}";
-//		System.setProperty("java.awt.headless", "false");
-//		HybridAssembler hbAss = new HybridAssembler(fastgFile);
-//		//For SAM file, run bwa first on the edited assembly_graph.fastg by running:
-//		//awk -F '[:;]' -v q=\' 'BEGIN{flag=0;}/^>/{if(index($1,q)!=0) flag=0; else flag=1;}{if(flag==1) print $1;}' ../EcK12S-careful/assembly_graph.fastg > Eck12-careful.fasta
-//		//TODO: need to make this easier
-//		BDGraph graph= hbAss.simGraph;
-//		
-//        //graph.addAttribute("ui.quality");
-//        //graph.addAttribute("ui.antialias");
-//        graph.addAttribute("ui.stylesheet", styleSheet);
-//        graph.addAttribute("ui.default.title", name);
-//
-//        Viewer viewer = graph.display();
-//        // Let the layout work ...
-//        
-//        System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
-//
-//        
-//        for (Node node : graph) {
-//            node.addAttribute("ui.label", node.getId());
-//            node.setAttribute("ui.style", "text-offset: -10;"); 
-//            node.addAttribute("layout.weight", 10); 
-//
-//            if(BDGraph.isMarker(node))
-//            	node.setAttribute("ui.class", "marked");
-//        }
-//
-//
-//        try {
-//        	if(pathFile!=null)
-//        		hbAss.reduceFromSPAdesPaths(pathFile);
-//        	hbAss.assembly(samFile);
-//		} catch (IOException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
-//        
-//        
-//        
-//        HybridAssembler.promptEnterKey();
-//        viewer.disableAutoLayout();
-//        System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
-//	}
 }
