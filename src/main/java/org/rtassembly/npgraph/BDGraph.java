@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.Stack;
+import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -278,10 +279,7 @@ public class BDGraph extends MultiGraph{
     	
     	return retval;
     }
-    
-    synchronized public void removeBridgesFromNode(Node node){
-    	
-    }
+
     
     //If the node was wrongly identified as unique before, do things...
     synchronized public void destroyFalseBridges(Node node){
@@ -322,13 +320,11 @@ public class BDGraph extends MultiGraph{
 //    	}
     		
     }
-    
-    synchronized public void binning() {
-    	binner=new SimpleBinner(this);
+
+    synchronized public void binning(String binFileName, String gformat) {   		
+    	binner=new SimpleBinner(this, binFileName, gformat);
     	binner.estimatePathsByCoverage();
     }
-
-    
     
     synchronized ArrayList<BDPath> DFSAllPaths(Alignment from, Alignment to, boolean force){
     	assert from.readID==to.readID && to.compareTo(from)>=0:"Illegal alignment pair to find path!"; 	
@@ -839,7 +835,7 @@ public class BDGraph extends MultiGraph{
     /***********************************************************************
      * TODO: merge this with GraphWatcher.update()
      **********************************************************************/
-    int n50, n75, maxl;
+    int n50, n75, maxl; //in Kbp
     int numOfCtgs, numOfCircularCtgs;
     public synchronized void updateStats() {
     	numOfCtgs=getNodeCount();
@@ -881,7 +877,6 @@ public class BDGraph extends MultiGraph{
 		}
 		n50=lengths[i50];
 		n75=lengths[i75];
-
     }
     
     public synchronized void redrawGraphComponents() {	
@@ -908,11 +903,12 @@ public class BDGraph extends MultiGraph{
 					color=palette[covScale];
 			}else
 				color="white";
-          
 //          node.addAttribute("ui.color", color);
 //          node.addAttribute("ui.size", lengthScale+"gu");
           
 //          node.addAttribute("ui.label", covScale);
+			
+          
           
 			node.setAttribute("ui.label", node.getId());
 //			node.addAttribute("ui.label", (int)(node.getNumber("cov")));
