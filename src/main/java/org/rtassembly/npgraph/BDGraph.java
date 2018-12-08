@@ -835,7 +835,7 @@ public class BDGraph extends MultiGraph{
     /***********************************************************************
      * TODO: merge this with GraphWatcher.update()
      **********************************************************************/
-    int n50, n75, maxl;
+    int n50, n75, maxl; //in Kbp
     int numOfCtgs, numOfCircularCtgs;
     public synchronized void updateStats() {
     	numOfCtgs=getNodeCount();
@@ -877,7 +877,6 @@ public class BDGraph extends MultiGraph{
 		}
 		n50=lengths[i50];
 		n75=lengths[i75];
-
     }
     
     public synchronized void redrawGraphComponents() {	
