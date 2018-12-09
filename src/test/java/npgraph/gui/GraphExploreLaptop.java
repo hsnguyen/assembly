@@ -68,8 +68,7 @@ public class GraphExploreLaptop {
 		
 		
     	BDGraph graph= hbAss.simGraph;
-    	
-    	graph.redrawGraphComponents();
+   
     	graph.setAttribute("ui.style", GraphUtil.styleSheet);
         Viewer viewer=graph.display();
         System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
