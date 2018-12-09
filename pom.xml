@@ -91,6 +91,14 @@
   </dependencies>
   
    <build>
+       <resources>
+        <resource>
+            <directory>resources/icons</directory>
+        </resource>
+        <resource>
+            <directory>resources/css</directory>
+        </resource>
+    	</resources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

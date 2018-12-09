@@ -195,7 +195,7 @@ public class GraphUtil {
 			
 			String s="", curpath="";
 			//Read contigs from contigs.paths
-			boolean flag=false, changed=false;
+			boolean flag=false;
 			while((s=pathReader.readLine()) != null){
 				if(s.contains("NODE")){
 					if(flag){
@@ -204,8 +204,7 @@ public class GraphUtil {
 						for(int i=0;i<consecutivePaths.length;i++){
 							//TODO: make use of the information about gapped paths (separated by ";")
 							path=new BDPath(graph, consecutivePaths[i]);
-					    	if(graph.reduceFromSPAdesPath(path))
-					    		changed=true;
+					    	graph.reduceFromSPAdesPath(path);
 						}
 					}
 					flag=s.contains("'")?false:true;
@@ -218,8 +217,6 @@ public class GraphUtil {
 
 			}
 			pathReader.close();
-			if(changed)
-				graph.redrawGraphComponents();
 		}
     }
     
@@ -357,13 +354,9 @@ public class GraphUtil {
 		/*
 		 * 3. Reduce the SPAdes path if specified
 		 */
-		boolean changed=false;
 		if(spadesBridging){
 			for(BDPath p:spadesPaths)
-				if(graph.reduceFromSPAdesPath(p))
-					changed=true;
-			if(changed)
-				graph.redrawGraphComponents();
+				graph.reduceFromSPAdesPath(p);
 		}
     }
     
