@@ -7,6 +7,14 @@
   <version>0.0.1-SNAPSHOT</version>
   <url>http://maven.apache.org</url>
   <build>
+    <resources>
+      <resource>
+        <directory>resources/icons</directory>
+      </resource>
+      <resource>
+        <directory>resources/css</directory>
+      </resource>
+    </resources>
     <plugins>
       <plugin>
         <artifactId>maven-shade-plugin</artifactId>
@@ -65,6 +73,10 @@
     <repository>
       <id>jitpack.io</id>
       <url>https://jitpack.io</url>
+    </repository>
+    <repository>
+      <id>clojars.org</id>
+      <url>http://clojars.org/repo</url>
     </repository>
   </repositories>
   <dependencies>
@@ -138,9 +150,15 @@
         <version>2.10.1</version>
       </dependency>
       <dependency>
-        <groupId>org.hdfgroup</groupId>
-        <artifactId>hdf-java</artifactId>
-        <version>2.6.1</version>
+        <groupId>com._0xab</groupId>
+        <artifactId>jhdf5</artifactId>
+        <version>13.06.2</version>
+      </dependency>
+      <dependency>
+        <groupId>com.github.wendykierp</groupId>
+        <artifactId>JTransforms</artifactId>
+        <version>3.1</version>
+        <classifier>with-dependencies</classifier>
       </dependency>
     </dependencies>
   </dependencyManagement>

@@ -15,13 +15,13 @@ public class NPGraphCmd extends CommandLine{
 	public NPGraphCmd(){
 		super();
 
-		addString("si", null, "Name of the short-read assembly file.",true);
-		addString("sf", "gfa", "Format of the assembly input file. Accepted format are FASTG, GFA", true);
-		addString("li", "-", "Name of the long-read data input file, - for stdin.", true);
-		addString("lf", "fastq", "Format of the long-read data input file. This may be FASTQ/FASTA (MinION reads) or SAM/BAM (aligned with the assembly graph already)", true);
-		addString("output", "npgraph", "Name of the output folder.", true);
+		addString("si", "", "Name of the short-read assembly file.");
+		addString("sf", "", "Format of the assembly input file. Accepted format are FASTG, GFA");
+		addString("li", "", "Name of the long-read data input file, - for stdin.");
+		addString("lf", "", "Format of the long-read data input file. This may be FASTQ/FASTA (MinION reads) or SAM/BAM (aligned with the assembly graph already)");
+		addString("output", "/tmp/", "Name of the output folder.");
 				
-		addString("alg","","Absolute path to the folder containing binary minimap2",true);
+		addString("alg","","Absolute path to the folder containing binary minimap2");
 
 		addString("algPath","","Absolute path to the binary aligner file");
 		addString("algOpt", "", "Settings used by aligner to align long reads to the contigs");
