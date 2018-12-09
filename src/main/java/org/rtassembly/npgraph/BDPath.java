@@ -87,6 +87,7 @@ public class BDPath extends Path{
 				break;
 			}
 		}
+		uniqueBin=pathBin;
 	}
 	public BDPath reverse(){
 		BDPath rcPath = new BDPath(this.peekNode(), uniqueBin);

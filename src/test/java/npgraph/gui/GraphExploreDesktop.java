@@ -86,7 +86,6 @@ public class GraphExploreDesktop {
 		
     	BDGraph graph= hbAss.simGraph;
     	
-    	graph.redrawGraphComponents();
     	graph.setAttribute("ui.style", GraphUtil.styleSheet);
 
         Viewer viewer=graph.display();
