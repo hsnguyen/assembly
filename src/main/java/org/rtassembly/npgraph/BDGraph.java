@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.Stack;
-import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -324,6 +323,7 @@ public class BDGraph extends MultiGraph{
     synchronized public void binning(String binFileName, String gformat) {   		
     	binner=new SimpleBinner(this, binFileName, gformat);
     	binner.estimatePathsByCoverage();
+    	initGraphComponents();
     }
     
     synchronized ArrayList<BDPath> DFSAllPaths(Alignment from, Alignment to, boolean force){
@@ -879,7 +879,14 @@ public class BDGraph extends MultiGraph{
 		n75=lengths[i75];
     }
     
-    public synchronized void redrawGraphComponents() {	
+    private void initGraphComponents() {	
+    	List<String> pallette=getUniqueColors(binner.binList.size());
+
+    	HashMap<Integer, String> bin2color = new HashMap<Integer, String>();
+    	for(int i=0;i<pallette.size();i++){
+    		bin2color.put(binner.binList.get(i).getId(), pallette.get(i));
+    	}
+    	
     	for (Node node : this) {		
     		/*
     		 * Re-assign colors based on coverage/length
@@ -890,37 +897,42 @@ public class BDGraph extends MultiGraph{
 			if(lengthScale<1) lengthScale=1;
 			else if(lengthScale>2) lengthScale=2;
 	          
-			int covScale = (int) Math.round(node.getNumber("cov")/100.0);
-	          
-			String[] palette= {"grey","blue","yellow","orange","green","pink","magenta","red"};
-			String color=null;
+			String color="rgb(255,255,255)";
+			PopBin bin=SimpleBinner.getBinIfUnique(node);
+			if(bin!=null){
+				color=bin2color.get(bin.getId());
+			}
 			
-			if(binner.node2BinMap.containsKey(node)){
-				covScale=binner.node2BinMap.get(node).values().stream().mapToInt(Integer::intValue).sum();
-				if(covScale>=palette.length)
-					color=palette[palette.length-1];
-				else
-					color=palette[covScale];
-			}else
-				color="white";
-//          node.addAttribute("ui.color", color);
-//          node.addAttribute("ui.size", lengthScale+"gu");
-          
-//          node.addAttribute("ui.label", covScale);
 			
-          
-          
-			node.setAttribute("ui.label", node.getId());
-//			node.addAttribute("ui.label", (int)(node.getNumber("cov")));
-
-
+//			node.setAttribute("ui.label", node.getId());
 			node.setAttribute("ui.style", "	size: " + lengthScale + "gu;" +
         		  						"	fill-color: "+color+";" +
         		  			            " 	stroke-mode: plain;" +
         		  			            "	stroke-color: black;" +
         		  			            "	stroke-width: 2px;");
     	}
-//    	graph.edges().forEach(e->e.setAttribute("ui.label", (int) e.getNumber("cov")));
 
+    }
+	private List<String> getUniqueColors(int amount) {
+        final int lowerLimit = 0x10;
+        final int upperLimit = 0xE0;    
+        final int colorStep = (int) ((upperLimit-lowerLimit)/Math.pow(amount,1f/3));
+
+        final List<String> colors = new ArrayList<String>(amount);
+
+        for (int R = lowerLimit;R <= upperLimit; R+=colorStep)
+            for (int G = lowerLimit;G <= upperLimit; G+=colorStep)
+                for (int B = lowerLimit;B <= upperLimit; B+=colorStep) {
+                	if(R==G && G==B){
+                    	continue;
+                    }
+                    if (colors.size() >= amount) { //The calculated step is not very precise, so this safeguard is appropriate
+                        return colors;
+                    } 
+                    else {
+                        colors.add("rgb("+R+","+G+","+B+")");
+                    }               
+                }
+        return colors;
     }
 }
