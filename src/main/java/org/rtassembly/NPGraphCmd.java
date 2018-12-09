@@ -11,6 +11,7 @@ import javafx.application.Application;
 
 
 
+@SuppressWarnings("restriction")
 public class NPGraphCmd extends CommandLine{
 	public NPGraphCmd(){
 		super();
@@ -35,7 +36,6 @@ public class NPGraphCmd extends CommandLine{
 		addStdHelp();
 	}
 	
-	@SuppressWarnings("restriction")
 	public static void main(String[] args) throws IOException{
 		CommandLine cmdLine = new NPGraphCmd();		
 		args = cmdLine.stdParseLine(args);
