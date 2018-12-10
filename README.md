@@ -2,6 +2,10 @@
 This is another real-time scaffolder beside [npScarf](https://github.com/mdcao/npScarf). Instead of using contig sequences as pre-assemblies, this tool is able to work on assembly graph (from [SPAdes](http://cab.spbu.ru/software/spades/)). 
 The batch algorithm has been implemented in hybrid assembler module of [Unicycler](https://github.com/rrwick/Unicycler) and others.
 
+<p align="center">
+  <img src="https://github.com/hsnguyen/assembly/blob/master/run.gif?raw=true" alt="npGraph"/>
+</p>
+
 ## Introduction
 *npScarf* is the real-time hybrid assembler that use the stream of long reads to bridge the Illumina contigs together, expecting to give more complete genome sequences while the sequencing process is still ongoing. The pipeline has been applied sucessfully for microbial genomics and even bigger data sets. However, due to its greedy approach over the noisy data, it is difficult to eliminate all mis-assemblies without further pre-processing and parameter tuning. To help prevent this issue, the assembly graph - bulding block graph structure for the contigs - should be used as the source for bridging algorithm. 
 This approach can give better accuracy, but as the trade-off, are more computational expensive and challenging to adapt in the real-time mode.
@@ -59,8 +63,6 @@ or invoke the GUI of the module and control it interactively by
 java -cp target/assembly-0.0.1-SNAPSHOT.jar org.rtassembly.NPGraphCmd -gui
 ```
 A proper combination of command line and GUI can provide an useful streaming pipeline that copes well with MinION output data. This practice allows the assembly to take place abreast of nanopore sequencing run.
-
-![](a.gif)
 
 ### Input
 The mandatory inputs are short-read pre-assemblies file (*-si*) and long-read data (*-li*).
