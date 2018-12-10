@@ -84,4 +84,4 @@ Also, the stats of the assembly process is reported as the program is running.
 Publication on the way... of procrastination.
 
 ## License
-Similar to [Japsa]{https://github.com/mdcao/japsa} project, tools included in this repo is available under BSD-like license.
+Similar to [Japsa](https://github.com/mdcao/japsa) project, tools included in this repo is available under BSD-like license.
