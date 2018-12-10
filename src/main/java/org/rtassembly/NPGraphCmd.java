@@ -22,12 +22,13 @@ public class NPGraphCmd extends CommandLine{
 		addString("lf", "", "Format of the long-read data input file. This may be FASTQ/FASTA (MinION reads) or SAM/BAM (aligned with the assembly graph already)");
 		addString("output", "/tmp/", "Name of the output folder.");
 				
-		addString("alg","","Absolute path to the folder containing binary minimap2");
+		addString("aligner","","Aligner tool that will be used, either minimap2 or bwa");
 
 		addString("algPath","","Absolute path to the binary aligner file");
 		addString("algOpt", "", "Settings used by aligner to align long reads to the contigs");
 		
-		addBoolean("overwrite", false, "Whether to overwrite or reuse the intermediate file");
+		addBoolean("overwrite", true, "Whether to overwrite or reuse the intermediate file");
+		addBoolean("spaths", false, "Whether to use SPAdes contigs.paths for bridging.");
 		addInt("qual", 1, "Minimum quality of alignment to considered");
 		addInt("dfs", 15, "Number of DFS steps to search");
 
@@ -46,10 +47,11 @@ public class NPGraphCmd extends CommandLine{
 				longReadsInput = cmdLine.getStringVal("li"),
 				longReadsInputFormat = cmdLine.getStringVal("lf"),
 				outputDir = cmdLine.getStringVal("output"),
-				alg=cmdLine.getStringVal("alg"),
+				alg=cmdLine.getStringVal("aligner"),
 				algPath = cmdLine.getStringVal("algPath"),
 				algOpt = cmdLine.getStringVal("algOpt");
 		boolean overwrite = cmdLine.getBooleanVal("overwrite"),
+				spaths = cmdLine.getBooleanVal("spaths"),
 				gui = cmdLine.getBooleanVal("gui");
 			
 		Alignment.MIN_QUAL = cmdLine.getIntVal("qual");
@@ -64,17 +66,26 @@ public class NPGraphCmd extends CommandLine{
 			
 		//1. Create an assembler object with appropriate file loader
 		HybridAssembler hbAss = new HybridAssembler();
-		hbAss.setShortReadsInput(shortReadsInput);
-		hbAss.setShortReadsInputFormat(shortReadsInputFormat);
-		hbAss.setLongReadsInput(longReadsInput);
-		hbAss.setLongReadsInputFormat(longReadsInputFormat);
+		if(shortReadsInput!=null && !shortReadsInput.isEmpty())
+			hbAss.setShortReadsInput(shortReadsInput);
+		if(shortReadsInputFormat!=null && !shortReadsInputFormat.isEmpty())
+			hbAss.setShortReadsInputFormat(shortReadsInputFormat);
+		if(longReadsInput!=null && !longReadsInput.isEmpty())
+			hbAss.setLongReadsInput(longReadsInput);
+		if(longReadsInputFormat!=null && !longReadsInputFormat.isEmpty())
+			hbAss.setLongReadsInputFormat(longReadsInputFormat);
 		
 		hbAss.setPrefix(outputDir);
 		
-		hbAss.setAlignerPath(algPath);
-		hbAss.setAlignerOpts(algOpt);
-		hbAss.setAligner(alg);
+		if(alg!=null && !alg.isEmpty())
+			hbAss.setAligner(alg);
+		if(algPath!=null && !algPath.isEmpty())
+			hbAss.setAlignerPath(algPath);
+		if(algOpt!=null && !algOpt.isEmpty())
+			hbAss.setAlignerOpts(algOpt);
+		
 		hbAss.setOverwrite(overwrite);
+		hbAss.setUseSPAdesPath(spaths);
 		        
 		//4. Call the assembly function or invoke GUI to do so
         if(gui) {
@@ -83,7 +94,7 @@ public class NPGraphCmd extends CommandLine{
         }else {
 	        
 			try {
-				if(hbAss.prepareShortReadsProcess(false) &&	hbAss.prepareLongReadsProcess()) {
+				if(hbAss.prepareShortReadsProcess() &&	hbAss.prepareLongReadsProcess()) {
 					hbAss.assembly();
 					hbAss.postProcessGraph();
 				}

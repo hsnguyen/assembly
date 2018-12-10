@@ -675,7 +675,7 @@ public class SimpleBinner {
 		HybridAssembler hbAss = new HybridAssembler();
 		hbAss.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/Kp13883-careful/assembly_graph.fastg");
 		hbAss.setShortReadsInputFormat("fastg");
-		hbAss.prepareShortReadsProcess(true);
+		hbAss.prepareShortReadsProcess();
 		
 		SimpleBinner binner = hbAss.simGraph.binner;
 		//binner.estimatePathsByCoverage();
