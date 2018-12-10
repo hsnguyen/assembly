@@ -76,6 +76,12 @@ It doesn't do neither any polishing or other exhaustive post-processing for the 
 ### Output
 The tool generate the assembly in FASTA sequences. I'll output GFA file if needed.
 Also, the stats of the assembly process is reported as the program is running.
+
+### GUI
+The GUI includes the dashboard for control the settings of the program and a separate window for the assembly graph.
+From the second window, the colored vertices are unique contigs while the white ones are either unknown or repeats. The number of colors (other than white) indicates number of populations (e.g. chromosome vs plasmids, or different bins in metagenomics).
+
+More features would be added later.
 ### Note
 * GUI consumes memory, considering increase heap size (e.g. -Xmx16G). If the number of vertices in the assembly graph greater than 1000, you shouldn't show the graph in real-time if running on the normal desktop.
 * If aligner is used along side, there is more resource occupied. Considering separate alignment and npGraph+GUI on different machines communicating through network socket e.g. by Japsa utility [jsa.util.streamServer](https://japsa.readthedocs.io/en/latest/tools/jsa.util.streamServer.html) and [jsa.util.streamClient](https://japsa.readthedocs.io/en/latest/tools/jsa.util.streamClient.html)
