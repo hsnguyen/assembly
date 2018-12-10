@@ -33,7 +33,7 @@ public class HybridAssembler {
     private static final Logger LOG = LoggerFactory.getLogger(HybridAssembler.class);
 	//setting parameter for the GUI
     private boolean ready=false;
-    private BooleanProperty overwrite;
+    private BooleanProperty overwrite, useSPAdesPath;
     private StringProperty 	prefix,
     						aligner,
     						alignerPath, 
@@ -55,6 +55,10 @@ public class HybridAssembler {
 	public final void setOverwrite(boolean owr) {overwrite.set(owr);}
 	public final boolean getOverwrite() {return overwrite.get();}
 	public BooleanProperty overwriteProperty() {return overwrite;}
+	
+	public final void setUseSPAdesPath(boolean owr) {useSPAdesPath.set(owr);}
+	public final boolean getUseSPAdesPath() {return useSPAdesPath.get();}
+	public BooleanProperty useSPAdesPathProperty() {return useSPAdesPath;}
 	
 	public final void setPrefix(String output) {prefix.set(output);}
 	public final String getPrefix() {return prefix.get();}
@@ -97,7 +101,14 @@ public class HybridAssembler {
 	public final String getShortReadsInputFormat() {return shortReadsInputFormat.get();}
 	public StringProperty shortReadsInputFormatProperty() {return shortReadsInputFormat;}
 	
-	public final void setLongReadsInputFormat(String lrInputFormat) {longReadsInputFormat.set(lrInputFormat);}
+	public final void setLongReadsInputFormat(String lrInputFormat) {
+		lrInputFormat=lrInputFormat.toLowerCase();
+		if(	lrInputFormat.contains("fasta") || lrInputFormat.contains("fa") || lrInputFormat.contains("fna")
+			|| lrInputFormat.contains("fastq") || lrInputFormat.contains("fq"))
+			longReadsInputFormat.set("fasta/fastq");
+		else if(lrInputFormat.contains("sam") || lrInputFormat.contains("bam"))
+			longReadsInputFormat.set("sam/bam");
+	}
 	public final String getLongReadsInputFormat() {return longReadsInputFormat.get();}
 	public StringProperty longReadsInputFormatProperty() {return longReadsInputFormat;}
 	
@@ -118,6 +129,7 @@ public class HybridAssembler {
 		simGraph.setAttribute("ui.antialias");
 		
 		overwrite = new SimpleBooleanProperty(true);
+		useSPAdesPath = new SimpleBooleanProperty(false);
 	    prefix = new SimpleStringProperty("/tmp/");
 	    aligner = new SimpleStringProperty("");
 		alignerPath = new SimpleStringProperty(""); 
@@ -166,10 +178,13 @@ public class HybridAssembler {
         longReadsInputFormat.addListener((observable, oldValue, newValue) -> 
 			{
 				String oldFile=getLongReadsInput().toLowerCase();
-				if(	newValue.equals("fasta/fastq") && !oldFile.endsWith(".fasta") && !oldFile.endsWith(".fa") && !oldFile.endsWith("fna")
-							 && !oldFile.endsWith(".fastq") && !oldFile.endsWith(".fq")
-							 && !oldFile.endsWith(".fasta.gz") && !oldFile.endsWith(".fa.gz") && !oldFile.endsWith("fna.gz")
-							 && !oldFile.endsWith(".fastq.gz") && !oldFile.endsWith(".fq.gz") 
+				if(oldFile.equals("-"))
+					return;
+				if(	newValue.equals("fasta/fastq") 
+							&& !oldFile.endsWith(".fasta") && !oldFile.endsWith(".fa") && !oldFile.endsWith("fna")
+							&& !oldFile.endsWith(".fastq") && !oldFile.endsWith(".fq")
+							&& !oldFile.endsWith(".fasta.gz") && !oldFile.endsWith(".fa.gz") && !oldFile.endsWith("fna.gz")
+							&& !oldFile.endsWith(".fastq.gz") && !oldFile.endsWith(".fq.gz") 
 							) 
 					setLongReadsInput("");
 						
@@ -183,7 +198,7 @@ public class HybridAssembler {
         	{
 				String aligner=(String)observable.getValue();
 				if(aligner.toLowerCase().equals("minimap2"))
-					setAlignerOpts("-t4 -x map-ont -k15 -w5");
+					setAlignerOpts("-t4 -k15 -w5");
 				else if (aligner.toLowerCase().equals("bwa"))
 					setAlignerOpts("-t4 -k11 -W20 -r10 -A1 -B1 -O1 -E1 -L0 -a -Y");			
 			}	 
@@ -224,9 +239,11 @@ public class HybridAssembler {
 			setErrorLog("Please specify a correct format of long read data (FASTA/FASTQ or BAM/SAM)!");
 			return false;
 		}
-		if(!checkFile(getLongReadsInput()) || !checkFolder(getPrefix()))
+		if(!getLongReadsInput().equals("-") && !checkFile(getLongReadsInput()))
 			return false;
 		
+		if(!checkFolder(getPrefix()))
+			return false;
 		try{
 			System.setProperty("usr.dir", getPrefix());
 		}
@@ -237,51 +254,51 @@ public class HybridAssembler {
 		
 		//if long reads data not given in SAM/BAM, need to invoke minimap2
         if(getLongReadsInputFormat().toLowerCase().startsWith("fast")) {
+        	File indexFile=null;
+        	ArrayList<String> idxCmd = new ArrayList<>();
+        	idxCmd.add(getFullPathOfAligner());
         	if(getAligner().equals("minimap2")) { 	
-				File indexFile=new File(getPrefix()+"/assembly_graph.mmi");
-				if(getOverwrite() || !indexFile.exists()) {						
-					try{
-						simGraph.outputFASTA(getPrefix()+"/assembly_graph.fasta");
-						if(!checkMinimap2()) 
-								return false;
-						
-						ProcessBuilder pb = new ProcessBuilder(getFullPathOfAligner(), getAlignerOpts(),"-d", getPrefix()+"/assembly_graph.mmi",getPrefix()+"/assembly_graph.fasta");
-						Process indexProcess =  pb.start();
-						indexProcess.waitFor();
-						
-					}catch (IOException | InterruptedException e){
-						setErrorLog("Issue when indexing with minimap2: \n" + e.getMessage());
+				indexFile=new File(getPrefix()+"/assembly_graph.mmi");												
+				if(!checkMinimap2()) 
 						return false;
-					}
-				}
+				idxCmd.addAll(Arrays.asList(getAlignerOpts().split("\\s")));
+				idxCmd.add("-d");
+				idxCmd.add(getPrefix()+"/assembly_graph.mmi");
+														
         	}else if(getAligner().equals("bwa")) {
-				File indexFile=new File(getPrefix()+"/assembly_graph.fasta.bwt");
-				if(getOverwrite() || !indexFile.exists()) {						
-					try{
-						simGraph.outputFASTA(getPrefix()+"/assembly_graph.fasta");
-						if(!checkBWA()) 
-								return false;
-						
-						ProcessBuilder pb = new ProcessBuilder(getFullPathOfAligner(),"index", getPrefix()+"/assembly_graph.fasta");
-						Process indexProcess =  pb.start();
-						indexProcess.waitFor();
-						
-					}catch (IOException | InterruptedException e){
-						setErrorLog("Issue when indexing with bwa: \n" + e.getMessage());
+				indexFile=new File(getPrefix()+"/assembly_graph.fasta.bwt");
+				if(!checkBWA()) 
 						return false;
-					}
-				}
+				idxCmd.add("index");
+
         	}else {
         		setErrorLog("Invalide aligner! Set to BWA or minimap2 please!");
         		return false;
         	}
+			idxCmd.add(getPrefix()+"/assembly_graph.fasta");
+
+			if(getOverwrite() || !indexFile.exists()) {						
+				try{
+					simGraph.outputFASTA(getPrefix()+"/assembly_graph.fasta");
+					if(!checkMinimap2()) 
+							return false;
+					
+					ProcessBuilder pb = new ProcessBuilder(idxCmd);
+					Process indexProcess =  pb.start();
+					indexProcess.waitFor();
+					
+				}catch (IOException | InterruptedException e){
+					setErrorLog("Issue when indexing the pre-assemblies: \n" + e.getMessage());
+					return false;
+				}
+			}
 			
         }
         return true;
 	}
 	//Loading the graph, doing preprocessing
 	//binning, ...
-	public boolean prepareShortReadsProcess(boolean useSPAdesPaths) {
+	public boolean prepareShortReadsProcess() {
 		if(!getShortReadsInputFormat().equals("fastg") && !getShortReadsInputFormat().equals("gfa")){
 			setErrorLog("Please specify a correct format of graph file!");
 			return false;
@@ -293,9 +310,9 @@ public class HybridAssembler {
 		//try to read input file
 		try {
 			if(getShortReadsInputFormat().toLowerCase().equals("gfa")) 
-				GraphUtil.loadFromGFA(getShortReadsInput(), getBinReadsInput(), simGraph, useSPAdesPaths);
+				GraphUtil.loadFromGFA(getShortReadsInput(), getBinReadsInput(), simGraph, getUseSPAdesPath());
 			else if(getShortReadsInputFormat().toLowerCase().equals("fastg"))
-				GraphUtil.loadFromFASTG(getShortReadsInput(), getBinReadsInput(), simGraph, useSPAdesPaths);
+				GraphUtil.loadFromFASTG(getShortReadsInput(), getBinReadsInput(), simGraph, getUseSPAdesPath());
 			else 				
 				throw new IOException("Assembly graph file must have .gfa or .fastg extension!");
 			
@@ -367,12 +384,19 @@ public class HybridAssembler {
 		String readID = "";
 		Sequence nnpRead = null;
 		ArrayList<Alignment> samList =  new ArrayList<Alignment>();// alignment record of the same read;	
-		
+		SAMRecord rec=null;
 		while (iter.hasNext()) {
 			if(getStopSignal())
 				break;
 			
-			SAMRecord rec = iter.next();
+			try {
+				rec = iter.next();
+			}catch(Exception e) {
+				LOG.warn("Ignore one faulty SAM record: \n {}", e.getMessage());
+				e.printStackTrace();
+				continue;
+			}
+			
 			if (rec.getReadUnmappedFlag())
 				continue;
 			
@@ -550,7 +574,7 @@ public class HybridAssembler {
 		
 		hbAss.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/EcK12S-careful/assembly_graph.fastg");
 		hbAss.setShortReadsInputFormat("fastg");
-		hbAss.prepareShortReadsProcess(false);
+		hbAss.prepareShortReadsProcess();
 		hbAss.setLongReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/EcK12S-careful/assembly_graph.sam");
 		hbAss.setLongReadsInputFormat("sam/bam");
 		hbAss.prepareLongReadsProcess();
