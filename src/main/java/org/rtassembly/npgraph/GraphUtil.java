@@ -5,7 +5,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.regex.Matcher;
@@ -19,14 +18,10 @@ import org.graphstream.graph.implementations.AbstractNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.joptimizer.functions.ConvexMultivariateRealFunction;
-import com.joptimizer.functions.LinearMultivariateRealFunction;
 import com.joptimizer.functions.PDQuadraticMultivariateRealFunction;
-import com.joptimizer.optimizers.JOptimizer;
 import com.joptimizer.optimizers.NewtonUnconstrained;
 import com.joptimizer.optimizers.OptimizationRequest;
 
-import htsjdk.samtools.util.CigarUtil;
 import japsa.seq.Alphabet;
 import japsa.seq.FastaReader;
 import japsa.seq.Sequence;
@@ -371,7 +366,7 @@ public class GraphUtil {
     
     
 	public static void gradientDescent(BDGraph graph) {
-		int 	maxIterations=100, 
+		int 	maxIterations=21, 
 				eIteCount=0, nIteCount=0;
 		double epsilon=.01;
 		while(true) {
