@@ -356,7 +356,7 @@ public class CoverageBinner {
 		HybridAssembler hbAss = new HybridAssembler();
 		hbAss.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/EcK12S-careful/assembly_graph.fastg");
 		hbAss.setShortReadsInputFormat("fastg");
-		hbAss.prepareShortReadsProcess(true);
+		hbAss.prepareShortReadsProcess();
 		
 		BDGraph graph = hbAss.simGraph;		
 		CoverageBinner binner = new CoverageBinner(graph);
