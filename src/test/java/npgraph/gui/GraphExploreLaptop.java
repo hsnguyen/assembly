@@ -64,7 +64,7 @@ public class GraphExploreLaptop {
 		hbAss.setShortReadsInputFormat("fastg");
 		hbAss.setAligner("bwa");
 		hbAss.setAlignerPath("/home/s_hoangnguyen/workspace/bwa/");
-		hbAss.prepareShortReadsProcess(false);//change true/false to use/not use SPAdes path
+		hbAss.prepareShortReadsProcess();//change true/false to use/not use SPAdes path
 		
 		
     	BDGraph graph= hbAss.simGraph;

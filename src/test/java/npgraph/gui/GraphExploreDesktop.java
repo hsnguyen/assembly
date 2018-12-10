@@ -82,7 +82,7 @@ public class GraphExploreDesktop {
 		hbAss.setShortReadsInput(sInput);
 		hbAss.setPrefix(output);
 		hbAss.setShortReadsInputFormat("fastg");
-		hbAss.prepareShortReadsProcess(false);
+		hbAss.prepareShortReadsProcess();
 		
     	BDGraph graph= hbAss.simGraph;
     	
