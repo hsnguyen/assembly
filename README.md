@@ -2,20 +2,21 @@
 This is another real-time scaffolder beside [npScarf](https://github.com/mdcao/npScarf). Instead of using contig sequences as pre-assemblies, this tool is able to work on assembly graph (from [SPAdes](http://cab.spbu.ru/software/spades/)). 
 The batch algorithm has been implemented in hybrid assembler module of [Unicycler](https://github.com/rrwick/Unicycler) and others.
 
-### Introduction
-
+## Introduction
+*npScarf* is the real-time hybrid assembler that use the stream of long reads to bridge the Illumina contigs together, expecting to give more complete genome sequences while the sequencing process is still ongoing. The pipeline has been applied sucessfully for microbial genomics and even bigger data sets. However, due to its greedy approach over the noisy data, it is difficult to eliminate all mis-assemblies without further pre-processing and parameter tuning. To help prevent this issue, the assembly graph - bulding block graph structure for the contigs - should be used as the source for bridging algorithm. 
+This approach can give better accuracy, but as the trade-off, are more computational expensive and challenging to adapt in the real-time mode.
 
 A (rather simple at the moment) Graphical User Interface is implemented for better interaction. [GraphStream](http://graphstream-project.org/) has been employed for such task.
-### Quick installation guide
+## Quick installation guide
 The tool is included in a Java project that can be built with maven2 by following command:
 ```
  mvn clean package
 ```
 to generate a jar file containing **npGraph** and several other modules.
 
-The code has been developed with platform running *Java 1.8.0_144* that enables lambda expression and JavaFX, so equal or later version is expected to build & run the tool properly.
+The code has been developed with *Java 1.8.0_144* that enables lambda expression and JavaFX, so equal or later version is expected to build & run the tool properly.
 
-### Documentation
+## Documentation
 For detail options of the commandline interface:
 ```
 java -cp target/assembly-0.0.1-SNAPSHOT.jar org.rtassembly.NPGraphCmd -h
@@ -57,12 +58,28 @@ or invoke the GUI of the module and control it interactively by
 ```
 java -cp target/assembly-0.0.1-SNAPSHOT.jar org.rtassembly.NPGraphCmd -gui
 ```
+A proper combination of command line and GUI can provide an useful streaming pipeline that copes well with MinION output data. This practice allows the assembly to take place abreast of nanopore sequencing run.
 
-A proper combination of command line and GUI can provide an useful streaming fashion that copes well with MinION output data.
-This practice allows the assembly to take place abreast of nanopore sequencing run.
+![](a.gif)
 
-### Reference
-Publication on the way (or not!)
+### Input
+The mandatory inputs are short-read pre-assemblies file (*-si*) and long-read data (*-li*).
+The pre-assemblies must be given as the assembly graph outputted from SPAdes in either FASTG or GFA file (normally assembly_graph.fastg or assembly_graph.gfa).
 
-### License
+The long-read data will be used for bridging and can be given as DNA sequences (FASTA/FASTQ format, possible .gz) or alignment records (SAM/BAM). If the sequences are given, then it's mandatory to have either BWA-MEM or minimap2 installed in your system to do the alignment between long reads and the pre-assemblies. Alternative option is to use your favourite aligner and provide SAM/BAM to *npGraph*. *npGraph* will try to guess the format of the inputs based on the extensions, but sometimes you'll have to specify it yourself (e.g. when "-" is provided to read from *stdin*).
+
+It is important to emphasis the quality of the assembly graph to the final results. [Unicycler](https://github.com/rrwick/Unicycler) pre-process the graph data by running SPAdes with multiple *kmer* options to chose the best one. Unfortunatly, *npGraph* doesn't employ such technique thus if the graph is not good, you should do the task for yourself before running the tool. Normally, 60X Illumina MiSeq data would give decent SPAdes assembly graph. The better the assembly graph is, the more complete and accurate assembly you'll get.
+It doesn't do neither any polishing or other exhaustive post-processing for the final assembly assuming the quality is equivalent to the short-read data which is good enough.
+
+### Output
+The tool generate the assembly in FASTA sequences. I'll output GFA file if needed.
+Also, the stats of the assembly process is reported as the program is running.
+### Note
+* GUI consumes memory, considering increase heap size (e.g. -Xmx16G). If the number of vertices in the assembly graph greater than 1000, you shouldn't show the graph in real-time if running on the normal desktop.
+* If aligner is used along side, there is more resource occupied. Considering separate alignment and npGraph+GUI on different machines communicating through network socket e.g. by Japsa utility [jsa.util.streamServer](https://japsa.readthedocs.io/en/latest/tools/jsa.util.streamServer.html) and [jsa.util.streamClient](https://japsa.readthedocs.io/en/latest/tools/jsa.util.streamClient.html)
+* Most suitable for bacterial data (assembly graph not too complicated). Consider using *npScarf* for bigger data set.
+## Reference
+Publication on the way... of procrastination.
+
+## License
 Similar to [Japsa]{https://github.com/mdcao/japsa} project, tools included in this repo is available under BSD-like license.
