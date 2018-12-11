@@ -49,12 +49,12 @@ Options:
                   (default='')
   --overwrite     Whether to overwrite or reuse the intermediate file
                   (default='true')
-  --spaths        Whether to use SPAdes contigs.paths for bridging.
+  --sp            Whether to use SPAdes contigs.paths for bridging.
                   (default='false')
   --qual=i        Minimum quality of alignment to considered
-                  (default='1')
-  --dfs=i         Number of DFS steps to search
-                  (default='15')
+                  (default='10')
+  --mcov=i        Minimum number of reads spanning a confident bridge
+                  (default='3')
   --gui           Whether using GUI or not.
                   (default='false')
   --help          Display this usage and exit
