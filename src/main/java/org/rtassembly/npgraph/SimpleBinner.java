@@ -310,7 +310,6 @@ public class SimpleBinner {
 				bins.put(binID, bin);
 				binList.add(bin);
 			}
-			
 			node = (BDNode) graph.getNode(nodeID);
 			bin.addCoreNode(node);
 		}
