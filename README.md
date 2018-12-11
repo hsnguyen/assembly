@@ -1,4 +1,4 @@
-# *npGraph* - Resolve assembly graph in real-time using long read data
+# *npGraph* - Resolve assembly graph in real-time using nanopore data
 This is another real-time scaffolder beside [npScarf](https://github.com/mdcao/npScarf). Instead of using contig sequences as pre-assemblies, this tool is able to work on assembly graph (from [SPAdes](http://cab.spbu.ru/software/spades/)). 
 The batch algorithm has been implemented in hybrid assembler module of [Unicycler](https://github.com/rrwick/Unicycler) and others.
 
