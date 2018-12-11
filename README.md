@@ -10,7 +10,7 @@ The batch algorithm has been implemented in hybrid assembler module of [Unicycle
 *npScarf* is the real-time hybrid assembler that use the stream of long reads to bridge the Illumina contigs together, expecting to give more complete genome sequences while the sequencing process is still ongoing. The pipeline has been applied sucessfully for microbial genomics and even bigger data sets. However, due to its greedy approach over the noisy data, it is difficult to eliminate all mis-assemblies without further pre-processing and parameter tuning. To help prevent this issue, the assembly graph - bulding block graph structure for the contigs - should be used as the source for bridging algorithm. 
 This approach can give better accuracy, but as the trade-off, are more computational expensive and challenging to adapt in the real-time mode.
 
-A (rather simple at the moment) Graphical User Interface is implemented for better interaction. [GraphStream](http://graphstream-project.org/) has been employed for such task.
+A (rather simple at the moment) Graphical User Interface is implemented for better interaction. [GraphStream](http://graphstream-project.org/), a dynamic graph library for Java, has been employed for such task. At the moment, only a few among sea of amazing features of this library had been used, leaving many room for visualiazation improvements.
 ## Quick installation guide
 The tool is included in a Java project that can be built with maven2 by following command:
 ```
@@ -19,6 +19,8 @@ The tool is included in a Java project that can be built with maven2 by followin
 to generate a jar file containing **npGraph** and several other modules.
 
 The code has been developed with *Java 1.8.0_144* that enables lambda expression and JavaFX, so equal or later version is expected to build & run the tool properly.
+
+If an aligner is involved, [minimap2](https://github.com/lh3/minimap2) or [bwa](https://github.com/lh3/bwa) (later than 0.7.11) should be included.
 
 ## Documentation
 For detail options of the commandline interface:
@@ -37,6 +39,8 @@ Options:
                   (default='')
   --output=s      Name of the output folder.
                   (default='/tmp/')
+  --sb=s          Name of the metaBAT file for binning information (experimental).
+                  (default='')
   --aligner=s     Aligner tool that will be used, either minimap2 or bwa
                   (default='')
   --algPath=s     Absolute path to the binary aligner file
@@ -55,6 +59,7 @@ Options:
                   (default='false')
   --help          Display this usage and exit
                   (default='false')
+
 
 ```
 
@@ -78,16 +83,16 @@ The tool generate the assembly in FASTA sequences. I'll output GFA file if neede
 Also, the stats of the assembly process is reported as the program is running.
 
 ### GUI
-The GUI includes the dashboard for control the settings of the program and a separate window for the assembly graph.
-From the second window, the colored vertices are unique contigs while the white ones are either unknown or repeats. The number of colors (other than white) indicates number of populations (e.g. chromosome vs plasmids, or different bins in metagenomics).
+The GUI includes the dashboard for control the settings of the program and another pop-up window for a simple visualization of the assembly graph in real-time.
+From the second window, the colored vertices are unique contigs while the white ones are either unknown or repeats. The number of colors (other than white) indicates number of populations (e.g. chromosome vs plasmids, or different bins in metagenomics). Any edge represendted is bi-directed, the final result will only include edges following the flow properly.
 
-More features would be added later.
+More features would be added later to the GUI but it's not the focus of this project. I will output GFA files representing graph in different timestamps if users want to investigate more the details of the graph structure later (e.g. by using [Bandage](https://github.com/rrwick/Bandage)).
 ### Note
-* GUI consumes memory, considering increase heap size (e.g. -Xmx16G). If the number of vertices in the assembly graph greater than 1000, you shouldn't show the graph in real-time if running on the normal desktop.
+* GUI consumes quite a lot memory, considering increase JVM heap size (java -Xmx) if it's slow to response. If the number of vertices in the assembly graph greater than 1000, you shouldn't show the graph in real-time if running on the normal desktop.
 * If aligner is used along side, there is more resource occupied. Considering separate alignment and npGraph+GUI on different machines communicating through network socket e.g. by Japsa utility [jsa.util.streamServer](https://japsa.readthedocs.io/en/latest/tools/jsa.util.streamServer.html) and [jsa.util.streamClient](https://japsa.readthedocs.io/en/latest/tools/jsa.util.streamClient.html)
 * Most suitable for bacterial data (assembly graph not too complicated). Consider using *npScarf* for bigger data set.
 ## Reference
-Publication on the way... of procrastination.
+Publication on the way...
 
 ## License
 Similar to [Japsa](https://github.com/mdcao/japsa) project, tools included in this repo is available under BSD-like license.
