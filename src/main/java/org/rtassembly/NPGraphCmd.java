@@ -22,6 +22,8 @@ public class NPGraphCmd extends CommandLine{
 		addString("lf", "", "Format of the long-read data input file. This may be FASTQ/FASTA (MinION reads) or SAM/BAM (aligned with the assembly graph already)");
 		addString("output", "/tmp/", "Name of the output folder.");
 				
+		addString("sb", "", "Name of the metaBAT file for binning information.");
+
 		addString("aligner","","Aligner tool that will be used, either minimap2 or bwa");
 
 		addString("algPath","","Absolute path to the binary aligner file");
@@ -47,6 +49,7 @@ public class NPGraphCmd extends CommandLine{
 				longReadsInput = cmdLine.getStringVal("li"),
 				longReadsInputFormat = cmdLine.getStringVal("lf"),
 				outputDir = cmdLine.getStringVal("output"),
+				shortReadsBinInput = cmdLine.getStringVal("sb"),
 				alg=cmdLine.getStringVal("aligner"),
 				algPath = cmdLine.getStringVal("algPath"),
 				algOpt = cmdLine.getStringVal("algOpt");
@@ -76,6 +79,8 @@ public class NPGraphCmd extends CommandLine{
 			hbAss.setLongReadsInputFormat(longReadsInputFormat);
 		
 		hbAss.setPrefix(outputDir);
+		if(shortReadsBinInput!=null && !shortReadsBinInput.isEmpty())
+			hbAss.setBinReadsInput(shortReadsBinInput);
 		
 		if(alg!=null && !alg.isEmpty())
 			hbAss.setAligner(alg);
