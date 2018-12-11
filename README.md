@@ -3,7 +3,7 @@ This is another real-time scaffolder beside [npScarf](https://github.com/mdcao/n
 The batch algorithm has been implemented in hybrid assembler module of [Unicycler](https://github.com/rrwick/Unicycler) and others.
 
 <p align="center">
-  <img src="http://drive.google.com/uc?export=view&id=10sZZk9QzjOiI_P3qxX47eHkKkaIUN_qB" alt="npGraph"/>
+  <img src="http://drive.google.com/uc?export=view&id=1eGn-FfDoLHPMbt4i_awFXF-DYDe36GoR" alt="npGraph"/>
 </p>
 
 ## Introduction
@@ -76,11 +76,11 @@ The pre-assemblies must be given as the assembly graph outputted from SPAdes in 
 The long-read data will be used for bridging and can be given as DNA sequences (FASTA/FASTQ format, possible .gz) or alignment records (SAM/BAM). If the sequences are given, then it's mandatory to have either BWA-MEM or minimap2 installed in your system to do the alignment between long reads and the pre-assemblies. Alternative option is to use your favourite aligner and provide SAM/BAM to *npGraph*. *npGraph* will try to guess the format of the inputs based on the extensions, but sometimes you'll have to specify it yourself (e.g. when "-" is provided to read from *stdin*).
 
 It is important to emphasis the quality of the assembly graph to the final results. [Unicycler](https://github.com/rrwick/Unicycler) pre-process the graph data by running SPAdes with multiple *kmer* options to chose the best one. Unfortunatly, *npGraph* doesn't employ such technique thus if the graph is not good, you should do the task for yourself before running the tool. Normally, 60X Illumina MiSeq data would give decent SPAdes assembly graph. The better the assembly graph is, the more complete and accurate assembly you'll get.
-It doesn't do neither any polishing or other exhaustive post-processing for the final assembly assuming the quality is equivalent to the short-read data which is good enough.
+It doesn't do neither any polishing or other exhaustive post-processing for the final assembly assuming the quality is equivalent to the short-read data which is decent enough.
 
 ### Output
-The tool generate the assembly in FASTA sequences. I'll output GFA file if needed.
-Also, the stats of the assembly process is reported as the program is running.
+The tool generate the assembly in FASTA sequences. I'll output GFA files as well soon.
+Also, the stats of the assembly process is reported in the GUI dashboard and/or stdout as the program is running.
 
 ### GUI
 The GUI includes the dashboard for control the settings of the program and another pop-up window for a simple visualization of the assembly graph in real-time.
