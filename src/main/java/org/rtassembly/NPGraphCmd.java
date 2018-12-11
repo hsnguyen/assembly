@@ -20,7 +20,7 @@ public class NPGraphCmd extends CommandLine{
 		addString("sf", "", "Format of the assembly input file. Accepted format are FASTG, GFA");
 		addString("li", "", "Name of the long-read data input file, - for stdin.");
 		addString("lf", "", "Format of the long-read data input file. This may be FASTQ/FASTA (MinION reads) or SAM/BAM (aligned with the assembly graph already)");
-		addString("output", "/tmp/", "Name of the output folder.");
+		addString("output", "/tmp/", "Output folder for temporary files and the final assembly npgraph_assembly.fasta");
 				
 		addString("sb", "", "Name of the metaBAT file for binning information (experimental).");
 
@@ -54,7 +54,7 @@ public class NPGraphCmd extends CommandLine{
 				algPath = cmdLine.getStringVal("algPath"),
 				algOpt = cmdLine.getStringVal("algOpt");
 		boolean overwrite = cmdLine.getBooleanVal("overwrite"),
-				spaths = cmdLine.getBooleanVal("spaths"),
+				spaths = cmdLine.getBooleanVal("sp"),
 				gui = cmdLine.getBooleanVal("gui");
 			
 		Alignment.MIN_QUAL = cmdLine.getIntVal("qual");
