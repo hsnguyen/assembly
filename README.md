@@ -83,10 +83,10 @@ The tool generate the assembly in FASTA sequences. I'll output GFA file if neede
 Also, the stats of the assembly process is reported as the program is running.
 
 ### GUI
-The GUI includes the dashboard for control the settings of the program and a separate window for the assembly graph.
-From the second window, the colored vertices are unique contigs while the white ones are either unknown or repeats. The number of colors (other than white) indicates number of populations (e.g. chromosome vs plasmids, or different bins in metagenomics).
+The GUI includes the dashboard for control the settings of the program and another pop-up window for a simple visualization of the assembly graph in real-time.
+From the second window, the colored vertices are unique contigs while the white ones are either unknown or repeats. The number of colors (other than white) indicates number of populations (e.g. chromosome vs plasmids, or different bins in metagenomics). Any edge represendted is bi-directed, the final result will only include edges following the flow properly.
 
-More features would be added later.
+More features would be added later to the GUI but it's not the focus of this project. I will output GFA files representing graph in different timestamps if users are interested to investigate more the structure later (e.g. by using [Bandage](https://github.com/rrwick/Bandage))
 ### Note
 * GUI consumes memory, considering increase heap size (e.g. -Xmx16G). If the number of vertices in the assembly graph greater than 1000, you shouldn't show the graph in real-time if running on the normal desktop.
 * If aligner is used along side, there is more resource occupied. Considering separate alignment and npGraph+GUI on different machines communicating through network socket e.g. by Japsa utility [jsa.util.streamServer](https://japsa.readthedocs.io/en/latest/tools/jsa.util.streamServer.html) and [jsa.util.streamClient](https://japsa.readthedocs.io/en/latest/tools/jsa.util.streamClient.html)
