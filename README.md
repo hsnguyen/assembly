@@ -20,6 +20,8 @@ to generate a jar file containing **npGraph** and several other modules.
 
 The code has been developed with *Java 1.8.0_144* that enables lambda expression and JavaFX, so equal or later version is expected to build & run the tool properly.
 
+If an aligner is involved, minimap2 or bwa (later than 0.7.11) should be included.
+
 ## Documentation
 For detail options of the commandline interface:
 ```
@@ -90,7 +92,7 @@ More features would be added later.
 * If aligner is used along side, there is more resource occupied. Considering separate alignment and npGraph+GUI on different machines communicating through network socket e.g. by Japsa utility [jsa.util.streamServer](https://japsa.readthedocs.io/en/latest/tools/jsa.util.streamServer.html) and [jsa.util.streamClient](https://japsa.readthedocs.io/en/latest/tools/jsa.util.streamClient.html)
 * Most suitable for bacterial data (assembly graph not too complicated). Consider using *npScarf* for bigger data set.
 ## Reference
-Publication on the way... of procrastination.
+Publication on the way...
 
 ## License
 Similar to [Japsa](https://github.com/mdcao/japsa) project, tools included in this repo is available under BSD-like license.
