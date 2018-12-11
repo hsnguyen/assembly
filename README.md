@@ -3,7 +3,7 @@ This is another real-time scaffolder beside [npScarf](https://github.com/mdcao/n
 The batch algorithm has been implemented in hybrid assembler module of [Unicycler](https://github.com/rrwick/Unicycler) and others.
 
 <p align="center">
-  <img src="https://github.com/hsnguyen/assembly/blob/master/run.gif?raw=true" alt="npGraph"/>
+  <img src="http://drive.google.com/uc?export=view&id=10sZZk9QzjOiI_P3qxX47eHkKkaIUN_qB" alt="npGraph"/>
 </p>
 
 ## Introduction
