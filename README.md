@@ -20,7 +20,7 @@ to generate a jar file containing **npGraph** and several other modules.
 
 The code has been developed with *Java 1.8.0_144* that enables lambda expression and JavaFX, so equal or later version is expected to build & run the tool properly.
 
-If an aligner is involved, minimap2 or bwa (later than 0.7.11) should be included.
+If an aligner is involved, [minimap2](https://github.com/lh3/minimap2) or [bwa](https://github.com/lh3/bwa) (later than 0.7.11) should be included.
 
 ## Documentation
 For detail options of the commandline interface:
