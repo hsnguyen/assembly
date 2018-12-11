@@ -37,6 +37,8 @@ Options:
                   (default='')
   --output=s      Name of the output folder.
                   (default='/tmp/')
+  --sb=s          Name of the metaBAT file for binning information (experimental).
+                  (default='')
   --aligner=s     Aligner tool that will be used, either minimap2 or bwa
                   (default='')
   --algPath=s     Absolute path to the binary aligner file
@@ -55,6 +57,7 @@ Options:
                   (default='false')
   --help          Display this usage and exit
                   (default='false')
+
 
 ```
 
