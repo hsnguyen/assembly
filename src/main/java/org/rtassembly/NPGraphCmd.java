@@ -22,7 +22,7 @@ public class NPGraphCmd extends CommandLine{
 		addString("lf", "", "Format of the long-read data input file. This may be FASTQ/FASTA (MinION reads) or SAM/BAM (aligned with the assembly graph already)");
 		addString("output", "/tmp/", "Name of the output folder.");
 				
-		addString("sb", "", "Name of the metaBAT file for binning information.");
+		addString("sb", "", "Name of the metaBAT file for binning information (experimental).");
 
 		addString("aligner","","Aligner tool that will be used, either minimap2 or bwa");
 
@@ -30,9 +30,9 @@ public class NPGraphCmd extends CommandLine{
 		addString("algOpt", "", "Settings used by aligner to align long reads to the contigs");
 		
 		addBoolean("overwrite", true, "Whether to overwrite or reuse the intermediate file");
-		addBoolean("spaths", false, "Whether to use SPAdes contigs.paths for bridging.");
-		addInt("qual", 1, "Minimum quality of alignment to considered");
-		addInt("dfs", 15, "Number of DFS steps to search");
+		addBoolean("sp", false, "Whether to use SPAdes contigs.paths for bridging.");
+		addInt("qual", 10, "Minimum quality of alignment to considered");
+		addInt("mcov", 3, "Minimum number of reads spanning a confident bridge");
 
 		addBoolean("gui", false, "Whether using GUI or not.");
 		
@@ -58,7 +58,7 @@ public class NPGraphCmd extends CommandLine{
 				gui = cmdLine.getBooleanVal("gui");
 			
 		Alignment.MIN_QUAL = cmdLine.getIntVal("qual");
-		BDGraph.S_LIMIT=cmdLine.getIntVal("dfs");
+		BDGraph.MIN_COVER=cmdLine.getIntVal("mcov");
 		//Default output dir 
 		if(outputDir == null) {
 			outputDir = new File(shortReadsInput).getAbsoluteFile().getParent();
