@@ -91,6 +91,7 @@ More features would be added later to the GUI but it's not the focus of this pro
 * GUI consumes quite a lot memory, considering increase JVM heap size (java -Xmx) if it's slow to response. If the number of vertices in the assembly graph greater than 1000, you shouldn't show the graph in real-time if running on the normal desktop.
 * If aligner is used along side, there is more resource occupied. Considering separate alignment and npGraph+GUI on different machines communicating through network socket e.g. by Japsa utility [jsa.util.streamServer](https://japsa.readthedocs.io/en/latest/tools/jsa.util.streamServer.html) and [jsa.util.streamClient](https://japsa.readthedocs.io/en/latest/tools/jsa.util.streamClient.html)
 * Most suitable for bacterial data (assembly graph not too complicated). Consider using *npScarf* for bigger data set.
+* To keep the lightweight property that suitable for real-time analysis, a quick alignment-based voting & scoring system is implemented for the path finding over the candidate nodes instead of the expensive consensus phasing. *minimap2* is also recommended over *bwa* due to its speed, however sometimes *bwa* returns more sensitive alignments than the former.
 ## Reference
 Publication on the way...
 
