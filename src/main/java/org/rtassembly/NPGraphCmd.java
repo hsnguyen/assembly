@@ -29,7 +29,7 @@ public class NPGraphCmd extends CommandLine{
 		
 		addBoolean("overwrite", true, "Whether to overwrite or reuse the intermediate file");
 		addBoolean("spaths", false, "Whether to use SPAdes contigs.paths for bridging.");
-		addInt("qual", 1, "Minimum quality of alignment to considered");
+		addInt("qual", 10, "Minimum quality of alignment to considered");
 		addInt("dfs", 15, "Number of DFS steps to search");
 
 		addBoolean("gui", false, "Whether using GUI or not.");
