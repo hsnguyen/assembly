@@ -83,7 +83,8 @@ public class BDPath extends Path{
 				curDir=nextDir;
 				curNode=nextNode;
 			}else{
-				System.err.println("Graph " + graph.getId() + " doesn't contain " + edgeID);
+				if(HybridAssembler.VERBOSE)
+					LOG.error("Graph " + graph.getId() + " doesn't contain " + edgeID);
 				break;
 			}
 		}
@@ -173,7 +174,8 @@ public class BDPath extends Path{
 				String filler=new String(new char[overlap]).replace("\0", "N");
 				Sequence fillerSeq=new Sequence(Alphabet.DNA5(), filler, "gap");
 				seq.append(fillerSeq.concatenate(curSeq));				
-				LOG.error("Edge {} has length={} > 0: filled with Ns", e.getId(), overlap);
+				if(HybridAssembler.VERBOSE)
+					LOG.error("Edge {} has length={} > 0: filled with Ns", e.getId(), overlap);
 
 			}
 			
@@ -194,12 +196,14 @@ public class BDPath extends Path{
 			return new BDPath(newPath);
 		
 		if(newPath.getRoot() != peekNode()){
-			LOG.error("Cannot join path {} to path {} with disagreed first node: {} != {}", newPath.getId(), this.getId(), newPath.getRoot().getId() ,peekNode().getId());
+			if(HybridAssembler.VERBOSE)
+				LOG.error("Cannot join path {} to path {} with disagreed first node: {} != {}", newPath.getId(), this.getId(), newPath.getRoot().getId() ,peekNode().getId());
 			return null;
 		}
 		if(((BDEdge) newPath.getEdgePath().get(0)).getDir((AbstractNode) newPath.getRoot())
 			== ((BDEdge) peekEdge()).getDir((AbstractNode) peekNode())){
-			LOG.error("Conflict direction from the first node " + newPath.getRoot().getId());
+			if(HybridAssembler.VERBOSE)
+				LOG.error("Conflict direction from the first node " + newPath.getRoot().getId());
 			return null;
 		}
 		BDPath retval=new BDPath(this);
@@ -252,7 +256,8 @@ public class BDPath extends Path{
 		}else if(from==peekNode()){
 			ref=this.reverse();
 		}else{
-			LOG.warn("Node {} couldn't be found as one of the end node in path {}!", from.getId(), getId());
+			if(HybridAssembler.VERBOSE)
+				LOG.warn("Node {} couldn't be found as one of the end node in path {}!", from.getId(), getId());
 			return retval;
 		}
 		int curDistance=0;
@@ -266,15 +271,16 @@ public class BDPath extends Path{
 				if(Math.abs(curDistance-distance) < BDGraph.A_TOL || GraphUtil.approxCompare(curDistance, distance)==0){
 					dirOfTo=!((BDEdge) e).getDir((BDNode) curNode);
 					if((dirOfFrom == dirOfTo) == direction) {
-						System.out.printf("|-> agree distance between node %s, node %s: %d and given distance %d\n",
+						if(HybridAssembler.VERBOSE)
+							LOG.info("|-> agree distance between node %s, node %s: %d and given distance %d\n",
 								from.getId(), to.getId(), curDistance, distance);
 						if(retval<0 || retval > Math.abs(curDistance-distance))
 							retval=Math.abs(curDistance-distance);
 					}
-					else
+					else if(HybridAssembler.VERBOSE)
 						LOG.info("!-> inconsistence direction between node {}:{}, node {}:{} and given direction {}",
 								from.getId(), dirOfFrom?"+":"-", to.getId(), dirOfTo?"+":"-", direction);
-				}else
+				}else if(HybridAssembler.VERBOSE)
 					LOG.info("!-> inconsistence distance between node {}, node {}: {} and given distance {}",
 							from.getId(), to.getId(), curDistance, distance);
 			}

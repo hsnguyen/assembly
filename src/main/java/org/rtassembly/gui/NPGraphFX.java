@@ -137,6 +137,7 @@ public class NPGraphFX extends Application{
             primaryStage.setScene(pscene);
             primaryStage.setTitle("npGraph Dashboard");
             primaryStage.setOnCloseRequest(e -> {
+            	myass.terminateAlignmentProcess();
                 Platform.exit();
                 System.exit(0);
             });
@@ -479,16 +480,13 @@ public class NPGraphFX extends Application{
     	GridPane.setConstraints(optLabel, 0,0,4,1);
     	optionPane.getChildren().add(optLabel);
     	
-    	final Label label1 = new Label("Choose aligner: "),
-					label2= new Label("Parameters setting:");
+    	final Label label= new Label("Parameters setting:");
     	
-    	GridPane.setConstraints(label1, 0,1,4,1);
-    	optionPane.getChildren().add(label1);
     	
        	TextField algPathTF = new TextField("");
-       	algPathTF.setPromptText("Specify the aligner binary...");       	
+       	algPathTF.setPromptText("PATH to the aligner binary...");       	
        	algPathTF.textProperty().bindBidirectional(myass.alignerPathProperty());
-    	GridPane.setConstraints(algPathTF, 0,2,4,1);
+    	GridPane.setConstraints(algPathTF, 0,1,4,1);
     	optionPane.getChildren().add(algPathTF);
     	
     	ComboBox<String> algCombo=new ComboBox<String>();
@@ -512,21 +510,21 @@ public class NPGraphFX extends Application{
     		}
 
         });
-    	GridPane.setConstraints(algBrowseButton,4,2);
+    	GridPane.setConstraints(algBrowseButton,4,1);
     	optionPane.getChildren().add(algBrowseButton);
     	
-    	GridPane.setConstraints(label2, 0,3,4,1);
-    	optionPane.getChildren().add(label2);
+    	GridPane.setConstraints(label, 0,2,4,1);
+    	optionPane.getChildren().add(label);
     	
        	TextField algOptTF = new TextField("");
        	algOptTF.setPromptText("Enter options to aligner...");
        	algOptTF.textProperty().bindBidirectional(myass.alignerOptProperty());
-    	GridPane.setConstraints(algOptTF, 0,4,4,1);
+    	GridPane.setConstraints(algOptTF, 0,3,4,1);
     	optionPane.getChildren().add(algOptTF);
     	
     	
     	final Label labelQual = new Label("Must have quality greater than ");
-    	GridPane.setConstraints(labelQual, 0,6,3,1);
+    	GridPane.setConstraints(labelQual, 0,4,3,1);
     	optionPane.getChildren().add(labelQual);
     	
     	TextField minQualTF = new TextField("");
@@ -537,7 +535,7 @@ public class NPGraphFX extends Application{
                 buttonStart.requestFocus();
             }
     	});
-    	GridPane.setConstraints(minQualTF, 3,6);
+    	GridPane.setConstraints(minQualTF, 3,4);
     	optionPane.getChildren().add(minQualTF);
     	
     	algPathTF.disableProperty().bind(algCombo.itemsProperty().asString().isEqualTo(""));
