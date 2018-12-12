@@ -86,7 +86,8 @@ public class SimpleBinner {
 			induceEdgeBin=substract(nbins, leavingEdgeBinCount);
 			if(induceEdgeBin.values().stream().mapToInt(Integer::intValue).sum() > 0){
 				edge2BinMap.put(e, induceEdgeBin);
-				System.out.printf("From node %s%s firing edge %s%s\n",node.getId(),getBinsOfNode(node), e.getId(), getBinsOfEdge(e));
+				if(HybridAssembler.VERBOSE)
+					LOG.info("From node {}{} firing edge {}{}",node.getId(),getBinsOfNode(node), e.getId(), getBinsOfEdge(e));
 				exploringFromEdge(e);
 			}
 		}
@@ -108,7 +109,8 @@ public class SimpleBinner {
 			induceEdgeBin=substract(nbins, enteringEdgeBinCount);
 			if(induceEdgeBin.values().stream().mapToInt(Integer::intValue).sum() > 0){
 				edge2BinMap.put(e, induceEdgeBin);
-				System.out.printf("From node %s%s firing edge %s%s\n",node.getId(),getBinsOfNode(node), e.getId(), getBinsOfEdge(e));
+				if(HybridAssembler.VERBOSE)
+					LOG.info("From node {}{} firing edge {}{}\n",node.getId(),getBinsOfNode(node), e.getId(), getBinsOfEdge(e));
 				exploringFromEdge(e);
 			}
 		}
@@ -123,7 +125,8 @@ public class SimpleBinner {
 		unresolvedEdges.remove(edge);
 		Node 	n0 = edge.getNode0(),
 				n1 = edge.getNode1();
-		System.out.printf("From edge %s%s: ", edge.getId(), getBinsOfEdge(edge));
+		if(HybridAssembler.VERBOSE)
+			LOG.info("From edge {}{}: ", edge.getId(), getBinsOfEdge(edge));
 		if(!node2BinMap.containsKey(n0)){
 			boolean dir0 = ((BDEdge)edge).getDir0();
 			Stream<Edge> edgeSet0 = dir0?n0.leavingEdges():n0.enteringEdges();		
@@ -146,14 +149,14 @@ public class SimpleBinner {
 			}
 			if(fully && GraphUtil.approxCompare(covSum, n0.getNumber("cov"))==0){
 				node2BinMap.put(n0, binCounts0);
-//				System.out.println("From edge " + edge.getId() + " updating node " + n0.getId());
-				System.out.printf("completing node %s%s\n", n0.getId(),getBinsOfNode(n0));
+				if(HybridAssembler.VERBOSE)
+					LOG.info("completing node {}{}", n0.getId(),getBinsOfNode(n0));
 				exploringFromNode(n0);
-			}else
-				System.out.printf("skip node %s%s\n", n0.getId(),getBinsOfNode(n0));
+			}else if(HybridAssembler.VERBOSE)
+				LOG.info("skip node {}{}", n0.getId(),getBinsOfNode(n0));
 		}else{
-			//TODO: check consistent here			
-			System.out.printf("firing node %s%s\n", n0.getId(),getBinsOfNode(n0));
+			if(HybridAssembler.VERBOSE)
+				LOG.info("firing node {}{}", n0.getId(),getBinsOfNode(n0));
 			exploringFromNode(n0);
 		}
 		
@@ -169,7 +172,7 @@ public class SimpleBinner {
 					binCounts1=sum(binCounts1, edge2BinMap.get(e));
 				}else{
 					fully = false;
-//					System.out.println("...node " + n1.getId() + " not yet fully solved at: " + e.getId());
+//					LOG.info("...node " + n1.getId() + " not yet fully solved at: " + e.getId());
 					break;
 				}
 			}
@@ -181,14 +184,16 @@ public class SimpleBinner {
 			
 			if(fully && GraphUtil.approxCompare(covSum, n1.getNumber("cov"))==0){				
 				node2BinMap.put(n1, binCounts1);
-				System.out.printf("completing node %s%s\n", n1.getId(),getBinsOfNode(n1));
+				if(HybridAssembler.VERBOSE)
+					LOG.info("completing node {}{}", n1.getId(),getBinsOfNode(n1));
 				exploringFromNode(n1);
-			}else
-				System.out.printf("skip node %s%s\n", n1.getId(),getBinsOfNode(n1));
+			}else if(HybridAssembler.VERBOSE)
+				LOG.info("skip node {}{}", n1.getId(),getBinsOfNode(n1));
 			
 		}else{ 
 			//TODO: check consistent here also
-			System.out.printf("firing node %s%s\n", n1.getId(),getBinsOfNode(n1));
+			if(HybridAssembler.VERBOSE)
+				LOG.info("firing node {}{}", n1.getId(),getBinsOfNode(n1));
 			exploringFromNode(n1);
 		}
 	}
@@ -237,7 +242,6 @@ public class SimpleBinner {
 		}
 		//TODO: 1.5 is important! need to find a way for more robust guess (+self-correct)!!!	
 		if(cov > 1.5*leastBin.estCov && tmp>GraphUtil.DISTANCE_THRES) {
-			System.out.println("...reason: " + tmp + " > " + GraphUtil.DISTANCE_THRES);
 			target = null;
 		}
 		
@@ -272,9 +276,6 @@ public class SimpleBinner {
 			}
 			if(bin.getCoreNodes().size() > 0){
 				binList.add(bin);
-				System.out.println("Bin " + bin.binID + ": " + bin.estCov);
-				for(Node n:bin.getCoreNodes())
-					System.out.println("...core node " + n.getAttribute("name"));
 			}
 			
 			if(leastBin==null || bin.estCov<leastBin.estCov)
@@ -327,7 +328,16 @@ public class SimpleBinner {
 		
 		//2. assign edges and nodes coverage based on original nodes coverage and graph topo
 		GraphUtil.gradientDescent(graph);
-		graph.edges().forEach(e->System.out.println("Edge " + e.getId() + " cov=" + e.getNumber("cov")));
+		
+		if(HybridAssembler.VERBOSE) {
+			for(PopBin bin:binList) {
+				LOG.info("Bin " + bin.binID + ": " + bin.estCov);		
+				for(Node n:bin.getCoreNodes())
+					LOG.info("...core node " + n.getAttribute("name"));
+			}
+			graph.edges().forEach(e->System.out.println("Edge " + e.getId() + " cov=" + e.getNumber("cov")));
+		}
+		
 		
 		//3.1.First round of assigning unit cov: from binned significant nodes
 		for(PopBin b:binList) {
@@ -343,7 +353,8 @@ public class SimpleBinner {
 		unresolvedEdges.sort((a,b)->Double.compare(a.getNumber("cov"),b.getNumber("cov")));
 
 		for(Edge e:unresolvedEdges){
-				System.out.print("...scanning edge " + e.getId() + "cov=" + e.getNumber("cov"));
+				if(HybridAssembler.VERBOSE) 
+					LOG.info("...scanning edge " + e.getId() + "cov=" + e.getNumber("cov") + ":");
 				PopBin tmp = scanAndGuess(e.getNumber("cov"));
 				if(tmp!=null){
 					
@@ -359,14 +370,16 @@ public class SimpleBinner {
 						if(n0.getNumber("len") > UNIQUE_CTG_LEN && getBinIfUnique(n0)==null){
 							n0.setAttribute("unique", leastBin);
 							node2BinMap.put(n0, unitBinMap);
-							System.out.printf(" :node %s is unique but have degree=%d, length=%d\n", n0.getId(), n0.getDegree(), (int)n0.getNumber("len"));
+							if(HybridAssembler.VERBOSE) 
+								LOG.info("node {} is unique but have degree={}, length={}", n0.getId(), n0.getDegree(), (int)n0.getNumber("len"));
 							continue;
 						}
 						
 						if(n1.getNumber("len") > UNIQUE_CTG_LEN && getBinIfUnique(n1)==null){
 							n1.setAttribute("unique", leastBin);
 							node2BinMap.put(n1, unitBinMap);
-							System.out.printf(" :node %s is unique but have degree=%d, length=%d\n", n1.getId(), n1.getDegree(), (int)n1.getNumber("len"));
+							if(HybridAssembler.VERBOSE) 
+								LOG.info("node {} is unique but have degree={}, length={}", n1.getId(), n1.getDegree(), (int)n1.getNumber("len"));
 							continue;
 						}
 						
@@ -376,32 +389,33 @@ public class SimpleBinner {
 						highlyPossibleEdges.put(tmp, new ArrayList<Edge>());
 					
 					highlyPossibleEdges.get(tmp).add(e);
-					System.out.printf(": highly possible in bin %d!", tmp.getId());
-				}else
-					System.out.print(": none!");
-				System.out.println();
+					if(HybridAssembler.VERBOSE) 
+						LOG.info("=> highly possible in bin {}!", tmp.getId());
+				}else if(HybridAssembler.VERBOSE) 
+					LOG.info(": none!");
 		}
 
 		while(!unresolvedEdges.isEmpty()) {
-			System.out.println("Starting assigning " + unresolvedEdges.size() + " unresolved edges");
+			if(HybridAssembler.VERBOSE) 
+				LOG.info("Starting assigning " + unresolvedEdges.size() + " unresolved edges");
 			//sort the unresolved edges based on abundance and guess until all gone...
 			if(!highlyPossibleEdges.keySet().isEmpty()){
 				for(PopBin b:binList){
 					if(highlyPossibleEdges.containsKey(b)){
 						while(!highlyPossibleEdges.get(b).isEmpty()) {
 							Edge guess = highlyPossibleEdges.get(b).remove(0);
-							System.out.print("...assigning " + guess.getId());
+							if(HybridAssembler.VERBOSE) 
+								LOG.info("...assigning " + guess.getId());
 							if(unresolvedEdges.contains(guess)){
 								HashMap<PopBin, Integer> bc = new HashMap<>();
 								bc.put(b, 1);
 								edge2BinMap.put(guess, bc);
-								System.out.println(": start explore");
+								if(HybridAssembler.VERBOSE) 
+									LOG.info(": start explore");
 								exploringFromEdge(guess);
-							}else{
-								//TODO: check consistent here or just take it?
-								System.out.println(": already in bin " + getBinsOfEdge(guess));
-							}
-						
+							}else if(HybridAssembler.VERBOSE) 
+								LOG.info(": already in bin " + getBinsOfEdge(guess));
+	
 						}
 						highlyPossibleEdges.remove(b);
 					}
@@ -410,7 +424,8 @@ public class SimpleBinner {
 			}
 			else{
 				//we can go further with random guessing but let's stop here for now
-				LOG.info("GUESS NO MORE!!!");
+				if(HybridAssembler.VERBOSE) 
+					LOG.info("GUESS NO MORE!!!");
 				break;
 			}
 		}
@@ -478,7 +493,8 @@ public class SimpleBinner {
 	//Traversal along a unique path (unique ends) and return list of unique edges
 	//Must only be called from BDGraph.reduce()
 	synchronized public Set<Edge> walkAlongUniquePath(BDPath path) {
-		System.out.printf("Path %s being processed based on binning info...\n", path.getId());
+		if(HybridAssembler.VERBOSE) 
+			LOG.info("Path {} being processed based on binning info...", path.getId());
 		Node  	curNode = path.getRoot(), nextNode;
 		PopBin 	uniqueBin=path.getConsensusUniqueBinOfPath(),
 				startBin=getBinIfUnique(path.getRoot()),
@@ -490,21 +506,25 @@ public class SimpleBinner {
 		
 		
 		if(uniqueBin==null||startBin==null||endBin==null){
-			System.err.println("Ignored: population bin of the path (either at ending node or global) is not known!");
+			if(HybridAssembler.VERBOSE) 
+				LOG.warn("Ignored: population bin of the path (either at ending node or global) is not known!");
 			return null;
 		}else if(uniqueBin!=startBin && uniqueBin!=endBin){//at least one end must agree with the wholepath bin
-			System.err.println("Ignored: consensus bin must be one of the endings bin: Ignored!");
+			if(HybridAssembler.VERBOSE) 
+				LOG.warn("Ignored: consensus bin must be one of the endings bin: Ignored!");
 			//clean from bin map here...
 			node2BinMap.remove(path.getRoot());
 			node2BinMap.remove(path.peekNode());
 			return null;
 		}else if(!uniqueBin.isCloseTo(startBin)){
-			System.err.printf("Ignored: consensus bin %s doesn't agree with one of the endings bin %s at node %s\n", uniqueBin, startBin, path.getRoot());
+			if(HybridAssembler.VERBOSE) 
+				LOG.warn("Ignored: consensus bin {} doesn't agree with one of the endings bin {} at node {}", uniqueBin, startBin, path.getRoot());
 			node2BinMap.remove(path.getRoot());
 			//clean from bin map here...
 			return null;
 		}else if(!uniqueBin.isCloseTo(endBin)){
-			System.err.printf("Ignored: consensus bin %s doesn't agree with one of the endings bin %s at node %s\n", uniqueBin, endBin, path.peekNode());
+			if(HybridAssembler.VERBOSE) 
+				LOG.warn("Ignored: consensus bin {} doesn't agree with one of the endings bin {} at node {}", uniqueBin, endBin, path.peekNode());
 			node2BinMap.remove(path.peekNode());
 			//clean from bin map here...
 			return null;
@@ -554,10 +574,9 @@ public class SimpleBinner {
 					bcMinusOne=substract(edgeBinsCount, otherBin);
 					edge2BinMap.replace(ep, bcMinusOne);				
 
-				}else {
-					System.err.printf("...not found appropriate binning information on path %s, at edge %s: %s!\n", path.getId(), ep.getId(), getBinsOfEdge(ep));
+				}else if(HybridAssembler.VERBOSE) 
+					LOG.warn("...not found appropriate binning information on path {}, at edge {}: {}", path.getId(), ep.getId(), getBinsOfEdge(ep));
 //					edge2BinMap.remove(ep);
-				}
 		
 				
 			}

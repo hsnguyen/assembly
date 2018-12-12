@@ -5,6 +5,9 @@ import org.rtassembly.gui.NPGraphFX;
 import org.rtassembly.npgraph.Alignment;
 import org.rtassembly.npgraph.BDGraph;
 import org.rtassembly.npgraph.HybridAssembler;
+import org.rtassembly.npgraph.SimpleBinner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import japsa.util.CommandLine;
 import javafx.application.Application;
@@ -13,6 +16,7 @@ import javafx.application.Application;
 
 @SuppressWarnings("restriction")
 public class NPGraphCmd extends CommandLine{
+    private static final Logger LOG = LoggerFactory.getLogger(NPGraphCmd.class);
 	public NPGraphCmd(){
 		super();
 
@@ -36,7 +40,7 @@ public class NPGraphCmd extends CommandLine{
 		addInt("mcov", 3, "Minimum number of reads spanning a confident bridge");
 
 		addBoolean("gui", false, "Whether using GUI or not.");
-		
+		addBoolean("verbose", false, "For debugging.");
 		addStdHelp();
 	}
 	
@@ -60,6 +64,7 @@ public class NPGraphCmd extends CommandLine{
 			
 		Alignment.MIN_QUAL = cmdLine.getIntVal("qual");
 		BDGraph.MIN_COVER=cmdLine.getIntVal("mcov");
+		HybridAssembler.VERBOSE=cmdLine.getBooleanVal("verbose");
 		//Default output dir 
 		if(outputDir == null) {
 			outputDir = new File(shortReadsInput).getAbsoluteFile().getParent();
@@ -105,12 +110,12 @@ public class NPGraphCmd extends CommandLine{
 					hbAss.postProcessGraph();
 				}
 				else{
-					System.err.println("Error with pre-processing step: \n" + hbAss.getErrorLog());
+					LOG.error("Error with pre-processing step: \n" + hbAss.getErrorLog());
 					System.exit(1);
 				}
 					
 			} catch (InterruptedException|IOException e) {
-				System.err.println("Issue when assembly: \n" + e.getMessage());
+				LOG.error("Issue when assembly: \n" + e.getMessage());
 				e.printStackTrace();
 				System.exit(1);
 			}

@@ -120,7 +120,7 @@ public class HybridAssembler {
 //	final BDGraph origGraph;
 	public BDGraph simGraph; //original and simplified graph should be separated, no???
 	public GraphWatcher observer;
-	
+	public static boolean VERBOSE=false;
 	public HybridAssembler(){
 //		origGraph=new BDGraph("batch");
 		simGraph=new BDGraph("real");
@@ -390,8 +390,11 @@ public class HybridAssembler {
 			try {
 				rec = iter.next();
 			}catch(Exception e) {
-				LOG.warn("Ignore one faulty SAM record: \n {}", e.getMessage());
-				e.printStackTrace();
+				if(HybridAssembler.VERBOSE) {
+					LOG.warn("Ignore one faulty SAM record: \n {}", e.getMessage());
+					e.printStackTrace();
+				}
+					
 				continue;
 			}
 			
@@ -405,7 +408,8 @@ public class HybridAssembler {
 			String refID = refName.split("_").length > 1 ? refName.split("_")[1]:refName;
 			
 			if (simGraph.getNode(refID)==null) {
-				LOG.error("Node {} not found from the graph!", refID);
+				if(HybridAssembler.VERBOSE)
+					LOG.warn("Node {} not found from the graph!", refID);
 				continue;
 			}
 			Alignment myRec = new Alignment(rec, (BDNode) simGraph.getNode(refID)); 
@@ -434,19 +438,21 @@ public class HybridAssembler {
 		iter.close();
 		reader.close();
 
+		terminateAlignmentProcess();	
+
+	}
+	
+	public void terminateAlignmentProcess() {
 		if (alignmentProcess != null){
 			alignmentProcess.destroy();
 		}	
-
 	}
 	
 	public void postProcessGraph() throws IOException{
 		//Take the current best path among the candidate of a bridge and connect the bridge(greedy)
 		for(GoInBetweenBridge brg:simGraph.getUnsolvedBridges()){
-			System.out.printf("Last attempt on incomplete bridge %s : anchors=%d \n %s \n", brg.getEndingsID(), brg.getNumberOfAnchors(), brg.getAllPossiblePaths());
-//			if(brg.getCompletionLevel()<=2) {//examine bridge with completion level = 2 that unable to connected
-//				brg.steps.connectBridgeSteps(true);
-//			}
+			if(HybridAssembler.VERBOSE)
+				LOG.info("Last attempt on incomplete bridge {} : anchors={} \n {}", brg.getEndingsID(), brg.getNumberOfAnchors(), brg.getAllPossiblePaths());
 			
 			if(brg.getCompletionLevel()>=3) 
 				simGraph.chopPathAtAnchors(brg.getBestPath(brg.pBridge.getNode0(),brg.pBridge.getNode1())).stream().forEach(p->simGraph.reduceUniquePath(p));
@@ -457,8 +463,8 @@ public class HybridAssembler {
 				//return appropriate path
 				if(brg.segments!=null)
 					simGraph.chopPathAtAnchors(brg.getBestPath(brg.steps.start.getNode(),brg.steps.end.getNode())).stream().forEach(p->simGraph.reduceUniquePath(p));
-				else
-					System.out.printf("Last attempt failed \n");
+				else if(HybridAssembler.VERBOSE)
+					LOG.info("Last attempt failed");
 			}
 
 
@@ -475,7 +481,7 @@ public class HybridAssembler {
     
     @SuppressWarnings("resource")
 	public static void promptEnterKey(){
-    	   System.out.println("Press \"ENTER\" to continue...");
+    	   LOG.info("Press \"ENTER\" to continue...");
     	   Scanner scanner = new Scanner(System.in);
     	   scanner.nextLine();
     	}

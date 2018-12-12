@@ -339,7 +339,8 @@ public class BDGraph extends MultiGraph{
 	{
     	if(distance>BDGraph.D_LIMIT && !force)
     		return null;
-    	System.out.printf("Looking for DFS path between %s%s to %s%s with distance=%d\n",srcNode.getId(), srcDir?"o":"i", dstNode.getId(), dstDir?"o":"i" ,distance);
+    	if(HybridAssembler.VERBOSE)
+    		LOG.info("Looking for DFS path between {}{} to {}{} with distance={}",srcNode.getId(), srcDir?"o":"i", dstNode.getId(), dstDir?"o":"i" ,distance);
 		ArrayList<BDPath> possiblePaths = new ArrayList<BDPath>(), 
 									retval=new ArrayList<BDPath>();
 		//1. First build shortest tree from dstNode 		
@@ -358,7 +359,8 @@ public class BDGraph extends MultiGraph{
 			int tolerance = A_TOL, 
 				delta;
 			BDEdge curEdge = null;
-			System.out.println("Found " + curNodeState.toString() + " with shortest distance=" + shortestDist2Dest);
+			if(HybridAssembler.VERBOSE)
+	    		LOG.info("Found " + curNodeState.toString() + " with shortest distance=" + shortestDist2Dest);
 			
 			while(true) {
 //				System.out.println("\nCurrent stack: ");
@@ -441,7 +443,8 @@ public class BDGraph extends MultiGraph{
 				pseudoEdge.setAttribute("dist", distance);
 				path.add(pseudoEdge);
 				possiblePaths.add(path);
-				System.out.println("pseudo path from " + srcNode.getId() + " to " + dstNode.getId() + " distance=" + distance);
+				if(HybridAssembler.VERBOSE)
+		    		LOG.info("pseudo path from " + srcNode.getId() + " to " + dstNode.getId() + " distance=" + distance);
 				
 				return possiblePaths;
     		}else
@@ -456,7 +459,8 @@ public class BDGraph extends MultiGraph{
 			if(p.getDeviation()>bestScore+Math.abs(distance+getKmerSize())*R_TOL || i>=keepMax)
 				break;
 			retval.add(p);
-			System.out.println("Hit added: "+p.getId()+"(candidate deviation: "+p.getDeviation() + "; depth: " + p.size()+")");
+			if(HybridAssembler.VERBOSE)
+	    		LOG.info("Hit added: "+p.getId()+"(candidate deviation: "+p.getDeviation() + "; depth: " + p.size()+")");
 		}
 		
 		//TODO: reduce the number of returned paths here (calculate edit distance with nanopore read: dynamic programming?)
@@ -475,7 +479,8 @@ public class BDGraph extends MultiGraph{
 		BDNodeState curND = new BDNodeState(rootNode, expDir, curDistance);
 		pq.add(curND);
 		
-		System.out.println("Building shortest tree for " + rootNode.getId() + " with distance=" + distance);
+		if(HybridAssembler.VERBOSE)
+    		LOG.info("Building shortest tree for " + rootNode.getId() + " with distance=" + distance);
 		retval.put(curND.toString(), curDistance); // direction from the point of srcNode
 		while(!pq.isEmpty()) {
 //			System.out.println("Current queue: ");
@@ -514,12 +519,7 @@ public class BDGraph extends MultiGraph{
 			}
 			
 		}
-		
-		System.out.println("Shortest tree from " + rootNode.getId() + (expDir?"o":"i"));
-		for(String str:retval.keySet()) {
-			System.out.printf("%s:%d; ", str, retval.get(str));
-		}
-		System.out.println();
+
 		return retval;
     }
     
@@ -532,10 +532,12 @@ public class BDGraph extends MultiGraph{
  		if(nnpRead==null || alignments.size()<=1)
  			return null;
  		
- 		System.out.println("=================================================");
- 		for(Alignment alg:alignments)
- 			System.out.println("\t"+alg.toString());
- 		System.out.println("=================================================");
+ 		if(HybridAssembler.VERBOSE) {
+	 		LOG.info("=================================================");
+	 		for(Alignment alg:alignments)
+	 			LOG.info("\t"+alg.toString());
+	 		LOG.info("=================================================");
+ 		}
  		//First bin the alignments into different overlap regions			
  		//only considering useful alignments
  		HashMap<Range,Alignment> allAlignments = new HashMap<Range,Alignment>();
@@ -559,7 +561,6 @@ public class BDGraph extends MultiGraph{
  		AlignedRead	curBuildingBlocks; //building blocks for a bridge, taken from alignments with unique end(s)
  		PopBin curBin=null, prevUnqBin=null;
 
-		System.out.println("Step ranges: ");
 
  		int flag=0; //+1 for unique startAlignment.node, +2 for unique endAlignment.node flag={0,1,2,3}
  		if(curRanges.size()==1){
@@ -574,17 +575,26 @@ public class BDGraph extends MultiGraph{
  		
  		}
  		
-    	for(Range range:curRanges) 
-    		System.out.print(allAlignments.get(range).node.getId() + " "+ binner.getBinsOfNode(allAlignments.get(range).node) + ": " + range + "; ");	    
-    	System.out.println();
+ 		if(HybridAssembler.VERBOSE) {
+ 			LOG.info("Step ranges: ");
+ 			String log="";
+	    	for(Range range:curRanges) { 
+	    		log+=(allAlignments.get(range).node.getId() + " "+ binner.getBinsOfNode(allAlignments.get(range).node) + ": " + range + "; ");	  
+	    	}
+	    		LOG.info(log);
+ 		}
  		
  		Alignment curAlg=null;
  	    for(int i=1; i<rangeGroups.size(); i++){
  	    	curRanges = rangeGroups.get(i);
  	    	
- 	      	for(Range range:curRanges) 
- 	    		System.out.print(allAlignments.get(range).node.getId() + " "+ binner.getBinsOfNode(allAlignments.get(range).node) + ": " + range + "; ");	    
- 	      	System.out.println();
+ 	 		if(HybridAssembler.VERBOSE) {
+ 	 			String log="";
+ 		    	for(Range range:curRanges) { 
+ 		    		log+=(allAlignments.get(range).node.getId() + " "+ binner.getBinsOfNode(allAlignments.get(range).node) + ": " + range + "; ");	  
+ 		    	}
+ 		    		LOG.info(log);
+ 	 		}
  	      	
  	    	if(curRanges.size()==1){
  	    		curAlg=allAlignments.get(curRanges.get(0));
@@ -632,13 +642,16 @@ public class BDGraph extends MultiGraph{
     private List<BDPath> buildBridge(AlignedRead read, PopBin bin){
     	List<BDPath> retval=new ArrayList<BDPath>();
 		GoInBetweenBridge 	storedBridge=getBridgeFromMap(read);
-		System.out.printf("+++%s <=> %s\n", read.getEndingsID(), storedBridge==null?"null":storedBridge.getEndingsID());
+		if(HybridAssembler.VERBOSE) 
+			LOG.info("+++{} <=> {}\n", read.getEndingsID(), storedBridge==null?"null":storedBridge.getEndingsID());
 		
 		if(storedBridge!=null) {
 			if(storedBridge.getCompletionLevel()==4){//important since it will ignore the wrong transformed unique nodes here!!!
-				System.out.println(storedBridge.getEndingsID() + ": already solved and reduced: ignore!");
+				if(HybridAssembler.VERBOSE) 
+					LOG.info(storedBridge.getEndingsID() + ": already solved and reduced: ignore!");
 			}else{
-				System.out.println(storedBridge.getEndingsID() + ": already built: fortify!");
+				if(HybridAssembler.VERBOSE) 
+					LOG.info(storedBridge.getEndingsID() + ": already built: fortify!");
 				//update available bridge using alignments
 				byte state=storedBridge.merge(read,true);
 				
@@ -649,7 +662,8 @@ public class BDGraph extends MultiGraph{
 				boolean extend=false;
 				if(storedBridge.getCompletionLevel()==1){
 					if(storedBridge.scanForAnEnd(false)){
-						System.out.println("FOUND NEW TRANSFORMED END: " + storedBridge.steps.end.getNode().getId());
+						if(HybridAssembler.VERBOSE) 
+							LOG.info("FOUND NEW TRANSFORMED END: " + storedBridge.steps.end.getNode().getId());
 						extend=storedBridge.steps.connectBridgeSteps(false);
 					}					
 				}
@@ -703,8 +717,8 @@ public class BDGraph extends MultiGraph{
     	//do nothing if the path has only one node
     	if(path==null||path.getEdgeCount()<1)
     		return false;
-    	else
-    		System.out.println("Reducing path: " + path.getId());
+    	else if(HybridAssembler.VERBOSE) 
+			LOG.info("Reducing path: " + path.getId());
     	//loop over the edges of path (like spelling())
     	BDNode 	startNode = (BDNode) path.getRoot(),
     					endNode = (BDNode) path.peekNode();
@@ -718,17 +732,22 @@ public class BDGraph extends MultiGraph{
     	
     	if(potentialRemovedEdges!=null && potentialRemovedEdges.size()>1){
 	    	//remove appropriate edges
+    		
 	    	for(Edge e:potentialRemovedEdges){
-	    		LOG.info("REMOVING EDGE " + e.getId() + " from " + e.getNode0().getGraph().getId() + "-" + e.getNode1().getGraph().getId());
-	    		LOG.info("before: \n\t" + printEdgesOfNode((BDNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) e.getNode1()));
+	    		if(HybridAssembler.VERBOSE) {
+		    		LOG.info("REMOVING EDGE " + e.getId() + " from " + e.getNode0().getGraph().getId() + "-" + e.getNode1().getGraph().getId());
+		    		LOG.info("before: \n\t" + printEdgesOfNode((BDNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) e.getNode1()));
+	    		}
 	    		removeEdge(e.getId());
-	    		LOG.info("after: \n\t" + printEdgesOfNode((BDNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) e.getNode1()));
+	    		if(HybridAssembler.VERBOSE)
+	    			LOG.info("after: \n\t" + printEdgesOfNode((BDNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) e.getNode1()));
 	    	}
 	    	
 	    	//add appropriate edges
 
     		BDEdge reducedEdge = addEdge(startNode,endNode,startDir,endDir);
-    		LOG.info("ADDING EDGE " + reducedEdge.getId()+ " from " + reducedEdge.getNode0().getGraph().getId() + "-" + reducedEdge.getNode1().getGraph().getId());
+    		if(HybridAssembler.VERBOSE)
+    			LOG.info("ADDING EDGE " + reducedEdge.getId()+ " from " + reducedEdge.getNode0().getGraph().getId() + "-" + reducedEdge.getNode1().getGraph().getId());
 			if(reducedEdge!=null){
 //				reducedEdge.setAttribute("ui.label", path.getId());
 //				reducedEdge.setAttribute("ui.style", "text-offset: -10; text-alignment: along;"); 
@@ -739,10 +758,12 @@ public class BDGraph extends MultiGraph{
 				binner.edge2BinMap.put(reducedEdge, oneBin);
 //				updateGraphMap(reducedEdge, path);
 			}
-    		LOG.info("after adding: \n\t" + printEdgesOfNode((BDNode) reducedEdge.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) reducedEdge.getNode1()));
+			if(HybridAssembler.VERBOSE)
+				LOG.info("after adding: \n\t" + printEdgesOfNode((BDNode) reducedEdge.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) reducedEdge.getNode1()));
 	    	return true;
     	}else {
-    		LOG.info("Path {} has not reduced!", path.getId());
+    		if(HybridAssembler.VERBOSE)
+    			LOG.info("Path {} has not reduced!", path.getId());
     		return false;
     	}
 
@@ -754,8 +775,8 @@ public class BDGraph extends MultiGraph{
     	//do nothing if the path has only one node
     	if(path==null || path.getEdgeCount()<1)
     		return retval;
-    	else
-    		System.out.println("Input SPAdes path: " + path.getId());
+    	else if(HybridAssembler.VERBOSE)
+    		LOG.info("Input SPAdes path: " + path.getId());
     	//loop over the edges of path (like spelling())
     	for(BDPath p:chopPathAtAnchors(path)){
     		if(reduceUniquePath(p))

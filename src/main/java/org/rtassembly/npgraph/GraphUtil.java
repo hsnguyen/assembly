@@ -165,7 +165,8 @@ public class GraphUtil {
 			astats*=Math.log10(Math.E);
 			node.setAttribute("astats", astats);
 			normalizedCoverage(node);
-			LOG.info("{} Normalized coverage = {} Length = {} \nA-stats = {}", node.getAttribute("name"), node.getNumber("cov"), node.getNumber("len"), astats);
+			if(HybridAssembler.VERBOSE)
+				LOG.info("{} Normalized coverage = {} Length = {} \nA-stats = {}", node.getAttribute("name"), node.getNumber("cov"), node.getNumber("len"), astats);
 		}
 		
 		LOG.info("No of nodes= {} No of edges = {} Estimated avg. read coverage = {} (normalized to 100.0) Total contigs length = {}", graph.getNodeCount(), graph.getEdgeCount(), BDGraph.RCOV, totContigsLen );
@@ -336,7 +337,8 @@ public class GraphUtil {
 			astats*=Math.log10(Math.E);
 			node.setAttribute("astats", astats);
 			normalizedCoverage(node);
-			LOG.info("{} Normalized coverage = {} Length = {} A-stats = {}", node.getAttribute("name"), node.getNumber("cov"), node.getNumber("len"), astats );
+			if(HybridAssembler.VERBOSE)		
+				LOG.info("{} Normalized coverage = {} Length = {} A-stats = {}", node.getAttribute("name"), node.getNumber("cov"), node.getNumber("len"), astats );
 		}
 		
 		LOG.info("No of nodes= {} No of edges = {} Estimated avg. read coverage = {} (normalized to 100.0) Total contigs length = {}", graph.getNodeCount(), graph.getEdgeCount(), BDGraph.RCOV, totContigsLen );
@@ -419,7 +421,8 @@ public class GraphUtil {
 					}
 					
 					if(curCov<=delta) {
-						LOG.warn("Edge " + e.getId() + " coverage is not positive : curCov=" + curCov + ", delta=" + delta);
+						if(HybridAssembler.VERBOSE)							
+							LOG.warn("Edge " + e.getId() + " coverage is not positive : curCov=" + curCov + ", delta=" + delta);
 //						isZero=true;
 					}else
 						e.setAttribute("cov", curCov-delta);
@@ -589,8 +592,9 @@ public class GraphUtil {
 				n.setAttribute("cov", newCovEst);
 			}
 			if(isConverged || nIteCount >= 10) {
-				System.out.println("STOP at iteration " + nIteCount + "th");
-				System.out.println("======================================================");
+				if(HybridAssembler.VERBOSE) 				
+					LOG.info("STOP at iteration " + nIteCount + "th");
+				
 				break;
 			}
 			

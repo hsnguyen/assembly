@@ -1,6 +1,7 @@
 package org.rtassembly.npgraph;
 
 import java.io.IOException;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -101,7 +102,8 @@ public class GraphWatcher {
 		
 		outputGraph=new BDGraph();
 		BDPath repPath=null; //representative path of a component
-		System.out.println("Another round of updating connected components: " + rtComponents.getConnectedComponentsCount());
+		System.out.println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+		System.out.println("Current time: " + LocalTime.now());
 
 		for (Iterator<ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
 			ConnectedComponent comp = compIter.next();
