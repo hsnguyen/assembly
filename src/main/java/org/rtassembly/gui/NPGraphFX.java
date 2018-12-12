@@ -244,7 +244,7 @@ public class NPGraphFX extends Application{
     	
         TextField shortInputTF = new TextField("");
     	shortInputTF.setPromptText("Enter file name for assembly graph...");
-    	shortInputTF.textProperty().bind(myass.shortReadsInputProperty());
+    	shortInputTF.textProperty().bindBidirectional(myass.shortReadsInputProperty());
     	GridPane.setConstraints(shortInputTF, 0,1,4,1);
     	inputPane.getChildren().add(shortInputTF);
     	
@@ -291,7 +291,7 @@ public class NPGraphFX extends Application{
     	
     	TextField binInputTF = new TextField("");
     	binInputTF.setPromptText("Enter file name binning information...");
-    	binInputTF.textProperty().bind(myass.binReadsInputProperty());
+    	binInputTF.textProperty().bindBidirectional(myass.binReadsInputProperty());
     	binInputTF.disableProperty().bind(binCB.selectedProperty().not());
     	GridPane.setConstraints(binInputTF, 0,3,4,1);
     	inputPane.getChildren().add(binInputTF);
