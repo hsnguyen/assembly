@@ -18,7 +18,7 @@ The tool is included in a Java project that can be built with maven2 by followin
 ```
 to generate a jar file containing **npGraph** and several other modules.
 
-The code has been developed with *Java 1.8.0_144* that enables lambda expression and JavaFX, so equal or later version is expected to build & run the tool properly.
+The code has been developed with *Oracle Java 1.8.0_144* that enables lambda expression and JavaFX, so equal or later version is expected to build & run the tool properly.
 
 If an aligner is involved, [minimap2](https://github.com/lh3/minimap2) or [bwa](https://github.com/lh3/bwa) (later than 0.7.11) should be included.
 
@@ -79,9 +79,10 @@ It is important to emphasis the quality of the assembly graph to the final resul
 It doesn't do neither any polishing or other exhaustive post-processing for the final assembly assuming the quality is equivalent to the short-read data which is decent enough.
 
 ### Output
-The tool generate the assembly in FASTA sequences. I'll output GFA files as well soon.
+The tool generates the assembly in FASTA sequences and [GFA v1](https://github.com/GFA-spec/GFA-spec/blob/master/GFA1.md) format.
 Also, the stats of the assembly process is reported in the GUI dashboard and/or stdout as the program is running.
-
+Note that the output graph is undergone minor cleaning compared to the real graph display in the GUI. 
+The displayed stats from the dashboard, as well as FASTA output *npgraph_assembly.fasta*, represent to the output graph. On the other hand, real assembly graph (without any cleaning) is depicted from the popup window and its ultimate state is recored in the GFA file *npgraph_assembly.gfa*. 
 ### GUI
 The GUI includes the dashboard for control the settings of the program and another pop-up window for a simple visualization of the assembly graph in real-time.
 From the second window, the colored vertices are unique contigs while the white ones are either unknown or repeats. The number of colors (other than white) indicates number of populations (e.g. chromosome vs plasmids, or different bins in metagenomics). Any edge represendted is bi-directed, the final result will only include edges following the flow properly.
