@@ -1,8 +1,11 @@
 package org.rtassembly.npgraph;
 
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -10,6 +13,7 @@ import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.Stack;
+import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -156,16 +160,64 @@ public class BDGraph extends MultiGraph{
 		
 		for(Node node:this) {
 			Sequence seq=(Sequence) node.getAttribute("seq");
-			if( (node.getDegree()==0 && (seq.length() < SimpleBinner.ANCHOR_CTG_LEN)) 
-				|| node.getNumber("cov") < 10.0 )	//not display <10% abundance pops
-				continue;
+//			if( (node.getDegree()==0 && (seq.length() < SimpleBinner.ANCHOR_CTG_LEN)) 
+//				|| node.getNumber("cov") < 10.0 )	//not display <10% abundance pops
+//				continue;
 			seq.writeFasta(out);
 		}
 		
 		out.close();
 	}
+	
 	public void outputGFA(String fileName) throws IOException {
-		//TODO: implement it
+	    PrintWriter printWriter = new PrintWriter(new FileWriter(fileName));
+	    
+	    //Differentiate composite edges and normal edges
+	    List<Edge> compositeEdges = new ArrayList<Edge>(),
+	    			normalEdges = new ArrayList<Edge>();
+	    edges().forEach(e->{
+	    					if(e.hasAttribute("path")) 
+	    						compositeEdges.add(e); 
+	    					else 
+	    						normalEdges.add(e);
+	    					}
+	    );
+	    
+	    Set<String> addedNodes = new HashSet<String>();
+	    //Print S (Segment)
+	    for(Node node:this){
+	    	Sequence seq=(Sequence) node.getAttribute("seq");
+	    	int kmer_count=(int)(GraphUtil.getRealCoverage(node.getNumber("cov"))*(BDGraph.ILLUMINA_READ_LENGTH-BDGraph.getKmerSize()+1)/BDGraph.ILLUMINA_READ_LENGTH);
+	    	printWriter.printf("S\t%s\t%s\tKC:i:%d\n", node.getId(), seq.toString(),kmer_count);
+	    	addedNodes.add(node.getId());
+	    }	    
+	    for(Edge e:compositeEdges){
+	    	BDPath p = (BDPath)e.getAttribute("path");
+	    	p.nodes().filter(n->!addedNodes.contains(n.getId()))
+    				.forEach(n->{
+    			    	Sequence seq=(Sequence) n.getAttribute("seq");
+    			    	int kmer_count=(int)(GraphUtil.getRealCoverage(n.getNumber("cov"))*(BDGraph.ILLUMINA_READ_LENGTH-BDGraph.getKmerSize()+1)/BDGraph.ILLUMINA_READ_LENGTH);
+    			    	printWriter.printf("S\t%s\t%s\tKC:i:%d\n", n.getId(), seq.toString(),kmer_count);
+    			    	addedNodes.add(n.getId());
+	    			});
+	    }
+	    
+	    //Print L (Link)
+	    for(Edge e:normalEdges){
+	    	printWriter.printf("L\t%s\t%s\t%s\t%s\t%dM\n", 
+	    						e.getNode0().getId(), 
+	    						((BDEdge)e).getDir0()?"+":"-",
+								e.getNode1().getId(), 
+	    						((BDEdge)e).getDir1()?"-":"+",
+								BDGraph.getKmerSize());
+	    }
+	    //Print P (Path)
+	    for(Edge e:compositeEdges){
+	    	BDPath p = (BDPath)e.getAttribute("path");	    	
+	    	printWriter.printf("P\t[%s]\t%s\t%s\n", p.getEndingID(), p.getId(), String.join(",", Collections.nCopies(p.size(), "*")));
+	    }
+	    
+	    printWriter.close();
 	}
     
 	

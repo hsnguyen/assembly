@@ -220,8 +220,8 @@ public class GraphWatcher {
 	synchronized public int getNumberOfCircularSequences() {
 		return outputGraph==null?inputGraph.numOfCircularCtgs:outputGraph.numOfCircularCtgs;
 	}
-	synchronized public void outputGFA() {
-		//TODO: output GFA of outputGraph or inputGraph?
+	synchronized public void outputGFA(String fileName) throws IOException{
+		inputGraph.outputGFA(fileName);
 	}
 	synchronized public void outputFASTA(String fileName) throws IOException {
 		outputGraph.outputFASTA(fileName);
