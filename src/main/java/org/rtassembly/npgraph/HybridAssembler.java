@@ -280,8 +280,6 @@ public class HybridAssembler {
 			if(getOverwrite() || !indexFile.exists()) {						
 				try{
 					simGraph.outputFASTA(getPrefix()+"/assembly_graph.fasta");
-					if(!checkMinimap2()) 
-							return false;
 					
 					ProcessBuilder pb = new ProcessBuilder(idxCmd);
 					Process indexProcess =  pb.start();
