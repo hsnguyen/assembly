@@ -69,25 +69,32 @@ java -cp target/assembly-0.0.1-SNAPSHOT.jar org.rtassembly.NPGraphCmd -gui
 ```
 A proper combination of command line and GUI can provide an useful streaming pipeline that copes well with MinION output data. This practice allows the assembly to take place abreast of nanopore sequencing run.
 
-### Input
-The mandatory inputs are short-read pre-assemblies file (*-si*) and long-read data (*-li*).
-The pre-assemblies must be given as the assembly graph outputted from SPAdes in either FASTG or GFA file (normally assembly_graph.fastg or assembly_graph.gfa).
+### GUI
+The GUI includes the dashboard for control the settings of the program and another pop-up window for a simple visualization of the assembly graph in real-time.
 
-The long-read data will be used for bridging and can be given as DNA sequences (FASTA/FASTQ format, possible .gz) or alignment records (SAM/BAM). If the sequences are given, then it's mandatory to have either BWA-MEM or minimap2 installed in your system to do the alignment between long reads and the pre-assemblies. Alternative option is to use your favourite aligner and provide SAM/BAM to *npGraph*. *npGraph* will try to guess the format of the inputs based on the extensions, but sometimes you'll have to specify it yourself (e.g. when "-" is provided to read from *stdin*).
+In this mode, I purposely separate the assembly graph loading stage from the actual assembly process, so user need to have a legal (and decent) graph first before carry out any further tasks.
+After that, user can choose to integrate an aligner (bwa or minimap2) to *npGraph* to invoke from it, or run the alignment independently and provide SAM/BAM as input to *npGraph* for the next stage of bridging and assembly.
+
+From the second window, the colored vertices are unique contigs while the white ones are either unknown or repeats. The number of colors (other than white) indicates number of populations (e.g. chromosome vs plasmids, or different bins in metagenomics). Any edge represendted is bi-directed, the final result will only include edges following the flow properly.
+The STOP button can prematurely terminate the assembly process and output whatever it has till that moment.
+
+More features would be added later to the GUI but it's not the focus of this project. I will output GFA files representing graph in different timestamps if users want to investigate more the details of the graph structure later (e.g. by using [Bandage](https://github.com/rrwick/Bandage)).
+
+### Input
+All settings from the GUI can be set beforehand via commandline interface.
+Without using GUI, the mandatory inputs are assembly graph file (*-si*) and long-read data (*-li*).
+The assembly graph must be output from SPAdes in either FASTG or GFA format (normally *assembly_graph.fastg* or *assembly_graph.gfa*).
+
+The long-read data will be used for bridging and can be given as DNA sequences (FASTA/FASTQ format, possible .gz) or alignment records (SAM/BAM) as mentioned above. If the sequences are given, then it's mandatory to have either BWA-MEM or minimap2 installed in your system to do the alignment between long reads and the pre-assemblies. Alternative option is to use your favourite aligner and provide SAM/BAM to *npGraph*. *npGraph* will try to guess the format of the inputs based on the extensions, but sometimes you'll have to specify it yourself (e.g. when "-" is provided to read from *stdin*).
 
 It is important to emphasis the quality of the assembly graph to the final results. [Unicycler](https://github.com/rrwick/Unicycler) pre-process the graph data by running SPAdes with multiple *kmer* options to chose the best one. Unfortunatly, *npGraph* doesn't employ such technique thus if the graph is not good, you should do the task for yourself before running the tool. Normally, 60X Illumina MiSeq data would give decent SPAdes assembly graph. The better the assembly graph is, the more complete and accurate assembly you'll get.
 It doesn't do neither any polishing or other exhaustive post-processing for the final assembly assuming the quality is equivalent to the short-read data which is decent enough.
 
 ### Output
-The tool generates the assembly in FASTA sequences and [GFA v1](https://github.com/GFA-spec/GFA-spec/blob/master/GFA1.md) format.
+The tool generates the assembly in a FASTA file *npgraph_assembly.fasta* and a [GFA v1](https://github.com/GFA-spec/GFA-spec/blob/master/GFA1.md) file *npgraph_assembly.gfa* .
 Also, the stats of the assembly process is reported in the GUI dashboard and/or stdout as the program is running.
-Note that the output graph is undergone minor cleaning compared to the real graph display in the GUI. 
-The displayed stats from the dashboard, as well as FASTA output *npgraph_assembly.fasta*, represent to the output graph. On the other hand, real assembly graph (without any cleaning) is depicted from the popup window and its ultimate state is recored in the GFA file *npgraph_assembly.gfa*. 
-### GUI
-The GUI includes the dashboard for control the settings of the program and another pop-up window for a simple visualization of the assembly graph in real-time.
-From the second window, the colored vertices are unique contigs while the white ones are either unknown or repeats. The number of colors (other than white) indicates number of populations (e.g. chromosome vs plasmids, or different bins in metagenomics). Any edge represendted is bi-directed, the final result will only include edges following the flow properly.
+Note that the ultimate output graph is undergone a post-processing step to greedily connect *insignificant* bridges. 
 
-More features would be added later to the GUI but it's not the focus of this project. I will output GFA files representing graph in different timestamps if users want to investigate more the details of the graph structure later (e.g. by using [Bandage](https://github.com/rrwick/Bandage)).
 ### Note
 * GUI consumes quite a lot memory, considering increase JVM heap size (java -Xmx) if it's slow to response. If the number of vertices in the assembly graph greater than 1000, you shouldn't show the graph in real-time if running on the normal desktop.
 * If aligner is used along side, there is more resource occupied. Considering separate alignment and npGraph+GUI on different machines communicating through network socket e.g. by Japsa utility [jsa.util.streamServer](https://japsa.readthedocs.io/en/latest/tools/jsa.util.streamServer.html) and [jsa.util.streamClient](https://japsa.readthedocs.io/en/latest/tools/jsa.util.streamClient.html)
