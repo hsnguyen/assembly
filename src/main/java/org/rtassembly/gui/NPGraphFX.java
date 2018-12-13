@@ -782,7 +782,9 @@ public class NPGraphFX extends Application{
 
     private void addDataToSeries() {
         for (int i = 0; i < 20; i++) { //-- add 20 numbers to the plot+
-            if (dataN50.isEmpty()) break;
+            if (dataN50.isEmpty() || dataN75.isEmpty() || dataMax.isEmpty() 
+        		|| dataNumCtgs.isEmpty() || dataNumCircularCtgs.isEmpty()) 
+            	break;
             seriesN50.getData().add(new XYChart.Data<>(xSeriesData, dataN50.remove()));
             seriesN75.getData().add(new XYChart.Data<>(xSeriesData, dataN75.remove()));
             seriesMax.getData().add(new XYChart.Data<>(xSeriesData, dataMax.remove()));
