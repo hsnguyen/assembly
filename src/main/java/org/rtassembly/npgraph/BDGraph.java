@@ -164,8 +164,9 @@ public class BDGraph extends MultiGraph{
 		
 		out.close();
 	}
+	
 	public void outputGFA(String fileName) throws IOException {
-		//TODO: implement it
+
 	}
     
 	
