@@ -473,6 +473,7 @@ public class HybridAssembler {
         //update for the last time
         observer.update(true);
 		observer.outputFASTA(getPrefix()+"/npgraph_assembly.fasta");
+		observer.outputGFA(getPrefix()+"/npgraph_assembly.gfa");
 
 	}
 	
