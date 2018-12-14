@@ -12,11 +12,13 @@ This approach can give better accuracy, but as the trade-off, are more computati
 
 A (rather simple at the moment) Graphical User Interface is implemented for better interaction. [GraphStream](http://graphstream-project.org/), a dynamic graph library for Java, has been employed for such task. At the moment, only a few among sea of amazing features of this library had been used, leaving many room for visualiazation improvements.
 ## Quick installation guide
-The tool is included in a Java project that can be built with maven2 by following command:
+After cloning the project, the tool is included and can be built with maven2 by following command:
 ```
  mvn clean package
 ```
-to generate a jar file containing **npGraph** and several other modules.
+to generate a jar file containing **npGraph** and several other modules (target/assembly-0.0.1-SNAPSHOT.jar).
+
+Or you can download directly the jar file from a release version without having to build it.
 
 The code has been developed with *Oracle Java 1.8.0_144* that enables lambda expression and JavaFX, so equal or later version is expected to build & run the tool properly.
 
