@@ -127,7 +127,7 @@
 			                        <excludes>
 			                            <exclude>META-INF/*.SF</exclude>
 			                            <exclude>META-INF/*.RSA</exclude>
-			                            <exclude>META-INF/*.INF</exclude> <!-- This one may not be required -->
+			                            <exclude>META-INF/*.INF</exclude>
 			                        </excludes>
 			                    </filter>
 			                </filters>    
@@ -144,7 +144,7 @@
                     <target>1.8</target>
                 </configuration>
             </plugin>
-            
+            <!--
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -153,9 +153,6 @@
                     <testSourceDirectory>src/test/java</testSourceDirectory>
                     <systemPropertyVariables>
                         <log4j.configuration>log4j.properties</log4j.configuration>
-<!--
-                        <log4j.configuration>file:${project.build.testOutputDirectory}/log4j-surefire.properties</log4j.configuration>
--->
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
@@ -167,7 +164,7 @@
                     <downloadJavadocs>true</downloadJavadocs>
                 </configuration>
             </plugin>
-            <!--
+            
 		    	<groupId>org.apache.maven.plugins</groupId>
 		        <artifactId>maven-source-plugin</artifactId>
 		        <executions>
@@ -191,8 +188,8 @@
 		                    </goals>
 		                </execution>
 		           	</executions>
-			</plugin>
-			-->
+			</plugin>-->
+
 		</plugins>
 
     </build>
