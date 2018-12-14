@@ -16,9 +16,9 @@ After cloning the project, the tool is included and can be built with maven2 by 
 ```
  mvn clean package
 ```
-to generate a jar file containing **npGraph** and several other modules (target/assembly-0.0.1-SNAPSHOT.jar).
+to generate a JAR file containing **npGraph** and several other modules (target/assembly-0.0.1-SNAPSHOT.jar).
 
-Or you can download directly the jar file from a release version without having to build it.
+Or you can download directly the JAR file from a release version without having to compile the source.
 
 The code has been developed with *Oracle Java 1.8.0_144* that enables lambda expression and JavaFX, so equal or later version is expected to build & run the tool properly.
 
