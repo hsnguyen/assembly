@@ -54,7 +54,7 @@ public class NPGraphCmd extends CommandLine{
 				algPath = cmdLine.getStringVal("algPath"),
 				algOpt = cmdLine.getStringVal("algOpt");
 		boolean overwrite = cmdLine.getBooleanVal("overwrite"),
-				spaths = cmdLine.getBooleanVal("spaths"),
+				spaths = cmdLine.getBooleanVal("sp"),
 				gui = cmdLine.getBooleanVal("gui");
 			
 		Alignment.MIN_QUAL = cmdLine.getIntVal("qual");
