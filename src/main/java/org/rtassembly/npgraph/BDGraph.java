@@ -372,8 +372,8 @@ public class BDGraph extends MultiGraph{
     		
     }
 
-    synchronized public void binning(String binFileName, String gformat) {   		
-    	binner=new SimpleBinner(this, binFileName, gformat);
+    synchronized public void binning(String binFileName) {   		
+    	binner=new SimpleBinner(this, binFileName);
     	binner.estimatePathsByCoverage();
     	initGraphComponents();
     }
