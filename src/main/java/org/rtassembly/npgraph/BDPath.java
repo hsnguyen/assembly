@@ -4,7 +4,6 @@ import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceBuilder;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.graphstream.graph.Edge;
