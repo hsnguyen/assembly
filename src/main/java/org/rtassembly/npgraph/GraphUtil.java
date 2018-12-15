@@ -176,7 +176,7 @@ public class GraphUtil {
 		 * 2. Use a binner to estimate graph multiplicity
 		 */
 //		graph.nodes().filter(n->n.getNumber("cov") < .2*BDGraph.RCOV).forEach(n->{n.edges().forEach(e->graph.removeEdge(e));});
-		graph.binning(binFileName, "fastg");
+		graph.binning(binFileName);
 		/*
 		 * 3. Now scan for the contigs.path file in SPAdes folder for the paths if specified
 		 */
@@ -199,7 +199,7 @@ public class GraphUtil {
 						BDPath path=null;
 						for(int i=0;i<consecutivePaths.length;i++){
 							//TODO: make use of the information about gapped paths (separated by ";")
-							path=new BDPath(graph, consecutivePaths[i]);
+							path=new BDPath(graph, consecutivePaths[i]); //only after binning
 					    	graph.reduceFromSPAdesPath(path);
 						}
 					}
@@ -229,7 +229,7 @@ public class GraphUtil {
 		Sequence seq;
 		int shortestLen = 10000;
 		
-		ArrayList<BDPath> spadesPaths = new ArrayList<>();
+		ArrayList<String> spadesPaths = new ArrayList<>();
 		while ((line=reader.readLine()) != null){
 			String[] gfaFields = line.split("\\s");
 			String type = gfaFields[0];
@@ -262,7 +262,7 @@ public class GraphUtil {
 								n1=(BDNode) graph.getNode(gfaFields[3]);
 				boolean dir0=gfaFields[2].equals("+")?true:false,
 						dir1=gfaFields[4].equals("+")?false:true;
-				BDEdge e = graph.addEdge(n0, n1, dir0, dir1);
+				graph.addEdge(n0, n1, dir0, dir1);
 				
 				//just do it simple for now when the last field of Links line is xxM (kmer=xx)
 				String cigar=gfaFields[5];
@@ -282,7 +282,7 @@ public class GraphUtil {
 			case "P"://path
 				if(spadesBridging){
 					if(gfaFields.length>3 && gfaFields[2].contains(",")) {
-						spadesPaths.add(new BDPath(graph, gfaFields[2]));
+						spadesPaths.add(gfaFields[2]);
 					}
 				}
 				break;
@@ -346,15 +346,22 @@ public class GraphUtil {
 		/*
 		 * 2. Binning the graph
 		 */
-		graph.binning(binFileName, "gfa");
+		graph.binning(binFileName);
 		
 		/*
 		 * 3. Reduce the SPAdes path if specified
 		 */
 		if(spadesBridging){
-			for(BDPath p:spadesPaths)
-				graph.reduceFromSPAdesPath(p);
+			for(String pID:spadesPaths)
+				graph.reduceFromSPAdesPath(new BDPath(graph,pID));
 		}
+    }
+    public static String getIDFromName(String readName){
+    	String retval=readName; 
+		if(readName.contains("_"))
+			retval=readName.split("_")[1];	//SPAdes style
+   	
+    	return retval;
     }
     
     //Normalized the average cov to 100

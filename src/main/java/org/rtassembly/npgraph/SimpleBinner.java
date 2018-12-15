@@ -44,11 +44,11 @@ public class SimpleBinner {
 		unresolvedEdges = new ArrayList<Edge>(graph.edges().collect(Collectors.toList()));
 	}
 
-	public SimpleBinner(BDGraph graph, String binFileName, String gformat) {
+	public SimpleBinner(BDGraph graph, String binFileName) {
 		this(graph);
 		if(binFileName!=null && !binFileName.isEmpty())
 			try {
-				readBinningFromFile(binFileName,gformat);
+				readBinningFromFile(binFileName);
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -286,7 +286,7 @@ public class SimpleBinner {
 	}
 	
 	//read binning file from metaBAT
-	private void readBinningFromFile(String binFileName, String graphFormat) throws Exception {
+	private void readBinningFromFile(String binFileName) throws Exception {
 
 		BufferedReader binReader = new BufferedReader(new FileReader(binFileName));
 		HashMap<String, PopBin> bins = new HashMap<>();
@@ -300,9 +300,7 @@ public class SimpleBinner {
 			if(binID.equals("0"))
 				continue;
 			
-			nodeID=comps[0];
-			if(graphFormat.toLowerCase().equals("fastg"))
-				nodeID=comps[0].split("_")[1];		
+			nodeID=GraphUtil.getIDFromName(comps[0]);
 			
 			if(bins.containsKey(binID))
 				bin=bins.get(binID);
@@ -328,6 +326,7 @@ public class SimpleBinner {
 		
 		//2. assign edges and nodes coverage based on original nodes coverage and graph topo
 		GraphUtil.gradientDescent(graph);
+
 		
 		if(HybridAssembler.VERBOSE) {
 			for(PopBin bin:binList) {
@@ -337,7 +336,6 @@ public class SimpleBinner {
 			}
 			graph.edges().forEach(e->System.out.println("Edge " + e.getId() + " cov=" + e.getNumber("cov")));
 		}
-		
 		
 		//3.1.First round of assigning unit cov: from binned significant nodes
 		for(PopBin b:binList) {
