@@ -12,13 +12,17 @@ This approach can give better accuracy, but as the trade-off, are more computati
 
 A (rather simple at the moment) Graphical User Interface is implemented for better interaction. [GraphStream](http://graphstream-project.org/), a dynamic graph library for Java, has been employed for such task. At the moment, only a few among sea of amazing features of this library had been used, leaving many room for visualiazation improvements.
 ## Quick installation guide
-The tool is included in a Java project that can be built with maven2 by following command:
+After cloning the project, the tool is included and can be built with maven2 by following command:
 ```
  mvn clean package
 ```
-to generate a jar file containing **npGraph** and several other modules.
+to generate a JAR file containing **npGraph** and several other modules (target/assembly-0.0.1-SNAPSHOT.jar).
 
-The code has been developed with *Oracle Java 1.8.0_144* that enables lambda expression and JavaFX, so equal or later version is expected to build & run the tool properly.
+Or you can download directly the JAR file from a release version without having to compile the source.
+
+The code has been developed with *Oracle Java 1.8.0_144* that enables lambda expression and JavaFX included, so similar or later JVM version is expected to build & run the tool properly. 
+
+If JavaFX is not found from your compiler (e.g. OpenJDK or Oracle Java later version that might not include it in the future), you need to download jfxrt.jar and specify it from POM. So it's better to have Java 8 with JavaFX bundled.
 
 If an aligner is involved, [minimap2](https://github.com/lh3/minimap2) or [bwa](https://github.com/lh3/bwa) (later than 0.7.11) should be included.
 
@@ -101,7 +105,7 @@ Note that the ultimate output graph is undergone a post-processing step to greed
 * Most suitable for bacterial data (assembly graph not too complicated). Consider using *npScarf* for bigger data set.
 * To keep the lightweight property that suitable for real-time analysis, a quick alignment-based voting & scoring system is implemented for the path finding over the candidate nodes instead of the expensive consensus phasing. *minimap2* is also recommended over *bwa* due to its speed, however sometimes *bwa* returns more sensitive alignments than the former.
 ## Reference
-Publication on the way...
+Publication on the way.
 
 ## License
 Similar to [Japsa](https://github.com/mdcao/japsa) project, tools included in this repo is available under BSD-like license.
