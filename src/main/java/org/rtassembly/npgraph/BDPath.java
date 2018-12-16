@@ -4,6 +4,7 @@ import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceBuilder;
 
+import java.util.HashMap;
 import java.util.List;
 
 import org.graphstream.graph.Edge;
@@ -68,13 +69,21 @@ public class BDPath extends Path{
 		BDNode curNode = (BDNode) graph.getNode(curID.substring(0,curID.length()-1)),
 						nextNode;
 		setRoot(curNode);
-		PopBin pathBin=SimpleBinner.getBinIfUnique(curNode);
+		HashMap<PopBin,Long> bin2lenth= new HashMap<PopBin,Long>();
+		PopBin curBin=null, pathBin=null;
 		for(int i=1; i<comps.length; i++){
 			nextID = comps[i];
 			nextDir = nextID.contains("+")?true:false;
 			nextNode = (BDNode) graph.getNode(nextID.substring(0,nextID.length()-1));		
-			if(pathBin==null)
-				pathBin=SimpleBinner.getBinIfUnique(nextNode);
+			
+			curBin=SimpleBinner.getBinIfUnique(curNode);
+			if(curBin!=null){
+				if(!bin2lenth.containsKey(curBin))
+					bin2lenth.put(curBin, (long) (curNode.getNumber("len")));
+				else{
+					bin2lenth.replace(curBin, bin2lenth.get(curBin) + (long) (curNode.getNumber("len")));
+				}
+			}
 			String edgeID=BDEdge.createID(curNode, nextNode, curDir, !nextDir);
 			BDEdge curEdge=(BDEdge) graph.getEdge(edgeID);
 			if(curEdge!=null){
@@ -85,6 +94,20 @@ public class BDPath extends Path{
 				System.err.println("Graph " + graph.getId() + " doesn't contain " + edgeID);
 				break;
 			}
+		}
+		//last time
+		curBin=SimpleBinner.getBinIfUnique(curNode);
+		if(curBin!=null){
+			if(!bin2lenth.containsKey(curBin))
+				bin2lenth.put(curBin, (long) (curNode.getNumber("len")));
+			else{
+				bin2lenth.replace(curBin, bin2lenth.get(curBin) + (long) (curNode.getNumber("len")));
+			}
+		}
+		long tmpLen=0;
+		for(PopBin b:bin2lenth.keySet()){
+			if(bin2lenth.get(b)>tmpLen)
+				pathBin=b;
 		}
 		uniqueBin=pathBin;
 	}
