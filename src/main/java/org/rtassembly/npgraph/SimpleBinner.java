@@ -311,6 +311,10 @@ public class SimpleBinner {
 			}
 			node = (BDNode) graph.getNode(nodeID);
 			bin.addCoreNode(node);
+			
+			HashMap<PopBin, Integer> entry = new HashMap<PopBin, Integer>();
+			entry.put(bin, 1);
+			node2BinMap.put(node, entry);
 		}
 		
 		binList.stream().forEach(b->{if(leastBin==null || leastBin.estCov>b.estCov) leastBin=b;});
@@ -359,7 +363,6 @@ public class SimpleBinner {
 					//FIXME: need more robust binning
 					//should build bridge as stronger end contains weaker end!
 					
-					//FIXME: get more unique node (sequencing error make unique node has >2 degree). Below doesn't complete 2 Shigella genomes		
 					if(tmp==leastBin && GraphUtil.approxCompare(e.getNumber("cov"), leastBin.estCov) < 0){
 						Node n0=e.getNode0(), n1=e.getNode1();
 						HashMap<PopBin, Integer> unitBinMap = new HashMap<>();

@@ -878,8 +878,9 @@ public class BDGraph extends MultiGraph{
 		//return intact if no extra unique node has been found
 		if(retval.isEmpty()) {
 			id=curPath.getEndingID();
-			if(id!=null&&getEdge(id)==null)
+			if(id!=null&&getEdge(id)==null){
 				retval.add(curPath);
+			}
 		}
 		return retval;
 	}

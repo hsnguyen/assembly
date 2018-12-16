@@ -394,7 +394,7 @@ public class GoInBetweenBridge {
 		return retval;
 	}
 	
-	//TODO: combination of getBestPath() + countPathsBeteen() + path.chopAtAnchors()
+	//TODO: combination of getBestPath() + countPathsBetween() + path.chopAtAnchors()
 	//return new unique path to reduce in a building bridge
 	public List<BDPath> scanForNewUniquePaths(){
 		if(segments==null || segments.isEmpty())
@@ -410,6 +410,7 @@ public class GoInBetweenBridge {
 				sbin=binner.getBinIfUniqueNow(seg.startNV.getNode());
 				if(HybridAssembler.VERBOSE)
 					LOG.info("Tony Tony Chopper: " + (curPath==null?"null":curPath.getId()) + " seg=" + seg.getId() + " start node=" + seg.startNV.getNode().getId() + " bin=" + (sbin==null?"null":sbin.binID));
+
 				if(sbin!=null && sbin.isCloseTo(bin)){
 					if(curPath!=null){ 
 //						System.out.println("Tony Tony Chopper: " + curPath.getId());
