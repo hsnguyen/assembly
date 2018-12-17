@@ -120,7 +120,7 @@ public class HybridAssembler {
 //	final BDGraph origGraph;
 	public BDGraph simGraph; //original and simplified graph should be separated, no???
 	public GraphWatcher observer;
-	
+	public static boolean VERBOSE=false;
 	public HybridAssembler(){
 //		origGraph=new BDGraph("batch");
 		simGraph=new BDGraph("real");
@@ -433,12 +433,17 @@ public class HybridAssembler {
 		}// while
 		iter.close();
 		reader.close();
-
-		if (alignmentProcess != null){
-			alignmentProcess.destroy();
-		}	
-
+		
+		terminateAlignmentProcess();	
+		
 	}
+			
+	public void terminateAlignmentProcess() {
+ 		if (alignmentProcess != null){
+ 			alignmentProcess.destroy();
+ 		}		
+ 	}
+
 	
 	public void postProcessGraph() throws IOException{
 		//Take the current best path among the candidate of a bridge and connect the bridge(greedy)
