@@ -198,7 +198,8 @@ public class GraphWatcher {
 		}
 		outputGraph.updateStats();
 		System.out.printf("Output stats: %d sequences (%d circular) N50=%d N75=%d Max=%d\n", getNumberOfSequences(), getNumberOfCircularSequences(), getN50(), getN75(), getLongestContig());
-		
+		if(lastTime)
+			System.out.println("FINISH!");
 		//reset the cutting attributes
 //		inputGraph.edges().filter(e->e.hasAttribute("cut")).forEach(e->{e.removeAttribute("cut"); e.removeAttribute("ui.hide");});
 		inputGraph.edges().filter(e->e.hasAttribute("cut")).forEach(e->{e.removeAttribute("cut");});

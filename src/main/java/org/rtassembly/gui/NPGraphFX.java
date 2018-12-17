@@ -324,7 +324,7 @@ public class NPGraphFX extends Application{
     	GridPane.setHalignment(binInputBrowseButton,HPos.LEFT);
     	inputPane.getChildren().add(binInputBrowseButton);   	   
 
-    	CheckBox spadesCB = new CheckBox("Use SPAdes induced paths (contigs.paths)");
+    	CheckBox spadesCB = new CheckBox("Use SPAdes induced paths");
     	spadesCB.setSelected(myass.getUseSPAdesPath());
     	spadesCB.selectedProperty().bindBidirectional(myass.useSPAdesPathProperty());
     	GridPane.setConstraints(spadesCB, 0,4,4,1);
@@ -831,12 +831,11 @@ public class NPGraphFX extends Application{
 	public static void main(String[] args) {
 		HybridAssembler hbAss = new HybridAssembler();
 		
-//		//desktop IMB
-//		hbAss.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/EcK12S-careful/assembly_graph.fastg");
-//		hbAss.setLongReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/EcK12S-careful/assembly_graph.sam");
+////		//desktop IMB
+////		hbAss.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/EcK12S-careful/assembly_graph.gfa");
 ////		hbAss.setLongReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/Eck12_ONT.fasta");
-//		hbAss.setAlignerPath("/home/sonhoanghguyen/.usr/local/bin/"); 
-		
+////		hbAss.setAlignerPath("/home/sonhoanghguyen/.usr/local/bin/"); 
+//		
 //		//laptop Dell
 //		hbAss.setShortReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/EcK12S-careful/assembly_graph.fastg");
 //		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/reads/EcK12S_ONT.fastq");		
