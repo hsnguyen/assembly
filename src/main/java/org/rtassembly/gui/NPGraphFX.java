@@ -324,7 +324,7 @@ public class NPGraphFX extends Application{
     	GridPane.setHalignment(binInputBrowseButton,HPos.LEFT);
     	inputPane.getChildren().add(binInputBrowseButton);   	   
 
-    	CheckBox spadesCB = new CheckBox("Use SPAdes induced paths (contigs.paths)");
+    	CheckBox spadesCB = new CheckBox("Use SPAdes induced paths");
     	spadesCB.setSelected(myass.getUseSPAdesPath());
     	spadesCB.selectedProperty().bindBidirectional(myass.useSPAdesPathProperty());
     	GridPane.setConstraints(spadesCB, 0,4,4,1);
@@ -780,9 +780,7 @@ public class NPGraphFX extends Application{
 
     private void addDataToSeries() {
         for (int i = 0; i < 20; i++) { //-- add 20 numbers to the plot+
-            if (dataN50.isEmpty() || dataN75.isEmpty() || dataMax.isEmpty() 
-        		|| dataNumCtgs.isEmpty() || dataNumCircularCtgs.isEmpty()) 
-            	break;
+            if (dataN50.isEmpty()) break;
             seriesN50.getData().add(new XYChart.Data<>(xSeriesData, dataN50.remove()));
             seriesN75.getData().add(new XYChart.Data<>(xSeriesData, dataN75.remove()));
             seriesMax.getData().add(new XYChart.Data<>(xSeriesData, dataMax.remove()));
@@ -832,22 +830,21 @@ public class NPGraphFX extends Application{
 		HybridAssembler hbAss = new HybridAssembler();
 		
 //		//desktop IMB
-//		hbAss.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/EcK12S-careful/assembly_graph.fastg");
-//		hbAss.setLongReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/EcK12S-careful/assembly_graph.sam");
-////		hbAss.setLongReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/Eck12_ONT.fasta");
+//		hbAss.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/EcK12S-careful/assembly_graph.gfa");
+//		hbAss.setLongReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/Eck12_ONT.fasta");
 //		hbAss.setAlignerPath("/home/sonhoanghguyen/.usr/local/bin/"); 
 		
-//		//laptop Dell
-//		hbAss.setShortReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/EcK12S-careful/assembly_graph.fastg");
-//		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/reads/EcK12S_ONT.fastq");		
-////		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/EcK12S-careful/assembly_graph.sam");
+		//laptop Dell
+		hbAss.setShortReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/EcK12S-careful/assembly_graph.fastg");
+		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/reads/EcK12S_ONT.fastq");		
+//		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/EcK12S-careful/assembly_graph.sam");
+		
+//		//shigella
+//		hbAss.setShortReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/unicycler/Shigella_sonnei_53G/good/spades/assembly_graph.fastg");
+////		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/reads/EcK12S_ONT.fastq");		
+//		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/unicycler/Shigella_sonnei_53G/good/mm2.sam");
 //		
-////		//shigella
-////		hbAss.setShortReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/unicycler/Shigella_sonnei_53G/good/spades/assembly_graph.fastg");
-//////		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/reads/EcK12S_ONT.fastq");		
-////		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/unicycler/Shigella_sonnei_53G/good/mm2.sam");
-////		
-//		hbAss.setAlignerPath("/home/s_hoangnguyen/workspace/minimap2/"); 
+		hbAss.setAlignerPath("/home/s_hoangnguyen/workspace/minimap2/"); 
 		
 		NPGraphFX.setAssembler(hbAss);
 		Application.launch(NPGraphFX.class,args);
