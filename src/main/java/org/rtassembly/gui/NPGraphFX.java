@@ -137,6 +137,7 @@ public class NPGraphFX extends Application{
             primaryStage.setScene(pscene);
             primaryStage.setTitle("npGraph Dashboard");
             primaryStage.setOnCloseRequest(e -> {
+            	myass.terminateAlignmentProcess();
                 Platform.exit();
                 System.exit(0);
             });
@@ -479,16 +480,13 @@ public class NPGraphFX extends Application{
     	GridPane.setConstraints(optLabel, 0,0,4,1);
     	optionPane.getChildren().add(optLabel);
     	
-    	final Label label1 = new Label("Choose aligner: "),
-					label2= new Label("Parameters setting:");
+    	final Label label= new Label("Parameters setting:");
     	
-    	GridPane.setConstraints(label1, 0,1,4,1);
-    	optionPane.getChildren().add(label1);
     	
        	TextField algPathTF = new TextField("");
-       	algPathTF.setPromptText("Specify the aligner binary...");       	
+       	algPathTF.setPromptText("PATH to the aligner binary...");       	
        	algPathTF.textProperty().bindBidirectional(myass.alignerPathProperty());
-    	GridPane.setConstraints(algPathTF, 0,2,4,1);
+    	GridPane.setConstraints(algPathTF, 0,1,4,1);
     	optionPane.getChildren().add(algPathTF);
     	
     	ComboBox<String> algCombo=new ComboBox<String>();
@@ -512,21 +510,21 @@ public class NPGraphFX extends Application{
     		}
 
         });
-    	GridPane.setConstraints(algBrowseButton,4,2);
+    	GridPane.setConstraints(algBrowseButton,4,1);
     	optionPane.getChildren().add(algBrowseButton);
     	
-    	GridPane.setConstraints(label2, 0,3,4,1);
-    	optionPane.getChildren().add(label2);
+    	GridPane.setConstraints(label, 0,2,4,1);
+    	optionPane.getChildren().add(label);
     	
        	TextField algOptTF = new TextField("");
        	algOptTF.setPromptText("Enter options to aligner...");
        	algOptTF.textProperty().bindBidirectional(myass.alignerOptProperty());
-    	GridPane.setConstraints(algOptTF, 0,4,4,1);
+    	GridPane.setConstraints(algOptTF, 0,3,4,1);
     	optionPane.getChildren().add(algOptTF);
     	
     	
     	final Label labelQual = new Label("Must have quality greater than ");
-    	GridPane.setConstraints(labelQual, 0,6,3,1);
+    	GridPane.setConstraints(labelQual, 0,4,3,1);
     	optionPane.getChildren().add(labelQual);
     	
     	TextField minQualTF = new TextField("");
@@ -537,7 +535,7 @@ public class NPGraphFX extends Application{
                 buttonStart.requestFocus();
             }
     	});
-    	GridPane.setConstraints(minQualTF, 3,6);
+    	GridPane.setConstraints(minQualTF, 3,4);
     	optionPane.getChildren().add(minQualTF);
     	
     	algPathTF.disableProperty().bind(algCombo.itemsProperty().asString().isEqualTo(""));
@@ -782,7 +780,9 @@ public class NPGraphFX extends Application{
 
     private void addDataToSeries() {
         for (int i = 0; i < 20; i++) { //-- add 20 numbers to the plot+
-            if (dataN50.isEmpty()) break;
+            if (dataN50.isEmpty() || dataN75.isEmpty() || dataMax.isEmpty() 
+        		|| dataNumCtgs.isEmpty() || dataNumCircularCtgs.isEmpty()) 
+            	break;
             seriesN50.getData().add(new XYChart.Data<>(xSeriesData, dataN50.remove()));
             seriesN75.getData().add(new XYChart.Data<>(xSeriesData, dataN75.remove()));
             seriesMax.getData().add(new XYChart.Data<>(xSeriesData, dataMax.remove()));
@@ -831,22 +831,22 @@ public class NPGraphFX extends Application{
 	public static void main(String[] args) {
 		HybridAssembler hbAss = new HybridAssembler();
 		
-//		//desktop IMB
-//		hbAss.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/EcK12S-careful/assembly_graph.gfa");
-//		hbAss.setLongReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/Eck12_ONT.fasta");
-//		hbAss.setAlignerPath("/home/sonhoanghguyen/.usr/local/bin/"); 
-		
-		//laptop Dell
-		hbAss.setShortReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/EcK12S-careful/assembly_graph.fastg");
-		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/reads/EcK12S_ONT.fastq");		
-//		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/EcK12S-careful/assembly_graph.sam");
-		
-//		//shigella
-//		hbAss.setShortReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/unicycler/Shigella_sonnei_53G/good/spades/assembly_graph.fastg");
-////		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/reads/EcK12S_ONT.fastq");		
-//		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/unicycler/Shigella_sonnei_53G/good/mm2.sam");
+////		//desktop IMB
+////		hbAss.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/EcK12S-careful/assembly_graph.gfa");
+////		hbAss.setLongReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/Eck12_ONT.fasta");
+////		hbAss.setAlignerPath("/home/sonhoanghguyen/.usr/local/bin/"); 
 //		
-		hbAss.setAlignerPath("/home/s_hoangnguyen/workspace/minimap2/"); 
+//		//laptop Dell
+//		hbAss.setShortReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/EcK12S-careful/assembly_graph.fastg");
+//		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/reads/EcK12S_ONT.fastq");		
+////		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/spades/EcK12S-careful/assembly_graph.sam");
+//		
+////		//shigella
+////		hbAss.setShortReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/unicycler/Shigella_sonnei_53G/good/spades/assembly_graph.fastg");
+//////		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/reads/EcK12S_ONT.fastq");		
+////		hbAss.setLongReadsInput("/home/s_hoangnguyen/Projects/scaffolding/test-graph/unicycler/Shigella_sonnei_53G/good/mm2.sam");
+////		
+//		hbAss.setAlignerPath("/home/s_hoangnguyen/workspace/minimap2/"); 
 		
 		NPGraphFX.setAssembler(hbAss);
 		Application.launch(NPGraphFX.class,args);
