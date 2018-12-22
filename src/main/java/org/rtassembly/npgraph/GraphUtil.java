@@ -230,64 +230,71 @@ public class GraphUtil {
 		int shortestLen = 10000;
 		
 		ArrayList<String> spadesPaths = new ArrayList<>();
+		boolean covFlag=true; //true if GFA from SPAdes contains KC:i:xx; false if GFA from Unicycler dp:f:xx
 		while ((line=reader.readLine()) != null){
 			String[] gfaFields = line.split("\\s");
 			String type = gfaFields[0];
 			switch (type.toUpperCase().trim()) {
-			case "#"://comments
-				break;
-			case "H"://header
-				break;
-			case "C"://containment
-				break;
-			case "S"://segment
-				String 	nodeID=gfaFields[1].trim(),
-						optField=gfaFields[3].trim();
-				String[] toks=optField.split(":");
-				assert toks[0].equals("KC")&&toks[1].equals("i"):"Invalid k-mer count field!";
-				
-				seq = new Sequence(Alphabet.DNA5(), gfaFields[2], nodeID);
-				AbstractNode node = (AbstractNode) graph.addNode(nodeID); //or get the existing node prototype created below (to set the attributes)
-				node.setAttribute("name", "Contig_"+nodeID);
-				node.setAttribute("seq", seq);
-				node.setAttribute("len", seq.length());
-				
-				//here is the kmer coverage
-				node.setAttribute("cov", Integer.parseInt(toks[2]));
+				case "#"://comments
+					break;
+				case "H"://header
+					break;
+				case "C"://containment
+					break;
+				case "S"://segment
+					String 	nodeID=gfaFields[1].trim();
+					assert gfaFields.length>3 && gfaFields[2].trim().length()>1:"Invalid GFA v1 file!";
+					seq = new Sequence(Alphabet.DNA5(), gfaFields[2], nodeID);
+					AbstractNode node = (AbstractNode) graph.addNode(nodeID); //or get the existing node prototype created below (to set the attributes)
+					node.setAttribute("name", "Contig_"+nodeID);
+					node.setAttribute("seq", seq);
+					node.setAttribute("len", seq.length());
+					
+					for(int i=3; i<gfaFields.length; i++){
+						String	optField=gfaFields[i].trim();
+						String[] toks=optField.split(":");
+						if(toks[0].equals("KC") && toks[1].equals("i")){
+							//here is the kmer coverage
+							node.setAttribute("cov", Integer.parseInt(toks[2]));
+						}else if(toks[0].equals("df") && toks[1].equals("f")){
+							covFlag=false;
+							node.setAttribute("cov", Double.parseDouble((toks[2])));
+						}
+					}
+					
+					break;
+				case "L"://links
+					BDNode 	n0=(BDNode) graph.getNode(gfaFields[1]),
+									n1=(BDNode) graph.getNode(gfaFields[3]);
+					boolean dir0=gfaFields[2].equals("+")?true:false,
+							dir1=gfaFields[4].equals("+")?false:true;
+					graph.addEdge(n0, n1, dir0, dir1);
+					
+					//just do it simple for now when the last field of Links line is xxM (kmer=xx)
+					String cigar=gfaFields[5];
+					for(int i=0; i < cigar.length();i++) {
+						char c = cigar.charAt(i);
+						if(c >= '0' && c <= '9')
+							continue;
+						else {
+							int len = Integer.parseInt(cigar.substring(0, i));
+							if(shortestLen > len)
+								shortestLen=len;
+							break;
+						}
+					}
+										
+					break;
+				case "P"://path
+					if(spadesBridging){
+						if(gfaFields.length>3 && gfaFields[2].contains(",")) {
+							spadesPaths.add(gfaFields[2]);
+						}
+					}
+					break;
 	
-				
-				break;
-			case "L"://links
-				BDNode 	n0=(BDNode) graph.getNode(gfaFields[1]),
-								n1=(BDNode) graph.getNode(gfaFields[3]);
-				boolean dir0=gfaFields[2].equals("+")?true:false,
-						dir1=gfaFields[4].equals("+")?false:true;
-				graph.addEdge(n0, n1, dir0, dir1);
-				
-				//just do it simple for now when the last field of Links line is xxM (kmer=xx)
-				String cigar=gfaFields[5];
-				for(int i=0; i < cigar.length();i++) {
-					char c = cigar.charAt(i);
-					if(c >= '0' && c <= '9')
-						continue;
-					else {
-						int len = Integer.parseInt(cigar.substring(0, i));
-						if(shortestLen > len)
-							shortestLen=len;
-						break;
-					}
-				}
-									
-				break;
-			case "P"://path
-				if(spadesBridging){
-					if(gfaFields.length>3 && gfaFields[2].contains(",")) {
-						spadesPaths.add(gfaFields[2]);
-					}
-				}
-				break;
-
-				default:throw new IllegalStateException("Unrecognized GFA field: " + type.toUpperCase().trim());
+				default:
+					LOG.warn("Unrecognized GFA field: " + type.toUpperCase().trim());
 			}
 			
 		
@@ -305,12 +312,14 @@ public class GraphUtil {
 		double totReadsLen=0, totContigsLen=0;
 
 		for(Node node:graph) {
-			//1.kmer count to kmer cov
-			double cov=node.getNumber("cov")/(node.getNumber("len")-BDGraph.getKmerSize()); 
-			//2.kmer cov to read cov
-			cov*=BDGraph.ILLUMINA_READ_LENGTH/(BDGraph.ILLUMINA_READ_LENGTH-BDGraph.getKmerSize()+1);
-			node.setAttribute("cov", cov);	
 			
+			if(covFlag){//only do this for SPAdes' GFA to convert kmer count to read cov
+				//1.kmer count to kmer cov
+				double cov=node.getNumber("cov")/(node.getNumber("len")-BDGraph.getKmerSize()); 
+				//2.kmer cov to read cov
+				cov*=BDGraph.ILLUMINA_READ_LENGTH/(BDGraph.ILLUMINA_READ_LENGTH-BDGraph.getKmerSize()+1);
+				node.setAttribute("cov", cov);	
+			}
 			
 			//ignore noises
 			if(node.getDegree()==0 && node.getNumber("len")<2*BDGraph.ILLUMINA_READ_LENGTH) {

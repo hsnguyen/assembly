@@ -181,19 +181,50 @@ public class GraphWatcher {
 			Node 	nn0=outputGraph.getNode(Integer.toString(comp0.id)),
 					nn1=outputGraph.getNode(Integer.toString(comp1.id));
 			if(nn0!=null && nn1!=null) {
-				boolean dir0=((BDEdge)e).getDir((BDNode)n0),
-						dir1=((BDEdge)e).getDir((BDNode)n1);
+				boolean d0=((BDEdge)e).getDir((BDNode)n0),
+						d1=((BDEdge)e).getDir((BDNode)n1);
+				//If it consists of a path, should be the direction of the whole path, not a particular node anymore!
 				if(((BDPath)nn0.getAttribute("path")).getNodeCount()>1) 
-					dir0=(n0==((BDPath)nn0.getAttribute("path")).peekNode())?true:false;
+					d0=(n0==((BDPath)nn0.getAttribute("path")).peekNode())?true:false; 
 				
 				if(((BDPath)nn1.getAttribute("path")).getNodeCount()>1) 
-					dir1=(n1==((BDPath)nn1.getAttribute("path")).getRoot())?false:true;	
+					d1=(n1==((BDPath)nn1.getAttribute("path")).getRoot())?false:true;	
 				
-				outputGraph.addEdge((BDNode)nn0, (BDNode)nn1 , dir0, dir1);
-//				Edge newEdge=outputGraph.addEdge((BDNode)nn0, (BDNode)nn1 , dir0, dir1);
-//				System.out.printf("Cut edge %s == New edge %s (%s=%s and %s=%s)\n", e.getId(), newEdge.getId(), 
-//							nn0.getId(),((BDPath)nn0.getAttribute("path")).getId(),  
-//							nn1.getId(),((BDPath)nn1.getAttribute("path")).getId());
+				if(e.hasAttribute("path")){
+					BDPath path = (BDPath)e.getAttribute("path");
+					BDPath trimedPath=path.trimEndingNodes();
+					if(trimedPath!=null){
+						//Add the "middle" node
+						 Sequence seq=trimedPath.spelling();
+						 double cov=GraphUtil.getRealCoverage(trimedPath.averageCov());
+						 int id=0;
+						 while(outputGraph.getNode(Integer.toString(++id))!=null);
+						 Node n=outputGraph.addNode(Integer.toString(id));
+						 seq.setName("Contig_"+id+"_linear_length_"+seq.length()+"_cov_"+cov);
+						 n.setAttribute("seq", seq);
+						 n.setAttribute("len", seq.length());
+						 n.setAttribute("cov",cov);
+						 n.setAttribute("path", trimedPath);
+						 //Add 2 edges
+						 boolean dd0=((BDEdge)path.getEdgePath().get(0)).getDir(trimedPath.getFirstNode()), 
+								 dd1=((BDEdge)path.peekEdge()).getDir(trimedPath.getLastNode());
+						 if(trimedPath.getNodeCount()>1){
+							 if(trimedPath.getRoot()==path.getNodePath().get(1)){
+								 dd0=false;
+								 dd1=true;
+							 }else{
+								 dd0=true;
+								 dd1=false;
+							 }
+						 }
+						 outputGraph.addEdge((BDNode)nn0, (BDNode)n , d0, dd0);
+						 outputGraph.addEdge((BDNode)n, (BDNode)nn1 , dd1, d1);
+					}
+						
+				}else{
+					outputGraph.addEdge((BDNode)nn0, (BDNode)nn1 , d0, d1);
+				}
+
 			}
 		}
 		outputGraph.updateStats();
