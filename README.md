@@ -96,8 +96,14 @@ It doesn't do neither any polishing or other exhaustive post-processing for the 
 
 ### Output
 The tool generates the assembly in a FASTA file *npgraph_assembly.fasta* and a [GFA v1](https://github.com/GFA-spec/GFA-spec/blob/master/GFA1.md) file *npgraph_assembly.gfa* .
+The FASTA file output contains the significant contigs only while the GFA file contains all the original contigs and the links between them. The repetitive elements will be duplicated in the GFA output for easier examination. For example, we can see from the second column of the S(egment) line somethings like <X.Y> means this is the Yth copy of the original contig X (without suffix). 
+For that reason, we can see how many copies for each contigs in the final result by
+```
+awk '/^S/{print}' npgraph_assembly.gfa|sort -nk2,2|less -S
+```
+
 Also, the stats of the assembly process is reported in the GUI dashboard and/or stdout as the program is running.
-Note that the ultimate output graph is undergone a post-processing step to greedily connect *insignificant* bridges. 
+Note that the ultimate output graph (when you hit Stop button from the dashboard or when the EOF of the long read data is reached) is undergone a post-processing step to greedily connect *insignificant* bridges. 
 
 ### Note
 * GUI consumes quite a lot memory, considering increase JVM heap size (java -Xmx) if it's slow to response. If the number of vertices in the assembly graph greater than 1000, you shouldn't show the graph in real-time if running on the normal desktop.
