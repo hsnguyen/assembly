@@ -164,6 +164,9 @@ public class BDPath extends Path{
 		
 		return retval;
 	}
+	/*
+	 * Return DNA sequence of a path (recursively if need)
+	 */
 	public Sequence spelling(){
 		BDPath realPath=getPrimitivePath();
 		
@@ -204,7 +207,22 @@ public class BDPath extends Path{
 			curNode=nextNode;
 			
 		}
-	 return seq.toSequence();
+		return seq.toSequence();
+	}
+	
+	/*
+	 * Get a path with two ends removed
+	 */
+	public BDPath trimEndingNodes(){
+		BDPath realPath=getPrimitivePath();
+		if(realPath == null || realPath.getNodeCount() < 3)
+			return null;
+		List<Edge> edges = realPath.getEdgePath();
+		BDPath retval=new BDPath(edges.get(0).getOpposite(getRoot()), uniqueBin);
+		for(int i = 1; i<edges.size(); i++){
+			retval.add(edges.get(i));
+		}
+		return retval;
 	}
 	 /*
 	  * Add a path to the current path. The path to be added must start with the last node

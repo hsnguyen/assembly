@@ -441,12 +441,13 @@ public class HybridAssembler {
 		terminateAlignmentProcess();	
 
 	}
-	
+			
 	public void terminateAlignmentProcess() {
-		if (alignmentProcess != null){
-			alignmentProcess.destroy();
-		}	
-	}
+ 		if (alignmentProcess != null){
+ 			alignmentProcess.destroy();
+ 		}		
+ 	}
+
 	
 	public void postProcessGraph() throws IOException{
 		//Take the current best path among the candidate of a bridge and connect the bridge(greedy)
