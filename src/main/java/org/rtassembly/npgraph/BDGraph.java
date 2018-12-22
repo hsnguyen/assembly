@@ -782,14 +782,9 @@ public class BDGraph extends MultiGraph{
     		BDEdge reducedEdge = addEdge(startNode,endNode,startDir,endDir);
     		LOG.info("ADDING EDGE " + reducedEdge.getId()+ " from " + reducedEdge.getNode0().getGraph().getId() + "-" + reducedEdge.getNode1().getGraph().getId());
 			if(reducedEdge!=null){
-//				reducedEdge.setAttribute("ui.label", path.getId());
-//				reducedEdge.setAttribute("ui.style", "text-offset: -10; text-alignment: along;"); 
-//				reducedEdge.setAttribute("isReducedEdge", true);
-//				reducedEdge.setAttribute("ui.class", "marked");
-//				reducedEdge.addAttribute("layout.weight", 10);
-				reducedEdge.setAttribute("path", path);
+				if(path.getEdgeCount()>1)
+					reducedEdge.setAttribute("path", path);
 				binner.edge2BinMap.put(reducedEdge, oneBin);
-//				updateGraphMap(reducedEdge, path);
 			}
     		LOG.info("after adding: \n\t" + printEdgesOfNode((BDNode) reducedEdge.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) reducedEdge.getNode1()));
 	    	return true;
