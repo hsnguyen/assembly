@@ -173,13 +173,13 @@ public class BDGraph extends MultiGraph{
 	    PrintWriter printWriter = new PrintWriter(new FileWriter(fileName));
 	    
 	    //Differentiate composite edges and normal edges
-	    List<Edge> compositeEdges = new ArrayList<Edge>(),
-	    			normalEdges = new ArrayList<Edge>();
+	    List<Edge> compositeEdges = new ArrayList<Edge>();
+	    List<BDEdgePrototype> normalEdges = new ArrayList<BDEdgePrototype>();
 	    edges().forEach(e->{
 	    					if(e.hasAttribute("path")) 
 	    						compositeEdges.add(e); 
 	    					else 
-	    						normalEdges.add(e);
+	    						normalEdges.add(new BDEdgePrototype((BDNode)e.getNode0(), (BDNode)e.getNode1(), ((BDEdge)e).getDir0(), ((BDEdge)e).getDir1()));
 	    					}
 	    );
 	    
@@ -191,31 +191,51 @@ public class BDGraph extends MultiGraph{
 	    	printWriter.printf("S\t%s\t%s\tKC:i:%d\n", node.getId(), seq.toString(),kmer_count);
 	    	addedNodes.add(node.getId());
 	    }	    
-	    for(Edge e:compositeEdges){
-	    	BDPath p = (BDPath)e.getAttribute("path");
-	    	p.nodes().filter(n->!addedNodes.contains(n.getId()))
-    				.forEach(n->{
-    			    	Sequence seq=(Sequence) n.getAttribute("seq");
-    			    	int kmer_count=(int)(GraphUtil.getRealCoverage(n.getNumber("cov"))*(BDGraph.ILLUMINA_READ_LENGTH-BDGraph.getKmerSize()+1)/BDGraph.ILLUMINA_READ_LENGTH);
-    			    	printWriter.printf("S\t%s\t%s\tKC:i:%d\n", n.getId(), seq.toString(),kmer_count);
-    			    	addedNodes.add(n.getId());
-	    			});
+	    for(Edge ce:compositeEdges){
+	    	BDPath p = ((BDPath)ce.getAttribute("path")).getPrimitivePath();
+
+	    	BDNode curNode=(BDNode) p.getRoot(), nextNode=null;
+	    	String curID=curNode.getId(), nextID=null;
+	    	boolean curDir, nextDir;
+	    	for(Edge e:p.getEdgePath()){
+	    		nextNode=(BDNode) e.getOpposite(curNode);
+	    		nextID=nextNode.getId();
+	    		curDir=((BDEdge)e).getDir(curNode);
+	    		nextDir=((BDEdge)e).getDir(nextNode);
+	    		
+	    		if(nextNode!=p.peekNode()){
+		    		//create ID
+		    		int count=1;
+		    		String tmpID=nextID;
+		    		while(addedNodes.contains(tmpID)){
+		    			tmpID=nextID+"."+(count++);
+		    		}
+		    		nextID=tmpID;
+		    		addedNodes.add(nextID);
+		    		
+		    		Sequence seq=(Sequence) nextNode.getAttribute("seq");
+			    	int kmer_count=(int)(GraphUtil.getRealCoverage(nextNode.getNumber("cov"))*(BDGraph.ILLUMINA_READ_LENGTH-BDGraph.getKmerSize()+1)/BDGraph.ILLUMINA_READ_LENGTH);
+			    	printWriter.printf("S\t%s\t%s\tKC:i:%d\n", nextID, seq.toString(),kmer_count);
+
+	    		}
+		    	
+	    		normalEdges.add(new BDEdgePrototype(new BDNode(this, curID), new BDNode(this, nextID), curDir, nextDir));
+	    		
+	    		curNode=nextNode;
+	    		curID=nextID;
+	    	}
 	    }
 	    
-	    //Print L (Link)
-	    for(Edge e:normalEdges){
+	    //Print L (Links)
+	    for(BDEdgePrototype e:normalEdges){
 	    	printWriter.printf("L\t%s\t%s\t%s\t%s\t%dM\n", 
 	    						e.getNode0().getId(), 
-	    						((BDEdge)e).getDir0()?"+":"-",
+	    						e.getDir0()?"+":"-",
 								e.getNode1().getId(), 
-	    						((BDEdge)e).getDir1()?"-":"+",
+	    						e.getDir1()?"-":"+",
 								BDGraph.getKmerSize());
 	    }
-	    //Print P (Path)
-	    for(Edge e:compositeEdges){
-	    	BDPath p = (BDPath)e.getAttribute("path");	    	
-	    	printWriter.printf("P\t[%s]\t%s\t%s\n", p.getEndingID(), p.getId(), String.join(",", Collections.nCopies(p.size(), "*")));
-	    }
+
 	    
 	    printWriter.close();
 	}
