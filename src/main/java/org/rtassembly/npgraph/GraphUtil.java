@@ -226,7 +226,7 @@ public class GraphUtil {
         BufferedReader reader = new BufferedReader(new FileReader(graphFile));
         String line=null;
 		Sequence seq;
-		int shortestLen = 10000;
+		int overlapLen = 10000;
 		
 		ArrayList<String> spadesPaths = new ArrayList<>();
 		boolean covFlag=true; //true if GFA from SPAdes contains KC:i:xx; false if GFA from Unicycler dp:f:xx
@@ -277,8 +277,8 @@ public class GraphUtil {
 							continue;
 						else {
 							int len = Integer.parseInt(cigar.substring(0, i));
-							if(shortestLen > len)
-								shortestLen=len;
+							if(overlapLen > len)
+								overlapLen=len;
 							break;
 						}
 					}
@@ -302,8 +302,8 @@ public class GraphUtil {
 		reader.close();
 
 		//rough estimation of kmer used
-		if((shortestLen-1) < BDGraph.getKmerSize()){
-			BDGraph.setKmerSize(shortestLen-1);
+		if((overlapLen) < BDGraph.getKmerSize()){
+			BDGraph.setKmerSize(overlapLen);
 
 		}
 
@@ -622,7 +622,7 @@ public class GraphUtil {
     
 	
     /*
-     * Compare 2 double values x,y
+     * Compare 2 double values x,y >=0
      * Return 0 if x~=y, 1 if x>>y, -1 if x<<y
      */
     public static int approxCompare(double x, double y) {
@@ -630,10 +630,12 @@ public class GraphUtil {
     	if(x==0 && y==0)
     		return 0;
     	double ratio=Math.abs(x-y)/(Math.max(Math.abs(x), Math.abs(y)));
+//    	TODO: check this!
+//    	double ratio=Math.abs(x-y)/(Math.min(Math.abs(x), Math.abs(y))); <>1.5?
+    	
     	if(ratio > BDGraph.R_TOL)
     		retval=x>y?1:-1;
     	
-//    	System.out.printf("(comparing %.2f vs %.2f: %d)\n", x, y, retval);
     	return retval;
     }
     
