@@ -91,7 +91,8 @@ The assembly graph must be output from SPAdes in either FASTG or GFA format (nor
 
 The long-read data will be used for bridging and can be given as DNA sequences (FASTA/FASTQ format, possible .gz) or alignment records (SAM/BAM) as mentioned above. *npGraph* will try to guess the format of the inputs based on the extensions, but sometimes you'll have to specify it yourself (e.g. when "-" is provided to read from *stdin*). 
 If the sequences are given, then it's mandatory to have either BWA-MEM or minimap2 installed in your system to do the alignment between long reads and the pre-assemblies. 
-Alternative option is to use your favourite aligner and provide SAM/BAM to *npGraph*. In this case, you have to convert FASTG/GFA file to FASTA file to use as the reference for the alignment. You can use awk script to do this, e.g. for converting FASTG file
+
+Alternative option is to use your favourite aligner and provide SAM/BAM to *npGraph*. In this case, you have to manually convert FASTG/GFA file to FASTA file to use as the reference for the alignment. You can use awk script to do this, e.g. for converting FASTG file
 ```
 awk -F '[:;]' -v q=\' 'BEGIN{flag=0;}/^>/{if(index($1,q)!=0) flag=0; else flag=1;}{if(flag==1) print $1;}' assembly_graph.fastg > assembly_graph.fasta
 ```
@@ -99,6 +100,7 @@ or if the graph file is GFA v1 we can use
 ```
 awk '/^S/{print ">"$2; print $3;}' assembly_graph.gfa | fold > assembly_graph.fasta
 ```
+Note that GFA file from SPAdes is preferred over FASTG since the former gives hint about the k-mer parameter and others, also it is becoming the standard for assembly graph that adapted by many other software.
 
 It is important to emphasis the quality of the assembly graph to the final results. [Unicycler](https://github.com/rrwick/Unicycler) pre-process the graph data by running SPAdes with multiple *kmer* options to chose the best one. Unfortunatly, *npGraph* doesn't employ such technique thus if the graph is not good, you should do the task for yourself before running the tool. Normally, 60X Illumina MiSeq data would give decent SPAdes assembly graph. The better the assembly graph is, the more complete and accurate assembly you'll get.
 It doesn't do neither any polishing or other exhaustive post-processing for the final assembly assuming the quality is equivalent to the short-read data which is decent enough.
