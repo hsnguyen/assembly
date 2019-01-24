@@ -405,7 +405,7 @@ public class HybridAssembler {
 			String refID = refName.split("_").length > 1 ? refName.split("_")[1]:refName;
 			
 			if (simGraph.getNode(refID)==null) {
-				LOG.error("Node {} not found from the graph!", refID);
+				LOG.info("Node {} not found from the graph: ignored!", refID);
 				continue;
 			}
 			Alignment myRec = new Alignment(rec, (BDNode) simGraph.getNode(refID)); 

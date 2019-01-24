@@ -398,6 +398,25 @@ public class BDGraph extends MultiGraph{
     	initGraphComponents();
     }
     
+	//Remove nodes with degree <=1 and length || cov low
+    synchronized public void cleanInsignificantNodes(){
+		if(binner==null)
+			return;
+		List<Node> badNodes = nodes()
+						.filter(n->(binner.checkRemovableNode(n)))
+						.collect(Collectors.toList());
+		while(!badNodes.isEmpty()) {
+			Node node = badNodes.remove(0);
+			List<Node> neighbors = node.neighborNodes().collect(Collectors.toList());	
+
+			removeNode(node);
+			LOG.info("Removing node {}!",node.getAttribute("name"));
+			neighbors.stream()
+				.filter(n->(binner.checkRemovableNode(n)))
+				.forEach(n->{if(!badNodes.contains(n)) badNodes.add(n);});
+		}
+	}
+	
     synchronized ArrayList<BDPath> DFSAllPaths(Alignment from, Alignment to, boolean force){
     	assert from.readID==to.readID && to.compareTo(from)>=0:"Illegal alignment pair to find path!"; 	
     	int distance=to.readAlignmentStart()-from.readAlignmentEnd();

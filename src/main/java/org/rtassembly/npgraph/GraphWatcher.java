@@ -33,23 +33,6 @@ public class GraphWatcher {
 		numberOfComponents=rtComponents.getConnectedComponentsCount();
 	}
 
-	//Remove nodes with degree <=1 and length || cov low
-	//TODO: use for posprocess only???
-	private void cleanInsignificantNodes(){
-		List<Node> badNodes = inputGraph.nodes()
-						.filter(n->(inputGraph.binner.checkRemovableNode(n)))
-						.collect(Collectors.toList());
-		while(!badNodes.isEmpty()) {
-			Node node = badNodes.remove(0);
-			List<Node> neighbors = node.neighborNodes().collect(Collectors.toList());	
-
-			inputGraph.removeNode(node);
-			neighbors.stream()
-				.filter(n->(inputGraph.binner.checkRemovableNode(n)))
-				.forEach(n->{if(!badNodes.contains(n)) badNodes.add(n);});
-		}
-	}
-
 	synchronized private void removeBadComponents() {
 		List<Node> 	removeNodes=new ArrayList<Node>();
 		
