@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -13,7 +12,6 @@ import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.Stack;
-import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -398,6 +396,25 @@ public class BDGraph extends MultiGraph{
     	initGraphComponents();
     }
     
+	//Remove nodes with degree <=1 and length || cov low
+    synchronized public void cleanInsignificantNodes(){
+		if(binner==null)
+			return;
+		List<Node> badNodes = nodes()
+						.filter(n->(binner.checkRemovableNode(n)))
+						.collect(Collectors.toList());
+		while(!badNodes.isEmpty()) {
+			Node node = badNodes.remove(0);
+			List<Node> neighbors = node.neighborNodes().collect(Collectors.toList());	
+
+			removeNode(node);
+			LOG.info("Removing node {}!",node.getAttribute("name"));
+			neighbors.stream()
+				.filter(n->(binner.checkRemovableNode(n)))
+				.forEach(n->{if(!badNodes.contains(n)) badNodes.add(n);});
+		}
+	}
+	
     synchronized ArrayList<BDPath> DFSAllPaths(Alignment from, Alignment to, boolean force){
     	assert from.readID==to.readID && to.compareTo(from)>=0:"Illegal alignment pair to find path!"; 	
     	int distance=to.readAlignmentStart()-from.readAlignmentEnd();
