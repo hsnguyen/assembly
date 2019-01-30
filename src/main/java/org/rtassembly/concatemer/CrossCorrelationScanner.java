@@ -84,8 +84,8 @@ public class CrossCorrelationScanner{
 	}
 	public static void main(String args[]) throws IOException {
 		/***********************************************************************/
-		String 	inputFileName = "/home/sonhoanghguyen/Projects/concatemers/data/barcode08_pass.fastq.gz",
-				outputFileName = "/home/sonhoanghguyen/Projects/concatemers/data/barcode08.signal";
+		String 	inputFileName = "/home/sonhoanghguyen/Projects/concatemers/data/jie/B02_A4_allpass.fastq",
+				outputFileName = "/home/sonhoanghguyen/Projects/concatemers/data/jie/B02_A4_allpass.signal";
 		
 		
 		SequenceReader reader = SequenceReader.getReader(inputFileName);

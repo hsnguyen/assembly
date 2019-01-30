@@ -47,6 +47,8 @@ public class HybridAssembler {
 	Process alignmentProcess = null;
 	private boolean stop=false;
 	private String errorLog="";
+	int currentReadCount = 0;
+	long currentBaseCount = 0;	
 	//Getters and Setters
 	//==============================================================================================//
 	public void setReady(boolean isReady) {ready=isReady;}
@@ -395,11 +397,16 @@ public class HybridAssembler {
 				continue;
 			}
 			
-			if (rec.getReadUnmappedFlag())
-				continue;
-			
-			if (rec.getMappingQuality() < Alignment.MIN_QUAL)
-				continue;
+			if (rec.getReadUnmappedFlag() || rec.getMappingQuality() < Alignment.MIN_QUAL){		
+				if (!readID.equals(rec.getReadName())){
+					readID = rec.getReadName();
+					synchronized(this){
+						currentReadCount ++;
+						currentBaseCount += rec.getReadLength();
+					}
+				}
+				continue;		
+			}
 			
 			String refName = rec.getReferenceName();
 			String refID = refName.split("_").length > 1 ? refName.split("_")[1]:refName;
@@ -413,13 +420,18 @@ public class HybridAssembler {
 			//////////////////////////////////////////////////////////////////
 			
 			if (!readID.equals("") && !readID.equals(myRec.readID)) {	
-				synchronized(simGraph) {
+//				synchronized(simGraph) { uncomment if below replacement failed!
+				synchronized(this) {
+					currentReadCount ++;
+					currentBaseCount += rec.getReadLength();
+					
 					List<BDPath> paths=simGraph.uniqueBridgesFinding(nnpRead, samList);
 					if(paths!=null){	
 						for(BDPath path:paths) 
 						{
 							//path here is already unique! (2 unique ending nodes)
 					    	if(simGraph.reduceUniquePath(path)) {
+					    		LOG.info("Input stats: read count={} base count={}", currentReadCount, currentBaseCount);
 					    		observer.update(false);					    		
 					    	}
 						}
