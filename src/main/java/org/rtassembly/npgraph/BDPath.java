@@ -68,6 +68,10 @@ public class BDPath extends Path{
 				nextDir;
 		BDNode curNode = (BDNode) graph.getNode(curID.substring(0,curID.length()-1)),
 						nextNode;
+		if(curNode==null){
+			LOG.info("Node {} already removed from graph! Stop reading path here!",curID.substring(0,curID.length()-1));
+			return;
+		}
 		setRoot(curNode);
 		HashMap<PopBin,Long> bin2lenth= new HashMap<PopBin,Long>();
 		PopBin curBin=null, pathBin=null;
@@ -75,7 +79,10 @@ public class BDPath extends Path{
 			nextID = comps[i];
 			nextDir = nextID.contains("+")?true:false;
 			nextNode = (BDNode) graph.getNode(nextID.substring(0,nextID.length()-1));		
-			
+			if(nextNode==null){
+				LOG.info("Node {} already removed from graph! Stop reading path here!",nextID.substring(0,nextID.length()-1));
+				return;
+			}
 			curBin=SimpleBinner.getBinIfUnique(curNode);
 			if(curBin!=null){
 				if(!bin2lenth.containsKey(curBin))

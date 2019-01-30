@@ -177,6 +177,7 @@ public class GraphUtil {
 		 */
 //		graph.nodes().filter(n->n.getNumber("cov") < .2*BDGraph.RCOV).forEach(n->{n.edges().forEach(e->graph.removeEdge(e));});
 		graph.binning(binFileName);
+		graph.cleanInsignificantNodes();
 		/*
 		 * 3. Now scan for the contigs.path file in SPAdes folder for the paths if specified
 		 */
@@ -356,7 +357,8 @@ public class GraphUtil {
 		 * 2. Binning the graph
 		 */
 		graph.binning(binFileName);
-		
+		graph.cleanInsignificantNodes();
+
 		/*
 		 * 3. Reduce the SPAdes path if specified
 		 */
@@ -453,8 +455,8 @@ public class GraphUtil {
 			//2. Updating nodes' coverage: keep significant node info intact!
 			boolean isConverged=true;
 			for(Node n:graph) {
-//				if(n.getAttribute("marked") != null)//do smt???
-//					continue;
+				if(n.getInDegree()==0 && n.getOutDegree()==0)//do smt???
+					continue;
 				
 				Iterator<Edge> 	in=n.enteringEdges().iterator(),
 								out=n.leavingEdges().iterator();
