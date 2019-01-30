@@ -6,12 +6,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 
-import org.rtassembly.scaffold.AlignmentRecord;
-import org.rtassembly.scaffold.Contig;
-import org.rtassembly.scaffold.ContigBridge;
-import org.rtassembly.scaffold.ReadFilling;
-import org.rtassembly.scaffold.ScaffoldVector;
-
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordIterator;
@@ -23,7 +17,8 @@ import japsa.seq.FastqSequence;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceOutputStream;
 import japsa.seq.SequenceReader;
-import japsa.util.HTSUtilities;
+import org.rtassembly.scaffold.AlignmentRecord;
+import org.rtassembly.scaffold.Contig;
 
 public class SequenceChopper {
 	Sequence ref;
