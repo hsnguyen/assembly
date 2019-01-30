@@ -467,17 +467,22 @@ public class SimpleBinner {
 	}
 	
 	public boolean checkRemovableNode(Node node) {
+//		LOG.info("Checking node {}", node.getAttribute("name"));
 		if(node.getInDegree()*node.getOutDegree()!=0 || SimpleBinner.getBinIfUnique(node)!=null) {
+//			LOG.info("1 not removable!");
 			return false;
 		}
 		else if(node2BinMap.containsKey(node)) {
-			if(node2BinMap.get(node).values().stream().mapToInt(Integer::intValue).sum() != 0)
+			if(node2BinMap.get(node).values().stream().mapToInt(Integer::intValue).sum() != 0){
+//				LOG.info("2 not removable!");
 				return false;
+			}
 		}
 		else if(GraphUtil.approxCompare(node.getNumber("cov"),leastBin.estCov)>=0) {
+//			LOG.info("3 not removable!");
 			return false;
 		}
-			
+//		LOG.info(" removable!");
 		return true;
 	}
 	//Traversal along a unique path (unique ends) and return list of unique edges

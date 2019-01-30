@@ -5,8 +5,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -31,23 +29,6 @@ public class GraphWatcher {
 		rtComponents.init(graph);
 		rtComponents.setCutAttribute("cut");
 		numberOfComponents=rtComponents.getConnectedComponentsCount();
-	}
-
-	//Remove nodes with degree <=1 and length || cov low
-	//TODO: use for posprocess only???
-	private void cleanInsignificantNodes(){
-		List<Node> badNodes = inputGraph.nodes()
-						.filter(n->(inputGraph.binner.checkRemovableNode(n)))
-						.collect(Collectors.toList());
-		while(!badNodes.isEmpty()) {
-			Node node = badNodes.remove(0);
-			List<Node> neighbors = node.neighborNodes().collect(Collectors.toList());	
-
-			inputGraph.removeNode(node);
-			neighbors.stream()
-				.filter(n->(inputGraph.binner.checkRemovableNode(n)))
-				.forEach(n->{if(!badNodes.contains(n)) badNodes.add(n);});
-		}
 	}
 
 	synchronized private void removeBadComponents() {
