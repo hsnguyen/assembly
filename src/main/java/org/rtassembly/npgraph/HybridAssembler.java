@@ -435,8 +435,8 @@ public class HybridAssembler {
 						{
 							//path here is already unique! (2 unique ending nodes)
 					    	if(simGraph.reduceUniquePath(path)) {
-					    		System.out.printf("Input stats: read count=%d base count=%d\n", currentReadCount, currentBaseCount);
 					    		observer.update(false);					    		
+					    		System.out.printf("Input stats: read count=%d base count=%d\n", currentReadCount, currentBaseCount);
 					    	}
 						}
 					}
