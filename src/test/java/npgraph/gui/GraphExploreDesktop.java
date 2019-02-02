@@ -2,6 +2,7 @@ package npgraph.gui;
 
 import java.io.IOException;
 
+import org.graphstream.graph.Node;
 import org.graphstream.ui.view.Viewer;
 import org.rtassembly.npgraph.BDGraph;
 import org.rtassembly.npgraph.GraphUtil;
@@ -49,47 +50,54 @@ public class GraphExploreDesktop {
     	/*
     	 * unicycler data set
     	 */
-    	String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/unicycler/";
-//    	String sample="Acinetobacter_A1/";
-//    	String sample="Acinetobacter_AB30/"; //SimpleBinner.ANCHOR_CTG_LEN=2000 || Alignment.MIN_QUAL=10
-//    	String sample="E_coli_K-12_MG1655/";
-//    	String sample="E_coli_O25b_H4-ST131/";
-//    	String sample="Klebsiella_30660_NJST258_1/";
-//    	String sample="Klebsiella_MGH_78578/"; //SimpleBinner.ANCHOR_CTG_LEN=500
-//    	String sample="Klebsiella_NTUH-K2044/";
-//    	String sample="Mycobacterium_tuberculosis_H37Rv/";
-//    	String sample="random_sequences_many_repeats/";
-//    	String sample="random_sequences_no_repeats/";
-//    	String sample="random_sequences_some_repeats/";
-    	String sample="Saccharomyces_cerevisiae_S288c/";
-//    	String sample="Shigella_dysenteriae_Sd197/";
-//    	String sample="Shigella_sonnei_53G/";
-//    	String sample="Streptococcus_suis_BM407/";
-    	
-    	
-//    	String quality="bad/";
-//    	String quality="medium/";
-    	String quality="good/";
-
-    	String sInput=dataFolder+sample+quality+"spades/assembly_graph.fastg",
-    			output=dataFolder+sample+quality+"/",
-    			lInput=dataFolder+sample+quality+"mm2.sam";	
+//    	String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/unicycler/";
+////    	String sample="Acinetobacter_A1/";
+////    	String sample="Acinetobacter_AB30/"; //SimpleBinner.ANCHOR_CTG_LEN=2000 || Alignment.MIN_QUAL=10
+////    	String sample="E_coli_K-12_MG1655/";
+////    	String sample="E_coli_O25b_H4-ST131/";
+////    	String sample="Klebsiella_30660_NJST258_1/";
+////    	String sample="Klebsiella_MGH_78578/"; //SimpleBinner.ANCHOR_CTG_LEN=500
+////    	String sample="Klebsiella_NTUH-K2044/";
+////    	String sample="Mycobacterium_tuberculosis_H37Rv/";
+////    	String sample="random_sequences_many_repeats/";
+////    	String sample="random_sequences_no_repeats/";
+////    	String sample="random_sequences_some_repeats/";
+//    	String sample="Saccharomyces_cerevisiae_S288c/";
+////    	String sample="Shigella_dysenteriae_Sd197/";
+////    	String sample="Shigella_sonnei_53G/";
+////    	String sample="Streptococcus_suis_BM407/";
+//    	
+//    	
+////    	String quality="bad/";
+////    	String quality="medium/";
+//    	String quality="good/";
+//
+//    	String sInput=dataFolder+sample+quality+"spades/assembly_graph.fastg",
+//    			output=dataFolder+sample+quality+"/",
+//    			lInput=dataFolder+sample+quality+"mm2.sam";	
     
+    	
+    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/npgraph/results_2/unicycler/citrobacter-freundii_CAV1374/003_bridges_applied.gfa",
+    			output="/home/sonhoanghguyen/Projects/scaffolding/npgraph/results_2/spades/citrobacter-freundii_CAV1374/",
+    			lInput="";	
     	/*
     	 * Share code
     	 */
 		HybridAssembler hbAss = new HybridAssembler();
 		hbAss.setShortReadsInput(sInput);
 		hbAss.setPrefix(output);
-		hbAss.setShortReadsInputFormat("fastg");
+		hbAss.setShortReadsInputFormat("gfa");
 		hbAss.prepareShortReadsProcess();
 		
     	BDGraph graph= hbAss.simGraph;
+		for (Node node : graph) {
+			node.setAttribute("ui.label", node.getId());
+		}
     	
     	graph.setAttribute("ui.style", GraphUtil.styleSheet);
 
         Viewer viewer=graph.display();
-        
+        HybridAssembler.promptEnterKey();
         System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
                 
         /*
