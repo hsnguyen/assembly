@@ -1,4 +1,10 @@
-package org.rtassembly.experiment;
+/*
+ * Reference-free concatemers detection on base-called sequence
+ * Using  Normalized  Square  Difference Function (NSDF)  as metric for
+ * auto-correlation scanner.
+ ** Based on http://www.cs.otago.ac.nz/tartini/papers/A_Smarter_Way_to_Find_Pitch.pdf
+ */
+package org.rtassembly.concatemer;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -13,16 +19,13 @@ import org.jtransforms.fft.DoubleFFT_1D;
 import ch.systemsx.cisd.hdf5.HDF5Factory;
 import ch.systemsx.cisd.hdf5.IHDF5Reader;
 
-/*
- * Experiments of method to detect concatemers reference-free
- * Based on http://www.cs.otago.ac.nz/tartini/papers/A_Smarter_Way_to_Find_Pitch.pdf
- */
-public class RawConcatemer {
+
+public class NSDFChopper {
 	String name;
 	short[] signal;
 	
-	public RawConcatemer() {};
-	public RawConcatemer(String f5File){
+	public NSDFChopper() {};
+	public NSDFChopper(String f5File){
 		try {			
 			IHDF5Reader reader = HDF5Factory.openForReading(f5File);
 			//find data here: "Raw/Reads/Read_17553/Signal"
@@ -291,7 +294,7 @@ public class RawConcatemer {
 //    }
     static String DATA="/home/sonhoanghguyen/Projects/concatemers/data/raw/";
 	public static void main(String[] args){
-		RawConcatemer concat=new RawConcatemer(DATA+"imb17_013486_20171130__MN17279_sequencing_run_20171130_Ha_BSV_CaMV1_RBarcode_35740_read_17553_ch_455_strand.fast5");
+		NSDFChopper concat=new NSDFChopper(DATA+"imb17_013486_20171130__MN17279_sequencing_run_20171130_Ha_BSV_CaMV1_RBarcode_35740_read_17553_ch_455_strand.fast5");
 //		try {
 //			concat.printCrossCorrelation(DATA+"concat7.signal");
 //		} catch (IOException e) {

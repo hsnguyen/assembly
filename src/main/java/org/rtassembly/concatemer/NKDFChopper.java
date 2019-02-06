@@ -1,3 +1,8 @@
+/*
+ * Reference-free concatemers detection on base-called sequence
+ * Using Normalized Kronecker delta function(NKDF)  as metric for
+ * auto-correlation scanner.
+ */
 package org.rtassembly.concatemer;
 
 import java.io.FileWriter;
@@ -10,11 +15,11 @@ import japsa.seq.Alphabet.DNA;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceReader;
 
-public class CrossCorrelationScanner{
+public class NKDFChopper{
 	public static final int SCAN_WINDOW=100;
 	Sequence template;
 	
-	public CrossCorrelationScanner(Sequence template) {
+	public NKDFChopper(Sequence template) {
 		// TODO Auto-generated constructor stub
 		this.template=template;
 
@@ -59,8 +64,8 @@ public class CrossCorrelationScanner{
 	public int scanAround(Sequence query, int coordinate, boolean strand) {
 		int retval=-1;
 		int l=query.length();
-		int lower=coordinate-SCAN_WINDOW>0?coordinate-SCAN_WINDOW:0,
-			upper=coordinate+SCAN_WINDOW<l?coordinate+SCAN_WINDOW:l-1;
+		int lower=(coordinate-SCAN_WINDOW)>0?(coordinate-SCAN_WINDOW):0,
+			upper=(coordinate+SCAN_WINDOW)<l?(coordinate+SCAN_WINDOW):(l-1);
 		int newcoord = coordinate-lower+1;
 		Sequence target=query.subSequence(lower, upper);
 		if(strand) {
@@ -95,7 +100,7 @@ public class CrossCorrelationScanner{
 		while ((seq = reader.nextSequence(Alphabet.DNA())) != null){
 			String name=seq.getName().split(" ")[0];
 			System.out.println("Read number " + count++ + ": " + name + " length= " + seq.length() + "...");
-			CrossCorrelationScanner scanner = new CrossCorrelationScanner(seq);
+			NKDFChopper scanner = new NKDFChopper(seq);
 			ArrayList<Double> 	result = scanner.scan(seq);
 			writer.print(name+" ");
 			for(double sig:result)				
