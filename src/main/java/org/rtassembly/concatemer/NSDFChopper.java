@@ -9,7 +9,6 @@ package org.rtassembly.concatemer;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.stream.DoubleStream;
 
@@ -40,113 +39,113 @@ public class NSDFChopper {
 		
 	}
 	
-	public ArrayList<Double> scan() {
-		ArrayList<Double> retval = new ArrayList<>();
-		int 	l=signal.length;
-		System.out.println("length="+l);
-		/*
-		 * 				0			l1-1
-		 * 				|			|
-		 * template	: 	-------------
-		 * 							|
-		 * 							i
-		 * 							|
-		 * query	:			--------------------------------|-------------|	
-		 * 						|								|	
-		 *						0								l2-1		l1+l2-2
-		 *
-		 *	Overlap: template (l1-i,l1) <=> query (q_start,i)
-		 */
-		
-		for(int i=0;i<2*l-1;i++) {
-			System.out.print("n="+i+"/"+(2*l)+"...");
-			int 	q_start=(i>=l?i-l+1:0), //coordinate on query of the overlap starting point
-					q_end=(i<=l-1?i:l-1),	 //coordinate on query of the overlap ending point	
-					t_start=(i>=l?0:l-i-1), //coordinate on template of the overlap starting point
-					t_end=(i<=l-1?l-1:2*l-i-2); //coordinate on template of the overlap ending point
-			double score=0.0;
-			int overlap=q_end-q_start;
-			if(overlap==0){
-				retval.add(0.0);
-			}else{
-				while(q_start<=q_end && t_start<=t_end)
-					score+=1.0/(1.0+Math.abs(signal[q_start++]-signal[t_start++]));
-				retval.add(score/overlap); //normalized it
-			}
-			System.out.println("f(n)="+(score/overlap));
-		}
-		
-		return retval;
-	}
-	
-	public void printCrossCorrelation(String outFile) throws IOException {
-		PrintWriter writer = new PrintWriter(new FileWriter(outFile)); 
-		writer.print(name+" ");
-
-		int 	l=signal.length;
+//	public ArrayList<Double> scan() {
+//		ArrayList<Double> retval = new ArrayList<>();
+//		int 	l=signal.length;
 //		System.out.println("length="+l);
-		/*
-		 * 				0			l1-1
-		 * 				|			|
-		 * template	: 	-------------
-		 * 							|
-		 * 							i
-		 * 							|
-		 * query	:			--------------------------------|-------------|	
-		 * 						|								|	
-		 *						0								l2-1		l1+l2-2
-		 *
-		 *	Overlap: template (l1-i,l1) <=> query (q_start,i)
-		 */
-		
-		for(int i=0;i<l-1;i++) {
-			System.out.print("n="+i+"/"+(2*l)+"...");
-			int 	q_start=(i>=l?i-l+1:0), //coordinate on query of the overlap starting point
-					q_end=(i<=l-1?i:l-1),	 //coordinate on query of the overlap ending point	
-					t_start=(i>=l?0:l-i-1), //coordinate on template of the overlap starting point
-					t_end=(i<=l-1?l-1:2*l-i-2); //coordinate on template of the overlap ending point
-			double score=0.0, value=0.0;
-			int overlap=q_end-q_start;
-			
-			if(overlap>0){
-				while(q_start<=q_end && t_start<=t_end)
-					score+=1.0/(1.0+Math.abs(signal[q_start++]-signal[t_start++]));
-				
-				value=score/overlap;
-			}
-			writer.printf("%.5f ",value); //normalized it
-
+//		/*
+//		 * 				0			l1-1
+//		 * 				|			|
+//		 * template	: 	-------------
+//		 * 							|
+//		 * 							i
+//		 * 							|
+//		 * query	:			--------------------------------|-------------|	
+//		 * 						|								|	
+//		 *						0								l2-1		l1+l2-2
+//		 *
+//		 *	Overlap: template (l1-i,l1) <=> query (q_start,i)
+//		 */
+//		
+//		for(int i=0;i<2*l-1;i++) {
+//			System.out.print("n="+i+"/"+(2*l)+"...");
+//			int 	q_start=(i>=l?i-l+1:0), //coordinate on query of the overlap starting point
+//					q_end=(i<=l-1?i:l-1),	 //coordinate on query of the overlap ending point	
+//					t_start=(i>=l?0:l-i-1), //coordinate on template of the overlap starting point
+//					t_end=(i<=l-1?l-1:2*l-i-2); //coordinate on template of the overlap ending point
+//			double score=0.0;
+//			int overlap=q_end-q_start;
+//			if(overlap==0){
+//				retval.add(0.0);
+//			}else{
+//				while(q_start<=q_end && t_start<=t_end)
+//					score+=1.0/(1.0+Math.abs(signal[q_start++]-signal[t_start++]));
+//				retval.add(score/overlap); //normalized it
+//			}
 //			System.out.println("f(n)="+(score/overlap));
-		}
-		writer.println();
-		writer.close();
-	}
-	
-	
-    void print(String msg, double [] x) {
-        System.out.println(msg);
-        System.out.print("[ ");
-        for (double d : x) System.out.printf("%.2f ",d);
-        System.out.println("]");
-    }
-
-    /**
-     * This is a "wrapped" signal processing-style autocorrelation. 
-     * For "true" autocorrelation, the data must be zero padded.  
-     */
-    public double[] bruteForceAutoCorrelation(double [] x) {
-    	double[] retval = new double[x.length];
-        Arrays.fill(retval, 0);
-        int n = x.length;
-        for (int j = 0; j < n; j++) {
-            for (int i = 0; i < n; i++) {
-//                retval[j] += x[i] * x[(n + i - j) % n];
-            	if(i>=j)
-            		retval[j] += x[i] * x[i-j];
-            }
-        }
-        return retval;
-    }
+//		}
+//		
+//		return retval;
+//	}
+//	
+//	public void printCrossCorrelation(String outFile) throws IOException {
+//		PrintWriter writer = new PrintWriter(new FileWriter(outFile)); 
+//		writer.print(name+" ");
+//
+//		int 	l=signal.length;
+////		System.out.println("length="+l);
+//		/*
+//		 * 				0			l1-1
+//		 * 				|			|
+//		 * template	: 	-------------
+//		 * 							|
+//		 * 							i
+//		 * 							|
+//		 * query	:			--------------------------------|-------------|	
+//		 * 						|								|	
+//		 *						0								l2-1		l1+l2-2
+//		 *
+//		 *	Overlap: template (l1-i,l1) <=> query (q_start,i)
+//		 */
+//		
+//		for(int i=0;i<l-1;i++) {
+//			System.out.print("n="+i+"/"+(2*l)+"...");
+//			int 	q_start=(i>=l?i-l+1:0), //coordinate on query of the overlap starting point
+//					q_end=(i<=l-1?i:l-1),	 //coordinate on query of the overlap ending point	
+//					t_start=(i>=l?0:l-i-1), //coordinate on template of the overlap starting point
+//					t_end=(i<=l-1?l-1:2*l-i-2); //coordinate on template of the overlap ending point
+//			double score=0.0, value=0.0;
+//			int overlap=q_end-q_start;
+//			
+//			if(overlap>0){
+//				while(q_start<=q_end && t_start<=t_end)
+//					score+=1.0/(1.0+Math.abs(signal[q_start++]-signal[t_start++]));
+//				
+//				value=score/overlap;
+//			}
+//			writer.printf("%.5f ",value); //normalized it
+//
+////			System.out.println("f(n)="+(score/overlap));
+//		}
+//		writer.println();
+//		writer.close();
+//	}
+//	
+//	
+//    void print(String msg, double [] x) {
+//        System.out.println(msg);
+//        System.out.print("[ ");
+//        for (double d : x) System.out.printf("%.2f ",d);
+//        System.out.println("]");
+//    }
+//
+//    /**
+//     * This is a "wrapped" signal processing-style autocorrelation. 
+//     * For "true" autocorrelation, the data must be zero padded.  
+//     */
+//    public double[] bruteForceAutoCorrelation(double [] x) {
+//    	double[] retval = new double[x.length];
+//        Arrays.fill(retval, 0);
+//        int n = x.length;
+//        for (int j = 0; j < n; j++) {
+//            for (int i = 0; i < n; i++) {
+////                retval[j] += x[i] * x[(n + i - j) % n];
+//            	if(i>=j)
+//            		retval[j] += x[i] * x[i-j];
+//            }
+//        }
+//        return retval;
+//    }
 
     private double sqr(double x) {
         return x * x;
@@ -202,7 +201,7 @@ public class NSDFChopper {
     	return retval;
     }
 
-    void test() {
+    void printNSDFSignal() {
         double [] data = new double [signal.length];
         SummaryStatistics stats=new SummaryStatistics();
         long curTime=System.currentTimeMillis();
@@ -280,7 +279,7 @@ public class NSDFChopper {
 //        return peaks;
 //    }
     
-//    void test2() {
+//    void test() {
 //        double [] 	data = {2,3,-1};
 //        double [] ac1 = bruteForceAutoCorrelation(data);
 //        print("Brute force ACF: ",ac1);
@@ -300,7 +299,7 @@ public class NSDFChopper {
 //		} catch (IOException e) {
 //			e.printStackTrace();
 //		} 
-		concat.test();
+		concat.printNSDFSignal();
 
 	}
 

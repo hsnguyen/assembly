@@ -101,7 +101,7 @@ public class NKDFChopper{
 			String name=seq.getName().split(" ")[0];
 			System.out.println("Read number " + count++ + ": " + name + " length= " + seq.length() + "...");
 			NKDFChopper scanner = new NKDFChopper(seq);
-			ArrayList<Double> 	result = scanner.scan(seq);
+			ArrayList<Double> 	result = scanner.scan(seq); //scan to itself
 			writer.print(name+" ");
 			for(double sig:result)				
 				writer.printf("%.5f ",sig);
