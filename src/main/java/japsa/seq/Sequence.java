@@ -168,8 +168,8 @@ public class Sequence extends AbstractSequence implements Cloneable {
 	/*
 	 * Convert to digital signal for DSP
 	 */
-	public double[] seq2sig(){
-		double [] retval = new double [2*byteSeq.length];
+	public short[] seq2sig(){
+		short [] retval = new short [2*byteSeq.length];
 		for (int i = 0; i < byteSeq.length; i++) {
 			switch(byteSeq[i]){
 			case 0: //A <=> 1

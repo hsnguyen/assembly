@@ -17,6 +17,8 @@ import org.jtransforms.fft.DoubleFFT_1D;
 
 import ch.systemsx.cisd.hdf5.HDF5Factory;
 import ch.systemsx.cisd.hdf5.IHDF5Reader;
+import japsa.seq.Alphabet;
+import japsa.seq.FastqReader;
 import japsa.seq.Sequence;
 
 
@@ -24,7 +26,10 @@ public class NSDFChopper {
 	String name;
 	short[] signal;
 	
-	public NSDFChopper() {};
+	public NSDFChopper(Sequence seq) {
+		signal=seq.seq2sig();
+		name=seq.getName();
+	}
 	public NSDFChopper(String f5File){
 		try {			
 			IHDF5Reader reader = HDF5Factory.openForReading(f5File);
@@ -166,9 +171,9 @@ public class NSDFChopper {
     	}
     }
     //calculate auto-correlation using FFT on DNA sequence {1,-1,i,-i}}
-    public double[] nuclAutoCorrelationFFT(Sequence nuclSeq) {
-        int n = nuclSeq.length();
-        double[] 	x2 = nuclSeq.seq2sig(),	//input signal (complex)
+    public double[] nuclAutoCorrelationFFT(double[] nuclSeq) {
+        int n = nuclSeq.length/2; //nuclSeq length is even!
+        double[] 	x2 = nuclSeq,	//input signal (complex)
         			ac2 = new double[2*n], 	//autocorrelation in freq domain
         			retval = new double[n];	//result (time domain)
         
@@ -229,7 +234,7 @@ public class NSDFChopper {
     	return retval;
     }
 
-    void printNSDFSignal() {
+    void printRawSignal() {
         double [] data = new double [signal.length];
         SummaryStatistics stats=new SummaryStatistics();
         long curTime=System.currentTimeMillis();
@@ -249,13 +254,12 @@ public class NSDFChopper {
 //        System.out.printf("Done brute force autocorrelation in  %d secs\n", (System.currentTimeMillis()-curTime)/1000);
 //        curTime=System.currentTimeMillis();
         
-        double [] 	r = signalAutoCorrelationFFT(data),
-        			m = lagSquareSum(data),
+        double [] 	r = nuclAutoCorrelationFFT(data),
         			n = new double[data.length];
-        Arrays.parallelSetAll(n, i->2*r[i]/m[i]) ;        
+        Arrays.parallelSetAll(n, i->2*r[i]/(data.length-i)) ;        
         
         double [] n1k = new double [data.length];
-        smooth(n, n1k, 20000);
+        smooth(n, n1k, 1000);
         
         System.out.printf("Done FFT autocorrelation in  %d secs\n", (System.currentTimeMillis()-curTime)/1000);
         curTime=System.currentTimeMillis();
@@ -282,6 +286,51 @@ public class NSDFChopper {
 
     }
     
+    void printBasecalledSignal() {
+        double [] data = new double [signal.length];
+        long curTime=System.currentTimeMillis();
+
+        for (int j=0;j<signal.length;j++) {
+            data[j] = (double)signal[j];
+        }
+        System.out.printf("Done init arrays in %d secs\n", (System.currentTimeMillis()-curTime)/1000);
+        curTime=System.currentTimeMillis();
+//        double [] ac1 = bruteForceAutoCorrelation(data);
+//        System.out.printf("Done brute force autocorrelation in  %d secs\n", (System.currentTimeMillis()-curTime)/1000);
+//        curTime=System.currentTimeMillis();
+        
+        double [] 	r = signalAutoCorrelationFFT(data),
+        			m = lagSquareSum(data),
+        			n = new double[data.length];
+        Arrays.parallelSetAll(n, i->2*r[i]/m[i]) ;        
+        
+        double [] n1k = new double [data.length];
+        smooth(n, n1k, 20000);
+        
+        System.out.printf("Done FFT autocorrelation in  %d secs\n", (System.currentTimeMillis()-curTime)/1000);
+        curTime=System.currentTimeMillis();
+//        Print to file
+        try {
+    		PrintWriter writer = new PrintWriter(new FileWriter(DATA+"concat7.nucl.xls"));
+    		writer.print(name+" ");
+    		for(double value:n)
+    			writer.printf("%.5f\n",value); //normalized it
+    		writer.close();
+    		
+    		PrintWriter writer2 = new PrintWriter(new FileWriter(DATA+"concat7_1kstep.nucl.xls")); 
+    		for(double value:n1k)
+    			writer2.printf("%.5f\n",value); //normalized it
+    		writer2.close();
+    		
+            System.out.printf("Done writing to files in %d secs\n", (System.currentTimeMillis()-curTime)/1000);
+            curTime=System.currentTimeMillis();
+            
+        } catch (IOException e) {
+        		throw new RuntimeException(e);
+        } 
+        
+
+    }
 //    /* Find autocorrelation peaks */
 //    public List<Integer> findPeaks() {
 //        List<Integer> peaks = new ArrayList<>();
@@ -319,15 +368,23 @@ public class NSDFChopper {
 //        print("test", lagSquareSum(data));
 //        
 //    }
-    static String DATA="/home/sonhoanghguyen/Projects/concatemers/data/raw/";
+//    static String DATA="/home/sonhoanghguyen/Projects/concatemers/data/raw/";
+    static String DATA="/home/hoangnguyen/workspace/data/concatemers/";
 	public static void main(String[] args){
-		NSDFChopper concat=new NSDFChopper(DATA+"imb17_013486_20171130__MN17279_sequencing_run_20171130_Ha_BSV_CaMV1_RBarcode_35740_read_17553_ch_455_strand.fast5");
-//		try {
-//			concat.printCrossCorrelation(DATA+"concat7.signal");
-//		} catch (IOException e) {
-//			e.printStackTrace();
-//		} 
-		concat.printNSDFSignal();
+		try {
+			FastqReader reader = new FastqReader(DATA+"concat7.fastq");
+			Sequence seq=reader.nextSequence(Alphabet.DNA4());
+			NSDFChopper concat = new NSDFChopper(seq);
+			concat.printBasecalledSignal();
+			reader.close();
+			
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+//		NSDFChopper concat=new NSDFChopper(DATA+"imb17_013486_20171130__MN17279_sequencing_run_20171130_Ha_BSV_CaMV1_RBarcode_35740_read_17553_ch_455_strand.fast5");
+//		concat.printRawSignal();
 
 	}
 
