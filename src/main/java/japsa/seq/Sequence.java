@@ -165,6 +165,38 @@ public class Sequence extends AbstractSequence implements Cloneable {
 		return byteSeq[loc];// This should convert into an int
 	}
 
+	/*
+	 * Convert to digital signal for DSP
+	 */
+	public double[] seq2sig(){
+		double [] retval = new double [2*byteSeq.length];
+		for (int i = 0; i < byteSeq.length; i++) {
+			switch(byteSeq[i]){
+			case 0: //A <=> 1
+				retval[2*i]=1;
+				retval[2*i+1]=0;
+				break;
+			case 1: //C <=> i
+				retval[2*i]=0;
+				retval[2*i+1]=1;
+				break;
+			case 2: //G <=> -i
+				retval[2*i]=0;
+				retval[2*i+1]=-1;
+				break;
+			case 3: //T <=> -1
+				retval[2*i]=-1;
+				retval[2*i+1]=0;
+				break;
+			default:
+				System.err.println("Invalid DNA character (only ACGT)!");
+				return null;
+			}
+				
+		}		
+		return retval;
+	}
+	
 	public byte getBase(int loc) {
 		return byteSeq[loc];
 	}

@@ -17,6 +17,7 @@ import org.jtransforms.fft.DoubleFFT_1D;
 
 import ch.systemsx.cisd.hdf5.HDF5Factory;
 import ch.systemsx.cisd.hdf5.IHDF5Reader;
+import japsa.seq.Sequence;
 
 
 public class NSDFChopper {
@@ -150,6 +151,8 @@ public class NSDFChopper {
     private double sqr(double x) {
         return x * x;
     }
+    //Running average
+    //TODO: need another low pass filter
     public void smooth(double[] in, double[] out, int window){
     	double beg=in[0], end=in[window];
     	for(int i=0;i<window;i++){
@@ -162,10 +165,35 @@ public class NSDFChopper {
     		out[i]=out[i-1]+ (end-beg)/window;
     	}
     }
-    //calculate r'(t) = \sum{x_j*x_{j+t}}
-    public double[] fftAutoCorrelation(double [] x) {
-        int n = x.length;
-        double[] 	x2 = Arrays.copyOf(x, 2*n),
+    //calculate auto-correlation using FFT on DNA sequence {1,-1,i,-i}}
+    public double[] nuclAutoCorrelationFFT(Sequence nuclSeq) {
+        int n = nuclSeq.length();
+        double[] 	x2 = nuclSeq.seq2sig(),	//input signal (complex)
+        			ac2 = new double[2*n], 	//autocorrelation in freq domain
+        			retval = new double[n];	//result (time domain)
+        
+        
+        DoubleFFT_1D fft = new DoubleFFT_1D(2*n);
+        fft.complexForward(x2);
+        
+        //convolute in time domain = multiple in freq domain
+        for (int i = 0; i < 2*n-1; i += 2) {
+            ac2[i] = sqr(x2[i]) + sqr(x2[i+1]);
+            ac2[i+1] = 0;
+        }
+        DoubleFFT_1D ifft = new DoubleFFT_1D(2*n); 
+        ifft.realInverse(ac2, true);
+        for(int i=0;i<n;i++)
+        	retval[i]=ac2[i];
+        
+        return retval;
+
+    }
+    
+    //calculate r'(t) = \sum{x_j*x_{j+t}} for real signal of raw data
+    public double[] signalAutoCorrelationFFT(double [] rawSeq) {
+        int n = rawSeq.length;
+        double[] 	x2 = Arrays.copyOf(rawSeq, 2*n),
         			ac2 = new double[2*n],
         			retval = new double[n];
         DoubleFFT_1D fft = new DoubleFFT_1D(2*n);
@@ -185,7 +213,7 @@ public class NSDFChopper {
 
     }
     
-    //calculate m'(t) = \sum{x_j^2+x_{j+t}^2}
+    //calculate m'(t) = \sum{x_j^2+x_{j+t}^2} for real signal of raw data
     public double[] lagSquareSum(double[] x) {
     	double[] 	xsqr = new double[x.length],
     				retval = new double[x.length];
@@ -221,7 +249,7 @@ public class NSDFChopper {
 //        System.out.printf("Done brute force autocorrelation in  %d secs\n", (System.currentTimeMillis()-curTime)/1000);
 //        curTime=System.currentTimeMillis();
         
-        double [] 	r = fftAutoCorrelation(data),
+        double [] 	r = signalAutoCorrelationFFT(data),
         			m = lagSquareSum(data),
         			n = new double[data.length];
         Arrays.parallelSetAll(n, i->2*r[i]/m[i]) ;        
