@@ -166,7 +166,8 @@ public class Sequence extends AbstractSequence implements Cloneable {
 	}
 
 	/*
-	 * Convert to digital signal for DSP
+	 * Convert to digital signal for DSP. 
+	 * Deprecated: used byteSeq instead
 	 */
 	public short[] seq2sig(){
 		short [] retval = new short [2*byteSeq.length];

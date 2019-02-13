@@ -27,8 +27,14 @@ public class NSDFChopper {
 	short[] signal;
 	
 	public NSDFChopper(Sequence seq) {
-		signal=seq.seq2sig();
-		name=seq.getName();
+//		signal=seq.seq2sig();
+		signal=new short[seq.length()];
+		for(int i=0;i<seq.length();i++)
+			signal[i]=seq.getBase(i);
+		if(signal==null) //unsupported DNA sequence (A,C,G,T only)
+			System.exit(1);
+		else
+			name=seq.getName();
 	}
 	public NSDFChopper(String f5File){
 		try {			
@@ -45,113 +51,6 @@ public class NSDFChopper {
 		
 	}
 	
-//	public ArrayList<Double> scan() {
-//		ArrayList<Double> retval = new ArrayList<>();
-//		int 	l=signal.length;
-//		System.out.println("length="+l);
-//		/*
-//		 * 				0			l1-1
-//		 * 				|			|
-//		 * template	: 	-------------
-//		 * 							|
-//		 * 							i
-//		 * 							|
-//		 * query	:			--------------------------------|-------------|	
-//		 * 						|								|	
-//		 *						0								l2-1		l1+l2-2
-//		 *
-//		 *	Overlap: template (l1-i,l1) <=> query (q_start,i)
-//		 */
-//		
-//		for(int i=0;i<2*l-1;i++) {
-//			System.out.print("n="+i+"/"+(2*l)+"...");
-//			int 	q_start=(i>=l?i-l+1:0), //coordinate on query of the overlap starting point
-//					q_end=(i<=l-1?i:l-1),	 //coordinate on query of the overlap ending point	
-//					t_start=(i>=l?0:l-i-1), //coordinate on template of the overlap starting point
-//					t_end=(i<=l-1?l-1:2*l-i-2); //coordinate on template of the overlap ending point
-//			double score=0.0;
-//			int overlap=q_end-q_start;
-//			if(overlap==0){
-//				retval.add(0.0);
-//			}else{
-//				while(q_start<=q_end && t_start<=t_end)
-//					score+=1.0/(1.0+Math.abs(signal[q_start++]-signal[t_start++]));
-//				retval.add(score/overlap); //normalized it
-//			}
-//			System.out.println("f(n)="+(score/overlap));
-//		}
-//		
-//		return retval;
-//	}
-//	
-//	public void printCrossCorrelation(String outFile) throws IOException {
-//		PrintWriter writer = new PrintWriter(new FileWriter(outFile)); 
-//		writer.print(name+" ");
-//
-//		int 	l=signal.length;
-////		System.out.println("length="+l);
-//		/*
-//		 * 				0			l1-1
-//		 * 				|			|
-//		 * template	: 	-------------
-//		 * 							|
-//		 * 							i
-//		 * 							|
-//		 * query	:			--------------------------------|-------------|	
-//		 * 						|								|	
-//		 *						0								l2-1		l1+l2-2
-//		 *
-//		 *	Overlap: template (l1-i,l1) <=> query (q_start,i)
-//		 */
-//		
-//		for(int i=0;i<l-1;i++) {
-//			System.out.print("n="+i+"/"+(2*l)+"...");
-//			int 	q_start=(i>=l?i-l+1:0), //coordinate on query of the overlap starting point
-//					q_end=(i<=l-1?i:l-1),	 //coordinate on query of the overlap ending point	
-//					t_start=(i>=l?0:l-i-1), //coordinate on template of the overlap starting point
-//					t_end=(i<=l-1?l-1:2*l-i-2); //coordinate on template of the overlap ending point
-//			double score=0.0, value=0.0;
-//			int overlap=q_end-q_start;
-//			
-//			if(overlap>0){
-//				while(q_start<=q_end && t_start<=t_end)
-//					score+=1.0/(1.0+Math.abs(signal[q_start++]-signal[t_start++]));
-//				
-//				value=score/overlap;
-//			}
-//			writer.printf("%.5f ",value); //normalized it
-//
-////			System.out.println("f(n)="+(score/overlap));
-//		}
-//		writer.println();
-//		writer.close();
-//	}
-//	
-//	
-//    void print(String msg, double [] x) {
-//        System.out.println(msg);
-//        System.out.print("[ ");
-//        for (double d : x) System.out.printf("%.2f ",d);
-//        System.out.println("]");
-//    }
-//
-//    /**
-//     * This is a "wrapped" signal processing-style autocorrelation. 
-//     * For "true" autocorrelation, the data must be zero padded.  
-//     */
-//    public double[] bruteForceAutoCorrelation(double [] x) {
-//    	double[] retval = new double[x.length];
-//        Arrays.fill(retval, 0);
-//        int n = x.length;
-//        for (int j = 0; j < n; j++) {
-//            for (int i = 0; i < n; i++) {
-////                retval[j] += x[i] * x[(n + i - j) % n];
-//            	if(i>=j)
-//            		retval[j] += x[i] * x[i-j];
-//            }
-//        }
-//        return retval;
-//    }
 
     private double sqr(double x) {
         return x * x;
@@ -170,30 +69,37 @@ public class NSDFChopper {
     		out[i]=out[i-1]+ (end-beg)/window;
     	}
     }
-    //calculate auto-correlation using FFT on DNA sequence {1,-1,i,-i}}
-    public double[] nuclAutoCorrelationFFT(double[] nuclSeq) {
-        int n = nuclSeq.length/2; //nuclSeq length is even!
-        double[] 	x2 = nuclSeq,	//input signal (complex)
-        			ac2 = new double[2*n], 	//autocorrelation in freq domain
-        			retval = new double[n];	//result (time domain)
-        
-        
-        DoubleFFT_1D fft = new DoubleFFT_1D(2*n);
-        fft.complexForward(x2);
-        
-        //convolute in time domain = multiple in freq domain
-        for (int i = 0; i < 2*n-1; i += 2) {
-            ac2[i] = sqr(x2[i]) + sqr(x2[i+1]);
-            ac2[i+1] = 0;
-        }
-        DoubleFFT_1D ifft = new DoubleFFT_1D(2*n); 
-        ifft.realInverse(ac2, true);
-        for(int i=0;i<n;i++)
-        	retval[i]=ac2[i];
-        
-        return retval;
-
-    }
+    //calculate auto-correlation using FFT on DNA sequence {1,-1,i,-i}}. Not used!!!
+//    public double[] nuclAutoCorrelationFFT(double[] nuclSeq) throws IOException {
+//        int n = nuclSeq.length/2; //nuclSeq length is even!
+//        double[] 	x2 = nuclSeq,	//input signal (complex)
+//        			ac2 = new double[2*n], 	//autocorrelation in freq domain
+//        			retval = new double[n];	//result (time domain)
+//        
+//        System.out.println("Length n=" + x2.length);
+//        DoubleFFT_1D fft = new DoubleFFT_1D(n);
+//        fft.complexForward(x2);
+//        
+//        //convolute in time domain = multiple in freq domain
+//		PrintWriter writer = new PrintWriter(new FileWriter(DATA+"concat7_dft.signal.xls"));
+//		writer.print(name+" ");
+//		
+//        for (int i = 0; i < 2*n-1; i += 2) {
+//            ac2[i] = sqr(x2[i]) + sqr(x2[i+1]);
+//            ac2[i+1] = 0;
+//            writer.printf("%.5f\n",ac2[i]); //normalized it
+//        }
+//        
+//		writer.close();
+//		
+//        DoubleFFT_1D ifft = new DoubleFFT_1D(n); 
+//        ifft.complexInverse(ac2, true);
+//        for(int i=0;i<n;i++)
+//        	retval[i]=ac2[2*i];
+//        
+//        return retval;
+//
+//    }
     
     //calculate r'(t) = \sum{x_j*x_{j+t}} for real signal of raw data
     public double[] signalAutoCorrelationFFT(double [] rawSeq) {
@@ -234,7 +140,7 @@ public class NSDFChopper {
     	return retval;
     }
 
-    void printRawSignal() {
+    void printRawSignal(int window) throws IOException {
         double [] data = new double [signal.length];
         SummaryStatistics stats=new SummaryStatistics();
         long curTime=System.currentTimeMillis();
@@ -254,83 +160,35 @@ public class NSDFChopper {
 //        System.out.printf("Done brute force autocorrelation in  %d secs\n", (System.currentTimeMillis()-curTime)/1000);
 //        curTime=System.currentTimeMillis();
         
-        double [] 	r = nuclAutoCorrelationFFT(data),
-        			n = new double[data.length];
-        Arrays.parallelSetAll(n, i->2*r[i]/(data.length-i)) ;        
-        
-        double [] n1k = new double [data.length];
-        smooth(n, n1k, 1000);
-        
-        System.out.printf("Done FFT autocorrelation in  %d secs\n", (System.currentTimeMillis()-curTime)/1000);
-        curTime=System.currentTimeMillis();
-//        Print to file
-        try {
-    		PrintWriter writer = new PrintWriter(new FileWriter(DATA+"concat7_mpm.signal.xls"));
-    		writer.print(name+" ");
-    		for(double value:n)
-    			writer.printf("%.5f\n",value); //normalized it
-    		writer.close();
-    		
-    		PrintWriter writer2 = new PrintWriter(new FileWriter(DATA+"concat7_mpm_20kstep.xls")); 
-    		for(double value:n1k)
-    			writer2.printf("%.5f\n",value); //normalized it
-    		writer2.close();
-    		
-            System.out.printf("Done writing to files in %d secs\n", (System.currentTimeMillis()-curTime)/1000);
-            curTime=System.currentTimeMillis();
-            
-        } catch (IOException e) {
-        		throw new RuntimeException(e);
-        } 
-        
-
-    }
-    
-    void printBasecalledSignal() {
-        double [] data = new double [signal.length];
-        long curTime=System.currentTimeMillis();
-
-        for (int j=0;j<signal.length;j++) {
-            data[j] = (double)signal[j];
-        }
-        System.out.printf("Done init arrays in %d secs\n", (System.currentTimeMillis()-curTime)/1000);
-        curTime=System.currentTimeMillis();
-//        double [] ac1 = bruteForceAutoCorrelation(data);
-//        System.out.printf("Done brute force autocorrelation in  %d secs\n", (System.currentTimeMillis()-curTime)/1000);
-//        curTime=System.currentTimeMillis();
-        
         double [] 	r = signalAutoCorrelationFFT(data),
-        			m = lagSquareSum(data),
-        			n = new double[data.length];
+    				m = lagSquareSum(data),
+    				n = new double[data.length];
         Arrays.parallelSetAll(n, i->2*r[i]/m[i]) ;        
         
         double [] n1k = new double [data.length];
-        smooth(n, n1k, 20000);
+        smooth(n, n1k, window);
         
         System.out.printf("Done FFT autocorrelation in  %d secs\n", (System.currentTimeMillis()-curTime)/1000);
         curTime=System.currentTimeMillis();
 //        Print to file
-        try {
-    		PrintWriter writer = new PrintWriter(new FileWriter(DATA+"concat7.nucl.xls"));
-    		writer.print(name+" ");
-    		for(double value:n)
-    			writer.printf("%.5f\n",value); //normalized it
-    		writer.close();
-    		
-    		PrintWriter writer2 = new PrintWriter(new FileWriter(DATA+"concat7_1kstep.nucl.xls")); 
-    		for(double value:n1k)
-    			writer2.printf("%.5f\n",value); //normalized it
-    		writer2.close();
-    		
-            System.out.printf("Done writing to files in %d secs\n", (System.currentTimeMillis()-curTime)/1000);
-            curTime=System.currentTimeMillis();
+		PrintWriter writer = new PrintWriter(new FileWriter(DATA+"concat7_mpm.signal.xls"));
+		writer.print(name+" ");
+		for(double value:n)
+			writer.printf("%.5f\n",value); //normalized it
+		writer.close();
+		
+		PrintWriter writer2 = new PrintWriter(new FileWriter(DATA+"concat7_mpm_"+window+".xls")); 
+		for(double value:n1k)
+			writer2.printf("%.5f\n",value); //normalized it
+		writer2.close();
+		
+        System.out.printf("Done writing to files in %d secs\n", (System.currentTimeMillis()-curTime)/1000);
+        curTime=System.currentTimeMillis();
             
-        } catch (IOException e) {
-        		throw new RuntimeException(e);
-        } 
         
 
     }
+
 //    /* Find autocorrelation peaks */
 //    public List<Integer> findPeaks() {
 //        List<Integer> peaks = new ArrayList<>();
@@ -356,35 +214,23 @@ public class NSDFChopper {
 //        return peaks;
 //    }
     
-//    void test() {
-//        double [] 	data = {2,3,-1};
-//        double [] ac1 = bruteForceAutoCorrelation(data);
-//        print("Brute force ACF: ",ac1);
-//        
-//        double [] ac2 = fftAutoCorrelation(data);
-//        print("FFT ACF: ",ac2);
-////        double [] ac2_smt = new double [data.length];
-////        smooth(ac2, ac2_smt, 1000);
-//        print("test", lagSquareSum(data));
-//        
-//    }
+
 //    static String DATA="/home/sonhoanghguyen/Projects/concatemers/data/raw/";
-    static String DATA="/home/hoangnguyen/workspace/data/concatemers/";
+    static String DATA="/home/sonhoanghguyen/Projects/concatemers/data/test/";
 	public static void main(String[] args){
 		try {
 			FastqReader reader = new FastqReader(DATA+"concat7.fastq");
 			Sequence seq=reader.nextSequence(Alphabet.DNA4());
 			NSDFChopper concat = new NSDFChopper(seq);
-			concat.printBasecalledSignal();
-			reader.close();
+//			NSDFChopper concat=new NSDFChopper(DATA+"imb17_013486_20171130__MN17279_sequencing_run_20171130_Ha_BSV_CaMV1_RBarcode_35740_read_17553_ch_455_strand.fast5");
+			concat.printRawSignal(100);
 			
+			reader.close();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
-//		NSDFChopper concat=new NSDFChopper(DATA+"imb17_013486_20171130__MN17279_sequencing_run_20171130_Ha_BSV_CaMV1_RBarcode_35740_read_17553_ch_455_strand.fast5");
-//		concat.printRawSignal();
+
 
 	}
 
