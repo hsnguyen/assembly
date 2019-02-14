@@ -69,41 +69,11 @@ public class NSDFChopper {
     		out[i]=out[i-1]+ (end-beg)/window;
     	}
     }
-    //calculate auto-correlation using FFT on DNA sequence {1,-1,i,-i}}. Not used!!!
-//    public double[] nuclAutoCorrelationFFT(double[] nuclSeq) throws IOException {
-//        int n = nuclSeq.length/2; //nuclSeq length is even!
-//        double[] 	x2 = nuclSeq,	//input signal (complex)
-//        			ac2 = new double[2*n], 	//autocorrelation in freq domain
-//        			retval = new double[n];	//result (time domain)
-//        
-//        System.out.println("Length n=" + x2.length);
-//        DoubleFFT_1D fft = new DoubleFFT_1D(n);
-//        fft.complexForward(x2);
-//        
-//        //convolute in time domain = multiple in freq domain
-//		PrintWriter writer = new PrintWriter(new FileWriter(DATA+"concat7_dft.signal.xls"));
-//		writer.print(name+" ");
-//		
-//        for (int i = 0; i < 2*n-1; i += 2) {
-//            ac2[i] = sqr(x2[i]) + sqr(x2[i+1]);
-//            ac2[i+1] = 0;
-//            writer.printf("%.5f\n",ac2[i]); //normalized it
-//        }
-//        
-//		writer.close();
-//		
-//        DoubleFFT_1D ifft = new DoubleFFT_1D(n); 
-//        ifft.complexInverse(ac2, true);
-//        for(int i=0;i<n;i++)
-//        	retval[i]=ac2[2*i];
-//        
-//        return retval;
-//
-//    }
-    
+
     //calculate r'(t) = \sum{x_j*x_{j+t}} for real signal of raw data
     public double[] signalAutoCorrelationFFT(double [] rawSeq) {
         int n = rawSeq.length;
+        double cutFreq=100;
         double[] 	x2 = Arrays.copyOf(rawSeq, 2*n),
         			ac2 = new double[2*n],
         			retval = new double[n];
@@ -112,7 +82,10 @@ public class NSDFChopper {
         ac2[0] = sqr(x2[0]);
         ac2[1] = sqr(x2[1]);
         for (int i = 2; i < 2*n-1; i += 2) {
-            ac2[i] = sqr(x2[i]) + sqr(x2[i+1]);
+        	if(i<cutFreq)
+        		ac2[i] = sqr(x2[i]) + sqr(x2[i+1]);
+        	else
+        		ac2[i] = 0;//simple
             ac2[i+1] = 0;
         }
         DoubleFFT_1D ifft = new DoubleFFT_1D(2*n); 
@@ -123,6 +96,65 @@ public class NSDFChopper {
         return retval;
 
     }
+    
+    /************************************************************
+     *  Try to use window function instead of zeroing freq domain 
+     *  Not work yet...
+     ************************************************************/
+	private double sinc(double x) {
+		if (x == 0)
+			return 1;
+		return Math.sin(Math.PI*x)/(Math.PI*x);
+	}
+    //calculate r'(t) = \sum{x_j*x_{j+t}} for real signal of raw data.
+    public double[] signalAutoCorrelationFFT2(double [] signal) {
+        int n = signal.length;
+        double cutFreq=100.0/(double)n;
+        double[] 	filter = new double[n],
+        			filterFFT = new double[n*2],
+        			signalFFT = new double[n*2],
+        			signalFiltered = new double[n];
+        
+        DoubleFFT_1D fft = new DoubleFFT_1D(n);
+    
+		for (int i = 0; i < n; i++) {
+			// see http://en.wikipedia.org/wiki/Sinc_filter
+			double sincFilter = 2*cutFreq*sinc(2*cutFreq*(i-(n-1)/2.0)/(double)(n-1));
+			// applying a Blackman window
+			filter[i] = (0.42-0.5*Math.cos((2*Math.PI*i)/(double)(n-1))+0.08*Math.cos((4*Math.PI*i)/(double)(n-1))) * sincFilter;
+		}
+
+		// copying time domain filter data to the FFT buffer
+		for (int i = 0; i < n; i++){
+			filterFFT[2*i] = filter[i];
+			filterFFT[2*i+1] = 0;
+		}
+
+
+		fft.complexForward(filterFFT);
+		
+		for (int i = 0; i < signal.length; i++){
+			signalFFT[2 * i] = signal[i];
+			signalFFT[2*i+1] = 0;
+		}
+		// calculating the fft of the data
+		fft.complexForward(signalFFT);
+		// pointwise multiplication of the filter and audio data in the frequency domain
+		for (int i = 0; i < filterFFT.length; i += 2) {
+			double temp = signalFFT[i] * filterFFT[i] - signalFFT[i+1]*filterFFT[i+1];
+			signalFFT[i+1] = signalFFT[i] * filterFFT[i+1] + signalFFT[i+1] * filterFFT[i]; // imaginary part
+			signalFFT[i] = temp; // real part
+			System.out.println(signalFFT[i] + "," + signalFFT[i+1] + ",");
+		}
+
+		fft.complexInverse(signalFFT, true);
+        
+		for(int i=0;i<n;i++)
+			signalFiltered[i]=signalFFT[2*i];
+        return signalFiltered;
+
+    }
+    /******************************************************************/
     
     //calculate m'(t) = \sum{x_j^2+x_{j+t}^2} for real signal of raw data
     public double[] lagSquareSum(double[] x) {
@@ -160,11 +192,10 @@ public class NSDFChopper {
 //        System.out.printf("Done brute force autocorrelation in  %d secs\n", (System.currentTimeMillis()-curTime)/1000);
 //        curTime=System.currentTimeMillis();
         
-        double [] 	r = signalAutoCorrelationFFT(data),
+        double [] 	r = signalAutoCorrelationFFT(data), //TODO:signalAutoCorrelationFFT2
     				m = lagSquareSum(data),
     				n = new double[data.length];
         Arrays.parallelSetAll(n, i->2*r[i]/m[i]) ;        
-        
         double [] n1k = new double [data.length];
         smooth(n, n1k, window);
         

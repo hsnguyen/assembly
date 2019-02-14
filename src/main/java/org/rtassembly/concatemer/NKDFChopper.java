@@ -87,6 +87,40 @@ public class NKDFChopper{
 //		System.out.printf("Max and closest hit at %d, distance=%d, score=%d\n",retval, min_dist,max_score);
 		return retval;
 	}
+	
+//  //calculate auto-correlation using FFT on DNA model sequence {1,-1,i,-i}}. 
+//	//copy to NSDFChopper to test>Not used!!!
+//  public double[] nuclAutoCorrelationFFT(double[] nuclSeq) throws IOException {
+//      int n = nuclSeq.length/2; //nuclSeq length is even!
+//      double[] 	x2 = nuclSeq,	//input signal (complex)
+//      			ac2 = new double[2*n], 	//autocorrelation in freq domain
+//      			retval = new double[n];	//result (time domain)
+//      
+//      System.out.println("Length n=" + x2.length);
+//      DoubleFFT_1D fft = new DoubleFFT_1D(n);
+//      fft.complexForward(x2);
+//      
+//      //convolute in time domain = multiple in freq domain
+//		PrintWriter writer = new PrintWriter(new FileWriter(DATA+"concat7_dft.signal.xls"));
+//		writer.print(name+" ");
+//		
+//      for (int i = 0; i < 2*n-1; i += 2) {
+//          ac2[i] = sqr(x2[i]) + sqr(x2[i+1]);
+//          ac2[i+1] = 0;
+//          writer.printf("%.5f\n",ac2[i]); //normalized it
+//      }
+//      
+//		writer.close();
+//		
+//      DoubleFFT_1D ifft = new DoubleFFT_1D(n); 
+//      ifft.complexInverse(ac2, true);
+//      for(int i=0;i<n;i++)
+//      	retval[i]=ac2[2*i];
+//      
+//      return retval;
+//
+//  }
+  
 	public static void main(String args[]) throws IOException {
 		/***********************************************************************/
 		String 	inputFileName = "/home/sonhoanghguyen/Projects/concatemers/data/jie/B02_A4_allpass.fastq",
