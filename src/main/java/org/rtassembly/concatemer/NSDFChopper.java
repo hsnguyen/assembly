@@ -19,6 +19,8 @@ import org.jtransforms.fft.DoubleFFT_1D;
 
 import ch.systemsx.cisd.hdf5.HDF5Factory;
 import ch.systemsx.cisd.hdf5.IHDF5Reader;
+import japsa.seq.Alphabet;
+import japsa.seq.FastqReader;
 import japsa.seq.Sequence;
 
 
@@ -27,7 +29,7 @@ public class NSDFChopper {
 	short[] signal;
 	DoubleFFT_1D fft;
     double cutFreq=100.0;
-    static int WINDOW=101; //running average window
+    static int WINDOW=2; //running average window
 
     double [] r, m, n; //follow notation in McLeod Pitch Method
     double ffreq=0.0; //fundamental freq. after FFT: f~=k for k-concatemers
@@ -78,23 +80,6 @@ public class NSDFChopper {
     private double sqr(double x) {
         return x * x;
     }
-    //Running average
-    //TODO: need another low pass filter
-    public void smooth(double[] in){
-    	double[] out = new double[in.length];
-    	double beg=in[0], end=in[WINDOW];
-    	for(int i=0;i<WINDOW;i++){
-    		out[0]+=in[i];
-    	}
-    	out[0]/=WINDOW;
-    	for(int i=1;i<in.length;i++){
-    		beg=in[i-1];
-    		end=in[(i+WINDOW-1)%in.length];
-    		out[i]=out[i-1]+ (end-beg)/WINDOW;
-    	}
-    	in=out;
-    }
-
     
     //calculate r'(t) = \sum{x_j*x_{j+t}} for real signal of raw data
     public void signalAutoCorrelationFFT(double[] rawSeq, double[] retval) {
@@ -109,11 +94,7 @@ public class NSDFChopper {
         acFFT[0] = sqr(signalFFT[0]);
         acFFT[1] = sqr(signalFFT[1]);
         for (int i = 2; i < 2*n-1; i += 2) {
-        	if(i<cutFreq){
-        		acFFT[i] = sqr(signalFFT[i]) + sqr(signalFFT[i+1]);
-        	}
-        	else
-        		acFFT[i] = 0;//simple
+        	acFFT[i] = sqr(signalFFT[i]) + sqr(signalFFT[i+1]);
             acFFT[i+1] = 0;
         }
 //        DoubleFFT_1D ifft = new DoubleFFT_1D(2*n); 
@@ -133,17 +114,17 @@ public class NSDFChopper {
 		return Math.sin(Math.PI*x)/(Math.PI*x);
 	}
     //calculate r'(t) = \sum{x_j*x_{j+t}} for real signal of raw data.
-    public void signalAutoCorrelationFFT2(double[] signal, double[] retval) {
+    public void lowPassFilter(double[] signal) {
         int n = signal.length;
         double[] 	filter = new double[n],
         			filterFFT = new double[n*2],
         			signalFFT = new double[n*2];
         
         fft = new DoubleFFT_1D(n);
-    
+        double ft=cutFreq/(double)n; //normalised transition frequency
 		for (int i = 0; i < n; i++) {
 			// see http://en.wikipedia.org/wiki/Sinc_filter
-			double sincFilter = 2*cutFreq*sinc(2*cutFreq*(i-(n-1)/2.0)/(double)(n-1));
+			double sincFilter = 2*ft*sinc(2*ft*(i-(n-1)/2.0));
 			// applying a Blackman window
 			filter[i] = (0.42-0.5*Math.cos((2*Math.PI*i)/(double)(n-1))+0.08*Math.cos((4*Math.PI*i)/(double)(n-1))) * sincFilter;
 		}
@@ -158,7 +139,7 @@ public class NSDFChopper {
 		fft.complexForward(filterFFT);
 		
 		for (int i = 0; i < signal.length; i++){
-			signalFFT[2 * i] = signal[i];
+			signalFFT[2*i] = signal[i];
 			signalFFT[2*i+1] = 0;
 		}
 		// calculating the fft of the data
@@ -168,13 +149,13 @@ public class NSDFChopper {
 			double temp = signalFFT[i] * filterFFT[i] - signalFFT[i+1]*filterFFT[i+1];
 			signalFFT[i+1] = signalFFT[i] * filterFFT[i+1] + signalFFT[i+1] * filterFFT[i]; // imaginary part
 			signalFFT[i] = temp; // real part
-			System.out.println(signalFFT[i] + "," + signalFFT[i+1] + ",");
+//			System.out.println(i/2 + " : " + signalFFT[i] + "," + signalFFT[i+1] + ",");
 		}
 
 		fft.complexInverse(signalFFT, true);
         
 		for(int i=0;i<n;i++)
-			retval[i]=signalFFT[2*i];
+			signal[(i+(n+1)/2)%n]=signalFFT[2*i]; //phase response of recursive filter: http://www.dspguide.com/ch19/4.htm
 
     }
     /******************************************************************/
@@ -220,22 +201,28 @@ public class NSDFChopper {
         System.out.printf("Done FFT autocorrelation in  %d secs\n", (System.currentTimeMillis()-curTime)/1000);
         curTime=System.currentTimeMillis();
 //        Print to file
-		PrintWriter writer = new PrintWriter(new FileWriter(DATA+"concat7_mpm.signal.xls"));
-//		writer.print(name+"\n");
-		for(double value:n)
-			writer.printf("%.5f\n",value); //normalized it
-		writer.close();
-		
-        smooth(n);
+		printArrayToFile(n,DATA+"concat7_mpm.signal.xls");
 
-		PrintWriter writer2 = new PrintWriter(new FileWriter(DATA+"concat7_mpm_"+WINDOW+".xls")); 
-		for(double value:n)
-			writer2.printf("%.5f\n",value); //normalized it
-		writer2.close();
-		
+		lowPassFilter(n);
+
+		printArrayToFile(n, DATA+"concat7_mpm_lpf.xls"); 
+	
         System.out.printf("Done writing to files in %d secs\n", (System.currentTimeMillis()-curTime)/1000);
         curTime=System.currentTimeMillis();
             
+    }
+    
+    private void printArrayToFile(double[] input,  String filename){
+		try {
+			PrintWriter writer = new PrintWriter(new FileWriter(filename));
+			for(double value:input)
+				writer.printf("%.6f\n",value);
+			writer.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
     }
 
     /* Find autocorrelation peaks */
@@ -273,17 +260,17 @@ public class NSDFChopper {
     }
     
 
-    static String DATA="/home/sonhoanghguyen/Projects/concatemers/data/raw/";
-//    static String DATA="/home/sonhoanghguyen/Projects/concatemers/data/test/";
+//    static String DATA="/home/sonhoanghguyen/Projects/concatemers/data/raw/";
+    static String DATA="/home/sonhoanghguyen/Projects/concatemers/data/test/";
 	public static void main(String[] args){
 		try {
-//			FastqReader reader = new FastqReader(DATA+"concat7.fastq");
-//			Sequence seq=reader.nextSequence(Alphabet.DNA4());
-//			NSDFChopper concat = new NSDFChopper(seq);
-			NSDFChopper concat=new NSDFChopper(DATA+"imb17_013486_20171130__MN17279_sequencing_run_20171130_Ha_BSV_CaMV1_RBarcode_35740_read_17553_ch_455_strand.fast5");
+			FastqReader reader = new FastqReader(DATA+"concat7.fastq");
+			Sequence seq=reader.nextSequence(Alphabet.DNA4());
+			NSDFChopper concat = new NSDFChopper(seq);
+//			NSDFChopper concat=new NSDFChopper(DATA+"imb17_013486_20171130__MN17279_sequencing_run_20171130_Ha_BSV_CaMV1_RBarcode_35740_read_17553_ch_455_strand.fast5");
 			concat.printRawSignal();
 //			concat.findPeaks();
-//			reader.close();
+			reader.close();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
