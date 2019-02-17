@@ -11,11 +11,15 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 
 import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
 import org.jtransforms.fft.DoubleFFT_1D;
+
+import com.google.common.util.concurrent.AtomicDouble;
 
 import ch.systemsx.cisd.hdf5.HDF5Factory;
 import ch.systemsx.cisd.hdf5.IHDF5Reader;
@@ -30,6 +34,8 @@ public class NSDFChopper {
 	DoubleFFT_1D fft;
     double cutFreq=100.0;
     static int WINDOW=2; //running average window
+    static double THRES=.5; //ignore peaks smaller than half of the max
+    static double ERROR=.2; //error rate of nanopore data
 
     double [] r, m, n; //follow notation in McLeod Pitch Method
     double ffreq=0.0; //fundamental freq. after FFT: f~=k for k-concatemers
@@ -155,7 +161,7 @@ public class NSDFChopper {
 		fft.complexInverse(signalFFT, true);
         
 		for(int i=0;i<n;i++)
-			signal[(i+(n+1)/2)%n]=signalFFT[2*i]; //phase response of recursive filter: http://www.dspguide.com/ch19/4.htm
+			signal[(i<(n-1)/2)?(i+(n+1)/2):(i-(n-1)/2)]=signalFFT[2*i]; //phase response of recursive filter: http://www.dspguide.com/ch19/4.htm
 
     }
     /******************************************************************/
@@ -227,50 +233,70 @@ public class NSDFChopper {
 
     /* Find autocorrelation peaks */
     public List<Integer> findPeaks() {
-        List<Integer> peaks = new ArrayList<>();
-        int max = 1;
-        double maxACF = 0;
-        
-        System.out.println(Arrays.toString(n));
-        
-        double 	L_BOUND=n[0]*.2,
-        		U_BOUND=n[0]*1.2;
-        System.out.printf("Lower bound=%f, upper bound=%f\n", L_BOUND, U_BOUND);
+        List<Integer> 	peaks = new ArrayList<>(),
+        				candidates = new ArrayList<>();
+//        HashMap<Integer,Double> candidates = new HashMap<>();
+        int maxIdx = -1;
+        double 	localMax=0.0, globalMax = 0.0;
+                
         if (n.length > 1) {
-            boolean positive = (n[1] > n[0]);
-            for (int i = 2; i < n.length; i++) {
-            	if(n[i]>U_BOUND)
-            		break;
-                if (!positive && n[i] > n[i - 1]) {
-                    max = i;
-                    positive = !positive;
-                } else if (positive && n[i] > n[max]) {
-                    max = i;
-                } else if (positive && n[i] < n[i - 1]) {
-                    if (max > 1 && n[max] > L_BOUND) {
-                        peaks.add(max);
-                        System.out.println("peak: " + max);
-                        if (n[max] > maxACF) { maxACF = n[max]; }
-                    }
-                    positive = !positive;
-                }
+            boolean positive = false; //positively sloped zero crossing
+            
+            for (int i = 2; i < n.length*(1-1/cutFreq); i++) {//ignore the tail cuz highly fluctuated
+            	if(n[i-1] <= 0 && n[i] > 0){
+            		if(positive && maxIdx>0){
+//            			candidates.put(maxIdx, localMax);
+            			candidates.add(maxIdx);
+            			if(globalMax<localMax)
+            				globalMax=localMax;
+            		}
+            		
+            		positive=true;
+            		maxIdx=-1;
+            		localMax=0.0;
+            	}
+            	
+            	if(n[i] > localMax){
+            		maxIdx=i;
+            		localMax=n[i];
+            	}
+            		
             }
         }
+        List<Integer> prominentPeaks = new ArrayList<>();
+        for(int i:candidates)
+        	if(n[i] > THRES*globalMax)
+        		prominentPeaks.add(i);
+        
+        //loop over prominent peaks to find chopping coordinates
+        boolean found=false;
+        while(!found){
+        	for(int period:prominentPeaks){
+        		int maxK = n.length/period;
+        		for(int i=1;i<=maxK;i++){
+        			
+        		}
+        		
+        	}
+        }
+        
+        
+        
         return peaks;
     }
     
 
-//    static String DATA="/home/sonhoanghguyen/Projects/concatemers/data/raw/";
-    static String DATA="/home/sonhoanghguyen/Projects/concatemers/data/test/";
+    static String DATA="/home/sonhoanghguyen/Projects/concatemers/data/raw/";
+//    static String DATA="/home/sonhoanghguyen/Projects/concatemers/data/test/";
 	public static void main(String[] args){
 		try {
-			FastqReader reader = new FastqReader(DATA+"concat7.fastq");
-			Sequence seq=reader.nextSequence(Alphabet.DNA4());
-			NSDFChopper concat = new NSDFChopper(seq);
-//			NSDFChopper concat=new NSDFChopper(DATA+"imb17_013486_20171130__MN17279_sequencing_run_20171130_Ha_BSV_CaMV1_RBarcode_35740_read_17553_ch_455_strand.fast5");
+//			FastqReader reader = new FastqReader(DATA+"concat7.fastq");
+//			Sequence seq=reader.nextSequence(Alphabet.DNA4());
+//			NSDFChopper concat = new NSDFChopper(seq);
+			NSDFChopper concat=new NSDFChopper(DATA+"imb17_013486_20171130__MN17279_sequencing_run_20171130_Ha_BSV_CaMV1_RBarcode_35740_read_17553_ch_455_strand.fast5");
 			concat.printRawSignal();
-//			concat.findPeaks();
-			reader.close();
+			concat.findPeaks();
+//			reader.close();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
