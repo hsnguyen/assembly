@@ -13,13 +13,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 
 import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
 import org.jtransforms.fft.DoubleFFT_1D;
-
-import com.google.common.util.concurrent.AtomicDouble;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import ch.systemsx.cisd.hdf5.HDF5Factory;
 import ch.systemsx.cisd.hdf5.IHDF5Reader;
@@ -29,16 +28,19 @@ import japsa.seq.Sequence;
 
 
 public class NSDFChopper {
+    private static final Logger LOG = LoggerFactory.getLogger(NSDFChopper.class);
+
 	String name;
 	short[] signal;
 	DoubleFFT_1D fft;
     double cutFreq=100.0;
+    static int MIN_MONOMER=2000;
     static int WINDOW=2; //running average window
     static double THRES=.5; //ignore peaks smaller than half of the max
     static double ERROR=.2; //error rate of nanopore data
 
     double [] r, m, n; //follow notation in McLeod Pitch Method
-    double ffreq=0.0; //fundamental freq. after FFT: f~=k for k-concatemers
+    List<Integer> chopper;
     public NSDFChopper(){}
 	public NSDFChopper(Sequence seq) {
 		this();
@@ -53,8 +55,27 @@ public class NSDFChopper {
 	public void setData(Sequence seq) {
 //		signal=seq.seq2sig();
 		signal=new short[seq.length()];
-		for(int i=0;i<seq.length();i++)
-			signal[i]=seq.getBase(i);
+		for(int i=0;i<seq.length();i++){
+			switch(seq.getBase(i)){
+				case 0: //A <=> -2
+					signal[i]=-2;
+					break;
+				case 1: //C <=> -1
+					signal[i]=-1;
+					break;
+				case 2: //G <=> 1
+					signal[i]=1;
+					break;
+				case 3: //T <=> 2
+					signal[i]=2;
+					break;
+				default:
+					LOG.error("Invalid DNA character (only ACGT)!");
+					System.exit(1);
+			}
+		
+		}
+		
 		if(signal==null) //unsupported DNA sequence (A,C,G,T only)
 			System.exit(1);
 		else
@@ -63,6 +84,7 @@ public class NSDFChopper {
         r = new double[signal.length];
     	m = new double[signal.length];
     	n = new double[signal.length];
+    	chopper=new ArrayList<Integer>();
 	}
 	
 	public void setData(String f5File){
@@ -81,6 +103,7 @@ public class NSDFChopper {
         r = new double[signal.length];
     	m = new double[signal.length];
     	n = new double[signal.length];
+    	chopper=new ArrayList<Integer>();
 	}
 	
     private double sqr(double x) {
@@ -103,7 +126,7 @@ public class NSDFChopper {
         	acFFT[i] = sqr(signalFFT[i]) + sqr(signalFFT[i+1]);
             acFFT[i+1] = 0;
         }
-//        DoubleFFT_1D ifft = new DoubleFFT_1D(2*n); 
+
         fft.realInverse(acFFT, true);
         for(int i=0;i<n;i++)
         	retval[i]=acFFT[i];
@@ -180,7 +203,11 @@ public class NSDFChopper {
     	
     }
 
-    void printRawSignal() throws IOException {
+    void concatemersDetection() throws IOException {
+    	LOG.info("====================================================================");
+    	/******************************************
+    	 * 1. Calculate NSDF by FFT
+    	 *****************************************/
         double [] data = new double [signal.length];
         SummaryStatistics stats=new SummaryStatistics();
         long curTime=System.currentTimeMillis();
@@ -194,31 +221,32 @@ public class NSDFChopper {
         for (int j=0;j<data.length;j++) {
             data[j] = (data[j]-mean)/std;
         }
-        System.out.printf("Done init arrays in %d secs\n", (System.currentTimeMillis()-curTime)/1000);
-        curTime=System.currentTimeMillis();
-//        double [] ac1 = bruteForceAutoCorrelation(data);
-//        System.out.printf("Done brute force autocorrelation in  %d secs\n", (System.currentTimeMillis()-curTime)/1000);
-//        curTime=System.currentTimeMillis();
-        
-        
+               
         signalAutoCorrelationFFT(data, r);
         lagSquareSum(data,m);
         Arrays.parallelSetAll(n, i->2*r[i]/m[i]) ;        
-        System.out.printf("Done FFT autocorrelation in  %d secs\n", (System.currentTimeMillis()-curTime)/1000);
-        curTime=System.currentTimeMillis();
 //        Print to file
-		printArrayToFile(n,DATA+"concat7_mpm.signal.xls");
-
+//		printArrayToFile(n,DATA+"mpm.signal.xls");
 		lowPassFilter(n);
-
-		printArrayToFile(n, DATA+"concat7_mpm_lpf.xls"); 
+//		printArrayToFile(n, DATA+"mpm_lpf.xls"); 
 	
-        System.out.printf("Done writing to files in %d secs\n", (System.currentTimeMillis()-curTime)/1000);
+        LOG.info("Done NSDF calculation in {} secs", (System.currentTimeMillis()-curTime)/1000);
         curTime=System.currentTimeMillis();
             
+    	/******************************************
+    	 * 2. Find peaks to chop
+    	 *****************************************/
+        findPeaks();
+        LOG.info("Done peak picking in {} secs", (System.currentTimeMillis()-curTime)/1000);
+        if(chopper==null||chopper.isEmpty())
+        	LOG.info("Processing read {} length={}: not a concatemer!", name, signal.length);
+        else
+        	LOG.info("Processing read {} length={}: {}-concatemers!",name, signal.length,chopper.size());
+        
     }
     
-    private void printArrayToFile(double[] input,  String filename){
+    @SuppressWarnings("unused")
+	private void printArrayToFile(double[] input,  String filename){
 		try {
 			PrintWriter writer = new PrintWriter(new FileWriter(filename));
 			for(double value:input)
@@ -232,75 +260,139 @@ public class NSDFChopper {
     }
 
     /* Find autocorrelation peaks */
-    public List<Integer> findPeaks() {
+    private void findPeaks() {
         List<Integer> 	peaks = new ArrayList<>(),
         				candidates = new ArrayList<>();
 //        HashMap<Integer,Double> candidates = new HashMap<>();
-        int maxIdx = -1;
+        int localMaxIdx = -1;
         double 	localMax=0.0, globalMax = 0.0;
                 
         if (n.length > 1) {
             boolean positive = false; //positively sloped zero crossing
             
-            for (int i = 2; i < n.length*(1-1/cutFreq); i++) {//ignore the tail cuz highly fluctuated
+            for (int i = MIN_MONOMER; i < n.length*(1-1/cutFreq); i++) {
             	if(n[i-1] <= 0 && n[i] > 0){
-            		if(positive && maxIdx>0){
+            		if(positive && localMaxIdx>0){
 //            			candidates.put(maxIdx, localMax);
-            			candidates.add(maxIdx);
-            			if(globalMax<localMax)
+            			candidates.add(localMaxIdx);
+            			if(globalMax<localMax){
             				globalMax=localMax;
+            			}
             		}
             		
             		positive=true;
-            		maxIdx=-1;
+            		localMaxIdx=-1;
             		localMax=0.0;
             	}
             	
             	if(n[i] > localMax){
-            		maxIdx=i;
+            		localMaxIdx=i;
             		localMax=n[i];
             	}
             		
             }
         }
         List<Integer> prominentPeaks = new ArrayList<>();
-        for(int i:candidates)
-        	if(n[i] > THRES*globalMax)
+        double sum=0.0;
+//		System.out.println("Candidates peaks:");
+
+        for(int i:candidates){
+        	if(n[i] > THRES*globalMax){
         		prominentPeaks.add(i);
-        
-        //loop over prominent peaks to find chopping coordinates
-        boolean found=false;
-        while(!found){
-        	for(int period:prominentPeaks){
-        		int maxK = n.length/period;
-        		for(int i=1;i<=maxK;i++){
-        			
-        		}
-        		
+            	sum+=n[i];
+//        		System.out.println(i);
         	}
         }
         
-        
-        
-        return peaks;
+        //loop over prominent peaks to find chopping coordinates
+        int period=1;
+    	for(int i=0;i<prominentPeaks.size();i++){
+    		period=prominentPeaks.get(i);//try this as the monomer length
+    		int sIdx=i;
+    		//searchNextPeak(period, i, prominenPeaks)
+    		peaks=new ArrayList<>();
+    		peaks.add(period);
+//    		System.out.printf("...adding %d to 0\n", period);
+			int k=1; //peaks.get(k) = coord of k-th monomer
+			int prevPeakCoord=peaks.get(k-1);
+			while(++sIdx<prominentPeaks.size()){
+				int coord=prominentPeaks.get(sIdx);
+				int distance=coord-prevPeakCoord;
+				if(Math.abs(distance-period) < period*ERROR){ //legal coord for next peak
+					if(peaks.size()<k+1){
+//						System.out.printf("...adding %d to %d\n", coord, k);
+						peaks.add(coord);
+					}else if(n[peaks.get(k)] < n[coord]){
+//						System.out.printf("...replacing %d to %d\n", coord, k);
+						peaks.set(k, coord);
+					}
+
+				}else if(distance > period){
+					if(peaks.size()<k+1){
+//						System.out.printf("Interrupted at %d: distance=%d > period=%d\n",coord, distance,period);
+						break; //not found next consecutive peak
+					}
+					else{
+						period=peaks.get(k)-prevPeakCoord;
+						prevPeakCoord=peaks.get(k++);
+						sIdx--;
+					}
+				}
+				
+			}
+
+    		//check if sum of spikes from peaks is greater than half of all candidates
+			double psum=peaks.stream().map(t->n[t]).reduce(0.0, Double::sum);
+//			System.out.println("psum=" + psum + " sum="+sum);
+			if(psum > sum*(1-THRES) && peaks.size()==n.length/peaks.get(0)){ //only the found peaks are significant ones
+				break;
+			}
+			else 
+				continue;
+    	}    
+//        System.out.printf("Detected %d-concatemers!\n", peaks.size());
+//        for(int i:peaks)
+//        	System.out.println(i);
+    	chopper=peaks;
     }
     
 
-    static String DATA="/home/sonhoanghguyen/Projects/concatemers/data/raw/";
-//    static String DATA="/home/sonhoanghguyen/Projects/concatemers/data/test/";
 	public static void main(String[] args){
+		NSDFChopper tony = new NSDFChopper();
+		HashMap<Integer, ArrayList<String>> histogram = new HashMap<>();
 		try {
-//			FastqReader reader = new FastqReader(DATA+"concat7.fastq");
-//			Sequence seq=reader.nextSequence(Alphabet.DNA4());
-//			NSDFChopper concat = new NSDFChopper(seq);
-			NSDFChopper concat=new NSDFChopper(DATA+"imb17_013486_20171130__MN17279_sequencing_run_20171130_Ha_BSV_CaMV1_RBarcode_35740_read_17553_ch_455_strand.fast5");
-			concat.printRawSignal();
-			concat.findPeaks();
-//			reader.close();
+			FastqReader reader = new FastqReader(args[0]);
+			Sequence seq=null;
+			while((seq=reader.nextSequence(Alphabet.DNA4()))!=null){
+				tony.setData(seq);
+				tony.concatemersDetection();
+				if(tony.chopper!=null && !tony.chopper.isEmpty()){
+					int key=tony.chopper.size();
+					ArrayList<String> clist=histogram.get(key);
+					if(clist==null){
+						clist=new ArrayList<>();
+						histogram.put(key, clist);
+					}
+					clist.add(tony.name);
+						
+				}
+			}
+
+			reader.close();
+			
+			PrintWriter writer = new PrintWriter(new FileWriter(args[1]));
+			for(int key:histogram.keySet()){
+				writer.printf(">%d\n",key);
+				for(String read:histogram.get(key))
+					writer.printf("%s\n",read);
+			}
+			writer.close();
+			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		
 
 //        /**********************************************************
 //         * Print GC to investigate why it takes so long to finish up
