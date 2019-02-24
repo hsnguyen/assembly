@@ -33,9 +33,9 @@ public class NSDFChopper {
 	String name;
 	short[] signal;
 	DoubleFFT_1D fft;
-    double cutFreq=100.0;
-    static int MIN_MONOMER=2000;
-    static int WINDOW=2; //running average window
+    public static int CUTOFF_FREQ=100;
+    public static int MIN_MONOMER=2000;
+//    static int WINDOW=2; //running average window
     static double THRES=.5; //ignore peaks smaller than half of the max
     static double ERROR=.2; //error rate of nanopore data
 
@@ -106,10 +106,23 @@ public class NSDFChopper {
     	chopper=new ArrayList<Integer>();
 	}
 	
+	public List<Integer> chopper(){
+		return chopper;
+	}
+	public String getName(){return name;}
+	
     private double sqr(double x) {
         return x * x;
     }
     
+	private double sinc(double x) {
+		if (x == 0)
+			return 1;
+		return Math.sin(Math.PI*x)/(Math.PI*x);
+	}
+    
+	/**********************************************************************/
+	
     //calculate r'(t) = \sum{x_j*x_{j+t}} for real signal of raw data
     public void signalAutoCorrelationFFT(double[] rawSeq, double[] retval) {
         int n = rawSeq.length;
@@ -132,16 +145,24 @@ public class NSDFChopper {
         	retval[i]=acFFT[i];
         
     }
+    //calculate m'(t) = \sum{x_j^2+x_{j+t}^2} for real signal of raw data
+    public void lagSquareSum(double[] x, double[] retval) {
+    	double[] 	xsqr = new double[x.length];
+    	
+    	Arrays.parallelSetAll(xsqr, i->sqr(x[i]));
+    	double ssqr = DoubleStream.of(xsqr).parallel().sum();
+    	
+    	retval[0]=2*ssqr;
+    	for(int i=1;i<x.length;i++) {
+    		retval[i]=retval[i-1]-xsqr[i-1]-xsqr[x.length-i];
+    	}
+    	
+    }
     
     /************************************************************
      *  Try to use window function instead of zeroing freq domain 
      *  Not work yet...
      ************************************************************/
-	private double sinc(double x) {
-		if (x == 0)
-			return 1;
-		return Math.sin(Math.PI*x)/(Math.PI*x);
-	}
     //calculate r'(t) = \sum{x_j*x_{j+t}} for real signal of raw data.
     public void lowPassFilter(double[] signal) {
         int n = signal.length;
@@ -150,7 +171,7 @@ public class NSDFChopper {
         			signalFFT = new double[n*2];
         
         fft = new DoubleFFT_1D(n);
-        double ft=cutFreq/(double)n; //normalised transition frequency
+        double ft=1.0*CUTOFF_FREQ/(double)n; //normalised transition frequency
 		for (int i = 0; i < n; i++) {
 			// see http://en.wikipedia.org/wiki/Sinc_filter
 			double sincFilter = 2*ft*sinc(2*ft*(i-(n-1)/2.0));
@@ -188,29 +209,15 @@ public class NSDFChopper {
 
     }
     /******************************************************************/
-    
-    //calculate m'(t) = \sum{x_j^2+x_{j+t}^2} for real signal of raw data
-    public void lagSquareSum(double[] x, double[] retval) {
-    	double[] 	xsqr = new double[x.length];
-    	
-    	Arrays.parallelSetAll(xsqr, i->sqr(x[i]));
-    	double ssqr = DoubleStream.of(xsqr).parallel().sum();
-    	
-    	retval[0]=2*ssqr;
-    	for(int i=1;i<x.length;i++) {
-    		retval[i]=retval[i-1]-xsqr[i-1]-xsqr[x.length-i];
-    	}
-    	
-    }
 
-    void concatemersDetection() throws IOException {
+    public void concatemersDetection() throws IOException {
     	LOG.info("====================================================================");
     	/******************************************
     	 * 1. Calculate NSDF by FFT
     	 *****************************************/
         double [] data = new double [signal.length];
         SummaryStatistics stats=new SummaryStatistics();
-        long curTime=System.currentTimeMillis();
+//        long curTime=System.currentTimeMillis();
 
         for (int j=0;j<signal.length;j++) {
             data[j] = (double)signal[j];
@@ -226,18 +233,18 @@ public class NSDFChopper {
         lagSquareSum(data,m);
         Arrays.parallelSetAll(n, i->2*r[i]/m[i]) ;        
 //        Print to file
-//		printArrayToFile(n,DATA+"mpm.signal.xls");
+//		printArrayToFile(n, "mpm.signal.xls");
 		lowPassFilter(n);
-//		printArrayToFile(n, DATA+"mpm_lpf.xls"); 
+//		printArrayToFile(n, "mpm_lpf.xls"); 
 	
-        LOG.info("Done NSDF calculation in {} secs", (System.currentTimeMillis()-curTime)/1000);
-        curTime=System.currentTimeMillis();
+//        LOG.info("Done NSDF calculation in {} secs", (System.currentTimeMillis()-curTime)/1000);
+//        curTime=System.currentTimeMillis();
             
     	/******************************************
     	 * 2. Find peaks to chop
     	 *****************************************/
         findPeaks();
-        LOG.info("Done peak picking in {} secs", (System.currentTimeMillis()-curTime)/1000);
+//        LOG.info("Done peak picking in {} secs", (System.currentTimeMillis()-curTime)/1000);
         if(chopper==null||chopper.isEmpty())
         	LOG.info("Processing read {} length={}: not a concatemer!", name, signal.length);
         else
@@ -270,7 +277,7 @@ public class NSDFChopper {
         if (n.length > 1) {
             boolean positive = false; //positively sloped zero crossing
             
-            for (int i = MIN_MONOMER; i < n.length*(1-1/cutFreq); i++) {
+            for (int i = MIN_MONOMER; i < n.length*(1-1.0/(double)CUTOFF_FREQ); i++) {
             	if(n[i-1] <= 0 && n[i] > 0){
             		if(positive && localMaxIdx>0){
 //            			candidates.put(maxIdx, localMax);
