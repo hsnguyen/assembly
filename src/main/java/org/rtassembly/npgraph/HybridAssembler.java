@@ -274,7 +274,7 @@ public class HybridAssembler {
 				idxCmd.add("index");
 
         	}else {
-        		setErrorLog("Invalide aligner! Set to BWA or minimap2 please!");
+        		setErrorLog("Invalid aligner! Set to BWA or minimap2 please!");
         		return false;
         	}
 			idxCmd.add(getPrefix()+"/assembly_graph.fasta");

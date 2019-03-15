@@ -41,6 +41,10 @@ public class NSDFChopper {
 
     double [] r, m, n; //follow notation in McLeod Pitch Method
     List<Integer> chopper;
+    
+    //monomers bin sorted by length of the monomer sequence
+    ArrayList<MonomersBin> binList=new ArrayList<>();
+    
     public NSDFChopper(){}
 	public NSDFChopper(Sequence seq) {
 		this();
@@ -121,6 +125,19 @@ public class NSDFChopper {
 		return Math.sin(Math.PI*x)/(Math.PI*x);
 	}
     
+	private void normalized(short[] input, double [] output){
+		output = new double[input.length];
+        SummaryStatistics stats=new SummaryStatistics();
+        for (int j=0;j<input.length;j++) {
+            output[j] = (double)input[j];
+            stats.addValue(input[j]);
+        }
+        double 	mean=stats.getMean(),
+        		std=stats.getStandardDeviation();
+        for (int j=0;j<output.length;j++) {
+        	output[j] = (output[j]-mean)/std;
+        }
+	}
 	/**********************************************************************/
 	
     //calculate r'(t) = \sum{x_j*x_{j+t}} for real signal of raw data
@@ -130,9 +147,7 @@ public class NSDFChopper {
         			acFFT = new double[2*n];
         fft = new DoubleFFT_1D(2*n);
         fft.realForward(signalFFT);
-        
-        
-        
+              
         acFFT[0] = sqr(signalFFT[0]);
         acFFT[1] = sqr(signalFFT[1]);
         for (int i = 2; i < 2*n-1; i += 2) {
@@ -145,6 +160,37 @@ public class NSDFChopper {
         	retval[i]=acFFT[i];
         
     }
+    
+    public void signalCrossCorrelationFFT(double[] query, double[] template, double[] retval) {
+    	double[] s1,s2;
+    	int l=(query.length>template.length?query.length:template.length);
+    	s1=Arrays.copyOf(query, l);
+    	s2=Arrays.copyOf(template, l);
+    	
+    	fft=new DoubleFFT_1D(l);
+    	fft.realForward(s1);
+    	fft.realForward(s2);
+    	
+    	//https://dsp.stackexchange.com/questions/736/how-do-i-implement-cross-correlation-to-prove-two-audio-files-are-similar
+    	//corr(a, b) = ifft(fft(a_and_zeros) * conj(fft(b_and_zeros)))
+    	
+    	retval=new double[l];
+    	retval[0]=s1[0]*s2[0];
+    	for(int i=1; i<l/2; i++){
+    		retval[2*i]=s1[2*i]*s2[2*i]+s1[2*i+1]*s2[2*i+1];
+    		retval[2*i+1]=s2[2*i]*s1[2*i+1]-s2[2*i+1]*s1[2*i];		
+    	}
+    	if(l%2==0)
+    		retval[1]=s1[1]*s2[1];
+    	else{
+    		retval[l-1]=s1[l-1]*s2[1]+s1[1]*s2[l-1];
+    		retval[1]=s1[1]*s2[l-1]-s1[l-1]*s2[1];
+    	}
+
+        fft.realInverse(retval, true);
+        
+    }
+    
     //calculate m'(t) = \sum{x_j^2+x_{j+t}^2} for real signal of raw data
     public void lagSquareSum(double[] x, double[] retval) {
     	double[] 	xsqr = new double[x.length];
@@ -155,6 +201,28 @@ public class NSDFChopper {
     	retval[0]=2*ssqr;
     	for(int i=1;i<x.length;i++) {
     		retval[i]=retval[i-1]-xsqr[i-1]-xsqr[x.length-i];
+    	}
+    	
+    }
+    
+    public void lagSquareSum(double[] x, double[] y, double[] retval) {
+    	double[] s1,s2;
+    	int l=(x.length>y.length?x.length:y.length);
+    	s1=Arrays.copyOf(x, l);
+    	s2=Arrays.copyOf(y, l);
+    	
+    	double[] 	s1sqr = new double[l], 
+    				s2sqr = new double[l];
+    	
+    	Arrays.parallelSetAll(s1sqr, i->sqr(s1[i]));
+    	Arrays.parallelSetAll(s2sqr, i->sqr(s2[i]));
+    	double 	s1ssqr = DoubleStream.of(s1sqr).parallel().sum(),
+    			s2ssqr = DoubleStream.of(s2sqr).parallel().sum();
+    	
+    	retval[0]=s1ssqr+s2ssqr;
+    	
+    	for(int i=1;i<l;i++) {
+    		retval[i]=retval[i-1]-s1sqr[i-1]-s2sqr[x.length-i];
     	}
     	
     }
@@ -215,22 +283,14 @@ public class NSDFChopper {
     	/******************************************
     	 * 1. Calculate NSDF by FFT
     	 *****************************************/
-        double [] data = new double [signal.length];
-        SummaryStatistics stats=new SummaryStatistics();
-//        long curTime=System.currentTimeMillis();
-
-        for (int j=0;j<signal.length;j++) {
-            data[j] = (double)signal[j];
-            stats.addValue(signal[j]);
-        }
-        double 	mean=stats.getMean(),
-        		std=stats.getStandardDeviation();
-        for (int j=0;j<data.length;j++) {
-            data[j] = (data[j]-mean)/std;
-        }
-               
+        double [] data = null;
+        
+        normalized(signal, data);       
+        
         signalAutoCorrelationFFT(data, r);
+        
         lagSquareSum(data,m);
+        
         Arrays.parallelSetAll(n, i->2*r[i]/m[i]) ;        
 //        Print to file
 //		printArrayToFile(n, "mpm.signal.xls");
@@ -243,7 +303,7 @@ public class NSDFChopper {
     	/******************************************
     	 * 2. Find peaks to chop
     	 *****************************************/
-        findPeaks();
+        chopper=findPeaks(n);
 //        LOG.info("Done peak picking in {} secs", (System.currentTimeMillis()-curTime)/1000);
         if(chopper==null||chopper.isEmpty())
         	LOG.info("Processing read {} length={}: not a concatemer!", name, signal.length);
@@ -267,18 +327,18 @@ public class NSDFChopper {
     }
 
     /* Find autocorrelation peaks */
-    private void findPeaks() {
+    private List<Integer> findPeaks(double[] signal) {
         List<Integer> 	peaks = new ArrayList<>(),
         				candidates = new ArrayList<>();
 //        HashMap<Integer,Double> candidates = new HashMap<>();
         int localMaxIdx = -1;
         double 	localMax=0.0, globalMax = 0.0;
                 
-        if (n.length > 1) {
+        if (signal.length > 1) {
             boolean positive = false; //positively sloped zero crossing
             
-            for (int i = MIN_MONOMER; i < n.length*(1-1.0/(double)CUTOFF_FREQ); i++) {
-            	if(n[i-1] <= 0 && n[i] > 0){
+            for (int i = MIN_MONOMER; i < signal.length*(1-1.0/(double)CUTOFF_FREQ); i++) {
+            	if(signal[i-1] <= 0 && signal[i] > 0){
             		if(positive && localMaxIdx>0){
 //            			candidates.put(maxIdx, localMax);
             			candidates.add(localMaxIdx);
@@ -292,9 +352,9 @@ public class NSDFChopper {
             		localMax=0.0;
             	}
             	
-            	if(n[i] > localMax){
+            	if(signal[i] > localMax){
             		localMaxIdx=i;
-            		localMax=n[i];
+            		localMax=signal[i];
             	}
             		
             }
@@ -304,9 +364,9 @@ public class NSDFChopper {
 //		System.out.println("Candidates peaks:");
 
         for(int i:candidates){
-        	if(n[i] > THRES*globalMax){
+        	if(signal[i] > THRES*globalMax){
         		prominentPeaks.add(i);
-            	sum+=n[i];
+            	sum+=signal[i];
 //        		System.out.println(i);
         	}
         }
@@ -329,7 +389,7 @@ public class NSDFChopper {
 					if(peaks.size()<k+1){
 //						System.out.printf("...adding %d to %d\n", coord, k);
 						peaks.add(coord);
-					}else if(n[peaks.get(k)] < n[coord]){
+					}else if(signal[peaks.get(k)] < signal[coord]){
 //						System.out.printf("...replacing %d to %d\n", coord, k);
 						peaks.set(k, coord);
 					}
@@ -349,9 +409,9 @@ public class NSDFChopper {
 			}
 
     		//check if sum of spikes from peaks is greater than half of all candidates
-			double psum=peaks.stream().map(t->n[t]).reduce(0.0, Double::sum);
+			double psum=peaks.stream().map(t->signal[t]).reduce(0.0, Double::sum);
 //			System.out.println("psum=" + psum + " sum="+sum);
-			if(psum > sum*(1-THRES) && peaks.size()==n.length/peaks.get(0)){ //only the found peaks are significant ones
+			if(psum > sum*(1-THRES) && peaks.size()==signal.length/peaks.get(0)){ //only the found peaks are significant ones
 				break;
 			}
 			else 
@@ -360,9 +420,41 @@ public class NSDFChopper {
 //        System.out.printf("Detected %d-concatemers!\n", peaks.size());
 //        for(int i:peaks)
 //        	System.out.println(i);
-    	chopper=peaks;
+    	return peaks;
     }
     
+    //scan the list of bins and put the extracted monomers into appropriate one
+    public void clustering(){
+    	if(chopper==null || chopper.isEmpty())
+    		return;
+    	int mLen=chopper.get(0)+1, idx;
+    	short[] monomer = Arrays.copyOfRange(signal, 0, mLen-1);
+		boolean found=false;
+    	MonomersBin bin=null;
+    	
+		for(idx=0;idx<binList.size();idx++){
+    		bin=binList.get(idx);
+    		//too short
+    		if(bin.getLength() < .8*mLen){
+    			continue;
+    		}
+    		//too long
+    		if(bin.getLength() > 1.2*mLen){
+    			break;
+    		}
+    		
+    		int lag=-1;
+    		short[] template = bin.getMonomerSignal();
+    		
+    		if(lag>0){
+    			found=true;
+    			bin.addToBin(name, signal, chopper, lag);
+    			break;
+    		}
+    	}
+		if(!found)
+			binList.add(idx, new MonomersBin(monomer));
+    }
 
 	public static void main(String[] args){
 		NSDFChopper tony = new NSDFChopper();
