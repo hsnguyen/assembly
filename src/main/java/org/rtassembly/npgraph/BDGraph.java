@@ -692,8 +692,6 @@ public class BDGraph extends MultiGraph{
     				continue;
     			
     			curBuildingBlocks.setEFlag(flag);
-    			//do smt here instead of storing it!!! Parameters: curBuildingBlocks + flag + curBin
-				//TODO: implement the bridge building here, EVERYTHING
     			////////////////////////////////////////////////////////////////////////////////////
     			
     			retrievedPaths.addAll(buildBridge(curBuildingBlocks, curBin));

@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory;
 public class GoInBetweenBridge {
 	private static final Logger LOG = LoggerFactory.getLogger(GoInBetweenBridge.class);
 	
-	BDGraph graph; //partial order graph saving possible paths
+	BDGraph graph;
 	PopBin bin;
 	BDEdgePrototype pBridge; //note: the ending nodes must be unique, or else omitted
 	ArrayList<BridgeSegment> segments;
