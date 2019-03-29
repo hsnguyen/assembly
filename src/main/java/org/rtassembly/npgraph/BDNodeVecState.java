@@ -10,16 +10,16 @@ import java.util.Objects;
 public class BDNodeVecState implements Comparable<BDNodeVecState>{
 	BDNode node;
 	ScaffoldVector vector;
-	int nodeCover=1; //alignment score + number of occurences?
+	double nvsScore=0.0; //alignment score + number of occurences?
 	
 	BDNodeVecState(BDNode node, ScaffoldVector vector){
 		this.node=node;
 		this.vector=vector;
 	}
 	
-	public BDNodeVecState(BDNode node, ScaffoldVector vector, int cov) {
+	public BDNodeVecState(BDNode node, ScaffoldVector vector, double score) {
 		this(node, vector);
-		this.nodeCover=cov;
+		this.nvsScore=score;
 	}
 	public BDNode getNode(){return node;}
 	public ScaffoldVector getVector(){return vector;}
@@ -34,7 +34,7 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 	}
 	@Override
 	public String toString(){
-		return node.getId() + ":" + vector.toString() + ":" + nodeCover;
+		return node.getId() + ":" + vector.toString() + ":" + nvsScore;
 	}
 	
 	//compare in term of distance to the root node: for sortedset
@@ -87,7 +87,7 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 
     }
 	public boolean qc() {
-		return nodeCover >= BDGraph.MIN_COVER;
+		return nvsScore >= BDGraph.MIN_SCORE;
 	}
 
 	//Merging 2 equal NodeVectors
@@ -99,11 +99,11 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 						thatVector=nv.getVector();
 		//update the vector
 		if(!thisVector.isIdentity()){
-			thisVector.setMagnitute( (thisVector.getMagnitute()*this.nodeCover+thatVector.getMagnitute()*nv.nodeCover)/(this.nodeCover+nv.nodeCover));
+			thisVector.setMagnitute( (int)((thisVector.getMagnitute()*this.nvsScore+thatVector.getMagnitute()*nv.nvsScore)/(this.nvsScore+nv.nvsScore)));
 		}
 		
 		//update coverage
-		this.nodeCover+=nv.nodeCover;
+		this.nvsScore+=nv.nvsScore;
 		return true;
 	}
 }

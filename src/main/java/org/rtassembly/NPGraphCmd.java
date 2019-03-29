@@ -58,7 +58,7 @@ public class NPGraphCmd extends CommandLine{
 				gui = cmdLine.getBooleanVal("gui");
 			
 		Alignment.MIN_QUAL = cmdLine.getIntVal("qual");
-		BDGraph.MIN_COVER=cmdLine.getIntVal("mcov");
+		BDGraph.MIN_SCORE=cmdLine.getIntVal("mcov");
 		//Default output dir 
 		if(outputDir == null) {
 			outputDir = new File(shortReadsInput).getAbsoluteFile().getParent();

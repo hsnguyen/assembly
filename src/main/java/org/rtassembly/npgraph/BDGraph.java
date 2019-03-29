@@ -42,7 +42,7 @@ public class BDGraph extends MultiGraph{
     public static int MAX_DFS_PATHS=100; //maximum number of candidate DFS paths
     
 	public static volatile int MAX_DIFF=5;//safe distance between good and bad possible paths so we can discard the bad ones
-	public static volatile int MIN_COVER=3;//number of reads spanning 2 ends of an bridge for it to be considered complete 
+	public static volatile int MIN_SCORE=3;//minimum score of a confident component (nodevecstate) of a bridge
 
 	
     //provide mapping from unique directed node to its corresponding bridge

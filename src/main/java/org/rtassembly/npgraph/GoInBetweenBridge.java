@@ -641,7 +641,7 @@ public class GoInBetweenBridge {
 				if(tmp.merge(nv)){
 					//re-assign end node if there is another unique node with higher score
 					if(SimpleBinner.getBinIfUnique(tmp.getNode())!=null && !tmp.getVector().isIdentity()) {
-						if(!end.equals(tmp) && (end.nodeCover < tmp.nodeCover))
+						if(!end.equals(tmp) && (end.nvsScore < tmp.nvsScore))
 							end=tmp;		
 					}
 					//nv is already in the set
