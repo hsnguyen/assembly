@@ -16,7 +16,8 @@ import org.slf4j.LoggerFactory;
 
 public class BDPath extends Path{
 	//TODO: edit-distance(none from alignment) + coverage traversed??
-	private int deviation, vote=0; 
+	private int deviation;
+	private double pathScore=0.0; 
     private long len=0;
 	private static final Logger LOG = LoggerFactory.getLogger(BDPath.class);
     private PopBin uniqueBin;//the unique population bin that this path belongs to (can only be set from outside)
@@ -51,7 +52,7 @@ public class BDPath extends Path{
 		}
 		deviation=p.deviation;
 		len=p.len;
-		vote=p.vote;
+		pathScore=p.pathScore;
 		uniqueBin=p.uniqueBin;
 	}
 	
@@ -123,7 +124,7 @@ public class BDPath extends Path{
 		List<Edge> edges = this.getEdgePath();
 		for(int i = edges.size()-1; i>=0; i--)
 			rcPath.add(edges.get(i));
-		rcPath.vote=vote;
+		rcPath.pathScore=pathScore;
 		return rcPath;
 	}
 	//It is not really ID because Path doesn't need an ID
@@ -265,14 +266,12 @@ public class BDPath extends Path{
 		this.deviation=deviation;
 	}
 
-	public void upVote(int score) {
-		vote+=score;
+	public void changePathScore(double score) {
+		pathScore+=score;
 	}
-	public void downVote(int score){
-		vote-=score;
-	}
-	public int getVote() {
-		return vote;
+
+	public double getPathScore() {
+		return pathScore;
 	}
 	public long getLength() {
 		return len;

@@ -311,7 +311,7 @@ public class GoInBetweenBridge {
 				retval += "()";
 			else
 				for(BDPath path:seg.connectedPaths)
-					retval+="( "+path.getId()+ " : vote=" + path.getVote() + " deviation=" + path.getDeviation() + " )";
+					retval+="( "+path.getId()+ " : vote=" + path.getPathScore() + " deviation=" + path.getDeviation() + " )";
 			retval+="\n";
 		}
 		retval+="}";
@@ -344,7 +344,7 @@ public class GoInBetweenBridge {
 			
 			if(seg.getNumberOfPaths()>0){
 				if(seg.getNumberOfPaths()>1)
-					seg.connectedPaths.sort(Comparator.comparing(BDPath::getVote, Comparator.reverseOrder()).thenComparing(BDPath::getDeviation));	
+					seg.connectedPaths.sort(Comparator.comparing(BDPath::getPathScore, Comparator.reverseOrder()).thenComparing(BDPath::getDeviation));	
 				
 				best=seg.connectedPaths.get(0);
 				if(retval==null)
@@ -388,7 +388,7 @@ public class GoInBetweenBridge {
 		return retval;
 	}
 	
-	//TODO: combination of getBestPath() + countPathsBetween() + path.chopAtAnchors()
+	//combination of getBestPath() + countPathsBetween() + path.chopAtAnchors()
 	//return new unique path to reduce in a building bridge
 	public List<BDPath> scanForNewUniquePaths(){
 		if(segments==null || segments.isEmpty())
@@ -437,7 +437,6 @@ public class GoInBetweenBridge {
 			BDNodeVecState tmp=ite.next();
 			if(!tmp.qc() && !force)
 				continue;
-			//TODO: find furthest or closest marker??
 			if(tmp==steps.start || tmp==steps.end) //there is no (new) end detected
 				return false;
 			
@@ -464,7 +463,7 @@ public class GoInBetweenBridge {
 		BDEdgePrototype pSegment;
 //		ScaffoldVector startV, endV; // from bridge anchor (always +) to this segment's end
 		BDNodeVecState startNV, endNV;
-		int bestElections=0;
+		double bestPathScore=0.0;
 		BridgeSegment(){}
 
 		BridgeSegment(Alignment start, Alignment end, AlignedRead read, boolean force){
@@ -538,15 +537,16 @@ public class GoInBetweenBridge {
 				ScaffoldVector start2nv=ScaffoldVector.composition(nv.getVector(), ScaffoldVector.reverse(getStartVector()));
 				int d=start2nv.distance((BDNode) pSegment.getNode0(), nv.getNode());
 				for(BDPath p:connectedPaths) {
+					//TODO: increase agreed path, decrease others an appropriate amount
 					if(p.checkDistanceConsistency(pSegment.getNode0(), nv.getNode(), start2nv.direction>0, d) >= 0) {
-						p.upVote(1);
-						if(p.getVote() > bestElections)
-							bestElections=p.getVote();
+						p.changePathScore(.1);
+						if(p.getPathScore() > bestPathScore)
+							bestPathScore=p.getPathScore();
 						retval++;
 					}
 					else{
-						p.downVote(1);
-						if(p.getVote() < bestElections-BDGraph.MAX_DIFF)
+						p.changePathScore(-.1);
+						if(p.getPathScore() < bestPathScore-BDGraph.MAX_DIFF)
 							tobeRemoved.add(p);
 					}
 				}
@@ -630,8 +630,7 @@ public class GoInBetweenBridge {
 	
 		
 		void addNode(BDNodeVecState nv) {
-			//TODO: optimize it! hashmap??? not linear searching like this!
-			//FIXME: acting weird, not call equals() properly for 141o,20o: Because TreeSet used compareTo() instead of equals()!!! 
+			//NOTE: acting weird, not call equals() properly for 141o,20o: Because TreeSet used compareTo() instead of equals()!!! 
 			//(https://dzone.com/articles/the-hidden-contract-between-equals-and-comparable)
 			
 			Iterator<BDNodeVecState> ite = nodes.iterator();
@@ -663,37 +662,6 @@ public class GoInBetweenBridge {
 			}
 
 			
-//			if(nodes.contains(nv)){
-//				System.out.println("Found " + nv);
-//				Iterator<BDNodeVecState> ite = nodes.iterator();
-//				while(ite.hasNext()){
-//					BDNodeVecState tmp=ite.next();
-//					if(tmp.equals(nv)){
-//						tmp.score+=nv.score;
-//						//assign end node
-//						if(SimpleBinner.getUniqueBin(tmp.getNode())!=null && !tmp.getVector().isIdentity()) {
-//							if(end==null)
-//								end=tmp;
-//							else if(!end.equals(tmp)){
-//								if(end.score < tmp.score)
-//									end=tmp;
-//								else
-//									System.out.println("Conflict detected on end node: " + tmp.toString() + " to " + end.toString());
-//							}
-//							
-//						}
-//						break;
-//
-//					}
-//				}
-//				
-//			}else {
-//				System.out.println("Not Found " + nv);
-//				//assign start node
-//				if(SimpleBinner.getUniqueBin(nv.getNode())!=null && nv.getVector().isIdentity())
-//					start=nv;
-//				nodes.add(nv);
-//			}
 		}
 			
 		
