@@ -265,14 +265,25 @@ public class BDPath extends Path{
 	public void setDeviation(int deviation){
 		this.deviation=deviation;
 	}
-
-	public void changePathScore(double score) {
-		pathScore+=score;
+	//set path score actively
+	public void setPathScore(double score) {
+		pathScore=score;
 	}
-
-	public double getPathScore() {
+	public double getPathScore() {	
 		return pathScore;
 	}
+	public void updateScore(){
+		pathScore=1.0;
+		for(Edge e:getEdgePath()){
+			if(e.hasAttribute("score"))
+				pathScore*=e.getNumber("score");
+			else{
+				pathScore=0.0;
+				return;
+			}
+		}		
+	}
+
 	public long getLength() {
 		return len;
 	}

@@ -471,12 +471,13 @@ public class BDGraph extends MultiGraph{
 //					System.out.println(" -> distance = " + distance);
 				}else {
 					curEdge=(BDEdge) curList.remove(0);
-					BDNode from = (BDNode) path.peekNode(),
-									to = (BDNode) curEdge.getOpposite(from);
+					BDNode 	from = (BDNode) path.peekNode(),
+							to = (BDNode) curEdge.getOpposite(from);
 					boolean dir = curEdge.getDir(to);
 
 					AtomicInteger limit = new AtomicInteger(distance + tolerance);
-			    	stack.push(
+			    	//get possible next edges to traverse
+					curList = (
 			    			(curEdge.getDir(to)?to.enteringEdges():to.leavingEdges())
 			    			.filter(e->{
 			    				BDNode n=(BDNode) e.getOpposite(to);
@@ -486,6 +487,12 @@ public class BDGraph extends MultiGraph{
 			    			})
 			    			.collect(Collectors.toList())			    			
 			    			);
+			    	//TODO: set score for each candidate edges based on nodes on the other end
+			    	//score=(1-exp(-phred/10))*(1-exp(-c_node/c_path))*(log(l_node-kmer))???
+					//where: phred alignment score of long read to this node if applicable, 
+					//c_node: current node coverage, c_path: path coverage, l_node: length, kmer: dBG kmer length
+			    	
+			    	stack.push(curList);
 			    	
 					path.add(curEdge);
 

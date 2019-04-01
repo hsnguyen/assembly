@@ -311,7 +311,7 @@ public class GoInBetweenBridge {
 				retval += "()";
 			else
 				for(BDPath path:seg.connectedPaths)
-					retval+="( "+path.getId()+ " : vote=" + path.getPathScore() + " deviation=" + path.getDeviation() + " )";
+					retval+="( "+path.getId()+ " : score=" + path.getPathScore() + " deviation=" + path.getDeviation() + " )";
 			retval+="\n";
 		}
 		retval+="}";
@@ -539,13 +539,13 @@ public class GoInBetweenBridge {
 				for(BDPath p:connectedPaths) {
 					//TODO: increase agreed path, decrease others an appropriate amount
 					if(p.checkDistanceConsistency(pSegment.getNode0(), nv.getNode(), start2nv.direction>0, d) >= 0) {
-						p.changePathScore(.1);
+						p.setPathScore(.1);
 						if(p.getPathScore() > bestPathScore)
 							bestPathScore=p.getPathScore();
 						retval++;
 					}
 					else{
-						p.changePathScore(-.1);
+						p.setPathScore(-.1);
 						if(p.getPathScore() < bestPathScore-BDGraph.MAX_DIFF)
 							tobeRemoved.add(p);
 					}
