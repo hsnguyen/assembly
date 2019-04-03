@@ -479,29 +479,16 @@ public class BDGraph extends MultiGraph{
 
 					final int 	limit = distance + tolerance;
 			    	//get possible next edges to traverse
-					final List<Edge> list = new ArrayList<>(); 
-					AtomicDouble totScore=new AtomicDouble();		
-	    			(curEdge.getDir(to)?to.enteringEdges():to.leavingEdges())
-	    			.forEach(e->{
-	    				BDNode n=(BDNode) e.getOpposite(to);
-	    				BDNodeState ns = new BDNodeState(n, ((BDEdge) e).getDir(n));
-	    				
-	    				if(shortestMap.containsKey(ns.toString()) && shortestMap.get(ns.toString()) < limit){
-	    			    	//set score for each candidate edges based on nodes on the other end
-	    			    	//score=(1-exp(-phred/10))*(1-exp(-c_node/c_path))*(l_node-kmer)/(l_path-kmer)???
-	    					double s=path.getExtendLikelihood(n);
-	    					e.setAttribute("score", s);		
-	    					totScore.addAndGet(s);
-	    					//then add this edge to candidate list
-	    					list.add(e);
-	    				}
-	    				
-	    			});
-	    			//standardize the scores + remove insignificant ones.
-			    	
-	    			
-	    			
-			    	stack.push(list);
+					stack.push(
+							(curEdge.getDir(to)?to.enteringEdges():to.leavingEdges())
+			    			.filter(e->{
+			    				BDNode n=(BDNode) e.getOpposite(to);
+			    				BDNodeState ns = new BDNodeState(n, ((BDEdge) e).getDir(n));
+			    				
+			    				return (shortestMap.containsKey(ns.toString()) && shortestMap.get(ns.toString()) < limit);  				
+			    			})
+			    			.collect(Collectors.toList())
+					);
 			    	
 					path.add(curEdge);
 
@@ -537,6 +524,7 @@ public class BDGraph extends MultiGraph{
 			}
 		} 
 		
+		//TODO: standardize the scores + remove insignificant ones.
 		
 		if(possiblePaths.isEmpty()){
 			if(SimpleBinner.getBinIfUnique(srcNode)!=null && SimpleBinner.getBinIfUnique(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 && force){
