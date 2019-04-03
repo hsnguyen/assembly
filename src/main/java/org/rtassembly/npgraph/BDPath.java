@@ -381,4 +381,24 @@ public class BDPath extends Path{
 			return null;
 		}
 	}
+	
+	//Get likelihood of extending this path to node, based on its current coverage, length 
+	//and alignment phred score
+	public double getExtendLikelihood(Node node, double phred){
+		double 	nc=node.getNumber("cov"),
+				pc=(uniqueBin.estCov!=0?uniqueBin.estCov:averageCov());
+		
+		//count number of occurrences for this node in this path and reduce its cov respectively  
+		long ncount=nodes().filter(n->n.equals(node)).count();
+		nc-=ncount*nc;
+		
+		long 	nl=(long) node.getNumber("len"),
+				pl=getLength();
+		
+		return (1-Math.pow(10.0, -phred/10.0))*(1-Math.pow(10.0, -nc/pc))*(nl-BDGraph.getKmerSize())/(pl-BDGraph.getKmerSize());
+	}
+	//if the alignment not available. just want to have score of single node contained in a path to increase
+	public double getExtendLikelihood(Node node){
+		return getExtendLikelihood(node, Alignment.GOOD_QUAL);//phred doesn't matter, just pick one!
+	}
 }

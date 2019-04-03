@@ -21,6 +21,8 @@ import org.graphstream.graph.implementations.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.util.concurrent.AtomicDouble;
+
 import japsa.seq.Sequence;
 import japsa.seq.SequenceOutputStream;
 
@@ -475,24 +477,31 @@ public class BDGraph extends MultiGraph{
 							to = (BDNode) curEdge.getOpposite(from);
 					boolean dir = curEdge.getDir(to);
 
-					AtomicInteger limit = new AtomicInteger(distance + tolerance);
+					final int 	limit = distance + tolerance;
 			    	//get possible next edges to traverse
-					curList = (
-			    			(curEdge.getDir(to)?to.enteringEdges():to.leavingEdges())
-			    			.filter(e->{
-			    				BDNode n=(BDNode) e.getOpposite(to);
-			    				BDNodeState ns = new BDNodeState(n, ((BDEdge) e).getDir(n));
-			    				
-			    				return shortestMap.containsKey(ns.toString()) && shortestMap.get(ns.toString()) < limit.get();
-			    			})
-			    			.collect(Collectors.toList())			    			
-			    			);
-			    	//TODO: set score for each candidate edges based on nodes on the other end
-			    	//score=(1-exp(-phred/10))*(1-exp(-c_node/c_path))*(log(l_node-kmer))???
-					//where: phred alignment score of long read to this node if applicable, 
-					//c_node: current node coverage, c_path: path coverage, l_node: length, kmer: dBG kmer length
+					final List<Edge> list = new ArrayList<>(); 
+					AtomicDouble totScore=new AtomicDouble();		
+	    			(curEdge.getDir(to)?to.enteringEdges():to.leavingEdges())
+	    			.forEach(e->{
+	    				BDNode n=(BDNode) e.getOpposite(to);
+	    				BDNodeState ns = new BDNodeState(n, ((BDEdge) e).getDir(n));
+	    				
+	    				if(shortestMap.containsKey(ns.toString()) && shortestMap.get(ns.toString()) < limit){
+	    			    	//set score for each candidate edges based on nodes on the other end
+	    			    	//score=(1-exp(-phred/10))*(1-exp(-c_node/c_path))*(l_node-kmer)/(l_path-kmer)???
+	    					double s=path.getExtendLikelihood(n);
+	    					e.setAttribute("score", s);		
+	    					totScore.addAndGet(s);
+	    					//then add this edge to candidate list
+	    					list.add(e);
+	    				}
+	    				
+	    			});
+	    			//standardize the scores + remove insignificant ones.
 			    	
-			    	stack.push(curList);
+	    			
+	    			
+			    	stack.push(list);
 			    	
 					path.add(curEdge);
 
