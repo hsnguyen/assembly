@@ -479,16 +479,21 @@ public class BDGraph extends MultiGraph{
 
 					final int 	limit = distance + tolerance;
 			    	//get possible next edges to traverse
-					stack.push(
-							(curEdge.getDir(to)?to.enteringEdges():to.leavingEdges())
-			    			.filter(e->{
-			    				BDNode n=(BDNode) e.getOpposite(to);
-			    				BDNodeState ns = new BDNodeState(n, ((BDEdge) e).getDir(n));
-			    				
-			    				return (shortestMap.containsKey(ns.toString()) && shortestMap.get(ns.toString()) < limit);  				
-			    			})
-			    			.collect(Collectors.toList())
-					);
+					final List<Edge> list = new ArrayList<>(); 
+	    			(curEdge.getDir(to)?to.enteringEdges():to.leavingEdges())
+	    			.forEach(e->{
+	    				BDNode n=(BDNode) e.getOpposite(to);
+	    				BDNodeState ns = new BDNodeState(n, ((BDEdge) e).getDir(n));
+	    				
+	    				if(shortestMap.containsKey(ns.toString()) && shortestMap.get(ns.toString()) < limit){
+	    					list.add(e);
+	    				}
+	    				
+	    			});
+	    			//standardize the scores + remove insignificant ones.
+	    			
+	    			
+			    	stack.push(list);
 			    	
 					path.add(curEdge);
 
@@ -524,7 +529,6 @@ public class BDGraph extends MultiGraph{
 			}
 		} 
 		
-		//TODO: standardize the scores + remove insignificant ones.
 		
 		if(possiblePaths.isEmpty()){
 			if(SimpleBinner.getBinIfUnique(srcNode)!=null && SimpleBinner.getBinIfUnique(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 && force){
