@@ -442,13 +442,38 @@ public class BDGraph extends MultiGraph{
 		if(shortestMap.containsKey(curNodeState.toString())) {
 			
 			Stack<List<Edge>> stack = new Stack<>();
-			List<Edge> curList = (curNodeState.getDir()?curNodeState.getNode().enteringEdges():curNodeState.getNode().leavingEdges()).collect(Collectors.toList());
-			stack.push(curList);
+			final List<Edge> tmpList = new ArrayList<>(); 
+			List<Edge> curList = null;
+			int tolerance = A_TOL, 
+					delta;
+			BDEdge curEdge = null;
+			AtomicDouble limit = new AtomicDouble(distance+tolerance);
+			
+			System.out.println("Start from node " + srcNode.getId() + " candidate edges: ");
+
+			(curNodeState.getDir()?curNodeState.getNode().enteringEdges():curNodeState.getNode().leavingEdges())
+				.forEach(e->{
+					BDNode n=(BDNode) e.getOpposite(srcNode);
+					BDNodeState ns = new BDNodeState(n, ((BDEdge) e).getDir(n));
+					
+					e.setAttribute("score", path.getExtendLikelihood(n));
+					System.out.println("\t"+ e + ": score=" + e.getNumber("score"));
+					
+					if(shortestMap.containsKey(ns.toString()) && shortestMap.get(ns.toString()) < limit.get()){
+						tmpList.add(e);
+					}
+					
+				});
+			//standardize the scores + remove insignificant ones.
+//			tmpList.stream()
+//			.forEach(e->{
+//				}
+//			);
+		
+			stack.push(new ArrayList<>(tmpList));
 			
 			int shortestDist2Dest = shortestMap.get(curNodeState.toString());
-			int tolerance = A_TOL, 
-				delta;
-			BDEdge curEdge = null;
+
 			System.out.println("Found " + curNodeState.toString() + " with shortest distance=" + shortestDist2Dest);
 			
 			while(true) {
@@ -477,23 +502,31 @@ public class BDGraph extends MultiGraph{
 							to = (BDNode) curEdge.getOpposite(from);
 					boolean dir = curEdge.getDir(to);
 
-					final int 	limit = distance + tolerance;
+					limit.set(distance + tolerance);
 			    	//get possible next edges to traverse
-					final List<Edge> list = new ArrayList<>(); 
+					tmpList.clear(); 
+	    			System.out.println("From node " + to.getId() + " candidate edges: ");
+
 	    			(curEdge.getDir(to)?to.enteringEdges():to.leavingEdges())
 	    			.forEach(e->{
 	    				BDNode n=(BDNode) e.getOpposite(to);
 	    				BDNodeState ns = new BDNodeState(n, ((BDEdge) e).getDir(n));
 	    				
-	    				if(shortestMap.containsKey(ns.toString()) && shortestMap.get(ns.toString()) < limit){
-	    					list.add(e);
+	    				e.setAttribute("score", path.getExtendLikelihood(n));
+    					System.out.println("\t"+ e + ": score=" + e.getNumber("score"));
+
+	    				if(shortestMap.containsKey(ns.toString()) && shortestMap.get(ns.toString()) < limit.get()){
+	    					tmpList.add(e);
 	    				}
 	    				
 	    			});
 	    			//standardize the scores + remove insignificant ones.
-	    			
-	    			
-			    	stack.push(list);
+//	    			tmpList.stream()
+//	    				.forEach(e->{
+//	    					}
+//	    				);
+//	    			
+			    	stack.push(new ArrayList<>(tmpList));
 			    	
 					path.add(curEdge);
 
@@ -554,6 +587,11 @@ public class BDGraph extends MultiGraph{
 				break;
 			retval.add(p);
 			System.out.println("Hit added: "+p.getId()+"(candidate deviation: "+p.getDeviation() + "; depth: " + p.size()+")");
+			p.edges()
+			.forEach(e->{
+				System.out.print(e.getNumber("score")+"\t");
+			});
+			System.out.println();
 		}
 		
 		//TODO: reduce the number of returned paths here (calculate edit distance with nanopore read: dynamic programming?)

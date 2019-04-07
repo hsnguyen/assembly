@@ -390,14 +390,14 @@ public class BDPath extends Path{
 		
 		//count number of occurrences for this node in this path and reduce its cov respectively  
 		long ncount=nodes().filter(n->n.equals(node)).count();
-		nc-=ncount*nc;
+		nc-=ncount*bc;
 		
 		long 	nl=(long) node.getNumber("len");
 		
-//		Astats =  log [ Prob (X is half-copy | coverage (X)) / Prob (X is one-copy | coverage (X)) ]
-		double Astat=Math.log(2)*nc*nl/BDGraph.ILLUMINA_READ_LENGTH - nl*bc/2*BDGraph.ILLUMINA_READ_LENGTH; 
+//		Astats =  log [ Prob (X is 1-copy | coverage (X)) / Prob (X is .5-copy | coverage (X)) ]
+		double Astat=Math.log(2)*nc*nl/BDGraph.ILLUMINA_READ_LENGTH - nl*bc/(2*BDGraph.ILLUMINA_READ_LENGTH); 
 		
-		return phred*Astat;
+		return phred*Astat/10;
 	}
 	//if the alignment not available. just want to have score of single node contained in a path to increase
 	public double getExtendLikelihood(Node node){
