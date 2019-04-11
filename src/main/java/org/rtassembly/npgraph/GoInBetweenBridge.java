@@ -225,7 +225,7 @@ public class GoInBetweenBridge {
 		BDNodeVecState 	current=null;
 		int lastIdx=0, numOfAnchorsBefore=getNumberOfAnchors();
 		for(Alignment alg:read.getAlignmentRecords()) {
-			current=new BDNodeVecState(alg.node, read.getVector(start,alg));
+			current=new BDNodeVecState(alg, read.getVector(start,alg));
 			if(segments!=null){ //&& !steps.nodes.contains(current)???
 				int prev=-1, cur;
 				for(int i=lastIdx; i<segments.size();i++) {
@@ -311,7 +311,7 @@ public class GoInBetweenBridge {
 				retval += "()";
 			else
 				for(BDPath path:seg.connectedPaths)
-					retval+="( "+path.getId()+ " : score=" + path.getPathScore() + " deviation=" + path.getDeviation() + " )";
+					retval+="( "+path.getId()+  ": deviation=" + path.getDeviation() + " score=" + path.getPathEstats() + " )";
 			retval+="\n";
 		}
 		retval+="}";
@@ -324,13 +324,18 @@ public class GoInBetweenBridge {
 		return steps.toString();
 	}
 
+	//Get the most probable path out of the candidates based on deviation and likelihood
 	public BDPath getBestPath(Node startFrom, Node endAt) { //the markers must be (transformed) unique
 		System.out.println("Finding best path from " + startFrom.getId() + " to " + endAt.getId() + " among: \n" + getAllPossiblePaths());
-		BDPath best=null,retval=null;
+		BDPath retval=null;
 		if(segments==null || segments.isEmpty())
 			return null;
-		
+		//1. Find all paths with the same deviation score
+		ArrayList<BDPath> 	candidates = new ArrayList<>(),
+							tmpList = new ArrayList<>();
 		boolean found=false;
+		int tolerance=0; //only pick the best! 
+		
 		for(BridgeSegment seg:segments) {
 			//finding the start node
 			if(!found){
@@ -342,15 +347,25 @@ public class GoInBetweenBridge {
 			}
 
 			
-			if(seg.getNumberOfPaths()>0){
-				if(seg.getNumberOfPaths()>1)
-					seg.connectedPaths.sort(Comparator.comparing(BDPath::getPathScore, Comparator.reverseOrder()).thenComparing(BDPath::getDeviation));	
+			if(seg.getNumberOfPaths()>0){			
+				int bestDeviation=seg.connectedPaths.get(0).getDeviation();
+				seg.connectedPaths.removeIf(p->(p.getDeviation()>bestDeviation+tolerance));
+				tmpList = new ArrayList<>();
+				if(candidates.isEmpty()){
+					candidates.addAll(seg.connectedPaths);
+					continue;
+				}
 				
-				best=seg.connectedPaths.get(0);
-				if(retval==null)
-					retval=best;
-				else
-					retval=retval.join(best);//assuming first path has highest score!!!
+				for(BDPath p1:seg.connectedPaths)
+					for(BDPath p0:candidates){
+							BDPath p01=p0.join(p1);
+							if(p01==null)
+								return null;
+							else
+								tmpList.add(p01);
+						}
+				candidates=tmpList; //don't need to sort because tolerance=0
+				
 			}else
 				return null;
 			
@@ -358,6 +373,10 @@ public class GoInBetweenBridge {
 			if(seg.pSegment.getNode1()==endAt)
 				break;
 		}
+		
+		//2. Pick the best one with highest likelihood score
+		candidates.sort(Comparator.comparing(BDPath::getPathLikelihood));
+		retval=candidates.get(0);
 		
 		if(retval!=null)
 			retval.setConsensusUniqueBinOfPath(bin);
@@ -461,16 +480,14 @@ public class GoInBetweenBridge {
 //		ArrayList<Sequence> nnpReads; // to store nanopore data if needed
 		ArrayList<BDPath> connectedPaths;
 		BDEdgePrototype pSegment;
-//		ScaffoldVector startV, endV; // from bridge anchor (always +) to this segment's end
 		BDNodeVecState startNV, endNV;
-		double bestPathScore=0.0;
 		BridgeSegment(){}
 
 		BridgeSegment(Alignment start, Alignment end, AlignedRead read, boolean force){
 			pSegment=new BDEdgePrototype(start.node, end.node, start.strand, !end.strand);
 			//invoke findPath()?
-			startNV=new BDNodeVecState(start.node, read.getVector(read.getFirstAlignment(), start));
-			endNV=new BDNodeVecState(start.node, read.getVector(read.getFirstAlignment(), end));
+			startNV=new BDNodeVecState(start, read.getVector(read.getFirstAlignment(), start));
+			endNV=new BDNodeVecState(end, read.getVector(read.getFirstAlignment(), end));
 			connectedPaths = graph.DFSAllPaths(start, end, force);
 			
 //			if(connectedPaths==null || connectedPaths.isEmpty())
@@ -484,7 +501,7 @@ public class GoInBetweenBridge {
 			startNV = nv1; endNV = nv2;
 			int d = ScaffoldVector.composition(nv2.getVector(), ScaffoldVector.reverse(nv1.getVector())).distance(nv1.getNode(), nv2.getNode());
 			connectedPaths = graph.DFSAllPaths((BDNode)nv1.getNode(), (BDNode)nv2.getNode(), dir1, dir2, d, force);
-			
+
 //			if(connectedPaths==null || connectedPaths.isEmpty())
 //				connectedPaths = graph.getClosestPaths((BDNode)node1, dir1, (BDNode)node2, dir2, d, false);
 		}
@@ -512,11 +529,15 @@ public class GoInBetweenBridge {
 		BridgeSegment reverse(ScaffoldVector brgVector) {
 			BridgeSegment retval = new BridgeSegment();
 			retval.pSegment=pSegment.reverse();
-			retval.startNV=new BDNodeVecState(pSegment.getNode1(), ScaffoldVector.composition(getEndVector(), ScaffoldVector.reverse(brgVector)));
-			retval.endNV=new BDNodeVecState(pSegment.getNode0(), ScaffoldVector.composition(getStartVector(), ScaffoldVector.reverse(brgVector)));
+//			retval.startNV=new BDNodeVecState(pSegment.getNode1(), ScaffoldVector.composition(getEndVector(), ScaffoldVector.reverse(brgVector)));
+//			retval.endNV=new BDNodeVecState(pSegment.getNode0(), ScaffoldVector.composition(getStartVector(), ScaffoldVector.reverse(brgVector)));
+			retval.startNV=new BDNodeVecState(endNV.getNode(), endNV.getScore(), ScaffoldVector.composition(getEndVector(), ScaffoldVector.reverse(brgVector)));
+			retval.endNV=new BDNodeVecState(startNV.getNode(), startNV.getScore(),  ScaffoldVector.composition(getStartVector(), ScaffoldVector.reverse(brgVector)));
+
 			retval.connectedPaths=new ArrayList<>();
 			for(BDPath p:connectedPaths)
 				retval.connectedPaths.add(p.reverse());
+			
 			return retval;
 		}
 		
@@ -531,30 +552,26 @@ public class GoInBetweenBridge {
 			if(!isConnected())
 				return retval;
 			
-			List<BDPath> tobeRemoved=new ArrayList<>();
 			if(nv.compareTo(startNV)*nv.compareTo(endNV)<=0) {
 				retval=0;
 				ScaffoldVector start2nv=ScaffoldVector.composition(nv.getVector(), ScaffoldVector.reverse(getStartVector()));
 				int d=start2nv.distance((BDNode) pSegment.getNode0(), nv.getNode());
 				for(BDPath p:connectedPaths) {
-					//TODO: increase agreed path, decrease others an appropriate amount
-					if(p.checkDistanceConsistency(pSegment.getNode0(), nv.getNode(), start2nv.direction>0, d) >= 0) {
-						p.setPathScore(.1);
-						if(p.getPathScore() > bestPathScore)
-							bestPathScore=p.getPathScore();
+					//update the divergence no matter what it's found or not. 
+					int bd = p.getClosestDistance(pSegment.getNode0(), nv.getNode(), start2nv.direction>0, d);
+					p.updatePathDeviation(bd);
+					if(bd!=Math.max(BDGraph.A_TOL, (int)(BDGraph.R_TOL*d)))
 						retval++;
-					}
-					else{
-						p.setPathScore(-.1);
-						if(p.getPathScore() < bestPathScore-BDGraph.MAX_DIFF)
-							tobeRemoved.add(p);
-					}
 				}
 			}
-			if(retval>0 && retval<connectedPaths.size())
-				connectedPaths.removeAll(tobeRemoved);
 
-			
+			if(retval>=0){
+				//TODO: remove paths that are too diverged
+				int bestDiff = 	connectedPaths.stream().map(p->p.getDeviation())
+								.min(Comparator.comparing(Integer::valueOf)).get();
+				connectedPaths.removeIf(p->(p.getDeviation() < bestDiff+BDGraph.SAFE_COUNTS*BDGraph.A_TOL));
+			}
+		
 			return retval;
 		}
 		int getNumberOfPaths(){
@@ -613,7 +630,7 @@ public class GoInBetweenBridge {
 				
 			for(int i=1;i<read.getAlignmentRecords().size();i++) {
 				curAlg = read.getAlignmentRecords().get(i);
-				BDNodeVecState tmp=new BDNodeVecState(curAlg.node, read.getVector(firstAlg, curAlg));
+				BDNodeVecState tmp=new BDNodeVecState(curAlg, read.getVector(firstAlg, curAlg));
 				nodes.add(tmp);
 				
 				if(SimpleBinner.getBinIfUnique(curAlg.node)!=null)

@@ -10,17 +10,21 @@ import java.util.Objects;
 public class BDNodeVecState implements Comparable<BDNodeVecState>{
 	BDNode node;
 	ScaffoldVector vector;
-	double nvsScore=0.0; //alignment score + number of occurences?
+	int nvsScore=Alignment.MIN_QUAL; //alignment score + number of occurences?
 	
-	BDNodeVecState(BDNode node, ScaffoldVector vector){
+	public BDNodeVecState(BDNode node, ScaffoldVector vector){
 		this.node=node;
 		this.vector=vector;
 	}
 	
-	public BDNodeVecState(BDNode node, ScaffoldVector vector, double score) {
+	public BDNodeVecState(BDNode node, int qual, ScaffoldVector vector){
 		this(node, vector);
-		this.nvsScore=score;
+		nvsScore=qual;
 	}
+	public BDNodeVecState(Alignment alg, ScaffoldVector vector) {
+		this(alg.node, alg.quality, vector);
+	}
+	
 	public BDNode getNode(){return node;}
 	public ScaffoldVector getVector(){return vector;}
 	
@@ -32,6 +36,14 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 	public boolean getDirection(boolean rootDir){
 		return rootDir!=(vector.getDirection()>0); //XOR: in-out not +/-
 	}
+	public int getScore(){
+		return nvsScore;
+	}
+	public void setScore(int score){
+		nvsScore=score;
+	}
+	
+
 	@Override
 	public String toString(){
 		return node.getId() + ":" + vector.toString() + ":" + nvsScore;
@@ -87,7 +99,7 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 
     }
 	public boolean qc() {
-		return nvsScore >= BDGraph.MIN_SCORE;
+		return nvsScore >= BDGraph.SAFE_COUNTS*Alignment.GOOD_QUAL; //60*2
 	}
 
 	//Merging 2 equal NodeVectors
