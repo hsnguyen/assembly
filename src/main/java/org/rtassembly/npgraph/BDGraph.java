@@ -44,15 +44,13 @@ public class BDGraph extends MultiGraph{
     public static int S_LIMIT=215;// maximum number of DFS steps
     public static int MAX_DFS_PATHS=100; //maximum number of candidate DFS paths
     
-	public static volatile int SAFE_COUNTS=2; //safe counts: use for confident estimation
+	public static volatile int SAFE_COUNTS=3; //safe counts: use for confident estimation
 
 	
     //provide mapping from unique directed node to its corresponding bridge
     //E.g: 103-: <103-82-> also 82+:<82+103+>
     private HashMap<String, GoInBetweenBridge> bridgesMap; 
-//    private HashMap<Node, Set<Node>> adjacencyMap; // map a node to the set of its nearest unique nodes (identify via reduce function) 
-    private static final Logger LOG = LoggerFactory.getLogger(BDGraph.class);
-
+//    private HashMap<Node, Set<Node>> adjacencyMap; // map a node to the set of its nearest unique nodes (identify via reduce function)
     // *** Constructors ***
 	/**
 	 * Creates an empty graph.
@@ -316,7 +314,7 @@ public class BDGraph extends MultiGraph{
 	    		bridgesMap.put(endNode.getId()+(endNodeDir?"o":"i"), new GoInBetweenBridge(this,path));
 	    	}
 		} catch (Exception e) {
-			LOG.error("Invalid path to add to bridge map: " + path.getId());
+			System.err.println("Invalid path to add to bridge map: " + path.getId());
 			e.printStackTrace();
 		}
     	
@@ -410,7 +408,7 @@ public class BDGraph extends MultiGraph{
 			List<Node> neighbors = node.neighborNodes().collect(Collectors.toList());	
 
 			removeNode(node);
-			LOG.info("Removing node {}!",node.getAttribute("name"));
+			System.out.println("Removing node " + node.getAttribute("name"));
 			neighbors.stream()
 				.filter(n->(binner.checkRemovableNode(n)))
 				.forEach(n->{if(!badNodes.contains(n)) badNodes.add(n);});
@@ -524,14 +522,14 @@ public class BDGraph extends MultiGraph{
 					limit.set(distance + tolerance);
 			    	//get possible next edges to traverse
 					tmpList.clear(); 
-	    			System.out.println("From node " + to.getId() + " candidate edges: ");
+//	    			System.out.println("From node " + to.getId() + " candidate edges: ");
 
 	    			(curEdge.getDir(to)?to.enteringEdges():to.leavingEdges())
 	    			.forEach(e->{
 	    				BDNode n=(BDNode) e.getOpposite(to);
 	    				BDNodeState ns = new BDNodeState(n, ((BDEdge) e).getDir(n));
 	    				
-						System.out.println("\t"+ e + ": score=" + path.getExtendLikelihood(n));
+//						System.out.println("\t"+ e + ": score=" + path.getExtendLikelihood(n));
 
 	    				if(shortestMap.containsKey(ns.toString()) 
     						&& shortestMap.get(ns.toString()) < limit.get()
@@ -548,7 +546,7 @@ public class BDGraph extends MultiGraph{
 				
 			}
 		} 
-		System.out.println("Select from list of " + possiblePaths.size() + " paths:");
+		System.out.println("select from list of " + possiblePaths.size() + " DFS paths:");
 		
 		if(possiblePaths.isEmpty()){
 			if(SimpleBinner.getBinIfUnique(srcNode)!=null && SimpleBinner.getBinIfUnique(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 && force){
@@ -834,25 +832,25 @@ public class BDGraph extends MultiGraph{
     	if(potentialRemovedEdges!=null && potentialRemovedEdges.size()>1){
 	    	//remove appropriate edges
 	    	for(Edge e:potentialRemovedEdges){
-	    		LOG.info("REMOVING EDGE " + e.getId() + " from " + e.getNode0().getGraph().getId() + "-" + e.getNode1().getGraph().getId());
-	    		LOG.info("before: \n\t" + printEdgesOfNode((BDNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) e.getNode1()));
+	    		System.out.println("REMOVING EDGE " + e.getId() + " from " + e.getNode0().getGraph().getId() + "-" + e.getNode1().getGraph().getId());
+	    		System.out.println("before: \n\t" + printEdgesOfNode((BDNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) e.getNode1()));
 	    		removeEdge(e.getId());
-	    		LOG.info("after: \n\t" + printEdgesOfNode((BDNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) e.getNode1()));
+	    		System.out.println("after: \n\t" + printEdgesOfNode((BDNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) e.getNode1()));
 	    	}
 	    	
 	    	//add appropriate edges
 
     		BDEdge reducedEdge = addEdge(startNode,endNode,startDir,endDir);
-    		LOG.info("ADDING EDGE " + reducedEdge.getId()+ " from " + reducedEdge.getNode0().getGraph().getId() + "-" + reducedEdge.getNode1().getGraph().getId());
+    		System.out.println("ADDING EDGE " + reducedEdge.getId()+ " from " + reducedEdge.getNode0().getGraph().getId() + "-" + reducedEdge.getNode1().getGraph().getId());
 			if(reducedEdge!=null){
 				if(path.getEdgeCount()>1)
 					reducedEdge.setAttribute("path", path);
 				binner.edge2BinMap.put(reducedEdge, oneBin);
 			}
-    		LOG.info("after adding: \n\t" + printEdgesOfNode((BDNode) reducedEdge.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) reducedEdge.getNode1()));
+			System.out.println("after adding: \n\t" + printEdgesOfNode((BDNode) reducedEdge.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) reducedEdge.getNode1()));
 	    	return true;
     	}else {
-    		LOG.info("Path {} has not reduced!", path.getId());
+    		System.out.println("Path" + path.getId() + "has not reduced!");
     		return false;
     	}
 

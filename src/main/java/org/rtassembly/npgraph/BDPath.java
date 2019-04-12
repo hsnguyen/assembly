@@ -297,7 +297,7 @@ public class BDPath extends Path{
 	 * with regards to a predefined value (distance) 
 	 */
 	public int getClosestDistance(Node from, Node to, boolean direction, int distance){
-		int retval=Math.max(BDGraph.A_TOL, (int)(BDGraph.R_TOL*distance));
+		int retval=Integer.MAX_VALUE;
 		boolean dirOfFrom, dirOfTo;
 		BDPath ref=null;
 		
@@ -319,10 +319,11 @@ public class BDPath extends Path{
 			if(curNode==to){
 				dirOfTo=!((BDEdge) e).getDir((BDNode) curNode);
 				if((dirOfFrom == dirOfTo) == direction){
-					if(Math.abs(curDistance-distance) < retval || GraphUtil.approxCompare(curDistance, distance)==0){
+					if(Math.abs(curDistance-distance) < BDGraph.A_TOL || GraphUtil.approxCompare(curDistance, distance)==0){
 //						System.out.printf("|-> agree distance between node %s, node %s: %d and given distance %d\n",
 //								from.getId(), to.getId(), curDistance, distance);
-						retval=Math.abs(curDistance-distance);
+						if(Math.abs(retval) > Math.abs(curDistance-distance))
+							retval=curDistance-distance;
 					}
 //					else
 //						System.out.printf("!-> inconsistence distance between node %s, node %s: %d and given distance %d\n",

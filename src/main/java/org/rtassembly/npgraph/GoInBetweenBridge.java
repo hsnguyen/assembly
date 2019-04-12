@@ -3,13 +3,17 @@ package org.rtassembly.npgraph;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.TreeSet;
 
 import org.graphstream.graph.Node;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import htsjdk.samtools.cram.encoding.readfeatures.Scores;
 
 //A bridge structure that the first node must be unique
 public class GoInBetweenBridge {
@@ -146,24 +150,23 @@ public class GoInBetweenBridge {
 		Iterator<BDNodeVecState> iterator = qSteps.nodes.iterator();		
 		BDNodeVecState 	current=null;
 		int lastIdx=0, numberOfAnchorsBefore=getNumberOfAnchors();
+		Set<BridgeSegment> changedSegments = new HashSet<>();
+
 		while(iterator.hasNext()){
 			current=iterator.next();
 			if(segments!=null){//&& !steps.nodes.contains(current)???
 				int prev=-1, cur;
 				for(int i=lastIdx; i<segments.size();i++) {
 					BridgeSegment curSeg=segments.get(i);
-					int numPathsBefore=curSeg.connectedPaths.size();
 					cur=curSeg.locateAndVote(current);
-					int numPathsAfter=curSeg.connectedPaths.size();
-					
-					if(numPathsBefore!=1 && numPathsAfter==1)
-						retval=0b01;//code representing number of paths reduced to 1					
-					
+					//dont go pass the estimated coordinates
 					if(cur<prev)
 						break;
 					else {
 						prev=cur;
 						lastIdx=i;
+						if(cur>0)
+							changedSegments.add(curSeg);
 					}
 				}
 				
@@ -174,6 +177,10 @@ public class GoInBetweenBridge {
 			}	
 			
 		}	
+		
+		for(BridgeSegment sg:changedSegments)
+			if(sg.removeUnlikelyPaths())
+				retval=0b01;//code representing number of paths reduced to 1
 		
 		if(toConnect && getCompletionLevel()<3)
 			steps.connectBridgeSteps(false);	
@@ -203,11 +210,11 @@ public class GoInBetweenBridge {
 //		System.out.println("qNode1=" + (qNode1==null?"null":qNode1.getId()));
 
 		boolean found=true;
-		if(!sNode0.equals(qNode0)) {							//if the starting points don't agree
-			if(sNode0.equals(qNode1)) {						//the first unique contig actually located at the end of alignments list
+		if(!sNode0.equals(qNode0)) {	//if the starting points don't agree
+			if(sNode0.equals(qNode1)) {	//the first unique contig actually located at the end of alignments list
 				read.reverse();
-			}else if(sNode1!=null){						//if not: this pBridge must have 2 anchors, the first anchor is not in the alignments list
-				reverse();							//flip the first and second anchors: now the second anchor is used as shared maker between subject and query bridge
+			}else if(sNode1!=null){		//if not: this pBridge must have 2 anchors, the first anchor is not in the alignments list
+				reverse();				//flip the first and second anchors: now the second anchor is used as shared maker between subject and query bridge
 				if(sNode1.equals(qNode1))	
 					read.reverse();
 				else if(!sNode1.equals(qNode0))
@@ -224,24 +231,23 @@ public class GoInBetweenBridge {
 		Alignment start=read.getFirstAlignment();
 		BDNodeVecState 	current=null;
 		int lastIdx=0, numOfAnchorsBefore=getNumberOfAnchors();
+		Set<BridgeSegment> changedSegments = new HashSet<>();
+		
 		for(Alignment alg:read.getAlignmentRecords()) {
 			current=new BDNodeVecState(alg, read.getVector(start,alg));
 			if(segments!=null){ //&& !steps.nodes.contains(current)???
 				int prev=-1, cur;
 				for(int i=lastIdx; i<segments.size();i++) {
 					BridgeSegment curSeg=segments.get(i);
-					int numPathsBefore=curSeg.connectedPaths.size();
 					cur=curSeg.locateAndVote(current);
-					int numPathsAfter=curSeg.connectedPaths.size();
-					
-					if(numPathsBefore!=1 && numPathsAfter==1)
-						retval=0b01;//code representing number of paths reduced to 1
-					
+					//dont go pass the estimated coordinates
 					if(cur<prev)
 						break;
 					else {
 						prev=cur;
 						lastIdx=i;
+						if(cur>0)
+							changedSegments.add(curSeg);
 					}
 				}
 				
@@ -252,11 +258,17 @@ public class GoInBetweenBridge {
 				steps.addNode(current);
 			}
 		}
+		
+		for(BridgeSegment sg:changedSegments)
+			if(sg.removeUnlikelyPaths())
+				retval=0b01;//code representing number of paths reduced to 1
+		
 		if(toConnect && getCompletionLevel()<3)
 			steps.connectBridgeSteps(false);		
 				
 		
-		System.out.printf("After merging: %s\nstart=%s\nend=%s\n", pBridge.toString(), (steps.start==null?"null":steps.start.toString()), (steps.end==null?"null":steps.end.toString()));
+		System.out.printf("After merging: %s\nstart=%s; end=%s; completion level=%d\n", pBridge.toString(), (steps.start==null?"null":steps.start.toString()), (steps.end==null?"null":steps.end.toString()), getCompletionLevel());
+		System.out.println(getAllPossiblePaths());
 		if(getNumberOfAnchors()>numOfAnchorsBefore)
 			retval=(byte)(retval+0b10);
 				
@@ -272,7 +284,7 @@ public class GoInBetweenBridge {
 	
 	private void reverse() {
 		assert getNumberOfAnchors()==2:"Could only reverse a determined bridge (2 anchors)";
-		System.out.printf("Reversing the bridge %s:\n%s\nstart=%s end=%s\n", getEndingsID(), getAllNodeVector(), steps.start.toString(), steps.end.toString());
+		System.out.printf("Reversing the bridge %s(start=%s end=%s):\n%s\n", getEndingsID(), getAllNodeVector(), steps.start.toString(), steps.end.toString());
 
 		pBridge=pBridge.reverse();
 		//reverse the segments
@@ -288,7 +300,7 @@ public class GoInBetweenBridge {
 		//reverse the nodes list
 		steps.reverse();
 		
-		System.out.printf("Reversed bridge %s:\n%s\nstart=%s end=%s\n", getEndingsID(), getAllNodeVector(), steps.start.toString(), steps.end.toString());
+		System.out.printf("Reversed bridge %s(start=%s end=%s):\n%s\n", getEndingsID(), getAllNodeVector(), steps.start.toString(), steps.end.toString());
 
 	}
 	
@@ -542,7 +554,7 @@ public class GoInBetweenBridge {
 		}
 		
 		/*
-		 * Find a node vector if it appear in one of the paths
+		 * Find a node vector if it appear in one of the paths, only then update the scores
 		 * Return retval=-1 if not located within the range of this segment
 		 * Return retval>0 if found in x paths
 		 * Return retval=0 if located in the interval of this segment but not found in any path 
@@ -551,7 +563,7 @@ public class GoInBetweenBridge {
 			int retval=-1;
 			if(!isConnected())
 				return retval;
-			
+			HashMap<BDPath,Integer> scores = new HashMap<>();
 			if(nv.compareTo(startNV)*nv.compareTo(endNV)<=0) {
 				retval=0;
 				ScaffoldVector start2nv=ScaffoldVector.composition(nv.getVector(), ScaffoldVector.reverse(getStartVector()));
@@ -559,21 +571,37 @@ public class GoInBetweenBridge {
 				for(BDPath p:connectedPaths) {
 					//update the divergence no matter what it's found or not. 
 					int bd = p.getClosestDistance(pSegment.getNode0(), nv.getNode(), start2nv.direction>0, d);
-					p.updatePathDeviation(bd);
-					if(bd!=Math.max(BDGraph.A_TOL, (int)(BDGraph.R_TOL*d)))
+					if(bd<Integer.MAX_VALUE){
 						retval++;
+					}else
+						bd=Math.max(BDGraph.A_TOL, (int)(BDGraph.R_TOL*d));
+					scores.put(p, bd);
+
 				}
 			}
 
-			if(retval>=0){
-				//TODO: remove paths that are too diverged
-				int bestDiff = 	connectedPaths.stream().map(p->p.getDeviation())
-								.min(Comparator.comparing(Integer::valueOf)).get();
-				connectedPaths.removeIf(p->(p.getDeviation() < bestDiff+BDGraph.SAFE_COUNTS*BDGraph.A_TOL));
+			if(retval>0){
+				//apply score changes and eliminate paths with too much deviations
+				for(BDPath p:scores.keySet())
+					p.updatePathDeviation(scores.get(p));
 			}
 		
 			return retval;
 		}
+		//this function must go right after invoke locatedAndVote() for list of nv 
+		//only return value of locateAndVote is positive (it changed)
+		public boolean removeUnlikelyPaths(){
+			if(connectedPaths==null || connectedPaths.isEmpty())
+				return false;
+			connectedPaths.sort(Comparator.comparing(BDPath::getDeviation));
+			int bestDiff = 	connectedPaths.get(0).getDeviation();
+			connectedPaths.removeIf(p->(p.getDeviation() > bestDiff+BDGraph.A_TOL));
+			if(connectedPaths.size()==1)
+				return true;
+			else 
+				return false;
+		}
+		
 		int getNumberOfPaths(){
 			if(connectedPaths==null)
 				return 0;
@@ -753,7 +781,7 @@ public class GoInBetweenBridge {
 				key=current.getNode().getId() + (current.getDirection(pBridge.getDir0())?"o":"i");
 				//need a quality-checking here before including into a segment step
 				if(	(current==endAt || shortestMapFromEnd.containsKey(current.getNode().getId() + (current.getDirection(pBridge.getDir0())?"o":"i")) )
-					&& graph.binner.checkIfBinContainingNode(bin, current.getNode())
+//					&& graph.binner.checkIfBinContainingNode(bin, current.getNode())
 					){			 
 					if(current.qc() || current==endAt){
 						BridgeSegment seg = null;
@@ -773,9 +801,14 @@ public class GoInBetweenBridge {
 							System.out.println(" :success!");		
 							prev=current;
 							//use qc-failed nodes to vote
-							if(seg.getNumberOfPaths()>1)
+							if(seg.getNumberOfPaths()>1){
+								boolean flag=false;
 								for(BDNodeVecState nv:inbetween)
-									seg.locateAndVote(nv);
+									if(seg.locateAndVote(nv) > 0)
+										flag=true;
+								if(flag)
+									seg.removeUnlikelyPaths();
+							}
 							addSegment(seg);
 							if(current.equals(endAt)) {
 								retval=true;	
