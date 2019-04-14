@@ -390,8 +390,11 @@ public class GoInBetweenBridge {
 		candidates.sort(Comparator.comparing(BDPath::getPathLikelihood));
 		retval=candidates.get(0);
 		
-		if(retval!=null)
+		if(retval!=null) {
 			retval.setConsensusUniqueBinOfPath(bin);
+			System.out.println("...best path found: " + retval.getId());
+
+		}
 		return retval;
 	}
 	

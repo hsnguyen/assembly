@@ -41,7 +41,7 @@ public class BDGraph extends MultiGraph{
     
 	public static final double ALPHA=.5; //coverage less than alpha*bin_cov will be considered noise
     public static final int D_LIMIT=5000; //distance bigger than this will be ignored
-    public static int S_LIMIT=215;// maximum number of DFS steps
+    public static int S_LIMIT=500;// maximum number of DFS steps
     public static int MAX_DFS_PATHS=100; //maximum number of candidate DFS paths
     
 	public static volatile int SAFE_COUNTS=3; //safe counts: use for confident estimation
@@ -481,6 +481,12 @@ public class BDGraph extends MultiGraph{
 					curEdge=(BDEdge) curList.remove(0);
 					BDNode 	from = (BDNode) path.peekNode(),
 							to = (BDNode) curEdge.getOpposite(from);
+					
+					//Important: an anchor is not allowed in the result path
+					//TODO: consider avoid nodes with too low likelihood???
+					if(SimpleBinner.getBinIfUnique(to)!=null && to!=dstNode)
+						continue;
+					
 					boolean dir = curEdge.getDir(to);
 					
 					/*
