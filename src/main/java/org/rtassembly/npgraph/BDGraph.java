@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.Stack;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -21,36 +20,38 @@ import org.graphstream.graph.implementations.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.util.concurrent.AtomicDouble;
+
 import japsa.seq.Sequence;
 import japsa.seq.SequenceOutputStream;
 
 
 public class BDGraph extends MultiGraph{
+    private static final Logger LOG = LoggerFactory.getLogger(BDGraph.class);
+
     static int KMER=127;
     static double RCOV=0.0;
 	SimpleBinner binner;
 
 	//not gonna change these parameters in other thread
     public static final double R_TOL=.3;// relative tolerate: can be interpreted as long read error rate (10-25%)
-    public static final int A_TOL=300;// absolute tolerate: can be interpreted as long read absolute error bases (200bp)
+    public static final int A_TOL=300;// absolute tolerate: can be interpreted as long read absolute error bases (300bp)
 
     //these should be changed in another thread, e.g. settings from GUI
 	public static volatile double ILLUMINA_READ_LENGTH=300; //Illumina MiSeq
     
+	public static final double ALPHA=.5; //coverage less than alpha*bin_cov will be considered noise
     public static final int D_LIMIT=5000; //distance bigger than this will be ignored
-    public static int S_LIMIT=215;// maximum number of DFS steps
+    public static int S_LIMIT=500;// maximum number of DFS steps
     public static int MAX_DFS_PATHS=100; //maximum number of candidate DFS paths
     
-	public static volatile int MAX_DIFF=5;//safe distance between good and bad possible paths so we can discard the bad ones
-	public static volatile int MIN_COVER=3;//number of reads spanning 2 ends of an bridge for it to be considered complete 
+	public static volatile int SAFE_COUNTS=3; //safe counts: use for confident estimation
 
 	
     //provide mapping from unique directed node to its corresponding bridge
     //E.g: 103-: <103-82-> also 82+:<82+103+>
     private HashMap<String, GoInBetweenBridge> bridgesMap; 
-//    private HashMap<Node, Set<Node>> adjacencyMap; // map a node to the set of its nearest unique nodes (identify via reduce function) 
-    private static final Logger LOG = LoggerFactory.getLogger(BDGraph.class);
-
+//    private HashMap<Node, Set<Node>> adjacencyMap; // map a node to the set of its nearest unique nodes (identify via reduce function)
     // *** Constructors ***
 	/**
 	 * Creates an empty graph.
@@ -314,7 +315,7 @@ public class BDGraph extends MultiGraph{
 	    		bridgesMap.put(endNode.getId()+(endNodeDir?"o":"i"), new GoInBetweenBridge(this,path));
 	    	}
 		} catch (Exception e) {
-			LOG.error("Invalid path to add to bridge map: " + path.getId());
+			System.err.println("Invalid path to add to bridge map: " + path.getId());
 			e.printStackTrace();
 		}
     	
@@ -408,7 +409,7 @@ public class BDGraph extends MultiGraph{
 			List<Node> neighbors = node.neighborNodes().collect(Collectors.toList());	
 
 			removeNode(node);
-			LOG.info("Removing node {}!",node.getAttribute("name"));
+			System.out.println("Removing node " + node.getAttribute("name"));
 			neighbors.stream()
 				.filter(n->(binner.checkRemovableNode(n)))
 				.forEach(n->{if(!badNodes.contains(n)) badNodes.add(n);});
@@ -441,56 +442,61 @@ public class BDGraph extends MultiGraph{
 		if(shortestMap.containsKey(curNodeState.toString())) {
 			
 			Stack<List<Edge>> stack = new Stack<>();
-			List<Edge> curList = (curNodeState.getDir()?curNodeState.getNode().enteringEdges():curNodeState.getNode().leavingEdges()).collect(Collectors.toList());
-			stack.push(curList);
-			
-			int shortestDist2Dest = shortestMap.get(curNodeState.toString());
+			final List<Edge> tmpList = new ArrayList<>(); 
+			List<Edge> curList = null;
 			int tolerance = A_TOL, 
-				delta;
+					delta;
 			BDEdge curEdge = null;
-			if(HybridAssembler.VERBOSE)
-	    		LOG.info("Found " + curNodeState.toString() + " with shortest distance=" + shortestDist2Dest);
-			
-			while(true) {
-//				System.out.println("\nCurrent stack: ");
-//				for(List<Edge> l:stack) {
-//					System.out.print("[");
-//					for(Edge e:l)
-//							System.out.printf("%s; ", e.getId());
-//					System.out.println("]");
-//				}
-//				System.out.println("Current path: " + path.getId());
-//				System.out.println("Current distance: " + distance);
 
+			if(HybridAssembler.VERBOSE)
+	    		LOG.info("Found " + curNodeState.toString() + " with shortest distance=" + shortestMap.get(curNodeState.toString()));
+
+			AtomicDouble limit = new AtomicDouble(distance+tolerance);
+			
+			(curNodeState.getDir()?curNodeState.getNode().enteringEdges():curNodeState.getNode().leavingEdges())
+				.forEach(e->{
+					BDNode n=(BDNode) e.getOpposite(srcNode);
+					BDNodeState ns = new BDNodeState(n, ((BDEdge) e).getDir(n));
+										
+    				if(	shortestMap.containsKey(ns.toString()) 
+						&& shortestMap.get(ns.toString()) < limit.get()
+						)
+	    					tmpList.add(e);
+	    				
+					
+				});
+		
+			stack.push(new ArrayList<>(tmpList));
+			Stack<Double> nodeScores = new Stack<>();
+			double pathScore=0.0;
+			while(true) {
 				curList=stack.peek();
 				
 				if(curList.isEmpty()) {
 					if(path.size() <= 1)
 						break;
 					stack.pop();
-//					System.out.print("removing edge " + path.peekEdge().getId());
 					distance += (int)path.peekNode().getNumber("len") + ((BDEdge) path.popEdge()).getLength();
-//					System.out.println(" -> distance = " + distance);
+					pathScore-=nodeScores.pop();
+					
 				}else {
 					curEdge=(BDEdge) curList.remove(0);
-					BDNode from = (BDNode) path.peekNode(),
-									to = (BDNode) curEdge.getOpposite(from);
+					BDNode 	from = (BDNode) path.peekNode(),
+							to = (BDNode) curEdge.getOpposite(from);
+					
+					//Important: an anchor is not allowed in the result path
+					if(SimpleBinner.getBinIfUnique(to)!=null && to!=dstNode)
+						continue;
+					
 					boolean dir = curEdge.getDir(to);
-
-					AtomicInteger limit = new AtomicInteger(distance + tolerance);
-			    	stack.push(
-			    			(curEdge.getDir(to)?to.enteringEdges():to.leavingEdges())
-			    			.filter(e->{
-			    				BDNode n=(BDNode) e.getOpposite(to);
-			    				BDNodeState ns = new BDNodeState(n, ((BDEdge) e).getDir(n));
-			    				
-			    				return shortestMap.containsKey(ns.toString()) && shortestMap.get(ns.toString()) < limit.get();
-			    			})
-			    			.collect(Collectors.toList())			    			
-			    			);
-			    	
+					
+					/*
+					 * Update path and if terminated condition is met, add the candidate path
+					 */
+					nodeScores.push(path.getExtendLikelihood(to));
+					pathScore+=nodeScores.peek();
 					path.add(curEdge);
-
+					
 					delta=Math.abs(distance-curEdge.getLength());
 					//note that traversing direction (true: template, false: reverse complement) of destination node is opposite its defined direction (true: outward, false:inward) 
 					if(to==dstNode && dir==dstDir && delta < tolerance){ 
@@ -498,31 +504,53 @@ public class BDGraph extends MultiGraph{
 
 				    	BDPath 	tmpPath=new BDPath(path);
 				    	tmpPath.setDeviation(delta);
-				    	
+				    	tmpPath.setPathEstats(pathScore);
+
 				    	//insert to the list with sorting
 				    	if(possiblePaths.isEmpty())
 				    		possiblePaths.add(tmpPath);
 				    	else{
 				    		int idx=0;
-				    		while(idx<possiblePaths.size() && delta>possiblePaths.get(idx++).getDeviation());
-				    		possiblePaths.add(idx-1,tmpPath);
+				    		for(BDPath p:possiblePaths)
+				    			if(delta>p.getDeviation())
+				    				idx++;
+				    			else
+				    				break;
+				    		possiblePaths.add(idx,tmpPath);
 				    	}
-						
-//						System.out.println("Hit added: "+path.getId()+"(candidate deviation: "+delta + "; depth: " + path.size()+")");
 						
 						if(possiblePaths.size() > S_LIMIT) //not go too far
 							break;
 					}
 					
-					distance -= (int)to.getNumber("len") + curEdge.getLength();
-//					System.out.println("adding edge: " + curEdge.getId() + " length=" + (int)to.getNumber("len") +" -> distance=" + distance);
+					/*
+					 * Looking for next candidate set of edges to traverse
+					 */
+					limit.set(distance + tolerance);
+			    	//get possible next edges to traverse
+					tmpList.clear(); 
 
+	    			(curEdge.getDir(to)?to.enteringEdges():to.leavingEdges())
+	    			.forEach(e->{
+	    				BDNode n=(BDNode) e.getOpposite(to);
+	    				BDNodeState ns = new BDNodeState(n, ((BDEdge) e).getDir(n));
+	    				
+	    				if(shortestMap.containsKey(ns.toString()) 
+    						&& shortestMap.get(ns.toString()) < limit.get()
+							)
+	    	    					tmpList.add(e);
+	    				
+	    			});
+//	    			
+			    	stack.push(new ArrayList<>(tmpList));
+			    						
+					distance -= (int)to.getNumber("len") + curEdge.getLength();
 					
 				}
 				
 			}
 		} 
-		
+		System.out.println("select from list of " + possiblePaths.size() + " DFS paths:");
 		
 		if(possiblePaths.isEmpty()){
 			if(SimpleBinner.getBinIfUnique(srcNode)!=null && SimpleBinner.getBinIfUnique(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 && force){
@@ -541,15 +569,16 @@ public class BDGraph extends MultiGraph{
 
 		}
 		
-		double bestScore=possiblePaths.get(0).getDeviation();
+		double closestDist=possiblePaths.get(0).getDeviation();
 		int keepMax = MAX_DFS_PATHS;//only keep this many possible paths 
 		for(int i=0;i<possiblePaths.size();i++){
 			BDPath p = possiblePaths.get(i);
-			if(p.getDeviation()>bestScore+Math.abs(distance+getKmerSize())*R_TOL || i>=keepMax)
+			if(p.getDeviation()>closestDist+Math.abs(distance+getKmerSize())*R_TOL || i>=keepMax)
 				break;
 			retval.add(p);
 			if(HybridAssembler.VERBOSE)
-	    		LOG.info("Hit added: "+p.getId()+"(candidate deviation: "+p.getDeviation() + "; depth: " + p.size()+")");
+	    		LOG.info("Hit added: {} deviation={}; depth={}; likelihood score={}", p.getId(), p.getDeviation(), p.size(), p.getPathEstats());
+
 		}
 		
 		//TODO: reduce the number of returned paths here (calculate edit distance with nanopore read: dynamic programming?)
@@ -572,11 +601,7 @@ public class BDGraph extends MultiGraph{
     		LOG.info("Building shortest tree for " + rootNode.getId() + " with distance=" + distance);
 		retval.put(curND.toString(), curDistance); // direction from the point of srcNode
 		while(!pq.isEmpty()) {
-//			System.out.println("Current queue: ");
-//			for(BDNodeVecState n:pq) {
-//				System.out.printf("%s:%d\t", n.toString(), n.getWeight());
-//			}
-//			System.out.println();
+
 			curND=pq.poll();
 			curDistance=curND.getWeight();
 
@@ -586,7 +611,6 @@ public class BDGraph extends MultiGraph{
 	    		BDNode nextNode = (BDNode) edge.getOpposite(curND.getNode());
 	    		boolean direction =  !edge.getDir(nextNode);
 	    		newDistance=curDistance+edge.getLength()+(int)curND.getNode().getNumber("len");
-//	    		if(newDistance > distance+A_TOL)
     			if(newDistance-distance > BDGraph.A_TOL && GraphUtil.approxCompare(newDistance, distance)>0)
 	    			continue;
 	    		
@@ -702,8 +726,6 @@ public class BDGraph extends MultiGraph{
     				continue;
     			
     			curBuildingBlocks.setEFlag(flag);
-    			//do smt here instead of storing it!!! Parameters: curBuildingBlocks + flag + curBin
-				//TODO: implement the bridge building here, EVERYTHING
     			////////////////////////////////////////////////////////////////////////////////////
     			
     			retrievedPaths.addAll(buildBridge(curBuildingBlocks, curBin));
@@ -810,7 +832,7 @@ public class BDGraph extends MultiGraph{
 			LOG.info("Reducing path: " + path.getId());
     	//loop over the edges of path (like spelling())
     	BDNode 	startNode = (BDNode) path.getRoot(),
-    					endNode = (BDNode) path.peekNode();
+				endNode = (BDNode) path.peekNode();
 	
     	boolean startDir=((BDEdge) path.getEdgePath().get(0)).getDir(startNode),
     			endDir=((BDEdge) path.peekEdge()).getDir(endNode);
@@ -830,6 +852,7 @@ public class BDGraph extends MultiGraph{
 	    		removeEdge(e.getId());
 	    		if(HybridAssembler.VERBOSE)
 	    			LOG.info("after: \n\t" + printEdgesOfNode((BDNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) e.getNode1()));
+
 	    	}
 	    	
 	    	//add appropriate edges
@@ -837,6 +860,7 @@ public class BDGraph extends MultiGraph{
     		BDEdge reducedEdge = addEdge(startNode,endNode,startDir,endDir);
     		if(HybridAssembler.VERBOSE)
     			LOG.info("ADDING EDGE " + reducedEdge.getId()+ " from " + reducedEdge.getNode0().getGraph().getId() + "-" + reducedEdge.getNode1().getGraph().getId());
+
 			if(reducedEdge!=null){
 				if(path.getEdgeCount()>1)
 					reducedEdge.setAttribute("path", path);
@@ -848,6 +872,7 @@ public class BDGraph extends MultiGraph{
     	}else {
     		if(HybridAssembler.VERBOSE)
     			LOG.info("Path {} has not reduced!", path.getId());
+
     		return false;
     	}
 
@@ -890,28 +915,30 @@ public class BDGraph extends MultiGraph{
     //exclude already-reduced path (by looking for corresponding reduce edge)
 	synchronized public ArrayList<BDPath> chopPathAtAnchors(BDPath path){
 		ArrayList<BDPath> retval=new ArrayList<>();
-		BDPath curPath = new BDPath(path.getRoot(), path.getConsensusUniqueBinOfPath());
-		BDNode curNode = (BDNode) path.getRoot(), nextNode=null;
-		String id=null;
-		for(Edge e:path.getEdgePath()) {
-			nextNode=(BDNode) e.getOpposite(curNode);
-			curPath.add(e);
-			if(binner.getBinIfUniqueNow(nextNode)!=null) {
-				id=curPath.getEndingID();
-				if(id!=null){
-					Edge rdEdge = getEdge(id);
-					if(rdEdge==null || !rdEdge.hasAttribute("path"))
-						retval.add(curPath);		
+		if(path!=null){
+			BDPath curPath = new BDPath(path.getRoot(), path.getConsensusUniqueBinOfPath());
+			BDNode curNode = (BDNode) path.getRoot(), nextNode=null;
+			String id=null;
+			for(Edge e:path.getEdgePath()) {
+				nextNode=(BDNode) e.getOpposite(curNode);
+				curPath.add(e);
+				if(binner.getBinIfUniqueNow(nextNode)!=null) {
+					id=curPath.getEndingID();
+					if(id!=null){
+						Edge rdEdge = getEdge(id);
+						if(rdEdge==null || !rdEdge.hasAttribute("path"))
+							retval.add(curPath);		
+					}
+					curPath=new BDPath(nextNode, path.getConsensusUniqueBinOfPath());
 				}
-				curPath=new BDPath(nextNode, path.getConsensusUniqueBinOfPath());
+				curNode=nextNode;
 			}
-			curNode=nextNode;
-		}
-		//return intact if no extra unique node has been found
-		if(retval.isEmpty()) {
-			id=curPath.getEndingID();
-			if(id!=null&&getEdge(id)==null){
-				retval.add(curPath);
+			//return intact if no extra unique node has been found
+			if(retval.isEmpty()) {
+				id=curPath.getEndingID();
+				if(id!=null&&getEdge(id)==null){
+					retval.add(curPath);
+				}
 			}
 		}
 		return retval;

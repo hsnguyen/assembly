@@ -57,4 +57,9 @@ public class BDNode extends MultiNode {
 				retval++;	
 		return retval;
 	}
+	
+	@Override
+	public String toString() {
+		return String.format("[Node %s: cov=%.2f len=%d]", getId(), getNumber("cov"), (int)getNumber("len"));
+	}
 }
