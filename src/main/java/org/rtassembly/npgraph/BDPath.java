@@ -15,8 +15,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class BDPath extends Path{
-	//TODO: edit-distance(none from alignment) + coverage traversed??
-	private int deviation, vote=0; 
+	private int diff; //deviation from path to aligned read (now just length): the more the worse
+	private double pathEstats=Double.MIN_NORMAL; //sum of estats of inbetween nodes
     private long len=0;
 	private static final Logger LOG = LoggerFactory.getLogger(BDPath.class);
     private PopBin uniqueBin;//the unique population bin that this path belongs to (can only be set from outside)
@@ -33,15 +33,16 @@ public class BDPath extends Path{
     	len=(long) root.getNumber("len");
     }
     
-
 	public BDPath(Node root){
 		this(root, SimpleBinner.getBinIfUnique(root));
 	}
+	
 	public BDPath(Node root, PopBin bin) {
 		super();
 		setRoot(root);
 		uniqueBin=bin;
 	}
+	
 	public BDPath(BDPath p){
 		super();
 		if(p!=null && !p.empty()){
@@ -49,9 +50,9 @@ public class BDPath extends Path{
 			for(Edge e:p.getEdgePath())
 				add(e);
 		}
-		deviation=p.deviation;
+		diff=p.diff;
 		len=p.len;
-		vote=p.vote;
+		pathEstats=p.pathEstats;
 		uniqueBin=p.uniqueBin;
 	}
 	
@@ -73,7 +74,7 @@ public class BDPath extends Path{
 			return;
 		}
 		setRoot(curNode);
-		HashMap<PopBin,Long> bin2lenth= new HashMap<PopBin,Long>();
+		HashMap<PopBin,Long> bin2length= new HashMap<PopBin,Long>();
 		PopBin curBin=null, pathBin=null;
 		for(int i=1; i<comps.length; i++){
 			nextID = comps[i];
@@ -85,10 +86,10 @@ public class BDPath extends Path{
 			}
 			curBin=SimpleBinner.getBinIfUnique(curNode);
 			if(curBin!=null){
-				if(!bin2lenth.containsKey(curBin))
-					bin2lenth.put(curBin, (long) (curNode.getNumber("len")));
+				if(!bin2length.containsKey(curBin))
+					bin2length.put(curBin, (long) (curNode.getNumber("len")));
 				else{
-					bin2lenth.replace(curBin, bin2lenth.get(curBin) + (long) (curNode.getNumber("len")));
+					bin2length.replace(curBin, bin2length.get(curBin) + (long) (curNode.getNumber("len")));
 				}
 			}
 			String edgeID=BDEdge.createID(curNode, nextNode, curDir, !nextDir);
@@ -105,15 +106,15 @@ public class BDPath extends Path{
 		//last time
 		curBin=SimpleBinner.getBinIfUnique(curNode);
 		if(curBin!=null){
-			if(!bin2lenth.containsKey(curBin))
-				bin2lenth.put(curBin, (long) (curNode.getNumber("len")));
+			if(!bin2length.containsKey(curBin))
+				bin2length.put(curBin, (long) (curNode.getNumber("len")));
 			else{
-				bin2lenth.replace(curBin, bin2lenth.get(curBin) + (long) (curNode.getNumber("len")));
+				bin2length.replace(curBin, bin2length.get(curBin) + (long) (curNode.getNumber("len")));
 			}
 		}
 		long tmpLen=0;
-		for(PopBin b:bin2lenth.keySet()){
-			if(bin2lenth.get(b)>tmpLen)
+		for(PopBin b:bin2length.keySet()){
+			if(bin2length.get(b)>tmpLen)
 				pathBin=b;
 		}
 		uniqueBin=pathBin;
@@ -123,7 +124,7 @@ public class BDPath extends Path{
 		List<Edge> edges = this.getEdgePath();
 		for(int i = edges.size()-1; i>=0; i--)
 			rcPath.add(edges.get(i));
-		rcPath.vote=vote;
+		rcPath.pathEstats=pathEstats;
 		return rcPath;
 	}
 	//It is not really ID because Path doesn't need an ID
@@ -254,26 +255,33 @@ public class BDPath extends Path{
 		for(Edge e:newPath.getEdgePath()){
 			retval.add(e);
 		}
-		deviation+=newPath.deviation;
+		diff+=newPath.diff;
 		return retval;
 	}
 	
 	public int getDeviation(){
-		return this.deviation;
+		return this.diff;
 	}
 	public void setDeviation(int deviation){
-		this.deviation=deviation;
+		this.diff=deviation;
 	}
+	public void updatePathDeviation(int diff){
+		this.diff+=diff;
+	}
+	//set path score actively
+	public void setPathEstats(double pathAstat) {
+		this.pathEstats=pathAstat;
+	}
+	
+	public void updatePathEstats(double nodeAstat){
+		this.pathEstats+=nodeAstat;
+	}
+	
+	public double getPathEstats() {	
+		return pathEstats;
+	}
+	
 
-	public void upVote(int score) {
-		vote+=score;
-	}
-	public void downVote(int score){
-		vote-=score;
-	}
-	public int getVote() {
-		return vote;
-	}
 	public long getLength() {
 		return len;
 	}
@@ -285,12 +293,11 @@ public class BDPath extends Path{
 		return uniqueBin;
 	}
 	/*
-	 * Check if a node (to) have a distance to an end (from) that similar to a
-	 * predefined value (distance) 
+	 * Scan for the closest distance from a node (to) to an end (from) 
+	 * with regards to a predefined value (distance) 
 	 */
-	//TODO: should we update path deviation here???
-	public int checkDistanceConsistency(Node from, Node to, boolean direction, int distance){
-		int retval=-1;
+	public int getClosestDistance(Node from, Node to, boolean direction, int distance){
+		int retval=Integer.MAX_VALUE;
 		boolean dirOfFrom, dirOfTo;
 		BDPath ref=null;
 		
@@ -299,7 +306,7 @@ public class BDPath extends Path{
 		}else if(from==peekNode()){
 			ref=this.reverse();
 		}else{
-			LOG.warn("Node {} couldn't be found as one of the end node in path {}!", from.getId(), getId());
+			LOG.warn("Node {} couldn't be found as one of the tips in path {}!", from.getId(), getId());
 			return retval;
 		}
 		int curDistance=0;
@@ -310,20 +317,18 @@ public class BDPath extends Path{
 			curNode=(BDNode) e.getOpposite(curNode);
 			curDistance+=((BDEdge) e).getLength();
 			if(curNode==to){
-				if(Math.abs(curDistance-distance) < BDGraph.A_TOL || GraphUtil.approxCompare(curDistance, distance)==0){
-					dirOfTo=!((BDEdge) e).getDir((BDNode) curNode);
-					if((dirOfFrom == dirOfTo) == direction) {
-						System.out.printf("|-> agree distance between node %s, node %s: %d and given distance %d\n",
-								from.getId(), to.getId(), curDistance, distance);
-						if(retval<0 || retval > Math.abs(curDistance-distance))
-							retval=Math.abs(curDistance-distance);
+				dirOfTo=!((BDEdge) e).getDir((BDNode) curNode);
+				if((dirOfFrom == dirOfTo) == direction){
+					if(Math.abs(curDistance-distance) < BDGraph.A_TOL || GraphUtil.approxCompare(curDistance, distance)==0){
+//						System.out.printf("|-> agree distance between node %s, node %s: %d and given distance %d\n",
+//								from.getId(), to.getId(), curDistance, distance);
+						if(Math.abs(retval) > Math.abs(curDistance-distance))
+							retval=curDistance-distance;
 					}
-					else
-						LOG.info("!-> inconsistence direction between node {}:{}, node {}:{} and given direction {}",
-								from.getId(), dirOfFrom?"+":"-", to.getId(), dirOfTo?"+":"-", direction);
-				}else
-					LOG.info("!-> inconsistence distance between node {}, node {}: {} and given distance {}",
-							from.getId(), to.getId(), curDistance, distance);
+//					else
+//						System.out.printf("!-> inconsistence distance between node %s, node %s: %d and given distance %d\n",
+//								from.getId(), to.getId(), curDistance, distance);
+				}
 			}
 			curDistance+=curNode.getNumber("len");
 		}
@@ -332,10 +337,10 @@ public class BDPath extends Path{
 		return retval;
 	}
 	
-//	/**
-//	 * Get the length-weighted coverage of all marker as an approximation for this path's coverage
-//	 * @return average depth of this path
-//	 */
+	/**
+	 * Get the length-weighted coverage of all marker as an approximation for this path's coverage
+	 * @return average depth of this path
+	 */
 	public double averageCov(){
 		int len=0;
 		double res=0;
@@ -370,5 +375,54 @@ public class BDPath extends Path{
 		} catch (Exception e) {
 			return null;
 		}
+	}
+	
+	private double getLikelihood(double nc, double bc, long nl, double phred ){
+//		Estats =  log [ Prob (X is 1-copy | coverage (X)) / Prob (X is alpha-copy | coverage (X)) ] (alpha < 1.0)
+		double Estats=-Math.log(BDGraph.ALPHA)*nc*nl/BDGraph.ILLUMINA_READ_LENGTH + (BDGraph.ALPHA-1.0)*nl*bc/BDGraph.ILLUMINA_READ_LENGTH; 
+		return phred*Estats/10;
+	}
+	//Get likelihood of extending this path to node, based on its current coverage, length 
+	//and alignment phred score
+	public double getExtendLikelihood(Node node, double phred){
+		double 	nc=node.getNumber("cov"),
+				bc=(uniqueBin!=null?uniqueBin.estCov:averageCov());
+		
+		//count number of occurrences for this node in this path and reduce its cov respectively  
+		long ncount=nodes().filter(n->n.equals(node)).count();
+		nc-=ncount*bc;
+		long 	nl=(long) node.getNumber("len");
+		
+		return getLikelihood(nc, bc, nl, phred);
+	}
+	//if the alignment not available. just want to have score of single node contained in a path to increase
+	public double getExtendLikelihood(Node node){
+		return getExtendLikelihood(node, Alignment.MIN_QUAL);//phred doesn't matter, just pick a positive one!
+	}
+	
+	//get likelihood of the whole path
+	public double getPathLikelihood(){
+		double retval=Double.MIN_VALUE;
+		HashMap<Node,Double> occur = new HashMap<>();
+		double bc=(uniqueBin!=null?uniqueBin.estCov:averageCov());
+		for(Node n:getNodePath()){
+			//not considering 2 tips
+			if(n==getRoot()||n==peekNode())
+				continue;
+			
+			double 	nc=n.getNumber("cov");
+			if(occur.containsKey(n)){
+				nc=occur.get(n);
+			}
+			occur.put(n, nc-bc);
+
+			long nl=(long) n.getNumber("len");
+			if(retval==Double.MIN_VALUE)
+				retval=getLikelihood(nc, bc, nl, Alignment.MIN_QUAL);
+			else
+				retval+=getLikelihood(nc, bc, nl, Alignment.MIN_QUAL);	
+				
+		}
+		return retval;
 	}
 }

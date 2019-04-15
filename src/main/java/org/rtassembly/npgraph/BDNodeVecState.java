@@ -10,17 +10,21 @@ import java.util.Objects;
 public class BDNodeVecState implements Comparable<BDNodeVecState>{
 	BDNode node;
 	ScaffoldVector vector;
-	int nodeCover=1; //alignment score + number of occurences?
+	int nvsScore=Alignment.MIN_QUAL; //alignment score + number of occurences?
 	
-	BDNodeVecState(BDNode node, ScaffoldVector vector){
+	public BDNodeVecState(BDNode node, ScaffoldVector vector){
 		this.node=node;
 		this.vector=vector;
 	}
 	
-	public BDNodeVecState(BDNode node, ScaffoldVector vector, int cov) {
+	public BDNodeVecState(BDNode node, int qual, ScaffoldVector vector){
 		this(node, vector);
-		this.nodeCover=cov;
+		nvsScore=qual;
 	}
+	public BDNodeVecState(Alignment alg, ScaffoldVector vector) {
+		this(alg.node, alg.quality, vector);
+	}
+	
 	public BDNode getNode(){return node;}
 	public ScaffoldVector getVector(){return vector;}
 	
@@ -32,9 +36,17 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 	public boolean getDirection(boolean rootDir){
 		return rootDir!=(vector.getDirection()>0); //XOR: in-out not +/-
 	}
+	public int getScore(){
+		return nvsScore;
+	}
+	public void setScore(int score){
+		nvsScore=score;
+	}
+	
+
 	@Override
 	public String toString(){
-		return node.getId() + ":" + vector.toString() + ":" + nodeCover;
+		return node.getId() + ":" + vector.toString() + ":" + nvsScore;
 	}
 	
 	//compare in term of distance to the root node: for sortedset
@@ -87,7 +99,7 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 
     }
 	public boolean qc() {
-		return nodeCover >= BDGraph.MIN_COVER;
+		return nvsScore >= BDGraph.SAFE_COUNTS*Alignment.GOOD_QUAL; //60*2
 	}
 
 	//Merging 2 equal NodeVectors
@@ -99,11 +111,11 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 						thatVector=nv.getVector();
 		//update the vector
 		if(!thisVector.isIdentity()){
-			thisVector.setMagnitute( (thisVector.getMagnitute()*this.nodeCover+thatVector.getMagnitute()*nv.nodeCover)/(this.nodeCover+nv.nodeCover));
+			thisVector.setMagnitute( (int)((thisVector.getMagnitute()*this.nvsScore+thatVector.getMagnitute()*nv.nvsScore)/(this.nvsScore+nv.nvsScore)));
 		}
 		
 		//update coverage
-		this.nodeCover+=nv.nodeCover;
+		this.nvsScore+=nv.nvsScore;
 		return true;
 	}
 }

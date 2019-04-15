@@ -565,8 +565,8 @@ public class SimpleBinner {
 					edge2BinMap.replace(ep, bcMinusOne);				
 
 				}else {
-					System.err.printf("...not found appropriate binning information on path %s, at edge %s: %s!\n", path.getId(), ep.getId(), getBinsOfEdge(ep));
-//					edge2BinMap.remove(ep);
+					System.err.printf("WARNING: not found appropriate binning information of edge %s: %s...remove conflict bin!\n", ep.getId(), getBinsOfEdge(ep));
+					edge2BinMap.remove(ep);
 				}
 		
 				
@@ -669,7 +669,7 @@ public class SimpleBinner {
 	public String getBinsOfEdge(Edge edge) {
 		String retval="[";
 		HashMap<PopBin, Integer> binCount=edge2BinMap.get(edge);
-		if(binCount==null)
+		if(binCount==null||binCount.isEmpty())
 			retval+="unknown";
 		else {
 			for(PopBin b:binCount.keySet()) {
