@@ -72,24 +72,8 @@ public class Alignment implements Comparable<Alignment> {
 	
 	ArrayList<CigarElement> alignmentCigars = new ArrayList<CigarElement>();
 	
+	public Alignment(){}
 
-	//public int readLeft, readRight, readAlign, refLeft, refRight, refAlign;
-	//left and right are in the direction of the reference sequence
-	public Alignment(String readID, int refStart, int refEnd, int readLength, 
-			int readStart, int readEnd, boolean strand, boolean useful, BDNode node, int score){
-		this.readID = readID;
-		this.refStart = refStart;
-		this.refEnd = refEnd;
-		
-		this.readLength = readLength;
-		this.readStart = readStart;//1-index
-		this.readEnd = readEnd;//1-index
-		this.strand = strand;
-		this.useful = useful;			
-		this.node = node;
-		this.score = score;
-	}
-	
 	public Alignment(SAMRecord sam, BDNode node) {
 //		readID = Integer.parseInt(sam.getReadName().split("_")[0]);
 		readID = sam.getReadName();
@@ -144,7 +128,13 @@ public class Alignment implements Comparable<Alignment> {
 		int refLeft = refStart - 1;
 		int refRight = ((Sequence) node.getAttribute("seq")).length() - refEnd;
 		
-		score = refEnd + 1 - refStart;
+		try{
+			score = sam.getIntegerAttribute("AS");
+		}catch(RuntimeException e){
+			System.out.println("AS tag not found for score, use alignment length instead!");
+			score =  refEnd + 1 - refStart;
+		}
+		
 		if (sam.getReadNegativeStrandFlag()){			
 			strand = false;
 			//need to convert the alignment position on read the correct direction 
@@ -179,10 +169,20 @@ public class Alignment implements Comparable<Alignment> {
 	}
 
 	public Alignment reverseRead(){
-		Alignment revAlign = new Alignment(readID, refStart, refEnd, readLength, 
-		readLength - readStart + 1, readLength - readEnd + 1, !strand, useful, node, score);
+		Alignment revAlign = new Alignment();
+		revAlign.readID = readID;
+		revAlign.refStart = refStart;
+		revAlign.refEnd = refEnd;
 		
+		revAlign.readLength = readLength;
+		revAlign.readStart = readLength - readStart + 1;//1-index
+		revAlign.readEnd = readLength - readEnd + 1;//1-index
+		revAlign.strand = !strand;
+		revAlign.useful = useful;			
+		revAlign.node = node;
+		revAlign.score = score;
 		revAlign.alignmentCigars = alignmentCigars;
+		revAlign.quality = quality;
 
 		return revAlign;
 	}
