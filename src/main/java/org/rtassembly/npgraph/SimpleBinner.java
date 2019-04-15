@@ -480,20 +480,16 @@ public class SimpleBinner {
 	public boolean checkRemovableNode(Node node) {
 //		LOG.info("Checking node {}", node.getAttribute("name"));
 		if(node.getInDegree()*node.getOutDegree()!=0 || SimpleBinner.getBinIfUnique(node)!=null) {
-//			LOG.info("1 not removable!");
 			return false;
 		}
 		else if(node2BinMap.containsKey(node)) {
 			if(node2BinMap.get(node).values().stream().mapToInt(Integer::intValue).sum() != 0){
-//				LOG.info("2 not removable!");
 				return false;
 			}
 		}
 		else if(GraphUtil.approxCompare(node.getNumber("cov"),leastBin.estCov)>=0) {
-//			LOG.info("3 not removable!");
 			return false;
 		}
-//		LOG.info(" removable!");
 		return true;
 	}
 	//Traversal along a unique path (unique ends) and return list of unique edges
@@ -574,19 +570,15 @@ public class SimpleBinner {
 				if(edgeBinsCount.containsKey(uniqueBin)) {
 					bcMinusOne=substract(edgeBinsCount, oneBin);
 					edge2BinMap.replace(ep, bcMinusOne);
-
 				}else if(edgeBinsCount.containsKey(other)){
-				//E.g. b2 vs b1 =>  b2==b1							//...
+					//E.g. b2 vs b1 =>  b2==b1
 					bcMinusOne=substract(edgeBinsCount, otherBin);
 					edge2BinMap.replace(ep, bcMinusOne);				
-
 				}else if(HybridAssembler.VERBOSE) 
 					LOG.warn("...not found appropriate binning information on path {}, at edge {}: {}", path.getId(), ep.getId(), getBinsOfEdge(ep));
 //					edge2BinMap.remove(ep);
-		
-				
-			}
-			
+
+			}	
 //			LOG.info("--edge {} coverage:{} to {}",ep.getId(),ep.getNumber("cov"),ep.getNumber("cov") - aveCov);
 			ep.setAttribute("cov", ep.getNumber("cov")>aveCov?ep.getNumber("cov")-aveCov:0);	
 
@@ -684,7 +676,7 @@ public class SimpleBinner {
 	public String getBinsOfEdge(Edge edge) {
 		String retval="[";
 		HashMap<PopBin, Integer> binCount=edge2BinMap.get(edge);
-		if(binCount==null)
+		if(binCount==null||binCount.isEmpty())
 			retval+="unknown";
 		else {
 			for(PopBin b:binCount.keySet()) {
