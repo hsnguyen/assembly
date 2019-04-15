@@ -103,7 +103,7 @@ public class GraphExploreDesktop {
          */
         try {
         	hbAss.setLongReadsInput(lInput);
-        	hbAss.setLongReadsInputFormat("sam");
+//        	hbAss.setLongReadsInputFormat("sam");
         	hbAss.prepareLongReadsProcess();
         	
         	hbAss.assembly();
