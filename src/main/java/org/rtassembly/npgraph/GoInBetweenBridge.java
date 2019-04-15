@@ -399,7 +399,8 @@ public class GoInBetweenBridge {
 		
 		if(retval!=null) {
 			retval.setConsensusUniqueBinOfPath(bin);
-			System.out.println("...best path found: " + retval.getId());
+			if(HybridAssembler.VERBOSE)
+				LOG.info("...best path found: " + retval.getId());
 
 		}
 		return retval;

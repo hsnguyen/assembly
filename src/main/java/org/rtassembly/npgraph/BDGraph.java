@@ -550,7 +550,8 @@ public class BDGraph extends MultiGraph{
 				
 			}
 		} 
-		System.out.println("select from list of " + possiblePaths.size() + " DFS paths:");
+		if(HybridAssembler.VERBOSE)
+			LOG.info("select from list of " + possiblePaths.size() + " DFS paths:");
 		
 		if(possiblePaths.isEmpty()){
 			if(SimpleBinner.getBinIfUnique(srcNode)!=null && SimpleBinner.getBinIfUnique(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 && force){
