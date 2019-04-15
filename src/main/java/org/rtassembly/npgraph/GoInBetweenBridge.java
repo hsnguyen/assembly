@@ -13,8 +13,6 @@ import org.graphstream.graph.Node;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import htsjdk.samtools.cram.encoding.readfeatures.Scores;
-
 //A bridge structure that the first node must be unique
 public class GoInBetweenBridge {
 	private static final Logger LOG = LoggerFactory.getLogger(GoInBetweenBridge.class);
