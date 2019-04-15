@@ -52,11 +52,11 @@ public class GraphExploreDesktop {
     	 */
     	String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/unicycler/synthetic/";
 //    	String sample="Acinetobacter_A1/";
-    	String sample="Acinetobacter_AB30/"; //SimpleBinner.ANCHOR_CTG_LEN=2000 || Alignment.MIN_QUAL=10
+//    	String sample="Acinetobacter_AB30/"; //SimpleBinner.ANCHOR_CTG_LEN=2000 || Alignment.MIN_QUAL=10
 //    	String sample="E_coli_K-12_MG1655/";
 //    	String sample="E_coli_O25b_H4-ST131/";
 //    	String sample="Klebsiella_30660_NJST258_1/";
-//    	String sample="Klebsiella_MGH_78578/"; //SimpleBinner.ANCHOR_CTG_LEN=500
+    	String sample="Klebsiella_MGH_78578/"; //SimpleBinner.ANCHOR_CTG_LEN=500
 //    	String sample="Klebsiella_NTUH-K2044/";
 //    	String sample="Mycobacterium_tuberculosis_H37Rv/";
 //    	String sample="random_sequences_many_repeats/";
@@ -91,9 +91,6 @@ public class GraphExploreDesktop {
 		hbAss.prepareShortReadsProcess();
 		
     	BDGraph graph= hbAss.simGraph;
-		for (Node node : graph) {
-			node.setAttribute("ui.label", node.getId());
-		}
     	
     	graph.setAttribute("ui.style", GraphUtil.styleSheet);
 
