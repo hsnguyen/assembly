@@ -407,7 +407,7 @@ public class BDPath extends Path{
 		return getExtendLikelihood(node, Alignment.MIN_QUAL);//phred doesn't matter, just pick a positive one!
 	}
 	
-	//get likelihood of the whole path
+	//get likelihood of the whole path: unpractical, not in use!
 	public double getPathLikelihood(){
 		double retval=Double.MIN_VALUE;
 		HashMap<Node,Double> occur = new HashMap<>();
