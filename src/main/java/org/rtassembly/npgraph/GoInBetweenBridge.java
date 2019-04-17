@@ -385,7 +385,7 @@ public class GoInBetweenBridge {
 		}
 		
 		//2. Pick the best one with highest likelihood score
-		candidates.sort(Comparator.comparing(BDPath::getPathLikelihood));
+		candidates.sort(Comparator.comparing(BDPath::getPathEstats));
 		retval=candidates.get(0);
 		
 		if(retval!=null) {
