@@ -8,8 +8,10 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.PriorityQueue;
+import java.util.Queue;
 import java.util.Set;
 import java.util.Stack;
 import java.util.stream.Collectors;
@@ -38,8 +40,8 @@ public class BDGraph extends MultiGraph{
     
 	public static final double ALPHA=.5; //coverage less than alpha*bin_cov will be considered noise
     public static final int D_LIMIT=5000; //distance bigger than this will be ignored
-    public static int S_LIMIT=500;// maximum number of DFS steps
-    public static int MAX_DFS_PATHS=100; //maximum number of candidate DFS paths
+    public static int S_LIMIT=500;// maximum number of graph traversing steps
+    public static int MAX_PATHS=100; //maximum number of candidate DFS paths
     
 	public static volatile int SAFE_COUNTS=3; //safe counts: use for confident estimation
 
@@ -412,7 +414,7 @@ public class BDGraph extends MultiGraph{
 		}
 	}
 	
-    synchronized ArrayList<BDPath> DFSAllPaths(Alignment from, Alignment to, boolean force){
+    synchronized ArrayList<BDPath> pathsFinding(Alignment from, Alignment to, boolean force){
     	assert from.readID==to.readID && to.compareTo(from)>=0:"Illegal alignment pair to find path!"; 	
     	int distance=to.readAlignmentStart()-from.readAlignmentEnd();
     	BDNode srcNode = from.node,
@@ -430,6 +432,7 @@ public class BDGraph extends MultiGraph{
 									retval=new ArrayList<BDPath>();
 		//1. First build shortest tree from dstNode 		
 		HashMap<String,Integer> shortestMap = getShortestTreeFromNode(dstNode, dstDir, distance);
+		// The good thing is that we need only 1 temporary path variable
 		BDPath path = new BDPath(srcNode);
 
 		//2. DFS from srcNode with the distance info above
@@ -568,7 +571,7 @@ public class BDGraph extends MultiGraph{
 		}
 		
 		double closestDist=possiblePaths.get(0).getDeviation();
-		int keepMax = MAX_DFS_PATHS;//only keep this many possible paths 
+		int keepMax = MAX_PATHS;//only keep this many possible paths 
 		for(int i=0;i<possiblePaths.size();i++){
 			BDPath p = possiblePaths.get(i);
 			if(p.getDeviation()>closestDist+Math.abs(distance+getKmerSize())*R_TOL || i>=keepMax)
@@ -581,6 +584,115 @@ public class BDGraph extends MultiGraph{
 		return retval;
 	}    
     
+	synchronized ArrayList<BDPath> BFSAllPaths(BDNode srcNode, BDNode dstNode, boolean srcDir, boolean dstDir, int distance, boolean force)
+	{
+    	if(distance>BDGraph.D_LIMIT && !force)
+    		return null;
+    	System.out.printf("Looking for BFS path between %s%s to %s%s with distance=%d\n",srcNode.getId(), srcDir?"o":"i", dstNode.getId(), dstDir?"o":"i" ,distance);
+		ArrayList<BDPath> possiblePaths = new ArrayList<BDPath>(), 
+									retval=new ArrayList<BDPath>();
+		//1. First build shortest tree from dstNode 		
+		HashMap<String,Integer> shortestMap = getShortestTreeFromNode(dstNode, dstDir, distance);
+
+		//2. BFS from srcNode with the distance info above
+		BDNodeState curNodeState = new BDNodeState(srcNode, !srcDir); // first node is special
+		if(shortestMap.containsKey(curNodeState.toString())) {
+			//FIXME: use PriorityQueue with edit distance?
+			Queue<BDPath> queue = new LinkedList<>();
+			int tolerance = A_TOL;
+			BDEdge curEdge = null;
+			queue.add(new BDPath(srcNode));
+
+			AtomicDouble limit=new AtomicDouble();
+			
+			while(!queue.isEmpty() || possiblePaths.size() > S_LIMIT) {
+				final BDPath path=queue.poll();
+				final BDNode curNode = (BDNode) path.peekNode();
+				boolean curDir = (curEdge==null?!srcDir:curEdge.getDir(curNode));
+				final int delta=Math.abs(distance-curEdge.getLength());
+
+				(curDir?curNode.enteringEdges():curNode.leavingEdges())
+					.forEach(e->{					
+	    				BDNode n=(BDNode) e.getOpposite(curNode);
+	    				//Important: an anchor is not allowed in the result path
+	    				//TODO: consider avoid nodes with too low likelihood???
+	    				if(SimpleBinner.getBinIfUnique(n)==null || n==dstNode){
+		    				boolean dir=((BDEdge) e).getDir(n);
+		    				BDNodeState ns = new BDNodeState(n, dir);
+		    				
+		    				//edit distance criteria?
+		    				if(shortestMap.containsKey(ns.toString()) 
+								&& shortestMap.get(ns.toString()) < limit.get()
+								){
+		    					BDPath tmpPath=new BDPath(path);
+		    					tmpPath.add(e);
+		    					queue.add(tmpPath);
+		    					//If target found, add to candidate list
+		    					//note that traversing direction (true: template, false: reverse complement) of destination node is opposite its defined direction (true: outward, false:inward) 
+		    					if(n==dstNode && dir==dstDir && delta < tolerance){ 
+	
+		    				    	tmpPath.setDeviation(delta);
+	//	    				    	tmpPath.setPathEstats(pathScore);
+	
+		    				    	//insert to the list with sorting
+		    				    	if(possiblePaths.isEmpty())
+		    				    		possiblePaths.add(tmpPath);
+		    				    	else{
+		    				    		int idx=0;
+		    				    		for(BDPath p:possiblePaths)
+		    				    			if(delta>p.getDeviation())
+		    				    				idx++;
+		    				    			else
+		    				    				break;
+		    				    		possiblePaths.add(idx,tmpPath);
+		    				    	}
+		    					}
+		    					
+		    				}
+	    				}
+					});				
+
+				limit.set(distance + tolerance);
+		    						
+				distance -= (int)curNode.getNumber("len") + curEdge.getLength();
+								
+			}
+		} 
+		System.out.println("select from list of " + possiblePaths.size() + " BFS paths:");
+		
+		if(possiblePaths.isEmpty()){
+			if(SimpleBinner.getBinIfUnique(srcNode)!=null && SimpleBinner.getBinIfUnique(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 && force){
+				//save the corresponding content of long reads to this edge
+				//TODO: save nanopore reads into this pseudo edge to run consensus later
+				BDEdge pseudoEdge = addEdge(srcNode, dstNode, srcDir, dstDir);
+				pseudoEdge.setAttribute("dist", distance);
+				BDPath p=new BDPath(srcNode);
+				p.add(pseudoEdge);
+				possiblePaths.add(p);
+				System.out.println("pseudo path from " + srcNode.getId() + " to " + dstNode.getId() + " distance=" + distance);
+				
+				return possiblePaths;
+    		}else
+    			return null;
+
+		}
+		
+		double closestDist=possiblePaths.get(0).getDeviation();
+		int keepMax = MAX_PATHS;//only keep this many possible paths 
+		for(int i=0;i<possiblePaths.size();i++){
+			BDPath p = possiblePaths.get(i);
+			if(p.getDeviation()>closestDist+Math.abs(distance+getKmerSize())*R_TOL || i>=keepMax)
+				break;
+			retval.add(p);
+			System.out.printf("Hit added: %s deviation=%d; depth=%d; likelihood score=%.2f\n", p.getId(), p.getDeviation(), p.size(), p.getPathEstats());
+		}
+		
+		//TODO: reduce the number of returned paths here (calculate edit distance with nanopore read: dynamic programming?)
+		return retval;
+	}  
+	
+	
+	
     /*
      * Get a map showing shortest distances from surrounding nodes to a *rootNode* expanding to a *direction*, within a *distance*
      * based on Dijkstra algorithm

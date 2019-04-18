@@ -501,7 +501,7 @@ public class GoInBetweenBridge {
 			//invoke findPath()?
 			startNV=new BDNodeVecState(start, read.getVector(read.getFirstAlignment(), start));
 			endNV=new BDNodeVecState(end, read.getVector(read.getFirstAlignment(), end));
-			connectedPaths = graph.DFSAllPaths(start, end, force);
+			connectedPaths = graph.pathsFinding(start, end, force);
 			
 //			if(connectedPaths==null || connectedPaths.isEmpty())
 //				connectedPaths = graph.getClosestPaths(start, end);
