@@ -423,10 +423,10 @@ public class GoInBetweenBridge {
 	//combination of getBestPath() + countPathsBetween() + path.chopAtAnchors()
 	//return new unique path to reduce in a building bridge
 	public List<BDPath> scanForNewUniquePaths(){
-		if(segments==null || segments.isEmpty())
-			return null;
-		System.out.println("Scanning on bridge with segments:\n" + getAllPossiblePaths());
 		List<BDPath> retval = new ArrayList<>();
+		if(segments==null || segments.isEmpty())
+			return retval;
+		System.out.println("Scanning on bridge with segments:\n" + getAllPossiblePaths());	
 		BDPath curPath=null;
 		SimpleBinner binner=graph.binner;
 		PopBin sbin=null;
@@ -502,10 +502,7 @@ public class GoInBetweenBridge {
 			startNV=new BDNodeVecState(start, read.getVector(read.getFirstAlignment(), start));
 			endNV=new BDNodeVecState(end, read.getVector(read.getFirstAlignment(), end));
 			connectedPaths = graph.pathsFinding(start, end, force);
-			
-//			if(connectedPaths==null || connectedPaths.isEmpty())
-//				connectedPaths = graph.getClosestPaths(start, end);
-			
+						
 		}
 		
 		BridgeSegment(BDNodeVecState nv1, BDNodeVecState nv2, boolean dir1, boolean dir2, boolean force){
@@ -513,10 +510,9 @@ public class GoInBetweenBridge {
 			pSegment = new BDEdgePrototype(nv1.getNode(),nv2.getNode(),dir1,dir2);
 			startNV = nv1; endNV = nv2;
 			int d = ScaffoldVector.composition(nv2.getVector(), ScaffoldVector.reverse(nv1.getVector())).distance(nv1.getNode(), nv2.getNode());
-			connectedPaths = graph.DFSAllPaths((BDNode)nv1.getNode(), (BDNode)nv2.getNode(), dir1, dir2, d, force);
-
-//			if(connectedPaths==null || connectedPaths.isEmpty())
-//				connectedPaths = graph.getClosestPaths((BDNode)node1, dir1, (BDNode)node2, dir2, d, false);
+//			connectedPaths = graph.DFSAllPaths((BDNode)nv1.getNode(), (BDNode)nv2.getNode(), dir1, dir2, d, force);
+			connectedPaths = graph.BFSAllPaths((BDNode)nv1.getNode(), (BDNode)nv2.getNode(), dir1, dir2, d, force);
+		
 		}
 		
 		BridgeSegment(BDPath path){
@@ -828,7 +824,7 @@ public class GoInBetweenBridge {
 			
 			if(!retval) {		
 				segments=null;
-				System.out.println("Failed to connect + " + pBridge.toString());
+				System.out.println("Failed to connect " + pBridge.toString());
 				
 			}
 			//set pBridge end iff endAt node is original unique node

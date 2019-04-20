@@ -420,9 +420,10 @@ public class BDGraph extends MultiGraph{
     	BDNode srcNode = from.node,
 						dstNode = to.node;
     	boolean srcDir = from.strand, dstDir = !to.strand;
-    	return DFSAllPaths(srcNode, dstNode, srcDir, dstDir, distance, force);
+//    	return DFSAllPaths(srcNode, dstNode, srcDir, dstDir, distance, force);
+    	return BFSAllPaths(srcNode, dstNode, srcDir, dstDir, distance, force);
     }
-    
+    //Depth First Search strategy
 	synchronized ArrayList<BDPath> DFSAllPaths(BDNode srcNode, BDNode dstNode, boolean srcDir, boolean dstDir, int distance, boolean force)
 	{
     	if(distance>BDGraph.D_LIMIT && !force)
@@ -583,7 +584,8 @@ public class BDGraph extends MultiGraph{
 		//TODO: reduce the number of returned paths here (calculate edit distance with nanopore read: dynamic programming?)
 		return retval;
 	}    
-    
+	
+	//Breath First Search strategy
 	synchronized ArrayList<BDPath> BFSAllPaths(BDNode srcNode, BDNode dstNode, boolean srcDir, boolean dstDir, int distance, boolean force)
 	{
     	if(distance>BDGraph.D_LIMIT && !force)
@@ -604,13 +606,39 @@ public class BDGraph extends MultiGraph{
 			queue.add(new BDPath(srcNode));
 
 			AtomicDouble limit=new AtomicDouble();
-			
-			while(!queue.isEmpty() || possiblePaths.size() > S_LIMIT) {
+			int srcLen=(int) srcNode.getNumber("len");
+			while(!queue.isEmpty()) {
 				final BDPath path=queue.poll();
 				final BDNode curNode = (BDNode) path.peekNode();
+				if(path.size() > 1)
+					curEdge=(BDEdge) path.peekEdge();
 				boolean curDir = (curEdge==null?!srcDir:curEdge.getDir(curNode));
-				final int delta=Math.abs(distance-curEdge.getLength());
+				final int delta = distance - path.getLength() + srcLen;
 
+				//If target found, add to candidate list
+				//note that traversing direction (true: template, false: reverse complement) of destination node is opposite its defined direction (true: outward, false:inward) 
+				if(curNode==dstNode && curDir==dstDir && delta < tolerance){ 
+
+			    	path.setDeviation(delta);
+//	    			tmpPath.setPathEstats(pathScore);
+
+			    	//insert to the list with sorting
+			    	if(possiblePaths.isEmpty())
+			    		possiblePaths.add(new BDPath(path));
+			    	else if(possiblePaths.size() < S_LIMIT){
+			    		int idx=0;
+			    		for(BDPath p:possiblePaths)
+			    			if(delta>p.getDeviation())
+			    				idx++;
+			    			else
+			    				break;
+			    		possiblePaths.add(idx,new BDPath(path));
+			    	}else
+			    		break;
+				}
+				
+				//get next possible paths to traverse
+				limit.set(delta + tolerance);
 				(curDir?curNode.enteringEdges():curNode.leavingEdges())
 					.forEach(e->{					
 	    				BDNode n=(BDNode) e.getOpposite(curNode);
@@ -626,35 +654,10 @@ public class BDGraph extends MultiGraph{
 								){
 		    					BDPath tmpPath=new BDPath(path);
 		    					tmpPath.add(e);
-		    					queue.add(tmpPath);
-		    					//If target found, add to candidate list
-		    					//note that traversing direction (true: template, false: reverse complement) of destination node is opposite its defined direction (true: outward, false:inward) 
-		    					if(n==dstNode && dir==dstDir && delta < tolerance){ 
-	
-		    				    	tmpPath.setDeviation(delta);
-	//	    				    	tmpPath.setPathEstats(pathScore);
-	
-		    				    	//insert to the list with sorting
-		    				    	if(possiblePaths.isEmpty())
-		    				    		possiblePaths.add(tmpPath);
-		    				    	else{
-		    				    		int idx=0;
-		    				    		for(BDPath p:possiblePaths)
-		    				    			if(delta>p.getDeviation())
-		    				    				idx++;
-		    				    			else
-		    				    				break;
-		    				    		possiblePaths.add(idx,tmpPath);
-		    				    	}
-		    					}
-		    					
+		    					queue.add(tmpPath);	
 		    				}
 	    				}
 					});				
-
-				limit.set(distance + tolerance);
-		    						
-				distance -= (int)curNode.getNumber("len") + curEdge.getLength();
 								
 			}
 		} 
