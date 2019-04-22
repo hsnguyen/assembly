@@ -17,20 +17,20 @@ import org.slf4j.LoggerFactory;
 public class BDPath extends Path{
 	private int diff; //deviation from path to aligned read (now just length): the more the worse
 	private double pathEstats=Double.MIN_NORMAL; //sum of estats of inbetween nodes
-    private int len=0;
+    private long len=0;
 	private static final Logger LOG = LoggerFactory.getLogger(BDPath.class);
     private PopBin uniqueBin;//the unique population bin that this path belongs to (can only be set from outside)
     @Override
     public void add(Edge edge) {
     	super.add(edge);
     	Node lastNode = peekNode();    	
-    	len+=((int)lastNode.getNumber("len"))+((BDEdge)edge).getLength();
+    	len+=((long)lastNode.getNumber("len"))+((BDEdge)edge).getLength();
     	  	
     }
     @Override
     public void setRoot(Node root) {
     	super.setRoot(root);
-    	len=(int) root.getNumber("len");
+    	len=(long) root.getNumber("len");
     }
     
 	public BDPath(Node root){
@@ -282,7 +282,7 @@ public class BDPath extends Path{
 	}
 	
 
-	public int getLength() {
+	public long getLength() {
 		return len;
 	}
 	
