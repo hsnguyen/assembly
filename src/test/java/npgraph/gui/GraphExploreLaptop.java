@@ -66,7 +66,8 @@ public class GraphExploreLaptop {
 		hbAss.setAligner("bwa");
 		hbAss.setAlignerPath("/home/s_hoangnguyen/workspace/bwa/");
 		hbAss.prepareShortReadsProcess();//change true/false to use/not use SPAdes path
-		
+    	HybridAssembler.promptEnterKey();
+
 		
     	BDGraph graph= hbAss.simGraph;
    
@@ -81,7 +82,7 @@ public class GraphExploreLaptop {
         	hbAss.setLongReadsInput(lInput);
 //        	hbAss.setLongReadsInputFormat("sam");
         	hbAss.prepareLongReadsProcess();
-        	
+//        	HybridAssembler.promptEnterKey();
         	hbAss.assembly();
 			
 		} catch (IOException | InterruptedException e) {
