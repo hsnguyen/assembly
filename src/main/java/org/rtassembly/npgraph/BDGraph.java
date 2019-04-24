@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -288,27 +289,6 @@ public class BDGraph extends MultiGraph{
     	
     }
     
-    //when there is a path that could represent a bridge (half or full)
-    synchronized protected void updateBridgesMap(BDPath path){
-    	if(path==null || path.size() < 2)
-    		return;
-    	try{
-	    	BDNode 	startNode=path.getFirstNode(),
-	    					endNode=path.getLastNode();
-	    	boolean startNodeDir=path.getFirstNodeDirection(),
-	    			endNodeDir=path.getLastNodeDirection();
-	    	if(SimpleBinner.getBinIfUnique(startNode)!=null){
-	    		bridgesMap.put(startNode.getId()+(startNodeDir?"o":"i"), new GoInBetweenBridge(this,path));
-	    	}
-	    	if(SimpleBinner.getBinIfUnique(endNode)!=null){
-	    		bridgesMap.put(endNode.getId()+(endNodeDir?"o":"i"), new GoInBetweenBridge(this,path));
-	    	}
-		} catch (Exception e) {
-			System.err.println("Invalid path to add to bridge map: " + path.getId());
-			e.printStackTrace();
-		}
-    	
-    }
     
     //Return bridge in the map (if any) that share the same bases (unique end) 
     synchronized public GoInBetweenBridge getBridgeFromMap(AlignedRead algRead){
@@ -590,8 +570,8 @@ public class BDGraph extends MultiGraph{
 		//2. BFS from srcNode with the distance info above
 		BDNodeState curNodeState = new BDNodeState(srcNode, !srcDir); // first node is special
 		if(shortestMap.containsKey(curNodeState.toString())) {
-			//FIXME: use PriorityQueue with edit distance?
-			Queue<BDPath> queue = new LinkedList<>();
+			//use PriorityQueue with length to have the extending balance
+			PriorityQueue<BDPath> queue = new PriorityQueue<>(Comparator.comparing(BDPath::getLength));
 			int tolerance = A_TOL;
 			BDEdge curEdge = null;
 			queue.add(new BDPath(srcNode));

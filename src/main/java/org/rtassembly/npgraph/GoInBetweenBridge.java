@@ -23,42 +23,10 @@ public class GoInBetweenBridge {
 	ArrayList<BridgeSegment> segments;
 	BridgeSteps steps;
 	
-	GoInBetweenBridge(BDGraph graph, PopBin bin){
+	//TODO: save (max) sequences from AlignedRead for later use
+	public GoInBetweenBridge(BDGraph graph, AlignedRead bb, PopBin bin) {
 		this.graph=graph;
-//		segments=new ArrayList<>();
-//		steps=new BridgeSteps();
 		this.bin=bin;
-	}
-	//This is for SPAdes path reader only. The input path must have at least one end unique.
-	//This unique ending node will be use as the first anchor of the bridge
-	GoInBetweenBridge (BDGraph graph, BDPath path){
-		this(graph,path.getConsensusUniqueBinOfPath());
-		if(	path.size()>1) {
-			if(SimpleBinner.getBinIfUnique(path.getRoot())!=null) {
-				addSegment(new BridgeSegment(path));
-			}
-			else if(SimpleBinner.getBinIfUnique(path.peekNode())!=null) {
-				addSegment(new BridgeSegment(path.reverse()));
-			}
-			
-			try {
-				pBridge=new BDEdgePrototype(path.getFirstNode(), path.getFirstNodeDirection());
-			} catch (Exception e) {
-				System.err.println("Illegal path to construct pBridge: " + path.getId());
-				e.printStackTrace();
-			}
-
-		}
-
-	}
-	
-	public GoInBetweenBridge(BDGraph graph, BridgeSteps steps, PopBin b){
-		this(graph,b);
-		this.steps=steps;
-	}
-	
-	public GoInBetweenBridge(BDGraph graph, AlignedRead bb, PopBin b) {
-		this(graph, b);
 		steps=new BridgeSteps(bb);
 	}
 
@@ -789,9 +757,9 @@ public class GoInBetweenBridge {
 													force);
 						else
 							seg=new BridgeSegment(	prev, current, 
-									!prev.getDirection(pBridge.getDir0()), 
-									current.getDirection(pBridge.getDir0()), 
-									force);
+													!prev.getDirection(pBridge.getDir0()), 
+													current.getDirection(pBridge.getDir0()), 
+													force);
 						
 						System.out.print("...connecting " + seg.getId());
 						if(seg.isConnected()){
