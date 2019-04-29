@@ -9,10 +9,8 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.PriorityQueue;
-import java.util.Queue;
 import java.util.Set;
 import java.util.Stack;
 import java.util.stream.Collectors;
@@ -160,6 +158,7 @@ public class BDGraph extends MultiGraph{
     	BDGraph.KMER=kmer;
     }
     
+    //TODO: indexing graph (in separated module, e.g. `jsa.np.npgraph index -d10000 graph.gfa`)
     public void makeAPSPMap(){
     	long startTime=System.currentTimeMillis();
     	
