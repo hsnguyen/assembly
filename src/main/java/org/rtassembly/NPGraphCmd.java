@@ -5,7 +5,6 @@ import org.rtassembly.gui.NPGraphFX;
 import org.rtassembly.npgraph.Alignment;
 import org.rtassembly.npgraph.BDGraph;
 import org.rtassembly.npgraph.HybridAssembler;
-import org.rtassembly.npgraph.SimpleBinner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +36,7 @@ public class NPGraphCmd extends CommandLine{
 
 		addBoolean("sp", false, "Whether to use SPAdes contigs.paths for bridging.");
 		addInt("qual", 10, "Minimum quality of alignment to considered");
-		addInt("mcov", 2, "Minimum number of reads spanning a confident bridge");
+		addInt("mcov", 3, "Minimum number of reads spanning a confident bridge");
 
 		addBoolean("gui", false, "Whether using GUI or not.");
 		addBoolean("verbose", false, "For debugging.");
