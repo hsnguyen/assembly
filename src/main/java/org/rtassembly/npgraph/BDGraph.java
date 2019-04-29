@@ -39,8 +39,8 @@ public class BDGraph extends MultiGraph{
     
 	public static final double ALPHA=.5; //coverage less than alpha*bin_cov will be considered noise
     public static final int D_LIMIT=5000; //distance bigger than this will be ignored
-    public static final int S_LIMIT=300;// maximum number of graph traversing steps
-    public static final int MAX_PATHS=100; //maximum number of candidate DFS paths
+    public static int S_LIMIT=300;// maximum number of graph traversing steps
+    public static int MAX_PATHS=100; //maximum number of candidate DFS paths
     
 	public static volatile int SAFE_COUNTS=3; //safe counts: use for confident estimation
 
