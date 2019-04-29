@@ -32,7 +32,7 @@ public class NPGraphCmd extends CommandLine{
 		addBoolean("overwrite", true, "Whether to overwrite or reuse the intermediate file");
 		addBoolean("sp", false, "Whether to use SPAdes contigs.paths for bridging.");
 		addInt("qual", 10, "Minimum quality of alignment to considered");
-		addInt("mcov", 2, "Minimum number of reads spanning a confident bridge");
+		addInt("mcov", 3, "Minimum number of reads spanning a confident bridge");
 
 		addBoolean("gui", false, "Whether using GUI or not.");
 		
