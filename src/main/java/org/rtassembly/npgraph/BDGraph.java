@@ -48,7 +48,7 @@ public class BDGraph extends MultiGraph{
     //provide mapping from unique directed node to its corresponding bridge
     //E.g: 103-: <103-82-> also 82+:<82+103+>
     private HashMap<String, GoInBetweenBridge> bridgesMap; 
-    private final HashMap<String, Long> APSPMap = new HashMap<>(); //All-pairs shortest paths by Floyd-Warshall algorithm
+    private final HashMap<String, Long> NBMap = new HashMap<>(); //nearest-neighbors of every nodes
     // *** Constructors ***
 	/**
 	 * Creates an empty graph.
@@ -161,68 +161,7 @@ public class BDGraph extends MultiGraph{
     //TODO: indexing graph (in separated module, e.g. `jsa.np.npgraph index -d10000 graph.gfa`)
     public void makeAPSPMap(){
     	long startTime=System.currentTimeMillis();
-    	
-//        //Run Floyd-Warshall algorithm to build All-pair shortest path of this graph: too slow!
-//    	//init to infinity
-//    	for(Node u:this)
-//    		for(Node v:this) {
-//    			APSPMap.put(BDEdge.createID((BDNode)u, (BDNode)v, true, true), u==v?0:Long.MAX_VALUE);
-//    			APSPMap.put(BDEdge.createID((BDNode)u, (BDNode)v, true, false), Long.MAX_VALUE);
-//    			APSPMap.put(BDEdge.createID((BDNode)u, (BDNode)v, false, true), Long.MAX_VALUE);
-//    			APSPMap.put(BDEdge.createID((BDNode)u, (BDNode)v, false, false), u==v?0:Long.MAX_VALUE);
-//    		}
-//    	
-//    	this.edges().forEach(e->APSPMap.put(e.getId(), (long) e.getNumber("len")));
-//    		
-//    	System.out.printf("Done APSP initializing: %.2f sec\n", (System.currentTimeMillis()-startTime)/1000.0);
-//
-//    	for(Node mid:this) {
-//    		//first mid->--
-//    		for(Node start:this)
-//    			for(Node end:this) {
-//        			APSPMap.put(BDEdge.createID((BDNode)start, (BDNode)end, true, true), 
-//        						Math.min(	APSPMap.get(BDEdge.createID((BDNode)start, (BDNode)end, true, true)), 
-//        									APSPMap.get(BDEdge.createID((BDNode)start, (BDNode)mid, true, true)) +
-//											APSPMap.get(BDEdge.createID((BDNode)mid, (BDNode)end, true, true))));
-//        			APSPMap.put(BDEdge.createID((BDNode)start, (BDNode)end, true, false), 
-//	    						Math.min(	APSPMap.get(BDEdge.createID((BDNode)start, (BDNode)end, true, false)), 
-//	    									APSPMap.get(BDEdge.createID((BDNode)start, (BDNode)mid, true, true)) +
-//											APSPMap.get(BDEdge.createID((BDNode)mid, (BDNode)end, true, false))));
-//        			APSPMap.put(BDEdge.createID((BDNode)start, (BDNode)end, false, true), 
-//	    						Math.min(	APSPMap.get(BDEdge.createID((BDNode)start, (BDNode)end, false, true)), 
-//	    									APSPMap.get(BDEdge.createID((BDNode)start, (BDNode)mid, false, true)) +
-//											APSPMap.get(BDEdge.createID((BDNode)mid, (BDNode)end, true, true))));
-//        			APSPMap.put(BDEdge.createID((BDNode)start, (BDNode)end, false, false), 
-//	    						Math.min(	APSPMap.get(BDEdge.createID((BDNode)start, (BDNode)end, false, false)), 
-//	    									APSPMap.get(BDEdge.createID((BDNode)start, (BDNode)mid, false, true)) +
-//											APSPMap.get(BDEdge.createID((BDNode)mid, (BDNode)end, true, false))));
-//    			}
-//    		//now mid-<--
-//			for(Node start:this)
-//				for(Node end:this) {
-//	    			APSPMap.put(BDEdge.createID((BDNode)start, (BDNode)end, true, true), 
-//	    						Math.min(	APSPMap.get(BDEdge.createID((BDNode)start, (BDNode)end, true, true)), 
-//	    									APSPMap.get(BDEdge.createID((BDNode)start, (BDNode)mid, true, false)) +
-//											APSPMap.get(BDEdge.createID((BDNode)mid, (BDNode)end, false, true))));
-//	    			APSPMap.put(BDEdge.createID((BDNode)start, (BDNode)end, true, false), 
-//								Math.min(	APSPMap.get(BDEdge.createID((BDNode)start, (BDNode)end, true, false)), 
-//											APSPMap.get(BDEdge.createID((BDNode)start, (BDNode)mid, true, false)) +
-//											APSPMap.get(BDEdge.createID((BDNode)mid, (BDNode)end, false, false))));
-//	    			APSPMap.put(BDEdge.createID((BDNode)start, (BDNode)end, false, true), 
-//								Math.min(	APSPMap.get(BDEdge.createID((BDNode)start, (BDNode)end, false, true)), 
-//											APSPMap.get(BDEdge.createID((BDNode)start, (BDNode)mid, false, false)) +
-//											APSPMap.get(BDEdge.createID((BDNode)mid, (BDNode)end, false, true))));
-//	    			APSPMap.put(BDEdge.createID((BDNode)start, (BDNode)end, false, false), 
-//								Math.min(	APSPMap.get(BDEdge.createID((BDNode)start, (BDNode)end, false, false)), 
-//											APSPMap.get(BDEdge.createID((BDNode)start, (BDNode)mid, false, false)) +
-//											APSPMap.get(BDEdge.createID((BDNode)mid, (BDNode)end, false, false))));
-//				}
-//			
-//	    	System.out.printf("Done node %s: %.2f sec\n", mid.getId(),(System.currentTimeMillis()-startTime)/1000.0);
-//
-//    	}
-    	
-    	
+    	//build map of nearest-neighbors in R=10000
     	for(Node node:this) {
     		getShortestTreeFromNode((BDNode) node, true, 10000);
     		getShortestTreeFromNode((BDNode) node, false, 10000);
@@ -390,9 +329,10 @@ public class BDGraph extends MultiGraph{
     	BDNode srcNode = from.node,
 						dstNode = to.node;
     	boolean srcDir = from.strand, dstDir = !to.strand;
-//    	return DFSAllPaths(srcNode, dstNode, srcDir, dstDir, distance, force);
-    	return BFSAllPaths(srcNode, dstNode, srcDir, dstDir, distance, force);
+    	return DFSAllPaths(srcNode, dstNode, srcDir, dstDir, distance, force);
+//    	return BFSAllPaths(srcNode, dstNode, srcDir, dstDir, distance, force);
     }
+    
     //Depth First Search strategy
 	synchronized ArrayList<BDPath> DFSAllPaths(BDNode srcNode, BDNode dstNode, boolean srcDir, boolean dstDir, int distance, boolean force)
 	{
@@ -555,7 +495,7 @@ public class BDGraph extends MultiGraph{
 		return retval;
 	}    
 	
-	//Breath First Search strategy
+	//Breath First Search strategy: consumed much more memory than DFS!
 	synchronized ArrayList<BDPath> BFSAllPaths(BDNode srcNode, BDNode dstNode, boolean srcDir, boolean dstDir, int distance, boolean force)
 	{
     	if(distance>BDGraph.D_LIMIT && !force)
