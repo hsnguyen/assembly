@@ -160,15 +160,15 @@ public class BDGraph extends MultiGraph{
     
     //TODO: indexing graph (in separated module, e.g. `jsa.np.npgraph index -d10000 graph.gfa`)
     public void makeAPSPMap(){
-    	long startTime=System.currentTimeMillis();
-    	//build map of nearest-neighbors in R=10000
-    	for(Node node:this) {
-    		getShortestTreeFromNode((BDNode) node, true, 10000);
-    		getShortestTreeFromNode((BDNode) node, false, 10000);
-	    	System.out.printf("Done node %s: %.2f sec\n", node.getId(),(System.currentTimeMillis()-startTime)/1000.0);
-
-    	}
-    	System.out.printf("Done APSP indexing: %.2f sec\n", (System.currentTimeMillis()-startTime)/1000.0);
+//    	long startTime=System.currentTimeMillis();
+//    	//build map of nearest-neighbors in R=10000
+//    	for(Node node:this) {
+//    		getShortestTreeFromNode((BDNode) node, true, 10000);
+//    		getShortestTreeFromNode((BDNode) node, false, 10000);
+//	    	System.out.printf("Done node %s: %.2f sec\n", node.getId(),(System.currentTimeMillis()-startTime)/1000.0);
+//
+//    	}
+//    	System.out.printf("Done APSP indexing: %.2f sec\n", (System.currentTimeMillis()-startTime)/1000.0);
     	
     }
     
@@ -380,7 +380,6 @@ public class BDGraph extends MultiGraph{
 			double pathScore=0.0;
 			while(true) {
 				curList=stack.peek();
-				
 				if(curList.isEmpty()) {
 					if(path.size() <= 1)
 						break;
@@ -408,7 +407,8 @@ public class BDGraph extends MultiGraph{
 					path.add(curEdge);
 					
 					delta=Math.abs(distance-curEdge.getLength());
-					//note that traversing direction (true: template, false: reverse complement) of destination node is opposite its defined direction (true: outward, false:inward) 
+					//note that traversing direction (true: template, false: reverse complement) of destination node 
+					//is opposite its defined direction (true: outward, false:inward) 
 					if(to==dstNode && dir==dstDir && delta < tolerance){ 
 //					if(to==dstNode && dir==dstDir){ 
 
@@ -432,7 +432,6 @@ public class BDGraph extends MultiGraph{
 						if(possiblePaths.size() > S_LIMIT) //not go too far
 							break;
 					}
-					
 					/*
 					 * Looking for next candidate set of edges to traverse
 					 */
