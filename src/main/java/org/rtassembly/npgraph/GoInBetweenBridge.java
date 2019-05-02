@@ -314,7 +314,7 @@ public class GoInBetweenBridge {
 		ArrayList<BDPath> 	candidates = new ArrayList<>(),
 							tmpList = new ArrayList<>();
 		boolean found=false;
-		int tolerance=0; //only pick the best! 
+		int tolerance=0, keep_max=10; 
 		
 		for(BridgeSegment seg:segments) {
 			//finding the start node
@@ -344,7 +344,9 @@ public class GoInBetweenBridge {
 							else
 								tmpList.add(p01);
 						}
-				candidates=tmpList; //don't need to sort because tolerance=0
+				
+				tmpList.sort(Comparator.comparing(BDPath::getPathEstats));
+				candidates=new ArrayList<>(tmpList.subList(0, keep_max>tmpList.size()?tmpList.size():keep_max));
 				
 			}else
 				return null;
@@ -605,12 +607,6 @@ public class GoInBetweenBridge {
 		BridgeSteps(){
 			nodes=new TreeSet<BDNodeVecState>();
 		}
-		//only use this in greedyConnect() when qc() is not checked!
-		BridgeSteps(NavigableSet<BDNodeVecState> nodesSet){
-			nodes=new TreeSet<>(nodesSet);
-			start=nodes.first();
-			end=nodes.last();	
-		}
 		
 		BridgeSteps(AlignedRead read){
 			this();
@@ -651,84 +647,91 @@ public class GoInBetweenBridge {
 		 */
 		//////////////////////////////////////////////////////////////////////////////////////
 		//TODO: integrate AlignedRead (with split()) to include nanopore data for edit-distance-guide traversal
-		private PriorityQueue<BDNodeVecState> getInBetweenSteps(){
-			PriorityQueue<BDNodeVecState> retval = new PriorityQueue<>(nodes.size(), Comparator.comparing(BDNodeVecState::getScore).reversed());
-			for(BDNodeVecState nvs:nodes)
-				if(nvs!=start && nvs!=end)
+		
+		//need this because BDNodeVecState.compareTo() not fit for this purpose
+		private TreeSet<BDNodeVecState> subSet(BDNodeVecState left, BDNodeVecState right){
+			TreeSet<BDNodeVecState> retval = new TreeSet<>();
+			boolean found=false;
+			for(BDNodeVecState nvs:nodes){
+				if(found){
+					if(nvs==right)
+						break;
 					retval.add(nvs);
+				}else if(nvs==left)
+					found=true;
+				
+			}	
 			return retval;
 		}
-		private ArrayList<BridgeSegment> greedyConnect(boolean force){
-			System.out.println("Connecting...\n" + this.toString());
-			if(nodes.size()<2)
+		private PriorityQueue<BDNodeVecState> getInBetweenSteps(BDNodeVecState left, BDNodeVecState right){
+			PriorityQueue<BDNodeVecState> retval = new PriorityQueue<>(nodes.size(), Comparator.comparing(BDNodeVecState::getScore).reversed());
+			retval.addAll(subSet(left, right));
+			return retval;
+		}
+		
+		private ArrayList<BridgeSegment> greedyConnect(HashMap<String, ArrayList<BridgeSegment>> memory, BDNodeVecState left, BDNodeVecState right, boolean force){
+			System.out.println("Connecting " + left + " to " + right);
+			if(left==right)
 				return null;
-			PriorityQueue<BDNodeVecState> inBetween=getInBetweenSteps();
-			int distance=ScaffoldVector.composition(end.getVector(), ScaffoldVector.reverse(start.getVector())).distance(start.getNode(), end.getNode());
-			//FIXME: optimized shortestMap estimation by avoiding duplications.
-			//Also scan from the Start to eliminate illegal inbetween?
-			HashMap<String,Integer> shortestMapFromEnd = graph.getShortestTreeFromNode(	end.getNode(), end.getDirection(pBridge.getDir0()), distance);
+			String pairKey=left.toString()+right.toString();
+			if(memory.containsKey(pairKey))
+				return memory.get(pairKey);
+			
+			PriorityQueue<BDNodeVecState> inBetween=getInBetweenSteps(left, right);
+			int distance=ScaffoldVector.composition(right.getVector(), ScaffoldVector.reverse(left.getVector())).distance(left.getNode(), right.getNode());
+			HashMap<String,Integer> shortestMapFromRight = graph.getShortestTreeFromNode(right.getNode(), right.getDirection(pBridge.getDir0()), distance);
 
 			String key=start.getNode().getId()+(pBridge.getDir0()?"i":"o");
-			if(start.getNode()!=pBridge.getNode0())
-				key=start.getNode().getId()+(start.getDirection(pBridge.getDir0())?"o":"i");
-			
-			if(!shortestMapFromEnd.containsKey(key)) //note the trick: direction BEFORE the path started
+			if(left.getNode()!=pBridge.getNode0())
+				key=left.getNode().getId()+(left.getDirection(pBridge.getDir0())?"o":"i");
+			//FIXME: eliminate nodes with shortest distance greater than estimated one
+			if(!shortestMapFromRight.containsKey(key)){
+				memory.put(pairKey, null);
 				return null;
+			}
 			
 			ArrayList<BridgeSegment> retval=new ArrayList<>();
-
 			ArrayList<BridgeSegment> lBridge, rBridge;
 			while(!inBetween.isEmpty()){
 				BDNodeVecState mid=inBetween.poll();
 				System.out.println("..cut at mid="+mid.toString());
-				boolean isLeft=true;
-				//because headSet() and tailSet() returned wrong split (stupid comparator)
-				TreeSet<BDNodeVecState> lSet = new TreeSet<>(),
-										rSet = new TreeSet<>();
-				for(BDNodeVecState nvs:nodes){
-					if(isLeft)
-						lSet.add(nvs);
-					else
-						rSet.add(nvs);
-					if(nvs==mid){
-						rSet.add(nvs);//inclusive
-						isLeft=false;
-					}
-				}
-				BridgeSteps leftSteps = new BridgeSteps(lSet),
-							rightSteps = new BridgeSteps(rSet);
 				
-				lBridge = leftSteps.greedyConnect(force);
-				//FIXME: save bridging pairs to ignore next time!
-				//HINT: save (hash)set of explored segments (or BDEdgePrototype) (implement segment.equal()) 
+				lBridge = greedyConnect(memory, left, mid, force);
 				if(lBridge==null||lBridge.isEmpty()){
-					nodes.remove(mid);
 					continue;
 				}
-				else
+				else{
 					retval=lBridge;
-				rBridge = rightSteps.greedyConnect(force);
+				}
+				
+				rBridge = greedyConnect(memory, mid, right, force);
 				if(rBridge==null||rBridge.isEmpty()){
-					nodes.remove(mid);
 					continue;
 				}
 				else
 					retval.addAll(rBridge);
+				
+				memory.put(pairKey, retval);
 				return retval;
 			}
 			
-			//If there are no intermediate step left but still couldn't connect:
+			//If there are no intermediate step left in between 
 			BridgeSegment seg=new BridgeSegment( 
-									start, 
-									end, 
-									start.getVector().isIdentity()?pBridge.getDir0():!start.getDirection(pBridge.getDir0()), 
-									end.getDirection(pBridge.getDir0()), 
+									left, 
+									right, 
+									left.getVector().isIdentity()?pBridge.getDir0():!left.getDirection(pBridge.getDir0()), 
+									right.getDirection(pBridge.getDir0()), 
 									force);
-			if(seg.isConnected())
+			if(seg.isConnected()){
+				retval=new ArrayList<>();
 				retval.add(seg);
-			else
-				return null;			
-				
+			}
+			else{
+				memory.put(pairKey, null);
+				return null;	
+			}
+			
+			memory.put(pairKey, retval);	
 			return retval; 
 						
 		}
@@ -746,26 +749,22 @@ public class GoInBetweenBridge {
 				return false;
 			}	
 			
-			BDNodeVecState startFrom= getLastExtendedTip(),
+			BDNodeVecState startFrom=getLastExtendedTip(),
 							endAt=end;
 
 			
 			System.out.print("Trying to connect bridge " + pBridge.toString() + " from "+ startFrom.getNode().getId() + " to " + endAt.getNode().getId());
-			if(startFrom==endAt) {
-				System.out.println(": ignored!");
-				return false;
-			}else {
-				System.out.println("\n"+getAllNodeVector());
-			}
-			
-			ArrayList<BridgeSegment> segs=greedyConnect(force);
+			System.out.println("\n"+getAllNodeVector());
+				
+			HashMap<String, ArrayList<BridgeSegment>> memory = new HashMap<>();
+			ArrayList<BridgeSegment> segs=greedyConnect(memory, startFrom, endAt, force);
 			
 			if(segs==null||segs.isEmpty()){
 				segments=null;
 				System.out.println("Failed to connect " + pBridge.toString());
 				return false;
 			}else{
-				segments=segs;
+				segs.stream().forEach(segment->addSegment(segment));
 				//set pBridge end iff endAt node is original unique node
 				if(SimpleBinner.getBinIfUnique(endAt.node)!=null)
 					pBridge.n1=new BDNodeState(endAt.node, endAt.getDirection(pBridge.getDir0()));
