@@ -16,16 +16,16 @@ import org.slf4j.LoggerFactory;
 
 public class BDPath extends Path{
 	private int diff; //deviation from path to aligned read (now just length): the more the worse
-	private double pathEstats=Double.MIN_NORMAL; //sum of estats of inbetween nodes
+	private double pathEstats=0.0; //sum of estats of inbetween nodes
     private long len=0;
 	private static final Logger LOG = LoggerFactory.getLogger(BDPath.class);
     private PopBin uniqueBin;//the unique population bin that this path belongs to (can only be set from outside)
     @Override
     public void add(Edge edge) {
-    	super.add(edge);
-    	Node lastNode = peekNode();    	
+    	Node lastNode = edge.getOpposite(peekNode()); 
+    	pathEstats+=getExtendLikelihood(lastNode);
     	len+=((long)lastNode.getNumber("len"))+((BDEdge)edge).getLength();
-    	  	
+    	super.add(edge);  	
     }
     @Override
     public void setRoot(Node root) {
@@ -399,30 +399,5 @@ public class BDPath extends Path{
 	public double getExtendLikelihood(Node node){
 		return getExtendLikelihood(node, Alignment.MIN_QUAL);//phred doesn't matter, just pick a positive one!
 	}
-	
-	//get likelihood of the whole path
-	public double getPathLikelihood(){
-		double retval=Double.MIN_VALUE;
-		HashMap<Node,Double> occur = new HashMap<>();
-		double bc=(uniqueBin!=null?uniqueBin.estCov:averageCov());
-		for(Node n:getNodePath()){
-			//not considering 2 tips
-			if(n==getRoot()||n==peekNode())
-				continue;
-			
-			double 	nc=n.getNumber("cov");
-			if(occur.containsKey(n)){
-				nc=occur.get(n);
-			}
-			occur.put(n, nc-bc);
 
-			long nl=(long) n.getNumber("len");
-			if(retval==Double.MIN_VALUE)
-				retval=getLikelihood(nc, bc, nl, Alignment.MIN_QUAL);
-			else
-				retval+=getLikelihood(nc, bc, nl, Alignment.MIN_QUAL);	
-				
-		}
-		return retval;
-	}
 }

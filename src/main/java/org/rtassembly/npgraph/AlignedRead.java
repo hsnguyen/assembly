@@ -151,4 +151,23 @@ public class AlignedRead{
 
 		return new ScaffoldVector(gP, alignD);	
 	}
+	
+	//Split an AlignedRead at a specific alignment record.
+	//E.g. <...a,b,c,d...> split at (c) becoming: <...a,b,c> <c,d,...>
+	public ArrayList<AlignedRead> split(Alignment cutPoint){
+		ArrayList<AlignedRead> retval = new ArrayList<AlignedRead>();
+		//recursive function?
+		if(alignments!=null){
+			int idx=alignments.indexOf(cutPoint);
+			if(idx>=0){
+				AlignedRead left = new AlignedRead( readSequence.subSequence(0, cutPoint.readAlignmentEnd()+1), 
+													new ArrayList<>(alignments.subList(0, idx+1))),
+							right = new AlignedRead(readSequence.subSequence(cutPoint.readAlignmentStart(), readSequence.length()), 
+													new ArrayList<>(alignments.subList(idx, alignments.size())));
+				retval.add(left);
+				retval.add(right);
+			}				
+		}			
+		return retval;
+	}
 }
