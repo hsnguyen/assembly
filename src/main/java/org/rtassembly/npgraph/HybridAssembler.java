@@ -321,7 +321,7 @@ public class HybridAssembler {
 			return false;
 		}
 		
-		
+		simGraph.makeAPSPMap();
 		simGraph.updateStats();
 		observer = new GraphWatcher(simGraph);
 		return true;
