@@ -617,14 +617,8 @@ public class BDGraph extends MultiGraph{
 		BDNodeState curND = new BDNodeState(rootNode, expDir, curDistance);
 		pq.add(curND);
 		
-		System.out.println("Building shortest tree for " + rootNode.getId() + " with distance=" + distance);
 		retval.put(curND.toString(), curDistance); // direction from the point of srcNode
 		while(!pq.isEmpty()) {
-//			System.out.println("Current queue: ");
-//			for(BDNodeVecState n:pq) {
-//				System.out.printf("%s:%d\t", n.toString(), n.getWeight());
-//			}
-//			System.out.println();
 			curND=pq.poll();
 			curDistance=curND.getWeight();
 
@@ -657,11 +651,6 @@ public class BDGraph extends MultiGraph{
 			
 		}
 		
-		System.out.println("Shortest tree from " + rootNode.getId() + (expDir?"o":"i"));
-		for(String str:retval.keySet()) {
-			System.out.printf("%s:%d; ", str, retval.get(str));
-		}
-		System.out.println();
 		return retval;
     }
     

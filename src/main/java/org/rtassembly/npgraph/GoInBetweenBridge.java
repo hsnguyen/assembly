@@ -314,7 +314,7 @@ public class GoInBetweenBridge {
 		ArrayList<BDPath> 	candidates = new ArrayList<>(),
 							tmpList = new ArrayList<>();
 		boolean found=false;
-		int tolerance=0, keep_max=10; 
+		int tolerance=0, keep_max=1; //increase these number for better accuracy (?) but much slower
 		
 		for(BridgeSegment seg:segments) {
 			//finding the start node
@@ -670,12 +670,20 @@ public class GoInBetweenBridge {
 		}
 		
 		private ArrayList<BridgeSegment> greedyConnect(HashMap<String, ArrayList<BridgeSegment>> memory, BDNodeVecState left, BDNodeVecState right, boolean force){
-			System.out.println("Connecting " + left + " to " + right);
+			System.out.print("\nConnecting " + left + " to " + right);
 			if(left==right)
 				return null;
 			String pairKey=left.toString()+right.toString();
-			if(memory.containsKey(pairKey))
-				return memory.get(pairKey);
+			ArrayList<BridgeSegment> retval;
+
+			if(memory.containsKey(pairKey)){
+				if(memory.get(pairKey)==null)
+					retval=null;
+				else
+					retval=new ArrayList<>(memory.get(pairKey));
+				System.out.println(": " + (retval==null?"unreachable!":retval.size()+"-reachable!"));
+				return retval;
+			}
 			
 			PriorityQueue<BDNodeVecState> inBetween=getInBetweenSteps(left, right);
 			int distance=ScaffoldVector.composition(right.getVector(), ScaffoldVector.reverse(left.getVector())).distance(left.getNode(), right.getNode());
@@ -687,10 +695,12 @@ public class GoInBetweenBridge {
 			//FIXME: eliminate nodes with shortest distance greater than estimated one
 			if(!shortestMapFromRight.containsKey(key)){
 				memory.put(pairKey, null);
+				System.out.println(": unreachable!");
 				return null;
-			}
+			}else
+				System.out.println(": reachable!");
+
 			
-			ArrayList<BridgeSegment> retval=new ArrayList<>();
 			ArrayList<BridgeSegment> lBridge, rBridge;
 			while(!inBetween.isEmpty()){
 				BDNodeVecState mid=inBetween.poll();
@@ -701,7 +711,7 @@ public class GoInBetweenBridge {
 					continue;
 				}
 				else{
-					retval=lBridge;
+					retval=new ArrayList<>(lBridge);
 				}
 				
 				rBridge = greedyConnect(memory, mid, right, force);
