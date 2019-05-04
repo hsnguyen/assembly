@@ -358,14 +358,14 @@ public class BDGraph extends MultiGraph{
 			BDEdge curEdge = null;
 			AtomicDouble limit = new AtomicDouble(distance+tolerance);
 			
-//			System.out.println("Start from node " + srcNode.getId() + " candidate edges: ");
+			System.out.println("Start from node " + srcNode.getId() + " candidate edges: ");
 
 			(curNodeState.getDir()?curNodeState.getNode().enteringEdges():curNodeState.getNode().leavingEdges())
 				.forEach(e->{
 					BDNode n=(BDNode) e.getOpposite(srcNode);
 					BDNodeState ns = new BDNodeState(n, ((BDEdge) e).getDir(n));
 					
-//					System.out.println("\t"+ e + ": score=" + path.getExtendLikelihood(n));
+					System.out.println("\t"+ e + ": score=" + path.getExtendLikelihood(n));
 					
     				if(	shortestMap.containsKey(ns.toString()) 
 						&& shortestMap.get(ns.toString()) < limit.get()
@@ -438,14 +438,14 @@ public class BDGraph extends MultiGraph{
 					limit.set(distance + tolerance);
 			    	//get possible next edges to traverse
 					tmpList.clear(); 
-//	    			System.out.println("From node " + to.getId() + " candidate edges: ");
+	    			System.out.println("From node " + to.getId() + " candidate edges: ");
 
 	    			(curEdge.getDir(to)?to.enteringEdges():to.leavingEdges())
 	    			.forEach(e->{
 	    				BDNode n=(BDNode) e.getOpposite(to);
 	    				BDNodeState ns = new BDNodeState(n, ((BDEdge) e).getDir(n));
 	    				
-//						System.out.println("\t"+ e + ": score=" + path.getExtendLikelihood(n));
+						System.out.println("\t"+ e + ": score=" + path.getExtendLikelihood(n));
 
 	    				if(shortestMap.containsKey(ns.toString()) 
     						&& shortestMap.get(ns.toString()) < limit.get()
