@@ -15,13 +15,9 @@ public class BDEdgePrototype{
 	}
 	public BDEdgePrototype(BDPath path) {
 		if(path==null || path.getEdgeCount()>0){
-			BDNode 	start=(BDNode) path.getRoot(),
-					end=(BDNode) path.peekNode();
-			boolean startDir=((BDEdge) path.getEdgePath().get(0)).getDir(start),
-					endDir=((BDEdge) path.peekEdge()).getDir(end);
-			n0=new BDNodeState(start,startDir);
-			n1=new BDNodeState(end,endDir);
-			}
+			n0=new BDNodeState(path.getFirstNode(),path.getFirstNodeDirection());
+			n1=new BDNodeState(path.getLastNode(),path.getLastNodeDirection());
+		}
 	}
 	public BDEdgePrototype(Alignment from, Alignment to){
 		if(from!=null)

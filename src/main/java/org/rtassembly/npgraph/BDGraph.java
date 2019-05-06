@@ -330,7 +330,6 @@ public class BDGraph extends MultiGraph{
 						dstNode = to.node;
     	boolean srcDir = from.strand, dstDir = !to.strand;
     	return DFSAllPaths(srcNode, dstNode, srcDir, dstDir, distance, force);
-//    	return BFSAllPaths(srcNode, dstNode, srcDir, dstDir, distance, force);
     }
     
     //Depth First Search strategy
@@ -363,7 +362,8 @@ public class BDGraph extends MultiGraph{
 			(curNodeState.getDir()?curNodeState.getNode().enteringEdges():curNodeState.getNode().leavingEdges())
 				.forEach(e->{
 					BDNode n=(BDNode) e.getOpposite(srcNode);
-					BDNodeState ns = new BDNodeState(n, ((BDEdge) e).getDir(n));
+					BDNodeState ns = new BDNodeState(n, ((BDEdge) e).getNodeDirection(n)!=null?
+														((BDEdge) e).getNodeDirection(n):!srcDir);
 					
 					System.out.println("\t"+ e + ": score=" + path.getExtendLikelihood(n));
 					
@@ -397,7 +397,9 @@ public class BDGraph extends MultiGraph{
 					if(SimpleBinner.getBinIfUnique(to)!=null && to!=dstNode)
 						continue;
 					
-					boolean dir = curEdge.getDir(to);
+					boolean dir = 	curEdge.getNodeDirection(to)!=null?
+									curEdge.getNodeDirection(to):
+									path.getLastNodeDirection();
 					
 					/*
 					 * Update path and if terminated condition is met, add the candidate path
@@ -440,10 +442,11 @@ public class BDGraph extends MultiGraph{
 					tmpList.clear(); 
 	    			System.out.println("From node " + to.getId() + " candidate edges: ");
 
-	    			(curEdge.getDir(to)?to.enteringEdges():to.leavingEdges())
+	    			(dir?to.enteringEdges():to.leavingEdges())
 	    			.forEach(e->{
 	    				BDNode n=(BDNode) e.getOpposite(to);
-	    				BDNodeState ns = new BDNodeState(n, ((BDEdge) e).getDir(n));
+	    				BDNodeState ns = new BDNodeState(n, ((BDEdge) e).getNodeDirection(n)!=null?
+															((BDEdge) e).getNodeDirection(n):dir);
 	    				
 						System.out.println("\t"+ e + ": score=" + path.getExtendLikelihood(n));
 
@@ -494,116 +497,6 @@ public class BDGraph extends MultiGraph{
 		return retval;
 	}    
 	
-	//Breath First Search strategy: consumed much more memory than DFS!
-	synchronized ArrayList<BDPath> BFSAllPaths(BDNode srcNode, BDNode dstNode, boolean srcDir, boolean dstDir, int distance, boolean force)
-	{
-    	if(distance>BDGraph.D_LIMIT && !force)
-    		return null;
-    	System.out.printf("Looking for BFS path between %s%s to %s%s with distance=%d\n",srcNode.getId(), srcDir?"o":"i", dstNode.getId(), dstDir?"o":"i" ,distance);
-		ArrayList<BDPath> possiblePaths = new ArrayList<BDPath>(), 
-									retval=new ArrayList<BDPath>();
-		//1. First build shortest tree from dstNode 		
-		HashMap<String,Integer> shortestMap = getShortestTreeFromNode(dstNode, dstDir, distance);
-
-		//2. BFS from srcNode with the distance info above
-		BDNodeState curNodeState = new BDNodeState(srcNode, !srcDir); // first node is special
-		if(shortestMap.containsKey(curNodeState.toString())) {
-			//use PriorityQueue with length to have the extending balance
-			PriorityQueue<BDPath> queue = new PriorityQueue<>(Comparator.comparing(BDPath::getLength));
-			int tolerance = A_TOL;
-			BDEdge curEdge = null;
-			queue.add(new BDPath(srcNode));
-
-			AtomicDouble limit=new AtomicDouble();
-			int srcLen=(int) srcNode.getNumber("len");
-			while(!queue.isEmpty()) {
-				final BDPath path=queue.poll();
-				final BDNode curNode = (BDNode) path.peekNode();
-				if(path.size() > 1)
-					curEdge=(BDEdge) path.peekEdge();
-				boolean curDir = (curEdge==null?!srcDir:curEdge.getDir(curNode));
-				final int delta = (int) (distance - path.getLength() + srcLen);
-
-				//If target found, add to candidate list
-				//note that traversing direction (true: template, false: reverse complement) of destination node is opposite its defined direction (true: outward, false:inward) 
-				if(curNode==dstNode && curDir==dstDir && delta < tolerance){ 
-
-			    	path.setDeviation(delta);
-//	    			tmpPath.setPathEstats(pathScore);
-
-			    	//insert to the list with sorting
-			    	if(possiblePaths.isEmpty())
-			    		possiblePaths.add(new BDPath(path));
-			    	else if(possiblePaths.size() < S_LIMIT){
-			    		int idx=0;
-			    		for(BDPath p:possiblePaths)
-			    			if(delta>p.getDeviation())
-			    				idx++;
-			    			else
-			    				break;
-			    		possiblePaths.add(idx,new BDPath(path));
-			    	}else
-			    		break;
-				}
-				
-				//get next possible paths to traverse
-				limit.set(delta + tolerance);
-				(curDir?curNode.enteringEdges():curNode.leavingEdges())
-					.forEach(e->{					
-	    				BDNode n=(BDNode) e.getOpposite(curNode);
-	    				//Important: an anchor is not allowed in the result path
-	    				//TODO: consider avoid nodes with too low likelihood???
-	    				if(SimpleBinner.getBinIfUnique(n)==null || n==dstNode){
-		    				boolean dir=((BDEdge) e).getDir(n);
-		    				BDNodeState ns = new BDNodeState(n, dir);
-		    				
-		    				//edit distance criteria?
-		    				if(shortestMap.containsKey(ns.toString()) 
-								&& shortestMap.get(ns.toString()) < limit.get()
-								){
-		    					BDPath tmpPath=new BDPath(path);
-		    					tmpPath.add(e);
-		    					queue.add(tmpPath);	
-		    				}
-	    				}
-					});				
-								
-			}
-		} 
-		System.out.println("select from list of " + possiblePaths.size() + " BFS paths:");
-		
-		if(possiblePaths.isEmpty()){
-			if(SimpleBinner.getBinIfUnique(srcNode)!=null && SimpleBinner.getBinIfUnique(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 && force){
-				//save the corresponding content of long reads to this edge
-				//TODO: save nanopore reads into this pseudo edge to run consensus later
-				BDEdge pseudoEdge = addEdge(srcNode, dstNode, srcDir, dstDir);
-				pseudoEdge.setAttribute("dist", distance);
-				BDPath p=new BDPath(srcNode);
-				p.add(pseudoEdge);
-				possiblePaths.add(p);
-				System.out.println("pseudo path from " + srcNode.getId() + " to " + dstNode.getId() + " distance=" + distance);
-				
-				return possiblePaths;
-    		}else
-    			return null;
-
-		}
-		
-		double closestDist=possiblePaths.get(0).getDeviation();
-		int keepMax = MAX_PATHS;//only keep this many possible paths 
-		for(int i=0;i<possiblePaths.size();i++){
-			BDPath p = possiblePaths.get(i);
-			if(p.getDeviation()>closestDist+Math.abs(distance+getKmerSize())*R_TOL || i>=keepMax)
-				break;
-			retval.add(p);
-			System.out.printf("Hit added: %s deviation=%d; depth=%d; likelihood score=%.2f\n", p.getId(), p.getDeviation(), p.size(), p.getPathEstats());
-		}
-		
-		//TODO: reduce the number of returned paths here (calculate edit distance with nanopore read: dynamic programming?)
-		return retval;
-	}  
-	
-	
 	
     /*
      * Get a map showing shortest distances from surrounding nodes to a *rootNode* expanding to a *direction*, within a *distance*
@@ -618,6 +511,8 @@ public class BDGraph extends MultiGraph{
 		pq.add(curND);
 		
 		retval.put(curND.toString(), curDistance); // direction from the point of srcNode
+		
+		boolean direction=expDir;
 		while(!pq.isEmpty()) {
 			curND=pq.poll();
 			curDistance=curND.getWeight();
@@ -626,9 +521,11 @@ public class BDGraph extends MultiGraph{
 			while(ite.hasNext()) {
 	    		BDEdge edge = (BDEdge) ite.next();
 	    		BDNode nextNode = (BDNode) edge.getOpposite(curND.getNode());
-	    		boolean direction =  !edge.getDir(nextNode);
+	    		
+	    		if(edge.getNodeDirection(nextNode)!=null)	    			
+	    			direction = !edge.getNodeDirection(nextNode);
+	    		
 	    		newDistance=curDistance+edge.getLength()+(int)curND.getNode().getNumber("len");
-//	    		if(newDistance > distance+A_TOL)
     			if(newDistance-distance > BDGraph.A_TOL && GraphUtil.approxCompare(newDistance, distance)>0)
 	    			continue;
 	    		
@@ -834,12 +731,6 @@ public class BDGraph extends MultiGraph{
     		return false;
     	else
     		System.out.println("Reducing path: " + path.getId());
-    	//loop over the edges of path (like spelling())
-    	BDNode 	startNode = (BDNode) path.getRoot(),
-				endNode = (BDNode) path.peekNode();
-	
-    	boolean startDir=((BDEdge) path.getEdgePath().get(0)).getDir(startNode),
-    			endDir=((BDEdge) path.peekEdge()).getDir(endNode);
 
     	Set<Edge> 	potentialRemovedEdges = binner.walkAlongUniquePath(path);
 		HashMap<PopBin, Integer> oneBin = new HashMap<>();
@@ -856,7 +747,7 @@ public class BDGraph extends MultiGraph{
 	    	
 	    	//add appropriate edges
 
-    		BDEdge reducedEdge = addEdge(startNode,endNode,startDir,endDir);
+    		BDEdge reducedEdge = addEdge(path.getFirstNode(), path.getLastNode(), path.getFirstNodeDirection(), path.getLastNodeDirection());
     		System.out.println("ADDING EDGE " + reducedEdge.getId()+ " from " + reducedEdge.getNode0().getGraph().getId() + "-" + reducedEdge.getNode1().getGraph().getId());
 			if(reducedEdge!=null){
 				if(path.getEdgeCount()>1)
@@ -888,22 +779,7 @@ public class BDGraph extends MultiGraph{
     	return retval;
 
     }
-    //return path in the graph that contain only unique nodes
-    synchronized protected BDPath getLongestLinearPathFromNode(BDNode startNode, boolean direction){
-//    	assert (direction?startNode.getOutDegree()<=1:startNode.getInDegree()<=1):" Node " + startNode.getId() + "has more than one possible extending way!";
-    	BDPath retval = new BDPath(startNode);
-    	BDNode currentNode = startNode;
-    	boolean curDirection=direction;
-    	while(curDirection?currentNode.getOutDegree()==1:currentNode.getInDegree()==1){
-    		BDEdge curEdge=curDirection?currentNode.leavingEdges().toArray(BDEdge[]::new)[0]
-    										:currentNode.enteringEdges().toArray(BDEdge[]::new)[0];
-    		retval.add(curEdge);
-    		currentNode=(BDNode) curEdge.getOpposite(currentNode);
-    		curDirection=!curEdge.getDir(currentNode);
-    	}
-    	
-    	return retval;
-    }
+
     
 	//Only call for the final reduce path with 2 unique ends: if path containing other unique nodes than 2 ends then we have list of paths to reduce
     //exclude already-reduced path (by looking for corresponding reduce edge)
@@ -1084,12 +960,13 @@ public class BDGraph extends MultiGraph{
 
 	    	BDNode curNode=(BDNode) p.getRoot(), nextNode=null;
 	    	String curID=curNode.getId(), nextID=null;
-	    	boolean curDir, nextDir;
+	    	boolean curDir=p.getFirstNodeDirection(), nextDir=!curDir;
+
 	    	for(Edge e:p.getEdgePath()){
 	    		nextNode=(BDNode) e.getOpposite(curNode);
 	    		nextID=nextNode.getId();
-	    		curDir=((BDEdge)e).getDir(curNode);
-	    		nextDir=((BDEdge)e).getDir(nextNode);
+	    		if(((BDEdge)e).getNodeDirection(nextNode)!=null)
+	    			nextDir=((BDEdge)e).getNodeDirection(nextNode);
 	    		
 	    		if(nextNode!=p.peekNode()){
 		    		//create ID
@@ -1111,6 +988,7 @@ public class BDGraph extends MultiGraph{
 	    		
 	    		curNode=nextNode;
 	    		curID=nextID;
+	    		curDir=!nextDir;
 	    	}
 	    }
 	    

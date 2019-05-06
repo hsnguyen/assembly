@@ -15,14 +15,14 @@ public class BDEdge extends AbstractEdge{
 	
     private static final Logger LOG = LoggerFactory.getLogger(BDEdge.class);
 
-	protected BDEdge(String id, AbstractNode src, AbstractNode dst, boolean dir0, boolean dir1) {
+	protected BDEdge(String id, AbstractNode node0, AbstractNode node1, boolean dir0, boolean dir1) {
 		// id fuck off!!! we'll make one for ourselves
-		this(src,dst,dir0,dir1);
+		this(node0,node1,dir0,dir1);
 	}
-	protected BDEdge(AbstractNode src, AbstractNode dst, boolean dir0, boolean dir1) {
+	protected BDEdge(AbstractNode node0, AbstractNode node1, boolean dir0, boolean dir1) {
 		//this(createID(src,dst,dir0,dir1), src, dst);
 
-		super(createID(src,dst,dir0,dir1),src,dst,false);
+		super(createID(node0,node1,dir0,dir1),node0,node1,false);
 		this.dir0=dir0;
 		this.dir1=dir1;
 
@@ -73,7 +73,7 @@ public class BDEdge extends AbstractEdge{
 	
 	@Override
 	public String toString() {
-		return String.format("%s:%s-%s-%s-%s", getId(), source, (dir0?">":"<"), (dir1?"<":">"), target);
+		return String.format("%s:%s-%s-%s-%s", getId(), getNode0(), (dir0?">":"<"), (dir1?"<":">"), getNode1());
 	}
 	
 	public void setDir0(boolean dir){
@@ -96,17 +96,24 @@ public class BDEdge extends AbstractEdge{
 		}else
 			return -BDGraph.getKmerSize();
 	}
-	
-	//TODO: include the case of tandem repeats (identical ends for an edge)
-	public boolean getDir(AbstractNode node){
-		assert node==getSourceNode()||node==getTargetNode():"Node " + node.getId() + " does not belong to this edge src=" + getSourceNode().getId() + " dst=" + getTargetNode().getId();
-		return node==getSourceNode()?getDir0():getDir1();
+
+	public Boolean getNodeDirection(AbstractNode node){
+		Boolean retval=null;
+		if(node==getNode0())
+			retval=getDir0();
+		if(node==getNode1()){
+			if(retval!=null && retval!=getDir1())//infinity self-loop: cannot determine
+				retval=null;
+			else
+				retval= getDir1();
+		}
+		return retval;
 	}
 	
 
-	public static String createID(AbstractNode source, AbstractNode dst, boolean dir0, boolean dir1){
-		String 	srcDes = source.getId(),
-				dstDes = dst.getId();
+	public static String createID(AbstractNode node0, AbstractNode node1, boolean dir0, boolean dir1){
+		String 	srcDes = node0.getId(),
+				dstDes = node1.getId();
 		if(srcDes.compareTo(dstDes) == 0) { // loop
 			if(dir0 == dir1)
 				return String.format("%s%s,%s%s", srcDes, dir0?"+":"-", dstDes, dir1?"-":"+");
