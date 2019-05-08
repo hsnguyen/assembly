@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -21,6 +20,8 @@ import org.graphstream.graph.implementations.*;
 
 import com.google.common.util.concurrent.AtomicDouble;
 
+import japsa.seq.JapsaAnnotation;
+import japsa.seq.JapsaFeature;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceOutputStream;
 
@@ -921,7 +922,6 @@ public class BDGraph extends MultiGraph{
     }
 	public void outputFASTA(String fileName) throws IOException {
 		SequenceOutputStream out = SequenceOutputStream.makeOutputStream(fileName);
-		
 		for(Node node:this) {
 			Sequence seq=(Sequence) node.getAttribute("seq");
 //			if( (node.getDegree()==0 && (seq.length() < SimpleBinner.ANCHOR_CTG_LEN)) 
@@ -930,6 +930,18 @@ public class BDGraph extends MultiGraph{
 			seq.writeFasta(out);
 		}
 		
+		out.close();
+	}
+	public void outputJAPSA(String fileName) throws IOException {
+		SequenceOutputStream out = SequenceOutputStream.makeOutputStream(fileName);
+		JapsaAnnotation annotation;
+		for(Node node:this) {
+			annotation=(JapsaAnnotation) node.getAttribute("annotation");
+			System.out.println("Feature: " + annotation.numFeatures());
+			for(JapsaFeature f:annotation.getFeatureList())
+				System.out.println(f.toString());
+			annotation.write(out);
+		}	
 		out.close();
 	}
 	

@@ -486,6 +486,7 @@ public class HybridAssembler {
 		System.out.printf("Input stats: read count=%d base count=%d\n", currentReadCount, currentBaseCount);
 		
 		observer.outputFASTA(getPrefix()+"/npgraph_assembly.fasta");
+		observer.outputJAPSA(getPrefix()+"/npgraph_assembly.japsa");
 		observer.outputGFA(getPrefix()+"/npgraph_assembly.gfa");
 
 	}

@@ -1,6 +1,8 @@
 package org.rtassembly.npgraph;
 
 import japsa.seq.Alphabet;
+import japsa.seq.JapsaAnnotation;
+import japsa.seq.JapsaFeature;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceBuilder;
 
@@ -177,21 +179,28 @@ public class BDPath extends Path{
 	/*
 	 * Return DNA sequence of a path (recursively if need)
 	 */
-	public Sequence spelling(){
+	public Sequence spelling(JapsaAnnotation annotation){
 		BDPath realPath=getPrimitivePath();
-		
+		JapsaFeature feature;
 		BDNode curNode = (BDNode) realPath.getRoot();
 		Sequence curSeq = (Sequence) curNode.getAttribute("seq");
-		if(realPath.getEdgeCount()==0)
+		if(realPath.getEdgeCount()==0){
+			feature=new JapsaFeature(1, curSeq.length(),"CONTIG",curSeq.getName(),'+',"");
+			feature.addDesc(curSeq.getName()+"+[1->"+curSeq.length()+"]");
+			annotation.add(feature);
 			return curSeq;
+		}
 		
 		SequenceBuilder seq = new SequenceBuilder(Alphabet.DNA5(), 1024*1024, toString());
 		seq.setDesc(realPath.toString());
 		boolean curDir=realPath.getFirstNodeDirection();
 		curSeq = curDir?curSeq:Alphabet.DNA.complement(curSeq);
-		//If path is circular: don't need to duplicate the closing node
-		if(realPath.getRoot() != realPath.peekNode())
-			seq.append(curSeq);
+
+		seq.append(curSeq);
+		feature=new JapsaFeature(1, curSeq.length(),"CONTIG",(String)curNode.getAttribute("name"),curDir?'+':'-',"");
+		feature.addDesc((String)curNode.getAttribute("name")+(curDir?"+":"-")+"[1->"+curSeq.length()+"]");
+		annotation.add(feature);
+
 		BDNode nextNode=null;
 		for(Edge e:realPath.getEdgePath()){
 			nextNode=(BDNode) e.getOpposite(curNode);
@@ -200,13 +209,22 @@ public class BDPath extends Path{
 			if(((BDEdge) e).getNodeDirection(nextNode)!=null)
 				curDir=!((BDEdge) e).getNodeDirection(nextNode);
 			
+			//If path is circular: don't need to duplicate the closing node
+			if(nextNode==realPath.getRoot() && curDir==realPath.getFirstNodeDirection())
+				break;
+			
 			curSeq = curDir?curSeq:Alphabet.DNA.complement(curSeq);
 			
-
 			int overlap=((BDEdge) e).getLength();
+			feature=new JapsaFeature(seq.length()+1, seq.length()+overlap+curSeq.length(),"CONTIG",(String)nextNode.getAttribute("name"),curDir?'+':'-',"");
+			feature.addDesc((String)nextNode.getAttribute("name")+(curDir?"+":"-")+"["+ (seq.length()+overlap+1) +"->"+(seq.length()+overlap+curSeq.length())+"]");
+			feature.setScore(overlap);
+			annotation.add(feature);
+
 			//if length of edge > 0: should add NNNN...NN to seq (in case there are gaps in NGS assembly graph)
-			if(overlap < 0)
+			if(overlap < 0){
 				seq.append(curSeq.subSequence(-overlap, curSeq.length())); 
+			}
 			else {
 				String filler=new String(new char[overlap]).replace("\0", "N");
 				Sequence fillerSeq=new Sequence(Alphabet.DNA5(), filler, "gap");
@@ -214,12 +232,12 @@ public class BDPath extends Path{
 				LOG.error("Edge {} has length={} > 0: filled with Ns", e.getId(), overlap);
 
 			}
-			
 			curNode=nextNode;
 			
 		}
 		return seq.toSequence();
 	}
+	
 	
 	/*
 	 * Get a path with two ends removed

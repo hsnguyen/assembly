@@ -15,7 +15,9 @@ import org.graphstream.graph.Node;
 
 import com.google.common.util.concurrent.AtomicDouble;
 
+import japsa.seq.JapsaAnnotation;
 import japsa.seq.Sequence;
+import japsa.seq.SequenceOutputStream;
 
 public class GraphWatcher {
 	BDGraph inputGraph, outputGraph;
@@ -81,6 +83,7 @@ public class GraphWatcher {
 		}
 		
 		outputGraph=new BDGraph();
+		JapsaAnnotation annotation;
 		BDPath repPath=null; //representative path of a component
 		System.out.println("Another round of updating connected components: " + rtComponents.getConnectedComponentsCount());
 
@@ -135,7 +138,8 @@ public class GraphWatcher {
 				 
 			 }
 			 //now we have repPath
-			 Sequence seq=repPath.spelling();
+			 annotation = new JapsaAnnotation();
+			 Sequence seq=repPath.spelling(annotation);
 			 double cov=GraphUtil.getRealCoverage(repPath.averageCov());
 			 Node n=outputGraph.addNode(Integer.toString(comp.id));
 			 seq.setName("Contig_"+comp.id+"_"+(isCircular?"circular":"linear")+"_length_"+seq.length()+"_cov_"+cov);
@@ -143,8 +147,12 @@ public class GraphWatcher {
 			 n.setAttribute("len", seq.length());
 			 n.setAttribute("cov",cov);
 			 n.setAttribute("path", repPath);
-			 if(isCircular)
+			 
+			 annotation.setSequence(seq);
+			 if(isCircular){
 				 n.setAttribute("circular");
+			 }
+			 n.setAttribute("annotation", annotation);
 //			 System.out.println("\n" + seq.getName() + ":" + repPath.getId() + "\n=> "+ repPath.getPrimitivePath().getId());
 
 		}
@@ -175,7 +183,8 @@ public class GraphWatcher {
 					BDPath trimedPath=path.trimEndingNodes();
 					if(trimedPath!=null){
 						//Add the "middle" node
-						 Sequence seq=trimedPath.spelling();
+						 annotation = new JapsaAnnotation();
+						 Sequence seq=trimedPath.spelling(annotation);
 						 double cov=GraphUtil.getRealCoverage(trimedPath.averageCov());
 						 int id=0;
 						 while(outputGraph.getNode(Integer.toString(++id))!=null);
@@ -185,6 +194,8 @@ public class GraphWatcher {
 						 n.setAttribute("len", seq.length());
 						 n.setAttribute("cov",cov);
 						 n.setAttribute("path", trimedPath);
+						 annotation.setSequence(seq);
+						 n.setAttribute("annotation", annotation);
 						 //Add 2 edges
 						 Boolean dd0=((BDEdge)path.getEdgePath().get(0)).getNodeDirection(trimedPath.getFirstNode()), 
 								 dd1=((BDEdge)path.peekEdge()).getNodeDirection(trimedPath.getLastNode());
@@ -243,5 +254,8 @@ public class GraphWatcher {
 	}
 	synchronized public void outputFASTA(String fileName) throws IOException {
 		outputGraph.outputFASTA(fileName);
+	}
+	synchronized public void outputJAPSA(String fileName) throws IOException {
+		outputGraph.outputJAPSA(fileName);
 	}
 }
