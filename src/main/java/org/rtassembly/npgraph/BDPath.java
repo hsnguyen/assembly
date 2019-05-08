@@ -195,12 +195,13 @@ public class BDPath extends Path{
 		seq.setDesc(realPath.toString());
 		boolean curDir=realPath.getFirstNodeDirection();
 		curSeq = curDir?curSeq:Alphabet.DNA.complement(curSeq);
-
-		seq.append(curSeq);
-		feature=new JapsaFeature(1, curSeq.length(),"CONTIG",(String)curNode.getAttribute("name"),curDir?'+':'-',"");
-		feature.addDesc((String)curNode.getAttribute("name")+(curDir?"+":"-")+"[1->"+curSeq.length()+"]");
-		annotation.add(feature);
-
+		//If path is circular: don't need to duplicate the closing node
+		if(realPath.getFirstNode()!=realPath.getLastNode()){ //linear
+			seq.append(curSeq);
+			feature=new JapsaFeature(1, curSeq.length(),"CONTIG",(String)curNode.getAttribute("name"),curDir?'+':'-',"");
+			feature.addDesc((String)curNode.getAttribute("name")+(curDir?"+":"-")+"[1->"+curSeq.length()+"]");
+			annotation.add(feature);
+		}
 		BDNode nextNode=null;
 		for(Edge e:realPath.getEdgePath()){
 			nextNode=(BDNode) e.getOpposite(curNode);
@@ -208,11 +209,7 @@ public class BDPath extends Path{
 			curSeq= (Sequence) nextNode.getAttribute("seq");
 			if(((BDEdge) e).getNodeDirection(nextNode)!=null)
 				curDir=!((BDEdge) e).getNodeDirection(nextNode);
-			
-			//If path is circular: don't need to duplicate the closing node
-			if(nextNode==realPath.getRoot() && curDir==realPath.getFirstNodeDirection())
-				break;
-			
+
 			curSeq = curDir?curSeq:Alphabet.DNA.complement(curSeq);
 			
 			int overlap=((BDEdge) e).getLength();
