@@ -937,9 +937,6 @@ public class BDGraph extends MultiGraph{
 		JapsaAnnotation annotation;
 		for(Node node:this) {
 			annotation=(JapsaAnnotation) node.getAttribute("annotation");
-			System.out.println("Feature: " + annotation.numFeatures());
-			for(JapsaFeature f:annotation.getFeatureList())
-				System.out.println(f.toString());
 			annotation.write(out);
 		}	
 		out.close();
