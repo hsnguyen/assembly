@@ -85,14 +85,12 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
         	return false;
         }else{ 
         	boolean retval;
-        	if(SimpleBinner.getBinIfUnique(thatNode)!=null) {
-//        		int dist=ScaffoldVector.composition(ScaffoldVector.reverse(other.getVector()), this.getVector()).distance(thatNode, thisNode);
-//        		retval=(dist < -BDGraph.getKmerSize());
+//        	if(SimpleBinner.getBinIfUnique(thatNode)!=null) {
         		retval= (Math.abs(this.getVector().relDistance(thisNode) - other.getVector().relDistance(thatNode)) < thisNode.getNumber("len") - BDGraph.getKmerSize());
-        	}
-        	else {
-        		retval=this.getVector().consistentWith(other.getVector());
-        	}
+//        	}
+//        	else {
+//        		retval=this.getVector().consistentWith(other.getVector());
+//        	}
     		return retval;
 
         }     
