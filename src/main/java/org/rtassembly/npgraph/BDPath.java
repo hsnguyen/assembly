@@ -12,7 +12,6 @@ import java.util.List;
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Node;
 import org.graphstream.graph.Path;
-import org.graphstream.graph.implementations.AbstractNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -32,8 +32,8 @@ public class BDGraph extends MultiGraph{
 	SimpleBinner binner;
 
 	//not gonna change these parameters in other thread
-    public static final double R_TOL=.3;// relative tolerate: can be interpreted as long read error rate (10-25%)
-    public static final int A_TOL=300;// absolute tolerate: can be interpreted as long read absolute error bases (300bp)
+    public static final double R_TOL=.2;// relative tolerate: can be interpreted as long read error rate (10-25%)
+    public static final int A_TOL=300;// absolute tolerate: can be interpreted as long read absolute error bases (100bp)
 
     //these should be changed in another thread, e.g. settings from GUI
 	public static volatile double ILLUMINA_READ_LENGTH=300; //Illumina MiSeq
@@ -358,7 +358,7 @@ public class BDGraph extends MultiGraph{
 			BDEdge curEdge = null;
 			AtomicDouble limit = new AtomicDouble(distance+tolerance);
 			
-			System.out.println("Start from node " + srcNode.getId() + " candidate edges: ");
+//			System.out.println("Start from node " + srcNode.getId() + " candidate edges: ");
 
 			(curNodeState.getDir()?curNodeState.getNode().enteringEdges():curNodeState.getNode().leavingEdges())
 				.forEach(e->{
@@ -366,7 +366,7 @@ public class BDGraph extends MultiGraph{
 					BDNodeState ns = new BDNodeState(n, ((BDEdge) e).getNodeDirection(n)!=null?
 														((BDEdge) e).getNodeDirection(n):!srcDir);
 					
-					System.out.println("\t"+ e + ": score=" + path.getExtendLikelihood(n));
+//					System.out.println("\t"+ e + ": score=" + path.getExtendLikelihood(n));
 					
     				if(	shortestMap.containsKey(ns.toString()) 
 						&& shortestMap.get(ns.toString()) < limit.get()
@@ -409,10 +409,10 @@ public class BDGraph extends MultiGraph{
 					pathScore+=nodeScores.peek();
 					path.add(curEdge);
 					
-					delta=Math.abs(distance-curEdge.getLength());
+					delta=distance-curEdge.getLength();
 					//note that traversing direction (true: template, false: reverse complement) of destination node 
 					//is opposite its defined direction (true: outward, false:inward) 
-					if(to==dstNode && dir==dstDir && delta < tolerance){ 
+					if(to==dstNode && dir==dstDir && Math.abs(delta) < tolerance){ 
 //					if(to==dstNode && dir==dstDir){ 
 
 				    	BDPath 	tmpPath=new BDPath(path);
@@ -425,7 +425,7 @@ public class BDGraph extends MultiGraph{
 				    	else{
 				    		int idx=0;
 				    		for(BDPath p:possiblePaths)
-				    			if(delta>p.getDeviation())
+				    			if(Math.abs(delta)>Math.abs(p.getDeviation()))
 				    				idx++;
 				    			else
 				    				break;
@@ -441,7 +441,7 @@ public class BDGraph extends MultiGraph{
 					limit.set(distance + tolerance);
 			    	//get possible next edges to traverse
 					tmpList.clear(); 
-	    			System.out.println("From node " + to.getId() + " candidate edges: ");
+//	    			System.out.println("From node " + to.getId() + " candidate edges: ");
 
 	    			(dir?to.enteringEdges():to.leavingEdges())
 	    			.forEach(e->{
@@ -449,7 +449,7 @@ public class BDGraph extends MultiGraph{
 	    				BDNodeState ns = new BDNodeState(n, ((BDEdge) e).getNodeDirection(n)!=null?
 															((BDEdge) e).getNodeDirection(n):dir);
 	    				
-						System.out.println("\t"+ e + ": score=" + path.getExtendLikelihood(n));
+//						System.out.println("\t"+ e + ": score=" + path.getExtendLikelihood(n));
 
 	    				if(shortestMap.containsKey(ns.toString()) 
     						&& shortestMap.get(ns.toString()) < limit.get()
@@ -484,11 +484,11 @@ public class BDGraph extends MultiGraph{
 
 		}
 		
-		double closestDist=possiblePaths.get(0).getDeviation();
+		double closestDist=Math.abs(possiblePaths.get(0).getDeviation());
 		int keepMax = MAX_PATHS;//only keep this many possible paths 
 		for(int i=0;i<possiblePaths.size();i++){
 			BDPath p = possiblePaths.get(i);
-			if(p.getDeviation()>closestDist+Math.abs(distance+getKmerSize())*R_TOL || i>=keepMax)
+			if(Math.abs(p.getDeviation())>closestDist+Math.abs(distance+getKmerSize())*R_TOL || i>=keepMax)
 				break;
 			retval.add(p);
 			System.out.printf("Hit added: %s deviation=%d; depth=%d; likelihood score=%.2f\n", p.getId(), p.getDeviation(), p.size(), p.getPathEstats());
