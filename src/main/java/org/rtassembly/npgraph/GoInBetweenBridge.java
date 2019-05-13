@@ -345,7 +345,7 @@ public class GoInBetweenBridge {
 				
 				for(BDPath p1:seg.connectedPaths)
 					for(BDPath p0:candidates){
-							BDPath p01=p0.join(p1);
+							BDPath p01=p0.join(p1, true);
 							if(p01==null)
 								return null;
 							else
@@ -407,7 +407,8 @@ public class GoInBetweenBridge {
 		if(segments==null || segments.isEmpty())
 			return retval;
 		if(HybridAssembler.VERBOSE)
-			LOG.info("Scanning on bridge with segments:\n" + getAllPossiblePaths());		BDPath curPath=null;
+			LOG.info("Scanning on bridge with segments:\n" + getAllPossiblePaths());		
+		BDPath curPath=null;
 		SimpleBinner binner=graph.binner;
 		PopBin sbin=null;
 		for(BridgeSegment seg:segments){
@@ -426,7 +427,7 @@ public class GoInBetweenBridge {
 					curPath.setConsensusUniqueBinOfPath(bin);
 
 				}else if(curPath!=null)
-					curPath=curPath.join(seg.connectedPaths.get(0));
+					curPath=curPath.join(seg.connectedPaths.get(0), false); //don't need to calculate likelihood of unique path 
 
 			}else{
 				curPath=null;

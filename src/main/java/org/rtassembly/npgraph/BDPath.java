@@ -22,10 +22,15 @@ public class BDPath extends Path{
 	private static final Logger LOG = LoggerFactory.getLogger(BDPath.class);
     private PopBin uniqueBin;//the unique population bin that this path belongs to (can only be set from outside)
     @Override
-    public void add(Edge edge) {
-    	Node lastNode = edge.getOpposite(peekNode()); 
-    	pathEstats+=getExtendLikelihood(lastNode);
-    	len+=((long)lastNode.getNumber("len"))+((BDEdge)edge).getLength();
+    public void add(Edge e) {
+    	add(e,true);
+    }
+    public void add(Edge edge, boolean sCal) {
+    	Node lastNode = edge.getOpposite(peekNode());
+    	//score calculation on: it's expensive for long path
+    	if(sCal)
+    		pathEstats+=getExtendLikelihood(lastNode);
+    	len+=((long)lastNode.getNumber("len"))+ ((BDEdge)edge).getLength();
     	super.add(edge);  	
     }
     @Override
@@ -49,7 +54,7 @@ public class BDPath extends Path{
 		if(p!=null && !p.empty()){
 			setRoot(p.getRoot());
 			for(Edge e:p.getEdgePath())
-				add(e);
+				add(e, false);
 		}
 		diff=p.diff;
 		len=p.len;
@@ -156,18 +161,18 @@ public class BDPath extends Path{
 		return "path:(" + getId() + ")";
 	}
 	//Get the norm path of edges and nodes from a recursive path 
+	//Do not calculate Estats here: very expensive for whole long path
 	public BDPath getPrimitivePath() {	
 		BDNode curNode = (BDNode) getRoot(), nextNode=null;
 		BDPath retval = new BDPath(curNode);		
 		for(Edge e:getEdgePath()) {
 			nextNode=(BDNode) e.getOpposite(curNode);
-			System.out.println("BDPath.getPrimitivePath() exploring node " + nextNode.getId());
 			if(e.hasAttribute("path")) {
 				BDPath subPath=(BDPath) e.getAttribute("path");
 				if(subPath.getRoot()!=curNode)
 					subPath=subPath.reverse();
 //				retval=retval.join(subPath);
-				retval=retval.join(subPath.getPrimitivePath());
+				retval=retval.join(subPath.getPrimitivePath(), false);
 			}
 			else
 				retval.add(e);
@@ -210,7 +215,6 @@ public class BDPath extends Path{
 		}
 		BDNode nextNode=null;
 		for(Edge e:realPath.getEdgePath()){
-			System.out.println("spelling " + e.getId());
 			nextNode=(BDNode) e.getOpposite(curNode);
 
 			curSeq= (Sequence) nextNode.getAttribute("seq");
@@ -264,7 +268,7 @@ public class BDPath extends Path{
 	  * Add a path to the current path. The path to be added must start with the last node
 	  * of the current path. Return TRUE if the joining valid and succeed.
 	  */
-	public BDPath join(BDPath newPath) {
+	public BDPath join(BDPath newPath, boolean scoreAccumulate) {
 		
 		if(newPath==null || newPath.empty()){
 			return new BDPath(this); 
@@ -283,9 +287,8 @@ public class BDPath extends Path{
 			return null;
 		}
 		BDPath retval=new BDPath(this);
-		//TODO: need a way to check coverage consistent (or make change less significant bin?)			
 		for(Edge e:newPath.getEdgePath()){
-			retval.add(e);
+			retval.add(e, scoreAccumulate);
 		}
 		diff+=newPath.diff;
 		return retval;
@@ -303,10 +306,6 @@ public class BDPath extends Path{
 	//set path score actively
 	public void setPathEstats(double pathAstat) {
 		this.pathEstats=pathAstat;
-	}
-	
-	public void updatePathEstats(double nodeAstat){
-		this.pathEstats+=nodeAstat;
 	}
 	
 	public double getPathEstats() {	
