@@ -49,7 +49,7 @@ public class BDPath extends Path{
 		if(p!=null && !p.empty()){
 			setRoot(p.getRoot());
 			for(Edge e:p.getEdgePath())
-				add(e);
+				super.add(e);
 		}
 		diff=p.diff;
 		len=p.len;
