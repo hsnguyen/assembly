@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.NavigableSet;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.TreeSet;
@@ -252,7 +251,7 @@ public class GoInBetweenBridge {
 	
 	private void reverse() {
 		assert getNumberOfAnchors()==2:"Could only reverse a determined bridge (2 anchors)";
-		System.out.printf("Reversing the bridge %s(start=%s end=%s):\n%s\n", getEndingsID(), getAllNodeVector(), steps.start.toString(), steps.end.toString());
+		System.out.printf("Reversing the bridge %s(start=%s end=%s):\n%s\n", getEndingsID(), steps.start.toString(), steps.end.toString(), getAllNodeVector());
 
 		pBridge=pBridge.reverse();
 		//reverse the segments
@@ -268,7 +267,7 @@ public class GoInBetweenBridge {
 		//reverse the nodes list
 		steps.reverse();
 		
-		System.out.printf("Reversed bridge %s(start=%s end=%s):\n%s\n", getEndingsID(), getAllNodeVector(), steps.start.toString(), steps.end.toString());
+		System.out.printf("Reversed bridge %s(start=%s end=%s):\n%s\n", getEndingsID(), steps.start.toString(), steps.end.toString(), getAllNodeVector());
 
 	}
 	
@@ -328,8 +327,8 @@ public class GoInBetweenBridge {
 
 			
 			if(seg.getNumberOfPaths()>0){			
-				int bestDeviation=seg.connectedPaths.get(0).getDeviation();
-				seg.connectedPaths.removeIf(p->(p.getDeviation()>bestDeviation+tolerance));
+				int bestDeviation=Math.abs(seg.connectedPaths.get(0).getDeviation());
+				seg.connectedPaths.removeIf(p->(Math.abs(p.getDeviation())>bestDeviation+tolerance));
 				tmpList = new ArrayList<>();
 				if(candidates.isEmpty()){
 					candidates.addAll(seg.connectedPaths);
@@ -483,7 +482,6 @@ public class GoInBetweenBridge {
 			startNV = nv1; endNV = nv2;
 			int d = ScaffoldVector.composition(nv2.getVector(), ScaffoldVector.reverse(nv1.getVector())).distance(nv1.getNode(), nv2.getNode());
 			connectedPaths = graph.DFSAllPaths((BDNode)nv1.getNode(), (BDNode)nv2.getNode(), dir1, dir2, d, force);
-//			connectedPaths = graph.BFSAllPaths((BDNode)nv1.getNode(), (BDNode)nv2.getNode(), dir1, dir2, d, force);
 		
 		}
 		
@@ -510,8 +508,6 @@ public class GoInBetweenBridge {
 		BridgeSegment reverse(ScaffoldVector brgVector) {
 			BridgeSegment retval = new BridgeSegment();
 			retval.pSegment=pSegment.reverse();
-//			retval.startNV=new BDNodeVecState(pSegment.getNode1(), ScaffoldVector.composition(getEndVector(), ScaffoldVector.reverse(brgVector)));
-//			retval.endNV=new BDNodeVecState(pSegment.getNode0(), ScaffoldVector.composition(getStartVector(), ScaffoldVector.reverse(brgVector)));
 			retval.startNV=new BDNodeVecState(endNV.getNode(), endNV.getScore(), ScaffoldVector.composition(getEndVector(), ScaffoldVector.reverse(brgVector)));
 			retval.endNV=new BDNodeVecState(startNV.getNode(), startNV.getScore(),  ScaffoldVector.composition(getStartVector(), ScaffoldVector.reverse(brgVector)));
 
@@ -562,9 +558,9 @@ public class GoInBetweenBridge {
 		public boolean removeUnlikelyPaths(){
 			if(connectedPaths==null || connectedPaths.isEmpty())
 				return false;
-			connectedPaths.sort(Comparator.comparing(BDPath::getDeviation));
+			connectedPaths.sort((a,b)->Integer.compare(Math.abs(a.getDeviation()), Math.abs(b.getDeviation())));
 			int bestDiff = 	connectedPaths.get(0).getDeviation();
-			connectedPaths.removeIf(p->(p.getDeviation() > bestDiff+BDGraph.A_TOL));
+			connectedPaths.removeIf(p->(Math.abs(p.getDeviation()) > bestDiff+BDGraph.A_TOL));
 			if(connectedPaths.size()==1)
 				return true;
 			else 
