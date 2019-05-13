@@ -345,7 +345,7 @@ public class GoInBetweenBridge {
 				
 				for(BDPath p1:seg.connectedPaths)
 					for(BDPath p0:candidates){
-							BDPath p01=p0.join(p1, true);
+							BDPath p01=p0.join(p1);
 							if(p01==null)
 								return null;
 							else
@@ -427,7 +427,7 @@ public class GoInBetweenBridge {
 					curPath.setConsensusUniqueBinOfPath(bin);
 
 				}else if(curPath!=null)
-					curPath=curPath.join(seg.connectedPaths.get(0), false); //don't need to calculate likelihood of unique path 
+					curPath=curPath.join(seg.connectedPaths.get(0)); //don't need to calculate likelihood of unique path 
 
 			}else{
 				curPath=null;
