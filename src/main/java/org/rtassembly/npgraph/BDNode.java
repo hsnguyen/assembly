@@ -13,21 +13,13 @@ public class BDNode extends MultiNode {
 
 	// *** Helpers ***
 	@Override
-	protected char edgeType(AbstractEdge e) {
-		BDNode opposite = (BDNode) e.getOpposite(this);
-		
-		if(((BDEdge) e).getDir(this)) {
-			if(this==opposite && ((BDEdge) e).getDir0()!=((BDEdge) e).getDir1())
+	protected char edgeType(AbstractEdge e) {		
+		if(((BDEdge) e).getNodeDirection(this)==null)
 				return IO_EDGE;
-			else
+		else if(((BDEdge) e).getNodeDirection(this))
 				return O_EDGE;
-		}
-		else {
-			if(this==opposite && ((BDEdge) e).getDir0()!=((BDEdge) e).getDir1())
-				return IO_EDGE;
-			else
+		else
 				return I_EDGE;
-		}
 	}
 
 //	// *** Overide for the case of self-loop edges ***

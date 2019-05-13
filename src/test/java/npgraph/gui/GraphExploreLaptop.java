@@ -49,8 +49,8 @@ public class GraphExploreLaptop {
     	 * *********************    unicycler    *******************************
     	 ***********************************************************************/
     	String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/unicycler/"; //unicycler synthetic
-    	String sample="E_coli_O25b_H4-ST131/good";
-//    	String sample="Shigella_dysenteriae_Sd197/good";
+//    	String sample="E_coli_O25b_H4-ST131/good";
+    	String sample="Shigella_dysenteriae_Sd197/good";
 //    	String sample="Shigella_sonnei_53G/good";
     	String 	sInput=dataFolder+sample+"/spades/assembly_graph.fastg",
     			lInput=dataFolder+sample+"/mm2.sam";
@@ -66,7 +66,8 @@ public class GraphExploreLaptop {
 		hbAss.setAligner("bwa");
 		hbAss.setAlignerPath("/home/s_hoangnguyen/workspace/bwa/");
 		hbAss.prepareShortReadsProcess();//change true/false to use/not use SPAdes path
-		
+    	HybridAssembler.promptEnterKey();
+
 		
     	BDGraph graph= hbAss.simGraph;
    
@@ -81,7 +82,7 @@ public class GraphExploreLaptop {
         	hbAss.setLongReadsInput(lInput);
 //        	hbAss.setLongReadsInputFormat("sam");
         	hbAss.prepareLongReadsProcess();
-        	
+//        	HybridAssembler.promptEnterKey();
         	hbAss.assembly();
 			
 		} catch (IOException | InterruptedException e) {

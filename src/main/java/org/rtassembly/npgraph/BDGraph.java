@@ -22,6 +22,8 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.util.concurrent.AtomicDouble;
 
+import japsa.seq.JapsaAnnotation;
+import japsa.seq.JapsaFeature;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceOutputStream;
 
@@ -34,16 +36,16 @@ public class BDGraph extends MultiGraph{
 	SimpleBinner binner;
 
 	//not gonna change these parameters in other thread
-    public static final double R_TOL=.3;// relative tolerate: can be interpreted as long read error rate (10-25%)
-    public static final int A_TOL=300;// absolute tolerate: can be interpreted as long read absolute error bases (300bp)
+    public static final double R_TOL=.2;// relative tolerate: can be interpreted as long read error rate (10-25%)
+    public static final int A_TOL=300;// absolute tolerate: can be interpreted as long read absolute error bases (100bp)
 
     //these should be changed in another thread, e.g. settings from GUI
 	public static volatile double ILLUMINA_READ_LENGTH=300; //Illumina MiSeq
     
 	public static final double ALPHA=.5; //coverage less than alpha*bin_cov will be considered noise
     public static final int D_LIMIT=5000; //distance bigger than this will be ignored
-    public static final int S_LIMIT=300;// maximum number of DFS steps
-    public static final int MAX_DFS_PATHS=100; //maximum number of candidate DFS paths
+    public static int S_LIMIT=300;// maximum number of graph traversing steps
+    public static int MAX_PATHS=100; //maximum number of candidate DFS paths
     
 	public static volatile int SAFE_COUNTS=3; //safe counts: use for confident estimation
 
@@ -51,7 +53,7 @@ public class BDGraph extends MultiGraph{
     //provide mapping from unique directed node to its corresponding bridge
     //E.g: 103-: <103-82-> also 82+:<82+103+>
     private HashMap<String, GoInBetweenBridge> bridgesMap; 
-//    private HashMap<Node, Set<Node>> adjacencyMap; // map a node to the set of its nearest unique nodes (identify via reduce function)
+    private final HashMap<String, Long> NBMap = new HashMap<>(); //nearest-neighbors of every nodes
     // *** Constructors ***
 	/**
 	 * Creates an empty graph.
@@ -153,99 +155,30 @@ public class BDGraph extends MultiGraph{
 		retval+="}";
 		return retval;		
 	}
-	
-	public void outputFASTA(String fileName) throws IOException {
-		SequenceOutputStream out = SequenceOutputStream.makeOutputStream(fileName);
-		
-		for(Node node:this) {
-			Sequence seq=(Sequence) node.getAttribute("seq");
-//			if( (node.getDegree()==0 && (seq.length() < SimpleBinner.ANCHOR_CTG_LEN)) 
-//				|| node.getNumber("cov") < 10.0 )	//not display <10% abundance pops
-//				continue;
-			seq.writeFasta(out);
-		}
-		
-		out.close();
-	}
-	
-	public void outputGFA(String fileName) throws IOException {
-	    PrintWriter printWriter = new PrintWriter(new FileWriter(fileName));
-	    
-	    //Differentiate composite edges and normal edges
-	    List<Edge> compositeEdges = new ArrayList<Edge>();
-	    List<BDEdgePrototype> normalEdges = new ArrayList<BDEdgePrototype>();
-	    edges().forEach(e->{
-	    					if(e.hasAttribute("path")) 
-	    						compositeEdges.add(e); 
-	    					else 
-	    						normalEdges.add(new BDEdgePrototype((BDNode)e.getNode0(), (BDNode)e.getNode1(), ((BDEdge)e).getDir0(), ((BDEdge)e).getDir1()));
-	    					}
-	    );
-	    
-	    Set<String> addedNodes = new HashSet<String>();
-	    //Print S (Segment)
-	    for(Node node:this){
-	    	Sequence seq=(Sequence) node.getAttribute("seq");
-	    	int kmer_count=(int)(GraphUtil.getRealCoverage(node.getNumber("cov"))*(BDGraph.ILLUMINA_READ_LENGTH-BDGraph.getKmerSize()+1)/BDGraph.ILLUMINA_READ_LENGTH);
-	    	printWriter.printf("S\t%s\t%s\tKC:i:%d\n", node.getId(), seq.toString(),kmer_count);
-	    	addedNodes.add(node.getId());
-	    }	    
-	    for(Edge ce:compositeEdges){
-	    	BDPath p = ((BDPath)ce.getAttribute("path")).getPrimitivePath();
 
-	    	BDNode curNode=(BDNode) p.getRoot(), nextNode=null;
-	    	String curID=curNode.getId(), nextID=null;
-	    	boolean curDir, nextDir;
-	    	for(Edge e:p.getEdgePath()){
-	    		nextNode=(BDNode) e.getOpposite(curNode);
-	    		nextID=nextNode.getId();
-	    		curDir=((BDEdge)e).getDir(curNode);
-	    		nextDir=((BDEdge)e).getDir(nextNode);
-	    		
-	    		if(nextNode!=p.peekNode()){
-		    		//create ID
-		    		int count=1;
-		    		String tmpID=nextID;
-		    		while(addedNodes.contains(tmpID)){
-		    			tmpID=nextID+"."+(count++);
-		    		}
-		    		nextID=tmpID;
-		    		addedNodes.add(nextID);
-		    		
-		    		Sequence seq=(Sequence) nextNode.getAttribute("seq");
-			    	int kmer_count=(int)(GraphUtil.getRealCoverage(nextNode.getNumber("cov"))*(BDGraph.ILLUMINA_READ_LENGTH-BDGraph.getKmerSize()+1)/BDGraph.ILLUMINA_READ_LENGTH);
-			    	printWriter.printf("S\t%s\t%s\tKC:i:%d\n", nextID, seq.toString(),kmer_count);
-
-	    		}
-		    	
-	    		normalEdges.add(new BDEdgePrototype(new BDNode(this, curID), new BDNode(this, nextID), curDir, nextDir));
-	    		
-	    		curNode=nextNode;
-	    		curID=nextID;
-	    	}
-	    }
-	    
-	    //Print L (Links)
-	    for(BDEdgePrototype e:normalEdges){
-	    	printWriter.printf("L\t%s\t%s\t%s\t%s\t%dM\n", 
-	    						e.getNode0().getId(), 
-	    						e.getDir0()?"+":"-",
-								e.getNode1().getId(), 
-	    						e.getDir1()?"-":"+",
-								BDGraph.getKmerSize());
-	    }
-
-	    
-	    printWriter.close();
-	}
-    
-	
     public static int getKmerSize(){
     	return BDGraph.KMER;
     }
     public static void setKmerSize(int kmer){
     	BDGraph.KMER=kmer;
     }
+    
+    //TODO: indexing graph (in separated module, e.g. `jsa.np.npgraph index -d10000 graph.gfa`)
+    public void makeAPSPMap(){
+//    	long startTime=System.currentTimeMillis();
+//    	//build map of nearest-neighbors in R=10000
+//    	for(Node node:this) {
+//    		getShortestTreeFromNode((BDNode) node, true, 10000);
+//    		getShortestTreeFromNode((BDNode) node, false, 10000);
+//	    	System.out.printf("Done node %s: %.2f sec\n", node.getId(),(System.currentTimeMillis()-startTime)/1000.0);
+//
+//    	}
+//    	System.out.printf("Done APSP indexing: %.2f sec\n", (System.currentTimeMillis()-startTime)/1000.0);
+    	
+    }
+    
+    //Several functionalities based on APSP
+    // ...
     
     /**************************************************************************************************
      ********************** utility functions to serve the assembly algo ****************************** 
@@ -299,27 +232,6 @@ public class BDGraph extends MultiGraph{
     	
     }
     
-    //when there is a path that could represent a bridge (half or full)
-    synchronized protected void updateBridgesMap(BDPath path){
-    	if(path==null || path.size() < 2)
-    		return;
-    	try{
-	    	BDNode 	startNode=path.getFirstNode(),
-	    					endNode=path.getLastNode();
-	    	boolean startNodeDir=path.getFirstNodeDirection(),
-	    			endNodeDir=path.getLastNodeDirection();
-	    	if(SimpleBinner.getBinIfUnique(startNode)!=null){
-	    		bridgesMap.put(startNode.getId()+(startNodeDir?"o":"i"), new GoInBetweenBridge(this,path));
-	    	}
-	    	if(SimpleBinner.getBinIfUnique(endNode)!=null){
-	    		bridgesMap.put(endNode.getId()+(endNodeDir?"o":"i"), new GoInBetweenBridge(this,path));
-	    	}
-		} catch (Exception e) {
-			System.err.println("Invalid path to add to bridge map: " + path.getId());
-			e.printStackTrace();
-		}
-    	
-    }
     
     //Return bridge in the map (if any) that share the same bases (unique end) 
     synchronized public GoInBetweenBridge getBridgeFromMap(AlignedRead algRead){
@@ -352,7 +264,7 @@ public class BDGraph extends MultiGraph{
 
     
     //If the node was wrongly identified as unique before, do things...
-    synchronized public void destroyFalseBridges(Node node){
+//    synchronized public void destroyFalseBridges(Node node){
 //    	node.removeAttribute("unique");
 //    	binner.node2BinMap.remove(node);
 //    	
@@ -388,8 +300,8 @@ public class BDGraph extends MultiGraph{
 //        		bridgesMap.remove(node.getId()+ "i");
 //    		}
 //    	}
-    		
-    }
+//    		
+//    }
 
     synchronized public void binning(String binFileName) {   		
     	binner=new SimpleBinner(this, binFileName);
@@ -416,7 +328,7 @@ public class BDGraph extends MultiGraph{
 		}
 	}
 	
-    synchronized ArrayList<BDPath> DFSAllPaths(Alignment from, Alignment to, boolean force){
+    synchronized ArrayList<BDPath> pathsFinding(Alignment from, Alignment to, boolean force){
     	assert from.readID==to.readID && to.compareTo(from)>=0:"Illegal alignment pair to find path!"; 	
     	int distance=to.readAlignmentStart()-from.readAlignmentEnd();
     	BDNode srcNode = from.node,
@@ -425,6 +337,7 @@ public class BDGraph extends MultiGraph{
     	return DFSAllPaths(srcNode, dstNode, srcDir, dstDir, distance, force);
     }
     
+    //Depth First Search strategy
 	synchronized ArrayList<BDPath> DFSAllPaths(BDNode srcNode, BDNode dstNode, boolean srcDir, boolean dstDir, int distance, boolean force)
 	{
     	if(distance>BDGraph.D_LIMIT && !force)
@@ -435,6 +348,7 @@ public class BDGraph extends MultiGraph{
 									retval=new ArrayList<BDPath>();
 		//1. First build shortest tree from dstNode 		
 		HashMap<String,Integer> shortestMap = getShortestTreeFromNode(dstNode, dstDir, distance);
+		// The good thing is that we need only 1 temporary path variable
 		BDPath path = new BDPath(srcNode);
 
 		//2. DFS from srcNode with the distance info above
@@ -456,8 +370,10 @@ public class BDGraph extends MultiGraph{
 			(curNodeState.getDir()?curNodeState.getNode().enteringEdges():curNodeState.getNode().leavingEdges())
 				.forEach(e->{
 					BDNode n=(BDNode) e.getOpposite(srcNode);
-					BDNodeState ns = new BDNodeState(n, ((BDEdge) e).getDir(n));
-										
+
+					BDNodeState ns = new BDNodeState(n, ((BDEdge) e).getNodeDirection(n)!=null?
+														((BDEdge) e).getNodeDirection(n):!srcDir);
+					
     				if(	shortestMap.containsKey(ns.toString()) 
 						&& shortestMap.get(ns.toString()) < limit.get()
 						)
@@ -471,7 +387,6 @@ public class BDGraph extends MultiGraph{
 			double pathScore=0.0;
 			while(true) {
 				curList=stack.peek();
-				
 				if(curList.isEmpty()) {
 					if(path.size() <= 1)
 						break;
@@ -488,7 +403,9 @@ public class BDGraph extends MultiGraph{
 					if(SimpleBinner.getBinIfUnique(to)!=null && to!=dstNode)
 						continue;
 					
-					boolean dir = curEdge.getDir(to);
+					boolean dir = 	curEdge.getNodeDirection(to)!=null?
+									curEdge.getNodeDirection(to):
+									path.getLastNodeDirection();
 					
 					/*
 					 * Update path and if terminated condition is met, add the candidate path
@@ -497,9 +414,10 @@ public class BDGraph extends MultiGraph{
 					pathScore+=nodeScores.peek();
 					path.add(curEdge);
 					
-					delta=Math.abs(distance-curEdge.getLength());
-					//note that traversing direction (true: template, false: reverse complement) of destination node is opposite its defined direction (true: outward, false:inward) 
-					if(to==dstNode && dir==dstDir && delta < tolerance){ 
+					delta=distance-curEdge.getLength();
+					//note that traversing direction (true: template, false: reverse complement) of destination node 
+					//is opposite its defined direction (true: outward, false:inward) 
+					if(to==dstNode && dir==dstDir && Math.abs(delta) < tolerance){ 
 //					if(to==dstNode && dir==dstDir){ 
 
 				    	BDPath 	tmpPath=new BDPath(path);
@@ -512,7 +430,7 @@ public class BDGraph extends MultiGraph{
 				    	else{
 				    		int idx=0;
 				    		for(BDPath p:possiblePaths)
-				    			if(delta>p.getDeviation())
+				    			if(Math.abs(delta)>Math.abs(p.getDeviation()))
 				    				idx++;
 				    			else
 				    				break;
@@ -522,7 +440,6 @@ public class BDGraph extends MultiGraph{
 						if(possiblePaths.size() > S_LIMIT) //not go too far
 							break;
 					}
-					
 					/*
 					 * Looking for next candidate set of edges to traverse
 					 */
@@ -530,10 +447,11 @@ public class BDGraph extends MultiGraph{
 			    	//get possible next edges to traverse
 					tmpList.clear(); 
 
-	    			(curEdge.getDir(to)?to.enteringEdges():to.leavingEdges())
+	    			(dir?to.enteringEdges():to.leavingEdges())
 	    			.forEach(e->{
 	    				BDNode n=(BDNode) e.getOpposite(to);
-	    				BDNodeState ns = new BDNodeState(n, ((BDEdge) e).getDir(n));
+	    				BDNodeState ns = new BDNodeState(n, ((BDEdge) e).getNodeDirection(n)!=null?
+															((BDEdge) e).getNodeDirection(n):dir);
 	    				
 	    				if(shortestMap.containsKey(ns.toString()) 
     						&& shortestMap.get(ns.toString()) < limit.get()
@@ -570,11 +488,11 @@ public class BDGraph extends MultiGraph{
 
 		}
 		
-		double closestDist=possiblePaths.get(0).getDeviation();
-		int keepMax = MAX_DFS_PATHS;//only keep this many possible paths 
+		double closestDist=Math.abs(possiblePaths.get(0).getDeviation());
+		int keepMax = MAX_PATHS;//only keep this many possible paths 
 		for(int i=0;i<possiblePaths.size();i++){
 			BDPath p = possiblePaths.get(i);
-			if(p.getDeviation()>closestDist+Math.abs(distance+getKmerSize())*R_TOL || i>=keepMax)
+			if(Math.abs(p.getDeviation())>closestDist+Math.abs(distance+getKmerSize())*R_TOL || i>=keepMax)
 				break;
 			retval.add(p);
 			if(HybridAssembler.VERBOSE)
@@ -585,7 +503,8 @@ public class BDGraph extends MultiGraph{
 		//TODO: reduce the number of returned paths here (calculate edit distance with nanopore read: dynamic programming?)
 		return retval;
 	}    
-    
+	
+	
     /*
      * Get a map showing shortest distances from surrounding nodes to a *rootNode* expanding to a *direction*, within a *distance*
      * based on Dijkstra algorithm
@@ -598,11 +517,13 @@ public class BDGraph extends MultiGraph{
 		BDNodeState curND = new BDNodeState(rootNode, expDir, curDistance);
 		pq.add(curND);
 		
-		if(HybridAssembler.VERBOSE)
-    		LOG.info("Building shortest tree for " + rootNode.getId() + " with distance=" + distance);
-		retval.put(curND.toString(), curDistance); // direction from the point of srcNode
-		while(!pq.isEmpty()) {
+//		if(HybridAssembler.VERBOSE)
+//    		LOG.info("Building shortest tree for " + rootNode.getId() + " with distance=" + distance);
 
+		retval.put(curND.toString(), curDistance); // direction from the point of srcNode
+		
+		boolean direction=expDir;
+		while(!pq.isEmpty()) {
 			curND=pq.poll();
 			curDistance=curND.getWeight();
 
@@ -610,7 +531,10 @@ public class BDGraph extends MultiGraph{
 			while(ite.hasNext()) {
 	    		BDEdge edge = (BDEdge) ite.next();
 	    		BDNode nextNode = (BDNode) edge.getOpposite(curND.getNode());
-	    		boolean direction =  !edge.getDir(nextNode);
+	    		
+	    		if(edge.getNodeDirection(nextNode)!=null)	    			
+	    			direction = !edge.getNodeDirection(nextNode);
+	    		
 	    		newDistance=curDistance+edge.getLength()+(int)curND.getNode().getNumber("len");
     			if(newDistance-distance > BDGraph.A_TOL && GraphUtil.approxCompare(newDistance, distance)>0)
 	    			continue;
@@ -633,7 +557,6 @@ public class BDGraph extends MultiGraph{
 			}
 			
 		}
-
 		return retval;
     }
     
@@ -829,14 +752,10 @@ public class BDGraph extends MultiGraph{
     	//do nothing if the path has only one node
     	if(path==null||path.getEdgeCount()<1)
     		return false;
+
     	else if(HybridAssembler.VERBOSE) 
-			LOG.info("Reducing path: " + path.getId());
-    	//loop over the edges of path (like spelling())
-    	BDNode 	startNode = (BDNode) path.getRoot(),
-				endNode = (BDNode) path.peekNode();
-	
-    	boolean startDir=((BDEdge) path.getEdgePath().get(0)).getDir(startNode),
-    			endDir=((BDEdge) path.peekEdge()).getDir(endNode);
+    			LOG.info("Reducing path: " + path.getId());
+
 
     	Set<Edge> 	potentialRemovedEdges = binner.walkAlongUniquePath(path);
 		HashMap<PopBin, Integer> oneBin = new HashMap<>();
@@ -857,8 +776,7 @@ public class BDGraph extends MultiGraph{
 	    	}
 	    	
 	    	//add appropriate edges
-
-    		BDEdge reducedEdge = addEdge(startNode,endNode,startDir,endDir);
+			BDEdge reducedEdge = addEdge(path.getFirstNode(), path.getLastNode(), path.getFirstNodeDirection(), path.getLastNodeDirection());
     		if(HybridAssembler.VERBOSE)
     			LOG.info("ADDING EDGE " + reducedEdge.getId()+ " from " + reducedEdge.getNode0().getGraph().getId() + "-" + reducedEdge.getNode1().getGraph().getId());
 
@@ -895,22 +813,7 @@ public class BDGraph extends MultiGraph{
     	return retval;
 
     }
-    //return path in the graph that contain only unique nodes
-    synchronized protected BDPath getLongestLinearPathFromNode(BDNode startNode, boolean direction){
-//    	assert (direction?startNode.getOutDegree()<=1:startNode.getInDegree()<=1):" Node " + startNode.getId() + "has more than one possible extending way!";
-    	BDPath retval = new BDPath(startNode);
-    	BDNode currentNode = startNode;
-    	boolean curDirection=direction;
-    	while(curDirection?currentNode.getOutDegree()==1:currentNode.getInDegree()==1){
-    		BDEdge curEdge=curDirection?currentNode.leavingEdges().toArray(BDEdge[]::new)[0]
-    										:currentNode.enteringEdges().toArray(BDEdge[]::new)[0];
-    		retval.add(curEdge);
-    		currentNode=(BDNode) curEdge.getOpposite(currentNode);
-    		curDirection=!curEdge.getDir(currentNode);
-    	}
-    	
-    	return retval;
-    }
+
     
 	//Only call for the final reduce path with 2 unique ends: if path containing other unique nodes than 2 ends then we have list of paths to reduce
     //exclude already-reduced path (by looking for corresponding reduce edge)
@@ -945,29 +848,10 @@ public class BDGraph extends MultiGraph{
 		return retval;
 	}
 	
-	public synchronized int getN50(){
-		int count=0, numOfNodes=getNodeCount();
-		int [] lengths = new int[numOfNodes];
-		double sum = 0;
-		for(Node n:nodes().collect(Collectors.toList())) {
-			int nlen=(int)n.getNumber("len"); 
-			lengths[count++]=nlen; 
-			sum+=nlen;
-		}
-		Arrays.sort(lengths);
-
-		int index = lengths.length;
-		double contains = 0;
-		while (contains < sum/2){
-			index --;
-			contains += lengths[index];
-		}
-
-		return lengths[index];	
-	}
 	
     /***********************************************************************
-     * TODO: merge this with GraphWatcher.update()
+     * For graph status reporting
+     * Compliance with with GraphWatcher.update()
      **********************************************************************/
     int n50, n75, maxl; //in Kbp
     int numOfCtgs, numOfCircularCtgs;
@@ -1069,4 +953,99 @@ public class BDGraph extends MultiGraph{
                 }
         return colors;
     }
+	public void outputFASTA(String fileName) throws IOException {
+		SequenceOutputStream out = SequenceOutputStream.makeOutputStream(fileName);
+		for(Node node:this) {
+			Sequence seq=(Sequence) node.getAttribute("seq");
+//			if( (node.getDegree()==0 && (seq.length() < SimpleBinner.ANCHOR_CTG_LEN)) 
+//				|| node.getNumber("cov") < 10.0 )	//not display <10% abundance pops
+//				continue;
+			seq.writeFasta(out);
+		}
+		
+		out.close();
+	}
+	public void outputJAPSA(String fileName) throws IOException {
+		SequenceOutputStream out = SequenceOutputStream.makeOutputStream(fileName);
+		JapsaAnnotation annotation;
+		for(Node node:this) {
+			annotation=(JapsaAnnotation) node.getAttribute("annotation");
+			annotation.write(out);
+		}	
+		out.close();
+	}
+	
+	public void outputGFA(String fileName) throws IOException {
+	    PrintWriter printWriter = new PrintWriter(new FileWriter(fileName));
+	    
+	    //Differentiate composite edges and normal edges
+	    List<Edge> compositeEdges = new ArrayList<Edge>();
+	    List<BDEdgePrototype> normalEdges = new ArrayList<BDEdgePrototype>();
+	    edges().forEach(e->{
+	    					if(e.hasAttribute("path")) 
+	    						compositeEdges.add(e); 
+	    					else 
+	    						normalEdges.add(new BDEdgePrototype((BDNode)e.getNode0(), (BDNode)e.getNode1(), ((BDEdge)e).getDir0(), ((BDEdge)e).getDir1()));
+	    					}
+	    );
+	    
+	    Set<String> addedNodes = new HashSet<String>();
+	    //Print S (Segment)
+	    for(Node node:this){
+	    	Sequence seq=(Sequence) node.getAttribute("seq");
+	    	int kmer_count=(int)(GraphUtil.getRealCoverage(node.getNumber("cov"))*(BDGraph.ILLUMINA_READ_LENGTH-BDGraph.getKmerSize()+1)/BDGraph.ILLUMINA_READ_LENGTH);
+	    	printWriter.printf("S\t%s\t%s\tKC:i:%d\n", node.getId(), seq.toString(),kmer_count);
+	    	addedNodes.add(node.getId());
+	    }	    
+	    for(Edge ce:compositeEdges){
+	    	BDPath p = ((BDPath)ce.getAttribute("path")).getPrimitivePath();
+
+	    	BDNode curNode=(BDNode) p.getRoot(), nextNode=null;
+	    	String curID=curNode.getId(), nextID=null;
+	    	boolean curDir=p.getFirstNodeDirection(), nextDir=!curDir;
+
+	    	for(Edge e:p.getEdgePath()){
+	    		nextNode=(BDNode) e.getOpposite(curNode);
+	    		nextID=nextNode.getId();
+	    		if(((BDEdge)e).getNodeDirection(nextNode)!=null)
+	    			nextDir=((BDEdge)e).getNodeDirection(nextNode);
+	    		
+	    		if(nextNode!=p.peekNode()){
+		    		//create ID
+		    		int count=1;
+		    		String tmpID=nextID;
+		    		while(addedNodes.contains(tmpID)){
+		    			tmpID=nextID+"."+(count++);
+		    		}
+		    		nextID=tmpID;
+		    		addedNodes.add(nextID);
+		    		
+		    		Sequence seq=(Sequence) nextNode.getAttribute("seq");
+			    	int kmer_count=(int)(GraphUtil.getRealCoverage(nextNode.getNumber("cov"))*(BDGraph.ILLUMINA_READ_LENGTH-BDGraph.getKmerSize()+1)/BDGraph.ILLUMINA_READ_LENGTH);
+			    	printWriter.printf("S\t%s\t%s\tKC:i:%d\n", nextID, seq.toString(),kmer_count);
+
+	    		}
+		    	
+	    		normalEdges.add(new BDEdgePrototype(new BDNode(this, curID), new BDNode(this, nextID), curDir, nextDir));
+	    		
+	    		curNode=nextNode;
+	    		curID=nextID;
+	    		curDir=!nextDir;
+	    	}
+	    }
+	    
+	    //Print L (Links)
+	    for(BDEdgePrototype e:normalEdges){
+	    	printWriter.printf("L\t%s\t%s\t%s\t%s\t%dM\n", 
+	    						e.getNode0().getId(), 
+	    						e.getDir0()?"+":"-",
+								e.getNode1().getId(), 
+	    						e.getDir1()?"-":"+",
+								BDGraph.getKmerSize());
+	    }
+
+	    
+	    printWriter.close();
+	}
+    
 }
