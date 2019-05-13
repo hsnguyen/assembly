@@ -247,6 +247,7 @@ public class GraphUtil {
 					seq = new Sequence(Alphabet.DNA5(), gfaFields[2], nodeID);
 					AbstractNode node = (AbstractNode) graph.addNode(nodeID); //or get the existing node prototype created below (to set the attributes)
 					node.setAttribute("name", "Contig_"+nodeID);
+					seq.setName("Contig_"+nodeID);
 					node.setAttribute("seq", seq);
 					node.setAttribute("len", seq.length());
 					

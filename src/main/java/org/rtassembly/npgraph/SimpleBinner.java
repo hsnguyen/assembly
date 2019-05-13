@@ -527,32 +527,28 @@ public class SimpleBinner {
 		
 		Set<Edge> retval = new HashSet<Edge>();	
 		double aveCov=uniqueBin.estCov;
-	
+		Boolean dir=null;
 		for(Edge ep:path.getEdgePath()){
 			nextNode=ep.getOpposite(curNode);
 			HashMap<PopBin, Integer> edgeBinsCount, bcMinusOne=null,  
 										nodeBinsCount;	
 			//remove faulty edge of unique nodes (that has degree=3)
 			if(getBinIfUnique(curNode)!=null || getBinIfUniqueNow(curNode)!=null){
-//				if(curNode.getNumber("len") > UNIQUE_CTG_LEN){
-					boolean dir=((BDEdge)ep).getDir((BDNode)curNode);
-					Stream<Edge> streamEdges=dir?curNode.leavingEdges():curNode.enteringEdges();
-					streamEdges.forEach(retval::add);
-//				}else
-//					retval.add(ep);
+					dir=((BDEdge)ep).getNodeDirection((BDNode)curNode);
+					if(dir!=null){
+						Stream<Edge> streamEdges=dir?curNode.leavingEdges():curNode.enteringEdges();
+						streamEdges.forEach(retval::add);
+					}
+
 			}
 			if(getBinIfUnique(nextNode)!=null || getBinIfUniqueNow(nextNode)!=null){
-//				if(nextNode.getNumber("len") > UNIQUE_CTG_LEN){
-					boolean dir=((BDEdge)ep).getDir((BDNode)nextNode);
-					Stream<Edge> streamEdges=dir?nextNode.leavingEdges():nextNode.enteringEdges();
-					streamEdges.forEach(retval::add);
-//				}else
-//					retval.add(ep);
+					dir=((BDEdge)ep).getNodeDirection((BDNode)nextNode);
+					if(dir!=null){
+						Stream<Edge> streamEdges=dir?nextNode.leavingEdges():nextNode.enteringEdges();
+						streamEdges.forEach(retval::add);
+					}
 			}
 			
-//			if(getUniqueBin(ep.getNode0())!=null || getUniqueBin(ep.getNode1())!=null)
-//				retval.add((BDEdge)ep);
-				
 			if(edge2BinMap.containsKey(ep)) {
 				edgeBinsCount=edge2BinMap.get(ep);
 				if(edgeBinsCount.containsKey(uniqueBin)) {
