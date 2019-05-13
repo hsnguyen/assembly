@@ -91,7 +91,7 @@ public class GraphWatcher {
 
 		for (Iterator<ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
 			ConnectedComponent comp = compIter.next();
-			System.out.printf("... id=%s edges=%d nodes=%d \n", comp.id, comp.getEdgeCount(), comp.getNodeCount());
+//			System.out.printf("... id=%s edges=%d nodes=%d \n", comp.id, comp.getEdgeCount(), comp.getNodeCount());
 					
 			//Start analyzing significant components from here
 			//check comp: should be linear paths, should start with node+
@@ -157,7 +157,7 @@ public class GraphWatcher {
 				 annotation.setSequence(seq);
 				 n.setAttribute("annotation", annotation);
 			 }
-			 System.out.println("\n" + seq.getName() + ":" + repPath.getId() + "\n=> "+ repPath.getPrimitivePath().getId());
+//			 System.out.println("\n" + seq.getName() + ":" + repPath.getId() + "\n=> "+ repPath.getPrimitivePath().getId());
 
 		}
 

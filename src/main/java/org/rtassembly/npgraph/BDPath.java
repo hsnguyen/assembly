@@ -22,14 +22,10 @@ public class BDPath extends Path{
 	private static final Logger LOG = LoggerFactory.getLogger(BDPath.class);
     private PopBin uniqueBin;//the unique population bin that this path belongs to (can only be set from outside)
     @Override
-    public void add(Edge e) {
-    	add(e,true);
-    }
-    public void add(Edge edge, boolean sCal) {
+    public void add(Edge edge) {
     	Node lastNode = edge.getOpposite(peekNode());
-    	//score calculation on: it's expensive for long path
-    	if(sCal)
-    		pathEstats+=getExtendLikelihood(lastNode);
+    	//score calculation is expensive for long path!
+    	pathEstats+=getExtendLikelihood(lastNode);
     	len+=((long)lastNode.getNumber("len"))+ ((BDEdge)edge).getLength();
     	super.add(edge);  	
     }
@@ -54,7 +50,7 @@ public class BDPath extends Path{
 		if(p!=null && !p.empty()){
 			setRoot(p.getRoot());
 			for(Edge e:p.getEdgePath())
-				add(e, false);
+				super.add(e);
 		}
 		diff=p.diff;
 		len=p.len;
@@ -172,7 +168,7 @@ public class BDPath extends Path{
 				if(subPath.getRoot()!=curNode)
 					subPath=subPath.reverse();
 //				retval=retval.join(subPath);
-				retval=retval.join(subPath.getPrimitivePath(), false);
+				retval=retval.join(subPath.getPrimitivePath());
 			}
 			else
 				retval.add(e);
@@ -268,7 +264,7 @@ public class BDPath extends Path{
 	  * Add a path to the current path. The path to be added must start with the last node
 	  * of the current path. Return TRUE if the joining valid and succeed.
 	  */
-	public BDPath join(BDPath newPath, boolean scoreAccumulate) {
+	public BDPath join(BDPath newPath) {
 		
 		if(newPath==null || newPath.empty()){
 			return new BDPath(this); 
@@ -288,7 +284,7 @@ public class BDPath extends Path{
 		}
 		BDPath retval=new BDPath(this);
 		for(Edge e:newPath.getEdgePath()){
-			retval.add(e, scoreAccumulate);
+			retval.add(e);
 		}
 		diff+=newPath.diff;
 		return retval;
