@@ -98,11 +98,18 @@ public class ScaffoldVector{
 	}
 
 	//Just interested in the relatively position of the end node
+	//For BDNodeVecState utilities
 	public int relDistance(BDNode fNode){
+		//FIXME: doing this break the circular????
+//		if (direction > 0){
+//			return magnitude;
+//		}else{
+//			return magnitude - (int) fNode.getNumber("len");
+//		}	
 		
-		int tS = 0, tE = BDGraph.getKmerSize(), //just a random one
-			fS, fE;
-		
+		int tS = 0, tE = BDGraph.getKmerSize(),
+				fS, fE;
+			
 		if (direction > 0){
 			fS = magnitude;
 			fE = magnitude + (int) fNode.getNumber("len");
@@ -110,9 +117,6 @@ public class ScaffoldVector{
 			fE = magnitude;
 			fS = magnitude - (int) fNode.getNumber("len");
 		}		
-		//System.out.printf("tS=%d tE=%d fS=%d fE=%d fS-tE=%d tS-fE = %d ret=%d\n",tS, tE, fE, fE, fS-tE,tS-fE,Math.max(fS - tE, tS - fE));
-		
-		//FIXME: not handle the case that contig A contain contigB and via verse		
 		return Math.max(fS - tE, tS - fE);
 	}
 	

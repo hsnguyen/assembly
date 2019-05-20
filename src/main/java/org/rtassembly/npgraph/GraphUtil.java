@@ -369,13 +369,16 @@ public class GraphUtil {
     }
     
     //Scanning for shorter overlaps (<k) in a DBG graph 
-    //Recommend for circular genomes only
+    //Recommend for circular genomes
     public static void fixDeadEnds(BDGraph graph){
     	List<BDNodeState> weirdNodes = new ArrayList<>();
     	for(Node node:graph){
-    		if(node.getDegree()==0 || (node.getInDegree()*node.getOutDegree()!=0)){//?should we
+    		if(node.getDegree()==0 
+				|| (node.getInDegree()*node.getOutDegree()!=0)
+//				|| SimpleBinner.getBinIfUnique(node)!=null //?should we
+				) 
     			continue;
-    		}
+    	
     		double 	inCov=node.enteringEdges().map(e->e.getOpposite(node).getNumber("cov")).mapToDouble(Double::doubleValue).sum(),
     				outCov=node.leavingEdges().map(e->e.getOpposite(node).getNumber("cov")).mapToDouble(Double::doubleValue).sum();
     		double compare=approxCompare(inCov, outCov);

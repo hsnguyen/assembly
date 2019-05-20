@@ -118,7 +118,10 @@ public class GoInBetweenBridge {
 		BDNodeVecState 	current=null;
 		int lastIdx=0, numberOfAnchorsBefore=getNumberOfAnchors();
 		Set<BridgeSegment> changedSegments = new HashSet<>();
-
+		
+		//FIXME: experimental
+		BDNodeVecState.NWAlignment(steps.nodes, qSteps.nodes);
+		
 		while(iterator.hasNext()){
 			current=iterator.next();
 			if(segments!=null){//&& !steps.nodes.contains(current)???
@@ -199,6 +202,9 @@ public class GoInBetweenBridge {
 		BDNodeVecState 	current=null;
 		int lastIdx=0, numOfAnchorsBefore=getNumberOfAnchors();
 		Set<BridgeSegment> changedSegments = new HashSet<>();
+		
+		//FIXME: experimental
+		BDNodeVecState.NWAlignment(steps.nodes, new BridgeSteps(read).nodes);
 		
 		for(Alignment alg:read.getAlignmentRecords()) {
 			current=new BDNodeVecState(alg, read.getVector(start,alg));
