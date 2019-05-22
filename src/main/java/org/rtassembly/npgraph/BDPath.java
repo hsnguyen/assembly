@@ -19,7 +19,6 @@ public class BDPath extends Path{
 	private int diff; //deviation from path to aligned read (now just length): the more the worse
 	private double pathEstats=0.0; //sum of estats of inbetween nodes
     private long len=0;
-	private static final Logger LOG = LoggerFactory.getLogger(BDPath.class);
     private PopBin uniqueBin;//the unique population bin that this path belongs to (can only be set from outside)
     @Override
     public void add(Edge edge) {
@@ -71,7 +70,7 @@ public class BDPath extends Path{
 		BDNode curNode = (BDNode) graph.getNode(curID.substring(0,curID.length()-1)),
 						nextNode;
 		if(curNode==null){
-			LOG.info("Node {} already removed from graph! Stop reading path here!",curID.substring(0,curID.length()-1));
+			System.out.printf("Node %s already removed from graph! Stop reading path here!\n",curID.substring(0,curID.length()-1));
 			return;
 		}
 		setRoot(curNode);
@@ -82,7 +81,7 @@ public class BDPath extends Path{
 			nextDir = nextID.contains("+")?true:false;
 			nextNode = (BDNode) graph.getNode(nextID.substring(0,nextID.length()-1));		
 			if(nextNode==null){
-				LOG.info("Node {} already removed from graph! Stop reading path here!",nextID.substring(0,nextID.length()-1));
+				System.out.printf("Node %s already removed from graph! Stop reading path here!\n",nextID.substring(0,nextID.length()-1));
 				return;
 			}
 			curBin=SimpleBinner.getBinIfUnique(curNode);
@@ -225,7 +224,7 @@ public class BDPath extends Path{
 				String filler=new String(new char[overlap]).replace("\0", "N");
 				Sequence fillerSeq=new Sequence(Alphabet.DNA5(), filler, "gap");
 				seq.append(fillerSeq.concatenate(curSeq));				
-				LOG.error("Edge {} has length={} > 0: filled with Ns", e.getId(), overlap);
+				System.out.printf("Edge %s has length=%d > 0: filled with Ns\n", e.getId(), overlap);
 
 			}
 			curNode=nextNode;
@@ -261,11 +260,11 @@ public class BDPath extends Path{
 			return new BDPath(newPath);
 		
 		if(newPath.getRoot() != peekNode()){
-			LOG.error("Cannot join path {} to path {} with disagreed first node: {} != {}", newPath.getId(), this.getId(), newPath.getRoot().getId() ,peekNode().getId());
+			System.err.printf("Cannot join path %s to path %s with disagreed first node: %s != %s\n", newPath.getId(), this.getId(), newPath.getRoot().getId() ,peekNode().getId());
 			return null;
 		}
 		if(newPath.getNodeCount() > 1 && this.getNodeCount() > 1 && newPath.getFirstNodeDirection()==getLastNodeDirection()){
-			LOG.error("Conflict direction from the first node " + newPath.getRoot().getId());
+			System.err.println("Conflict direction from the first node " + newPath.getRoot().getId());
 			return null;
 		}
 		BDPath retval=new BDPath(this);
@@ -324,7 +323,7 @@ public class BDPath extends Path{
 		}else if(from==peekNode()){
 			ref=this.reverse();
 		}else{
-			LOG.warn("Node {} couldn't be found as one of the tips in path {}!", from.getId(), getId());
+			System.out.printf("Node %s couldn't be found as one of the tips in path %s!\n", from.getId(), getId());
 			return retval;
 		}
 		int curDistance=0;

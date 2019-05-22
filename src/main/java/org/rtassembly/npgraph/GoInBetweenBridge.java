@@ -16,8 +16,7 @@ import org.slf4j.LoggerFactory;
 
 //A bridge structure that the first node must be unique
 public class GoInBetweenBridge {
-	private static final Logger LOG = LoggerFactory.getLogger(GoInBetweenBridge.class);
-	
+
 	BDGraph graph;
 	PopBin bin;
 	BDEdgePrototype pBridge; //note: the ending nodes must be unique, or else omitted
@@ -409,7 +408,7 @@ public class GoInBetweenBridge {
 		PopBin sbin=null;
 		for(BridgeSegment seg:segments){
 			if(seg.isConnected() && seg.connectedPaths.size()==1){
-				sbin=binner.getBinIfUniqueNow(seg.startNV.getNode());
+				sbin=SimpleBinner.getBinIfUniqueNow(seg.startNV.getNode());
 //				System.out.println("Tony Tony Chopper: " + (curPath==null?"null":curPath.getId()) + " seg=" + seg.getId() + " start node=" + seg.startNV.getNode().getId() + " bin=" + (sbin==null?"null":sbin.binID));
 				if(sbin!=null && sbin.isCloseTo(bin)){
 					if(curPath!=null){ 
@@ -449,7 +448,7 @@ public class GoInBetweenBridge {
 			if(tmp==steps.start || tmp==steps.end) //there is no (new) end detected
 				return false;
 			
-			PopBin b=graph.binner.getBinIfUniqueNow(tmp.node);
+			PopBin b=SimpleBinner.getBinIfUniqueNow(tmp.node);
 			if(b!=null && b.isCloseTo(bin)){
 				steps.end=tmp;
 				return true;
@@ -505,7 +504,7 @@ public class GoInBetweenBridge {
 				startNV=new BDNodeVecState(pSegment.getNode0(),new ScaffoldVector(0,1));
 				endNV=new BDNodeVecState(pSegment.getNode1(), new ScaffoldVector(pSegment.getDir0()?dist:-dist, pSegment.getDir0()!=pSegment.getDir1()?1:-1));
 			} catch (Exception e) {
-				LOG.error("Cannot make bridge from this path!");
+				System.err.println("Cannot make bridge from this path!");
 				e.printStackTrace();
 			} 
 
@@ -623,7 +622,7 @@ public class GoInBetweenBridge {
 					
 			Alignment 	firstAlg = read.getFirstAlignment(),
 						curAlg = null;				
-					
+			//First alignment must be from an unique node to use as start point of the bridge
 			start=new BDNodeVecState(firstAlg.node, new ScaffoldVector());
 			nodes.add(start);
 				
