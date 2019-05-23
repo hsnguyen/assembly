@@ -16,7 +16,7 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 	
 	public BDNodeVecState(BDNode node, ScaffoldVector vector){
 		this.node=node;
-		this.vector=vector;
+		this.vector=new ScaffoldVector(vector.getMagnitute(), vector.getDirection());
 	}
 	
 	public BDNodeVecState(BDNode node, int qual, ScaffoldVector vector){
@@ -26,7 +26,11 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 	public BDNodeVecState(Alignment alg, ScaffoldVector vector) {
 		this(alg.node, alg.quality, vector);
 	}
-	
+	//copy constructor
+	public BDNodeVecState(BDNodeVecState bdNodeVecState) {
+		this(bdNodeVecState.getNode(), bdNodeVecState.getScore(), bdNodeVecState.getVector());
+	}
+
 	public BDNode getNode(){return node;}
 	public ScaffoldVector getVector(){return vector;}
 	
@@ -57,7 +61,7 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 		if(equals(o))
 			return 0;
 		else
-			return Integer.compare(vector.relDistance(node), o.vector.relDistance(o.node));
+			return Integer.compare(this.getDistance(), o.getDistance());
 	}
     @Override
     public int hashCode() {
@@ -84,7 +88,7 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
         }else{ 
         	boolean retval;
         	if(SimpleBinner.getBinIfUniqueNow(thatNode)!=null) {
-        		retval= (Math.abs(this.getVector().relDistance(thisNode) - other.getVector().relDistance(thatNode)) < thisNode.getNumber("len") - BDGraph.getKmerSize());
+        		retval= (Math.abs(this.getDistance() - other.getDistance()) < thisNode.getNumber("len") - BDGraph.getKmerSize());
         	}
         	else {
         		retval=this.getVector().consistentWith(other.getVector());
@@ -115,30 +119,15 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 		this.nvsScore+=nv.nvsScore;
 		return true;
 	}
-	//Another merge() that create the result
-	public static BDNodeVecState merge(BDNodeVecState n0, BDNodeVecState n1){
-		if(!n0.equals(n1))
-			return null;
-		
-		ScaffoldVector 	v0=n0.getVector(),
-						v1=n1.getVector();
-		BDNodeVecState retval=new BDNodeVecState(n0.getNode(), n0.getScore()+n1.getScore(), new ScaffoldVector());
-
-		//update the vector
-		if(!v0.isIdentity()){
-			retval.vector.setMagnitute( (int)((v0.getMagnitute()*n0.getScore()+v1.getMagnitute()*n1.getScore())/(n0.getScore()+n1.getScore())));
-		}
-		return retval;
-	}
 	
 	/*
 	 * Needleman-Wunsch algorithm to return consensus steps
 	 * by aligning two step-lists with identical first element
 	 */
-	public static TreeSet<BDNodeVecState> NWAlignment(TreeSet<BDNodeVecState> s0, TreeSet<BDNodeVecState> s1){
+	public static void NWAlignment(TreeSet<BDNodeVecState> s0, TreeSet<BDNodeVecState> s1){
 		assert s0.first().equals(s1.first()):"First alignment must agree!";
 
-		TreeSet<BDNodeVecState> retval=new TreeSet<>();
+		TreeSet<BDNodeVecState> omittedNodes=new TreeSet<>();
 		
 		BDNodeVecState[] 	as0=s0.toArray( new BDNodeVecState[s0.size()]),
 							as1=s1.toArray( new BDNodeVecState[s1.size()]);
@@ -201,50 +190,65 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 					break;
 			}
 		}
-//		//and we always has a match at (0,0)
-//		i=j=0;
-//		
-//		BDNodeVecState 	prevMatch=as0[0],
-//						nextMatch=null, tmp=null; 
-//		retval.add(prevMatch);
-//		for(int idx=0;idx<m0.size();idx++){
-//			int ii=m0.get(idx), jj=m1.get(idx);
-//			nextMatch=merge(as0[ii], as1[jj]);
-//			//add the vectors from first in-between
-//			for(int i0=i+1;i0<ii;i0++){
-//				tmp = new BDNodeVecState(as0[i0].getNode(), as0[i0].getScore(), as0[i0].getVector());
-//				tmp.vector.setMagnitute(prevMatch.getVector().getMagnitute() + 
-//										(as0[i0].getVector().getMagnitute() - as0[i].getVector().getMagnitute())
-//										*(nextMatch.getVector().getMagnitute()-prevMatch.getVector().getMagnitute())
-//										/(as0[ii].getVector().getMagnitute()-as0[i].getVector().getMagnitute()));
-//				retval.add(tmp);
-//			}
-//			//add vectors from second in-between
-//			for(int j0=j+1;j0<jj;j0++){
-//				tmp = new BDNodeVecState(as1[j0].getNode(), as1[j0].getScore(), as1[j0].getVector());
-//				tmp.vector.setMagnitute(prevMatch.getVector().getMagnitute() + 
-//										(as1[j0].getVector().getMagnitute() - as1[j].getVector().getMagnitute())
-//										*(nextMatch.getVector().getMagnitute()-prevMatch.getVector().getMagnitute())
-//										/(as1[jj].getVector().getMagnitute()-as1[j].getVector().getMagnitute()));
-//				retval.add(tmp);
-//			}
-//			
-//			//add the vector of next match
-//			prevMatch=nextMatch;
-//			retval.add(prevMatch);
-//			//move to next match coordinate
-//			i=ii; j=jj;
-//		}
-//		
-//		System.out.println("After NW merging: ");
-//		for(BDNodeVecState nv:retval)
-//			System.out.println(nv);
+
 		
-		return retval;
+		BDNodeVecState tmp=null, prevOrigNVS=as0[0]; 
+		double scale0=1.0, scale1=1.0;
+
+		as0[0].merge(as1[0]);
+		//we always has a match at (0,0)
+		i=j=0;
+		for(int idx=0;idx<m0.size();idx++){
+			int ii=m0.get(idx), jj=m1.get(idx);
+
+			int origStep=as0[ii].getDistance()-prevOrigNVS.getDistance();
+			as0[ii].merge(as1[jj]);
+			
+			try{
+				scale0=(as0[ii].getDistance()-as0[i].getDistance())*1.0/origStep;
+				scale1=(as0[ii].getDistance()-as0[i].getDistance())*1.0/(as1[jj].getDistance()-as1[j].getDistance());
+				System.out.printf("scale0=%.2f scale1=%.2f\n", scale0,scale1);
+			}catch(ArithmeticException ae){
+				System.out.println("ArithmeticException occured! Use previous scale instead...");
+			}
+			//FIXME: calibrate the vectors from first list's in-between
+			for(int i0=i+1;i0<ii;i0++){
+				as0[i0].getVector().setMagnitute((int) (as0[i].getVector().getMagnitute() + 
+										(as0[i0].getVector().getMagnitute() - prevOrigNVS.getVector().getMagnitute())*scale0));
+			}
+			//add vectors from second in-between for later use
+			for(int j0=j+1;j0<jj;j0++){
+				tmp = new BDNodeVecState(as1[j0]);
+				tmp.vector.setMagnitute((int) (as0[i].getVector().getMagnitute() + 
+										(as1[j0].getVector().getMagnitute() - as1[j].getVector().getMagnitute())*scale1));
+				omittedNodes.add(tmp);
+			}
+			
+			//move to next match coordinate
+			prevOrigNVS=new BDNodeVecState(as0[ii]);
+			i=ii; j=jj;
+		}
+		//FIXME: nodes after the last match...
+		for(int i0=i+1;i0<as0.length;i0++)
+			as0[i0].vector.setMagnitute((int) (as0[i].getVector().getMagnitute() + 
+					(as0[i0].getVector().getMagnitute() - prevOrigNVS.getVector().getMagnitute())*scale0));	
+		for(int j0=j+1;j0<as1.length;j0++){
+			tmp = new BDNodeVecState(as1[j0]);
+			tmp.vector.setMagnitute((int) (as0[i].getVector().getMagnitute() + 
+									(as1[j0].getVector().getMagnitute() - as1[j].getVector().getMagnitute())*scale1));
+			omittedNodes.add(tmp);
+		}
+		
+		//add all new nodes
+		s0.addAll(omittedNodes);
+		
+		System.out.println("After NW merging: ");
+		for(BDNodeVecState nv:s0)
+			System.out.println(nv);
 	}
 
-
+	//get absolute value of the relative distance (can be negative)
 	public int getDistance(){
-		return vector.relDistance(node);
+		return Math.abs(vector.relDistance(node));
 	}
 }

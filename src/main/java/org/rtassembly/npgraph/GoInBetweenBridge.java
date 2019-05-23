@@ -11,8 +11,6 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import org.graphstream.graph.Node;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 //A bridge structure that the first node must be unique
 public class GoInBetweenBridge {
@@ -93,11 +91,11 @@ public class GoInBetweenBridge {
 //		System.out.println("qNode1=" + (qNode1==null?"null":qNode1.getId()));
 
 		boolean found=true;
-		if(!sNode0.equals(qNode0)) {							//if the starting points don't agree
-			if(sNode0.equals(qNode1)) {						//the first unique contig actually located at the end of alignments list
+		if(!sNode0.equals(qNode0)) {			//if the starting points don't agree
+			if(sNode0.equals(qNode1)) {			//the first unique contig actually located at the end of alignments list
 				qBridge.reverse();
-			}else if(sNode1!=null){						//if not: this pBridge must have 2 anchors, the first anchor is not in the alignments list
-				reverse();							//flip the first and second anchors: now the second anchor is used as shared maker between subject and query bridge
+			}else if(sNode1!=null){				//if not: this pBridge must have 2 anchors, the first anchor is not in the alignments list
+				reverse();						//flip the first and second anchors: now the second anchor is used as shared maker between subject and query bridge
 				if(sNode1.equals(qNode1))	
 					qBridge.reverse();
 				else if(!sNode1.equals(qNode0))
@@ -118,35 +116,36 @@ public class GoInBetweenBridge {
 		int lastIdx=0, numberOfAnchorsBefore=getNumberOfAnchors();
 		Set<BridgeSegment> changedSegments = new HashSet<>();
 		
-		//FIXME: experimental
-		BDNodeVecState.NWAlignment(steps.nodes, qSteps.nodes);
-		
-		while(iterator.hasNext()){
-			current=iterator.next();
-			if(segments!=null){//&& !steps.nodes.contains(current)???
-				int prev=-1, cur;
-				for(int i=lastIdx; i<segments.size();i++) {
-					BridgeSegment curSeg=segments.get(i);
-					cur=curSeg.locateAndVote(current);
-					//dont go pass the estimated coordinates
-					if(cur<prev)
-						break;
-					else {
-						prev=cur;
-						lastIdx=i;
-						if(cur>0)
-							changedSegments.add(curSeg);
+		if(getCompletionLevel() < 3){
+			//FIXME: experimental
+			BDNodeVecState.NWAlignment(steps.nodes, qSteps.nodes);
+		}else{
+			while(iterator.hasNext()){
+				current=iterator.next();
+				if(segments!=null){//&& !steps.nodes.contains(current)???
+					int prev=-1, cur;
+					for(int i=lastIdx; i<segments.size();i++) {
+						BridgeSegment curSeg=segments.get(i);
+						cur=curSeg.locateAndVote(current);
+						//dont go pass the estimated coordinates
+						if(cur<prev)
+							break;
+						else {
+							prev=cur;
+							lastIdx=i;
+							if(cur>0)
+								changedSegments.add(curSeg);
+						}
 					}
+					
 				}
+	//			if(getCompletionLevel()<3){
+	//				//just adding
+	//				steps.addNode(current);
+	//			}	
 				
-			}
-			if(getCompletionLevel()<3){
-				//just adding
-				steps.addNode(current);
 			}	
-			
-		}	
-		
+		}
 		for(BridgeSegment sg:changedSegments)
 			if(sg.removeUnlikelyPaths())
 				retval=0b01;//code representing number of paths reduced to 1
@@ -202,32 +201,34 @@ public class GoInBetweenBridge {
 		int lastIdx=0, numOfAnchorsBefore=getNumberOfAnchors();
 		Set<BridgeSegment> changedSegments = new HashSet<>();
 		
-		//FIXME: experimental
-		BDNodeVecState.NWAlignment(steps.nodes, new BridgeSteps(read).nodes);
-		
-		for(Alignment alg:read.getAlignmentRecords()) {
-			current=new BDNodeVecState(alg, read.getVector(start,alg));
-			if(segments!=null){ //&& !steps.nodes.contains(current)???
-				int prev=-1, cur;
-				for(int i=lastIdx; i<segments.size();i++) {
-					BridgeSegment curSeg=segments.get(i);
-					cur=curSeg.locateAndVote(current);
-					//dont go pass the estimated coordinates
-					if(cur<prev)
-						break;
-					else {
-						prev=cur;
-						lastIdx=i;
-						if(cur>0)
-							changedSegments.add(curSeg);
+		if(getCompletionLevel()<3){
+			//FIXME: experimental
+			BDNodeVecState.NWAlignment(steps.nodes, new BridgeSteps(read).nodes);			
+		}else{
+			for(Alignment alg:read.getAlignmentRecords()) {
+				current=new BDNodeVecState(alg, read.getVector(start,alg));
+				if(segments!=null){ //&& !steps.nodes.contains(current)???
+					int prev=-1, cur;
+					for(int i=lastIdx; i<segments.size();i++) {
+						BridgeSegment curSeg=segments.get(i);
+						cur=curSeg.locateAndVote(current);
+						//dont go pass the estimated coordinates
+						if(cur<prev)
+							break;
+						else {
+							prev=cur;
+							lastIdx=i;
+							if(cur>0)
+								changedSegments.add(curSeg);
+						}
 					}
+					
 				}
-				
-			}
-			
-			if(getCompletionLevel()<3){
-				//just adding
-				steps.addNode(current);
+//				
+//				if(getCompletionLevel()<3){
+//					//just adding
+//					steps.addNode(current);
+//				}
 			}
 		}
 		
@@ -404,7 +405,6 @@ public class GoInBetweenBridge {
 			return retval;
 		System.out.println("Scanning on bridge with segments:\n" + getAllPossiblePaths());	
 		BDPath curPath=null;
-		SimpleBinner binner=graph.binner;
 		PopBin sbin=null;
 		for(BridgeSegment seg:segments){
 			if(seg.isConnected() && seg.connectedPaths.size()==1){
@@ -623,7 +623,7 @@ public class GoInBetweenBridge {
 			Alignment 	firstAlg = read.getFirstAlignment(),
 						curAlg = null;				
 			//First alignment must be from an unique node to use as start point of the bridge
-			start=new BDNodeVecState(firstAlg.node, new ScaffoldVector());
+			start=new BDNodeVecState(firstAlg.node, firstAlg.quality, new ScaffoldVector());
 			nodes.add(start);
 				
 			for(int i=1;i<read.getAlignmentRecords().size();i++) {
@@ -846,6 +846,15 @@ public class GoInBetweenBridge {
 			start=end;
 			end=tmp;
 
+		}
+		public void setNodes(TreeSet<BDNodeVecState> nodes){
+			this.nodes=nodes;
+		}
+		public void setStart(BDNodeVecState start){
+			this.start=start;
+		}
+		public void setEnd(BDNodeVecState end){
+			this.end=end;
 		}
 		
 		public String toString(){
