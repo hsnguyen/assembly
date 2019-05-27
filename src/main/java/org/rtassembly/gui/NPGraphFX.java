@@ -773,12 +773,12 @@ public class NPGraphFX extends Application{
         new AnimationTimer() {
             @Override
             public void handle(long now) {
-				addDataToSeries();
+                addDataToSeries();
             }
         }.start();
     }
 
-    private void addDataToSeries(){
+    private void addDataToSeries() {
         for (int i = 0; i < 20; i++) { //-- add 20 numbers to the plot+
             if (dataN50.isEmpty() || dataN75.isEmpty() || dataMax.isEmpty() 
         		|| dataNumCtgs.isEmpty() || dataNumCircularCtgs.isEmpty()) 
