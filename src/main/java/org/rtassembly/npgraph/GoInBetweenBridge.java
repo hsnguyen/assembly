@@ -16,8 +16,8 @@ import org.slf4j.LoggerFactory;
 
 //A bridge structure that the first node must be unique
 public class GoInBetweenBridge {
-	private static final Logger LOG = LoggerFactory.getLogger(GoInBetweenBridge.class);
-	
+    private static final Logger LOG = LoggerFactory.getLogger(GoInBetweenBridge.class);
+
 	BDGraph graph;
 	PopBin bin;
 	BDEdgePrototype pBridge; //note: the ending nodes must be unique, or else omitted
@@ -95,11 +95,11 @@ public class GoInBetweenBridge {
 //		System.out.println("qNode1=" + (qNode1==null?"null":qNode1.getId()));
 
 		boolean found=true;
-		if(!sNode0.equals(qNode0)) {							//if the starting points don't agree
-			if(sNode0.equals(qNode1)) {						//the first unique contig actually located at the end of alignments list
+		if(!sNode0.equals(qNode0)) {			//if the starting points don't agree
+			if(sNode0.equals(qNode1)) {			//the first unique contig actually located at the end of alignments list
 				qBridge.reverse();
-			}else if(sNode1!=null){						//if not: this pBridge must have 2 anchors, the first anchor is not in the alignments list
-				reverse();							//flip the first and second anchors: now the second anchor is used as shared maker between subject and query bridge
+			}else if(sNode1!=null){				//if not: this pBridge must have 2 anchors, the first anchor is not in the alignments list
+				reverse();						//flip the first and second anchors: now the second anchor is used as shared maker between subject and query bridge
 				if(sNode1.equals(qNode1))	
 					qBridge.reverse();
 				else if(!sNode1.equals(qNode0))
@@ -119,33 +119,32 @@ public class GoInBetweenBridge {
 		BDNodeVecState 	current=null;
 		int lastIdx=0, numberOfAnchorsBefore=getNumberOfAnchors();
 		Set<BridgeSegment> changedSegments = new HashSet<>();
-
-		while(iterator.hasNext()){
-			current=iterator.next();
-			if(segments!=null){//&& !steps.nodes.contains(current)???
-				int prev=-1, cur;
-				for(int i=lastIdx; i<segments.size();i++) {
-					BridgeSegment curSeg=segments.get(i);
-					cur=curSeg.locateAndVote(current);
-					//dont go pass the estimated coordinates
-					if(cur<prev)
-						break;
-					else {
-						prev=cur;
-						lastIdx=i;
-						if(cur>0)
-							changedSegments.add(curSeg);
+		
+		if(getCompletionLevel() < 3){
+			BDNodeVecState.NWAlignment(steps.nodes, qSteps.nodes);
+		}else{
+			while(iterator.hasNext()){
+				current=iterator.next();
+				if(segments!=null){//&& !steps.nodes.contains(current)???
+					int prev=-1, cur;
+					for(int i=lastIdx; i<segments.size();i++) {
+						BridgeSegment curSeg=segments.get(i);
+						cur=curSeg.locateAndVote(current);
+						//dont go pass the estimated coordinates
+						if(cur<prev)
+							break;
+						else {
+							prev=cur;
+							lastIdx=i;
+							if(cur>0)
+								changedSegments.add(curSeg);
+						}
 					}
+					
 				}
 				
-			}
-			if(getCompletionLevel()<3){
-				//just adding
-				steps.addNode(current);
 			}	
-			
-		}	
-		
+		}
 		for(BridgeSegment sg:changedSegments)
 			if(sg.removeUnlikelyPaths())
 				retval=0b01;//code representing number of paths reduced to 1
@@ -202,29 +201,28 @@ public class GoInBetweenBridge {
 		int lastIdx=0, numOfAnchorsBefore=getNumberOfAnchors();
 		Set<BridgeSegment> changedSegments = new HashSet<>();
 		
-		for(Alignment alg:read.getAlignmentRecords()) {
-			current=new BDNodeVecState(alg, read.getVector(start,alg));
-			if(segments!=null){ //&& !steps.nodes.contains(current)???
-				int prev=-1, cur;
-				for(int i=lastIdx; i<segments.size();i++) {
-					BridgeSegment curSeg=segments.get(i);
-					cur=curSeg.locateAndVote(current);
-					//dont go pass the estimated coordinates
-					if(cur<prev)
-						break;
-					else {
-						prev=cur;
-						lastIdx=i;
-						if(cur>0)
-							changedSegments.add(curSeg);
+		if(getCompletionLevel()<3){
+			BDNodeVecState.NWAlignment(steps.nodes, new BridgeSteps(read).nodes);			
+		}else{
+			for(Alignment alg:read.getAlignmentRecords()) {
+				current=new BDNodeVecState(alg, read.getVector(start,alg));
+				if(segments!=null){ //&& !steps.nodes.contains(current)???
+					int prev=-1, cur;
+					for(int i=lastIdx; i<segments.size();i++) {
+						BridgeSegment curSeg=segments.get(i);
+						cur=curSeg.locateAndVote(current);
+						//dont go pass the estimated coordinates
+						if(cur<prev)
+							break;
+						else {
+							prev=cur;
+							lastIdx=i;
+							if(cur>0)
+								changedSegments.add(curSeg);
+						}
 					}
+					
 				}
-				
-			}
-			
-			if(getCompletionLevel()<3){
-				//just adding
-				steps.addNode(current);
 			}
 		}
 		
@@ -409,11 +407,10 @@ public class GoInBetweenBridge {
 		if(HybridAssembler.VERBOSE)
 			LOG.info("Scanning on bridge with segments:\n" + getAllPossiblePaths());		
 		BDPath curPath=null;
-		SimpleBinner binner=graph.binner;
 		PopBin sbin=null;
 		for(BridgeSegment seg:segments){
 			if(seg.isConnected() && seg.connectedPaths.size()==1){
-				sbin=binner.getBinIfUniqueNow(seg.startNV.getNode());
+				sbin=SimpleBinner.getBinIfUniqueNow(seg.startNV.getNode());
 				if(HybridAssembler.VERBOSE)
 					LOG.info("Tony Tony Chopper: " + (curPath==null?"null":curPath.getId()) + " seg=" + seg.getId() + " start node=" + seg.startNV.getNode().getId() + " bin=" + (sbin==null?"null":sbin.binID));
 
@@ -456,7 +453,7 @@ public class GoInBetweenBridge {
 			if(tmp==steps.start || tmp==steps.end) //there is no (new) end detected
 				return false;
 			
-			PopBin b=graph.binner.getBinIfUniqueNow(tmp.node);
+			PopBin b=SimpleBinner.getBinIfUniqueNow(tmp.node);
 			if(b!=null && b.isCloseTo(bin)){
 				steps.end=tmp;
 				return true;
@@ -512,7 +509,7 @@ public class GoInBetweenBridge {
 				startNV=new BDNodeVecState(pSegment.getNode0(),new ScaffoldVector(0,1));
 				endNV=new BDNodeVecState(pSegment.getNode1(), new ScaffoldVector(pSegment.getDir0()?dist:-dist, pSegment.getDir0()!=pSegment.getDir1()?1:-1));
 			} catch (Exception e) {
-				LOG.error("Cannot make bridge from this path!");
+				System.err.println("Cannot make bridge from this path!");
 				e.printStackTrace();
 			} 
 
@@ -630,8 +627,8 @@ public class GoInBetweenBridge {
 					
 			Alignment 	firstAlg = read.getFirstAlignment(),
 						curAlg = null;				
-					
-			start=new BDNodeVecState(firstAlg.node, new ScaffoldVector());
+			//First alignment must be from an unique node to use as start point of the bridge
+			start=new BDNodeVecState(firstAlg.node, firstAlg.quality, new ScaffoldVector());
 			nodes.add(start);
 				
 			for(int i=1;i<read.getAlignmentRecords().size();i++) {
@@ -797,39 +794,42 @@ public class GoInBetweenBridge {
 			}
 		}
 		//////////////////////////////////////////////////////////////////////////////////////
-		
-		void addNode(BDNodeVecState nv) {
-			//NOTE: acting weird, not call equals() properly for 141o,20o: Because TreeSet used compareTo() instead of equals()!!! 
-			//(https://dzone.com/articles/the-hidden-contract-between-equals-and-comparable)
-			
-			Iterator<BDNodeVecState> ite = nodes.iterator();
-			boolean found=false;
-			while(ite.hasNext()){
-				BDNodeVecState tmp=ite.next();
-				if(tmp.merge(nv)){
-					//re-assign end node if there is another unique node with higher score
-					if(SimpleBinner.getBinIfUnique(tmp.getNode())!=null && !tmp.getVector().isIdentity()) {
-						if(!end.equals(tmp) && (end.nvsScore < tmp.nvsScore))
-							end=tmp;		
-					}
-					//nv is already in the set
-					found=true;
-					break;
 
-				}
-			}
-			
-			if(!found) {
-				nodes.add(nv);
-				if(SimpleBinner.getBinIfUnique(nv.getNode())!=null) {
-					if(nv.getVector().isIdentity()){
-						start=nv;	
-					}else if(end==null){
-						end=nv;
-					}
-				}
-			}	
-		}
+//		void addNode(BDNodeVecState nv) {
+//			//NOTE: acting weird, not call equals() properly for 141o,20o: Because TreeSet used compareTo() instead of equals()!!! 
+//			//(https://dzone.com/articles/the-hidden-contract-between-equals-and-comparable)
+//			
+//			Iterator<BDNodeVecState> ite = nodes.iterator();
+//			boolean found=false;
+//			while(ite.hasNext()){
+//				BDNodeVecState tmp=ite.next();
+//				if(tmp.merge(nv)){
+//					//re-assign end node if there is another unique node with higher score
+//					if(SimpleBinner.getBinIfUnique(tmp.getNode())!=null && !tmp.getVector().isIdentity()) {
+//						if(!end.equals(tmp) && (end.nvsScore < tmp.nvsScore))
+//							end=tmp;		
+//					}
+//					//nv is already in the set
+//					found=true;
+//					break;
+//
+//				}
+//			}
+//			
+//			if(!found) {
+//				nodes.add(nv);
+//				if(SimpleBinner.getBinIfUnique(nv.getNode())!=null) {
+//					if(nv.getVector().isIdentity()){
+//						start=nv;	
+//					}else if(end==null){
+//						end=nv;
+//					}
+//				}
+//			}
+//
+//			
+//		}
+
 		
 		boolean isIdentifiable(){
 			return start!=null && end!=null;
@@ -846,17 +846,28 @@ public class GoInBetweenBridge {
 			TreeSet<BDNodeVecState> reversedSet = new TreeSet<BDNodeVecState>();
 			ScaffoldVector rev=ScaffoldVector.reverse(end.getVector());//anchors number = 2 so there exist end node
 			BDNodeVecState tmp = null;
+			//need to do this to re-sort the changed elements
 			for(BDNodeVecState nv:nodes) {
 				nv.setVector(ScaffoldVector.composition(nv.getVector(), rev));
 				reversedSet.add(nv);
 
 			}
+
 			nodes=reversedSet;
 			//re-assign start and end
 			tmp=start;
 			start=end;
 			end=tmp;
 
+		}
+		public void setNodes(TreeSet<BDNodeVecState> nodes){
+			this.nodes=nodes;
+		}
+		public void setStart(BDNodeVecState start){
+			this.start=start;
+		}
+		public void setEnd(BDNodeVecState end){
+			this.end=end;
 		}
 		
 		public String toString(){

@@ -23,7 +23,6 @@ import org.slf4j.LoggerFactory;
 import com.google.common.util.concurrent.AtomicDouble;
 
 import japsa.seq.JapsaAnnotation;
-import japsa.seq.JapsaFeature;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceOutputStream;
 
@@ -53,7 +52,6 @@ public class BDGraph extends MultiGraph{
     //provide mapping from unique directed node to its corresponding bridge
     //E.g: 103-: <103-82-> also 82+:<82+103+>
     private HashMap<String, GoInBetweenBridge> bridgesMap; 
-    private final HashMap<String, Long> NBMap = new HashMap<>(); //nearest-neighbors of every nodes
     // *** Constructors ***
 	/**
 	 * Creates an empty graph.
@@ -162,20 +160,7 @@ public class BDGraph extends MultiGraph{
     public static void setKmerSize(int kmer){
     	BDGraph.KMER=kmer;
     }
-    
-    //TODO: indexing graph (in separated module, e.g. `jsa.np.npgraph index -d10000 graph.gfa`)
-    public void makeAPSPMap(){
-//    	long startTime=System.currentTimeMillis();
-//    	//build map of nearest-neighbors in R=10000
-//    	for(Node node:this) {
-//    		getShortestTreeFromNode((BDNode) node, true, 10000);
-//    		getShortestTreeFromNode((BDNode) node, false, 10000);
-//	    	System.out.printf("Done node %s: %.2f sec\n", node.getId(),(System.currentTimeMillis()-startTime)/1000.0);
-//
-//    	}
-//    	System.out.printf("Done APSP indexing: %.2f sec\n", (System.currentTimeMillis()-startTime)/1000.0);
-    	
-    }
+        	
     
     //Several functionalities based on APSP
     // ...
@@ -826,7 +811,7 @@ public class BDGraph extends MultiGraph{
 			for(Edge e:path.getEdgePath()) {
 				nextNode=(BDNode) e.getOpposite(curNode);
 				curPath.add(e);
-				if(binner.getBinIfUniqueNow(nextNode)!=null) {
+				if(SimpleBinner.getBinIfUniqueNow(nextNode)!=null) {
 					id=curPath.getEndingID();
 					if(id!=null){
 						Edge rdEdge = getEdge(id);

@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -368,6 +369,65 @@ public class GraphUtil {
 				graph.reduceFromSPAdesPath(new BDPath(graph,pID));
 		}
     }
+    
+    //Scanning for shorter overlaps (<k) in a DBG graph 
+    //Recommend for circular genomes
+    public static void fixDeadEnds(BDGraph graph){
+    	List<BDNodeState> weirdNodes = new ArrayList<>();
+    	for(Node node:graph){
+    		if(node.getDegree()==0 
+				|| (node.getInDegree()*node.getOutDegree()!=0)
+//				|| SimpleBinner.getBinIfUnique(node)!=null //?should we
+				) 
+    			continue;
+    	
+    		double 	inCov=node.enteringEdges().map(e->e.getOpposite(node).getNumber("cov")).mapToDouble(Double::doubleValue).sum(),
+    				outCov=node.leavingEdges().map(e->e.getOpposite(node).getNumber("cov")).mapToDouble(Double::doubleValue).sum();
+    		double compare=approxCompare(inCov, outCov);
+    		if(compare > 0){
+    			LOG.info("Found one weird node {} inCov={}/{}, outCov={}/{}",(String)node.getAttribute("name"), inCov, node.getInDegree(), outCov, node.getOutDegree());
+    			weirdNodes.add(new BDNodeState((BDNode) node, true));
+    		}
+    		else if(compare < 0){
+    			System.out.printf("Found one weird node {} inCov={}/{}, outCov={}/{}",(String)node.getAttribute("name"), inCov, node.getInDegree(), outCov, node.getOutDegree());
+    			weirdNodes.add(new BDNodeState((BDNode) node, false));
+			}
+    	}
+    	BDNodeState n0,n1;
+    	Sequence seq0,seq1;
+    	for(int i=0;i<weirdNodes.size();i++){
+    		n0 = weirdNodes.get(i);
+    		seq0=(Sequence)(n0.getNode().getAttribute("seq"));
+    		if(!n0.getDir())
+    			seq0=Alphabet.DNA.complement(seq0);
+    		
+    		for(int j=i+1; j<weirdNodes.size();j++){
+    			n1 = weirdNodes.get(j);
+        		seq1=(Sequence)(n1.getNode().getAttribute("seq"));
+        		if(n1.getDir())
+        			seq1=Alphabet.DNA.complement(seq0);
+        		
+        		int overlap=overlap(seq0,seq1);
+        		if(overlap > 21){
+        			BDEdge e=graph.addEdge(n0.getNode(), n1.getNode(), n0.getDir(), n1.getDir());
+        			LOG.info("adding omitted edge {} length={}", e.getId(), overlap);
+        		}
+    		}
+    	}
+    }
+    
+    public static int overlap(Sequence s0, Sequence s1){
+    	int retval;
+    	for(retval=BDGraph.getKmerSize()-1 ; retval>0; retval--){
+    		int match=0;
+    		while(match < retval && s0.getBase(s0.length()-retval+match)==s1.getBase(match))
+    			match++;
+    		if(match==retval)
+    			return match;
+    	}
+    	return 0;
+    }
+    
     public static String getIDFromName(String readName){
     	String retval=readName; 
 		if(readName.contains("_"))
@@ -412,20 +472,16 @@ public class GraphUtil {
 		    			tmp=e0.getNumber("cov");
 		    			sum0+=Double.isNaN(tmp)?1.0:tmp;
 		    			deg0++;
-//		    			System.out.printf("\tedge %s cov=%.2f sum0=%.2f\n",e0.getId(),tmp,sum0);
 		    		}
 		    		while(ite1.hasNext()) {
 		    			Edge e1=ite1.next();
 		    			tmp=e1.getNumber("cov");		    			
 		    			sum1+=Double.isNaN(tmp)?1.0:tmp;
 		    			deg1++;
-//		    			System.out.printf("\tedge %s cov=%.2f sum1=%.2f\n",e1.getId(),tmp,sum1);
-
 		    		}	    		
 		    		//gamma_ij=1/*(len_i+len_j) -> failed!
 		    		//gamma_ij=1/2*(len_i+len_j) -> small enough! (explanation???)
 		    		double value=.5*(n0.getNumber("len")*(sum0-n0.getNumber("cov"))/(deg0*deg0) + n1.getNumber("len")*(sum1-n1.getNumber("cov"))/(deg1*deg1))/(n0.getNumber("len")+n1.getNumber("len"));
-//		    		System.out.println("=> step="+value);
 		    		stepMap.put(e.getId(), value);
 				}
 				boolean isConverged=true, isZero=false;
@@ -442,14 +498,11 @@ public class GraphUtil {
 					if(curCov<=delta) {
 						if(HybridAssembler.VERBOSE)							
 							LOG.warn("Edge " + e.getId() + " coverage is not positive : curCov=" + curCov + ", delta=" + delta);
-//						isZero=true;
 					}else
 						e.setAttribute("cov", curCov-delta);
 				}
-//				if(isZero)
-//					return;
+
 				if(isConverged || eIteCount >= maxIterations) {
-//					System.out.println("...edges coverage CONVERGED at iteration " + eIteCount + "th");
 					break;
 				}
 			}
@@ -479,8 +532,6 @@ public class GraphUtil {
 				n.setAttribute("cov", newCovEst);
 			}
 			if(isConverged || nIteCount >= maxIterations) {
-//				System.out.println("Node coverage CONVERGED at iteration " + nIteCount + "th");
-//				System.out.println("======================================================");
 				break;
 			}
 			
