@@ -117,7 +117,6 @@ public class GoInBetweenBridge {
 		Set<BridgeSegment> changedSegments = new HashSet<>();
 		
 		if(getCompletionLevel() < 3){
-			//FIXME: experimental
 			BDNodeVecState.NWAlignment(steps.nodes, qSteps.nodes);
 		}else{
 			while(iterator.hasNext()){
@@ -139,10 +138,6 @@ public class GoInBetweenBridge {
 					}
 					
 				}
-	//			if(getCompletionLevel()<3){
-	//				//just adding
-	//				steps.addNode(current);
-	//			}	
 				
 			}	
 		}
@@ -202,7 +197,6 @@ public class GoInBetweenBridge {
 		Set<BridgeSegment> changedSegments = new HashSet<>();
 		
 		if(getCompletionLevel()<3){
-			//FIXME: experimental
 			BDNodeVecState.NWAlignment(steps.nodes, new BridgeSteps(read).nodes);			
 		}else{
 			for(Alignment alg:read.getAlignmentRecords()) {
@@ -224,11 +218,6 @@ public class GoInBetweenBridge {
 					}
 					
 				}
-//				
-//				if(getCompletionLevel()<3){
-//					//just adding
-//					steps.addNode(current);
-//				}
 			}
 		}
 		
@@ -785,40 +774,40 @@ public class GoInBetweenBridge {
 		}
 		//////////////////////////////////////////////////////////////////////////////////////
 		
-		void addNode(BDNodeVecState nv) {
-			//NOTE: acting weird, not call equals() properly for 141o,20o: Because TreeSet used compareTo() instead of equals()!!! 
-			//(https://dzone.com/articles/the-hidden-contract-between-equals-and-comparable)
-			
-			Iterator<BDNodeVecState> ite = nodes.iterator();
-			boolean found=false;
-			while(ite.hasNext()){
-				BDNodeVecState tmp=ite.next();
-				if(tmp.merge(nv)){
-					//re-assign end node if there is another unique node with higher score
-					if(SimpleBinner.getBinIfUnique(tmp.getNode())!=null && !tmp.getVector().isIdentity()) {
-						if(!end.equals(tmp) && (end.nvsScore < tmp.nvsScore))
-							end=tmp;		
-					}
-					//nv is already in the set
-					found=true;
-					break;
-
-				}
-			}
-			
-			if(!found) {
-				nodes.add(nv);
-				if(SimpleBinner.getBinIfUnique(nv.getNode())!=null) {
-					if(nv.getVector().isIdentity()){
-						start=nv;	
-					}else if(end==null){
-						end=nv;
-					}
-				}
-			}
-
-			
-		}
+//		void addNode(BDNodeVecState nv) {
+//			//NOTE: acting weird, not call equals() properly for 141o,20o: Because TreeSet used compareTo() instead of equals()!!! 
+//			//(https://dzone.com/articles/the-hidden-contract-between-equals-and-comparable)
+//			
+//			Iterator<BDNodeVecState> ite = nodes.iterator();
+//			boolean found=false;
+//			while(ite.hasNext()){
+//				BDNodeVecState tmp=ite.next();
+//				if(tmp.merge(nv)){
+//					//re-assign end node if there is another unique node with higher score
+//					if(SimpleBinner.getBinIfUnique(tmp.getNode())!=null && !tmp.getVector().isIdentity()) {
+//						if(!end.equals(tmp) && (end.nvsScore < tmp.nvsScore))
+//							end=tmp;		
+//					}
+//					//nv is already in the set
+//					found=true;
+//					break;
+//
+//				}
+//			}
+//			
+//			if(!found) {
+//				nodes.add(nv);
+//				if(SimpleBinner.getBinIfUnique(nv.getNode())!=null) {
+//					if(nv.getVector().isIdentity()){
+//						start=nv;	
+//					}else if(end==null){
+//						end=nv;
+//					}
+//				}
+//			}
+//
+//			
+//		}
 		
 		boolean isIdentifiable(){
 			return start!=null && end!=null;
@@ -835,11 +824,13 @@ public class GoInBetweenBridge {
 			TreeSet<BDNodeVecState> reversedSet = new TreeSet<BDNodeVecState>();
 			ScaffoldVector rev=ScaffoldVector.reverse(end.getVector());//anchors number = 2 so there exist end node
 			BDNodeVecState tmp = null;
+			//need to do this to re-sort the changed elements
 			for(BDNodeVecState nv:nodes) {
 				nv.setVector(ScaffoldVector.composition(nv.getVector(), rev));
 				reversedSet.add(nv);
 
 			}
+
 			nodes=reversedSet;
 			//re-assign start and end
 			tmp=start;

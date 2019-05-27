@@ -83,6 +83,25 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
         BDNode 	thisNode=this.getNode(),
 				thatNode=other.getNode();
         
+        if(!Objects.equals(thisNode, thatNode))
+        	return false;
+        else
+        	return (Math.abs(this.getDistance() - other.getDistance()) < thisNode.getNumber("len") - BDGraph.getKmerSize());       	         
+    }
+    
+    public boolean approximate(final Object obj) {
+        if (this == obj)
+            return true; 
+
+        if (obj == null || obj.getClass() != this.getClass()) { 
+        	return false; 
+    	}
+
+        final BDNodeVecState other = (BDNodeVecState) obj;
+        
+        BDNode 	thisNode=this.getNode(),
+				thatNode=other.getNode();
+        
         if(!Objects.equals(thisNode, thatNode)){
         	return false;
         }else{ 
@@ -105,7 +124,7 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 
 	//Merging 2 equal NodeVectors
 	public boolean merge(BDNodeVecState nv){
-		if(!this.equals(nv))
+		if(!this.approximate(nv))
 			return false;
 
 		ScaffoldVector 	thisVector=this.getVector(),
@@ -144,7 +163,7 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 		int match, delete, insert;
 		for(int i=1; i<as0.length; i++){
 			for(int j=1; j<as1.length; j++){
-				match=(as0[i].equals(as1[j])
+				match=(as0[i].approximate(as1[j])
 						?scoreTab[i-1][j-1] + (int)as0[i].getNode().getNumber("len")-Math.abs(as0[i].getDistance()-as1[j].getDistance())
 						:Integer.MIN_VALUE);
 				delete=scoreTab[i-1][j] - as0[i].getDistance() + as0[i-1].getDistance();
@@ -205,13 +224,14 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 			as0[ii].merge(as1[jj]);
 			
 			try{
+				//FIXME: check if scalex is not close to 1.0...
 				scale0=(as0[ii].getDistance()-as0[i].getDistance())*1.0/origStep;
 				scale1=(as0[ii].getDistance()-as0[i].getDistance())*1.0/(as1[jj].getDistance()-as1[j].getDistance());
 				System.out.printf("scale0=%.2f scale1=%.2f\n", scale0,scale1);
 			}catch(ArithmeticException ae){
 				System.out.println("ArithmeticException occured! Use previous scale instead...");
 			}
-			//FIXME: calibrate the vectors from first list's in-between
+			//calibrate the vectors from first list's in-between
 			for(int i0=i+1;i0<ii;i0++){
 				as0[i0].getVector().setMagnitute((int) (as0[i].getVector().getMagnitute() + 
 										(as0[i0].getVector().getMagnitute() - prevOrigNVS.getVector().getMagnitute())*scale0));
@@ -228,14 +248,14 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 			prevOrigNVS=new BDNodeVecState(as0[ii]);
 			i=ii; j=jj;
 		}
-		//FIXME: nodes after the last match...
+		//nodes after the last match...scale=1.0
 		for(int i0=i+1;i0<as0.length;i0++)
 			as0[i0].vector.setMagnitute((int) (as0[i].getVector().getMagnitute() + 
-					(as0[i0].getVector().getMagnitute() - prevOrigNVS.getVector().getMagnitute())*scale0));	
+					(as0[i0].getVector().getMagnitute() - prevOrigNVS.getVector().getMagnitute())*1.0));	
 		for(int j0=j+1;j0<as1.length;j0++){
 			tmp = new BDNodeVecState(as1[j0]);
 			tmp.vector.setMagnitute((int) (as0[i].getVector().getMagnitute() + 
-									(as1[j0].getVector().getMagnitute() - as1[j].getVector().getMagnitute())*scale1));
+									(as1[j0].getVector().getMagnitute() - as1[j].getVector().getMagnitute())*1.0));
 			omittedNodes.add(tmp);
 		}
 		
