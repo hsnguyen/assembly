@@ -27,13 +27,13 @@ public class SimpleBinner {
     private static final Logger LOG = LoggerFactory.getLogger(SimpleBinner.class);
 	public static volatile int 	UNIQUE_CTG_LEN=10000,
 								ANCHOR_CTG_LEN=1000, //surely length for the anchors; shorter anchors wouldn't be used until double-checked
-								TRANSFORMED_ANCHOR_CTG_LEN=2000; //same as UNIQUE_CTG_LEN: not work for old Kpn2146. Need more testing
+								TRANSFORMED_ANCHOR_CTG_LEN=2000;
 	
 	BDGraph graph;
 	ArrayList<PopBin> binList;
 	PopBin leastBin;
 	HashMap<Edge, HashMap<PopBin,Integer>> edge2BinMap;
-	HashMap<Node, HashMap<PopBin, Integer>> node2BinMap;
+	static HashMap<Node, HashMap<PopBin, Integer>> node2BinMap;
 	ArrayList<Edge> unresolvedEdges;
 	public SimpleBinner(BDGraph graph){
 		this.graph = graph;
@@ -465,7 +465,7 @@ public class SimpleBinner {
 		return (PopBin)node.getAttribute("unique");
 	}
 	//also take into account nodes that transformed to unique after reduced
-	public PopBin getBinIfUniqueNow(Node node){
+	static public PopBin getBinIfUniqueNow(Node node){
 		PopBin retval=getBinIfUnique(node);
 		if(retval==null && node.getNumber("len") > TRANSFORMED_ANCHOR_CTG_LEN && node2BinMap.containsKey(node)){
 			HashMap<PopBin, Integer> bc = node2BinMap.get(node);
@@ -539,32 +539,28 @@ public class SimpleBinner {
 		
 		Set<Edge> retval = new HashSet<Edge>();	
 		double aveCov=uniqueBin.estCov;
-	
+		Boolean dir=null;
 		for(Edge ep:path.getEdgePath()){
 			nextNode=ep.getOpposite(curNode);
 			HashMap<PopBin, Integer> edgeBinsCount, bcMinusOne=null,  
 										nodeBinsCount;	
 			//remove faulty edge of unique nodes (that has degree=3)
 			if(getBinIfUnique(curNode)!=null || getBinIfUniqueNow(curNode)!=null){
-//				if(curNode.getNumber("len") > UNIQUE_CTG_LEN){
-					boolean dir=((BDEdge)ep).getDir((BDNode)curNode);
-					Stream<Edge> streamEdges=dir?curNode.leavingEdges():curNode.enteringEdges();
-					streamEdges.forEach(retval::add);
-//				}else
-//					retval.add(ep);
+					dir=((BDEdge)ep).getNodeDirection((BDNode)curNode);
+					if(dir!=null){
+						Stream<Edge> streamEdges=dir?curNode.leavingEdges():curNode.enteringEdges();
+						streamEdges.forEach(retval::add);
+					}
+
 			}
 			if(getBinIfUnique(nextNode)!=null || getBinIfUniqueNow(nextNode)!=null){
-//				if(nextNode.getNumber("len") > UNIQUE_CTG_LEN){
-					boolean dir=((BDEdge)ep).getDir((BDNode)nextNode);
-					Stream<Edge> streamEdges=dir?nextNode.leavingEdges():nextNode.enteringEdges();
-					streamEdges.forEach(retval::add);
-//				}else
-//					retval.add(ep);
+					dir=((BDEdge)ep).getNodeDirection((BDNode)nextNode);
+					if(dir!=null){
+						Stream<Edge> streamEdges=dir?nextNode.leavingEdges():nextNode.enteringEdges();
+						streamEdges.forEach(retval::add);
+					}
 			}
 			
-//			if(getUniqueBin(ep.getNode0())!=null || getUniqueBin(ep.getNode1())!=null)
-//				retval.add((BDEdge)ep);
-				
 			if(edge2BinMap.containsKey(ep)) {
 				edgeBinsCount=edge2BinMap.get(ep);
 				if(edgeBinsCount.containsKey(uniqueBin)) {
@@ -576,21 +572,10 @@ public class SimpleBinner {
 					edge2BinMap.replace(ep, bcMinusOne);				
 				}else if(HybridAssembler.VERBOSE) 
 					LOG.warn("...not found appropriate binning information on path {}, at edge {}: {}", path.getId(), ep.getId(), getBinsOfEdge(ep));
-//					edge2BinMap.remove(ep);
 
 			}	
-//			LOG.info("--edge {} coverage:{} to {}",ep.getId(),ep.getNumber("cov"),ep.getNumber("cov") - aveCov);
 			ep.setAttribute("cov", ep.getNumber("cov")>aveCov?ep.getNumber("cov")-aveCov:0);	
 
-//			//Heuristic attempts:
-//			if(bcMinusOne!=null && bcMinusOne.values().stream().mapToInt(Integer::intValue).sum() == 0) {
-//				retval.add((BDEdge) ep);
-//			}
-//			
-////			if(ep.getNumber("cov") < 0  && !unresolvedEdges.contains(ep)) //plasmid coverage is different!!!
-//			if(ep.getNumber("cov") <= BPOP*0.5  && !edge2BinMap.containsKey(ep)) //plasmid coverage is different!!!
-//				retval.add((BDEdge) ep);
-			
 			bcMinusOne=null;
 			if(curNode!=path.getRoot() && curNode!=path.peekNode()) {
 				if(node2BinMap.containsKey(curNode)) {
@@ -603,61 +588,19 @@ public class SimpleBinner {
 						nodeBinsCount=node2BinMap.get(curNode);
 						bcMinusOne=substract(nodeBinsCount, otherBin);
 						node2BinMap.replace(curNode, bcMinusOne);
-//						if(!bcMinusOne.isEmpty()) {
-//							node2BinMap.replace(curNode, bcMinusOne);
-//						}
-//						else {
-//							node2BinMap.remove(curNode);
-//						}
 					}
 					
 				}				
 				
 				curNode.setAttribute("cov", curNode.getNumber("cov")>aveCov?curNode.getNumber("cov")-aveCov:0);
-//				if(	(bcMinusOne!=null && bcMinusOne.values().stream().mapToInt(Integer::intValue).sum() == 0)
-//					|| curNode.getNumber("cov") < .1*aveCov) 
-//					curNode.edges().forEach(e->retval.add((BDEdge) e));
-				
 			}
 			
 			curNode=nextNode;
 		}
 		
-		//check again
-//		retval.removeIf(e->	getUniqueBin(e.getNode0())==null && getUniqueBin(e.getNode0())==null &&
-//							!(checkEdgeSafeToRemove(e)));
 		return retval;
 	}
 	
-//	private boolean checkEdgeSafeToRemove(BDEdge edge) {
-//		boolean retval=true;
-//		BDNode 	n0=(BDNode) edge.getNode0(),
-//						n1=(BDNode) edge.getNode1();
-//		boolean dir0=edge.getDir0(),
-//				dir1=edge.getDir1();
-//		double remainCov=0.0;
-//		Optional<Double> tmp;
-//		System.out.printf("Checking edge " + edge.getId() + ": remainCov=");
-//		boolean onlyFlag=false;
-//		if(getUniqueBin(n0)==null && getUniqueBin(n1)==null){
-//			if((dir0?n0.getOutDegree():n0.getInDegree()) == 1){//the only in/out edge for n0
-//				tmp=(dir0?n0.enteringEdges():n0.leavingEdges()).map(e->(e.getNumber("cov"))).reduce(Double::sum);
-//				if(tmp.isPresent())
-//					remainCov+=tmp.get();
-//				onlyFlag=true;
-//			}
-//			if((dir1?n1.getOutDegree():n1.getInDegree()) == 1){//the only in/out edge for n1
-//				tmp=(dir1?n1.enteringEdges():n1.leavingEdges()).map(e->(e.getNumber("cov"))).reduce(Double::sum);
-//				if(tmp.isPresent())
-//					remainCov+=tmp.get();			
-//				onlyFlag=true;
-//			}
-//			if(onlyFlag && remainCov > edge.getNumber("cov"))
-//				retval=false;
-//		}
-//		System.out.println(remainCov + " => " + retval);
-//		return retval;
-//	}
 	
 	public String getBinsOfNode(Node node) {
 		String retval="[";

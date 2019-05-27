@@ -316,11 +316,11 @@ public class HybridAssembler {
 			else 				
 				throw new IOException("Assembly graph file must have .gfa or .fastg extension!");
 			
+			GraphUtil.fixDeadEnds(simGraph);
 		}catch(IOException e) {
 			setErrorLog("Issue when loading pre-assembly: \n" + e.getMessage());
 			return false;
 		}
-		
 		
 		simGraph.updateStats();
 		observer = new GraphWatcher(simGraph);
@@ -488,6 +488,7 @@ public class HybridAssembler {
 		System.out.printf("Input stats: read count=%d base count=%d\n", currentReadCount, currentBaseCount);
 		
 		observer.outputFASTA(getPrefix()+"/npgraph_assembly.fasta");
+		observer.outputJAPSA(getPrefix()+"/npgraph_assembly.japsa");
 		observer.outputGFA(getPrefix()+"/npgraph_assembly.gfa");
 
 	}
