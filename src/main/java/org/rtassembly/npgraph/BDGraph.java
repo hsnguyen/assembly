@@ -21,7 +21,6 @@ import org.graphstream.graph.implementations.*;
 import com.google.common.util.concurrent.AtomicDouble;
 
 import japsa.seq.JapsaAnnotation;
-import japsa.seq.JapsaFeature;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceOutputStream;
 
@@ -49,7 +48,6 @@ public class BDGraph extends MultiGraph{
     //provide mapping from unique directed node to its corresponding bridge
     //E.g: 103-: <103-82-> also 82+:<82+103+>
     private HashMap<String, GoInBetweenBridge> bridgesMap; 
-    private final HashMap<String, Long> NBMap = new HashMap<>(); //nearest-neighbors of every nodes
     // *** Constructors ***
 	/**
 	 * Creates an empty graph.
@@ -793,7 +791,7 @@ public class BDGraph extends MultiGraph{
 			for(Edge e:path.getEdgePath()) {
 				nextNode=(BDNode) e.getOpposite(curNode);
 				curPath.add(e);
-				if(binner.getBinIfUniqueNow(nextNode)!=null) {
+				if(SimpleBinner.getBinIfUniqueNow(nextNode)!=null) {
 					id=curPath.getEndingID();
 					if(id!=null){
 						Edge rdEdge = getEdge(id);
@@ -937,9 +935,6 @@ public class BDGraph extends MultiGraph{
 		JapsaAnnotation annotation;
 		for(Node node:this) {
 			annotation=(JapsaAnnotation) node.getAttribute("annotation");
-			System.out.println("Feature: " + annotation.numFeatures());
-			for(JapsaFeature f:annotation.getFeatureList())
-				System.out.println(f.toString());
 			annotation.write(out);
 		}	
 		out.close();

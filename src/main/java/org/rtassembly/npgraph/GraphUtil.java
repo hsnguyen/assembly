@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -366,6 +367,65 @@ public class GraphUtil {
 				graph.reduceFromSPAdesPath(new BDPath(graph,pID));
 		}
     }
+    
+    //Scanning for shorter overlaps (<k) in a DBG graph 
+    //Recommend for circular genomes
+    public static void fixDeadEnds(BDGraph graph){
+    	List<BDNodeState> weirdNodes = new ArrayList<>();
+    	for(Node node:graph){
+    		if(node.getDegree()==0 
+				|| (node.getInDegree()*node.getOutDegree()!=0)
+//				|| SimpleBinner.getBinIfUnique(node)!=null //?should we
+				) 
+    			continue;
+    	
+    		double 	inCov=node.enteringEdges().map(e->e.getOpposite(node).getNumber("cov")).mapToDouble(Double::doubleValue).sum(),
+    				outCov=node.leavingEdges().map(e->e.getOpposite(node).getNumber("cov")).mapToDouble(Double::doubleValue).sum();
+    		double compare=approxCompare(inCov, outCov);
+    		if(compare > 0){
+    			System.out.printf("Found one weird node %s inCov=%.2f/%d, outCov=%.2f/%d\n",(String)node.getAttribute("name"), inCov, node.getInDegree(), outCov, node.getOutDegree());
+    			weirdNodes.add(new BDNodeState((BDNode) node, true));
+    		}
+    		else if(compare < 0){
+    			System.out.printf("Found one weird node %s inCov=%.2f/%d, outCov=%.2f/%d\n",(String)node.getAttribute("name"), inCov, node.getInDegree(), outCov, node.getOutDegree());
+    			weirdNodes.add(new BDNodeState((BDNode) node, false));
+			}
+    	}
+    	BDNodeState n0,n1;
+    	Sequence seq0,seq1;
+    	for(int i=0;i<weirdNodes.size();i++){
+    		n0 = weirdNodes.get(i);
+    		seq0=(Sequence)(n0.getNode().getAttribute("seq"));
+    		if(!n0.getDir())
+    			seq0=Alphabet.DNA.complement(seq0);
+    		
+    		for(int j=i+1; j<weirdNodes.size();j++){
+    			n1 = weirdNodes.get(j);
+        		seq1=(Sequence)(n1.getNode().getAttribute("seq"));
+        		if(n1.getDir())
+        			seq1=Alphabet.DNA.complement(seq0);
+        		
+        		int overlap=overlap(seq0,seq1);
+        		if(overlap > 21){
+        			BDEdge e=graph.addEdge(n0.getNode(), n1.getNode(), n0.getDir(), n1.getDir());
+        			System.out.printf("adding omitted edge %s length=%d\n", e.getId(), overlap);
+        		}
+    		}
+    	}
+    }
+    
+    public static int overlap(Sequence s0, Sequence s1){
+    	int retval;
+    	for(retval=BDGraph.getKmerSize()-1 ; retval>0; retval--){
+    		int match=0;
+    		while(match < retval && s0.getBase(s0.length()-retval+match)==s1.getBase(match))
+    			match++;
+    		if(match==retval)
+    			return match;
+    	}
+    	return 0;
+    }
+    
     public static String getIDFromName(String readName){
     	String retval=readName; 
 		if(readName.contains("_"))

@@ -27,13 +27,13 @@ public class SimpleBinner {
     private static final Logger LOG = LoggerFactory.getLogger(SimpleBinner.class);
 	public static volatile int 	UNIQUE_CTG_LEN=10000,
 								ANCHOR_CTG_LEN=1000, //surely length for the anchors; shorter anchors wouldn't be used until double-checked
-								TRANSFORMED_ANCHOR_CTG_LEN=2000; //same as UNIQUE_CTG_LEN: not work for old Kpn2146. Need more testing
+								TRANSFORMED_ANCHOR_CTG_LEN=2000;
 	
 	BDGraph graph;
 	ArrayList<PopBin> binList;
 	PopBin leastBin;
 	HashMap<Edge, HashMap<PopBin,Integer>> edge2BinMap;
-	HashMap<Node, HashMap<PopBin, Integer>> node2BinMap;
+	static HashMap<Node, HashMap<PopBin, Integer>> node2BinMap;
 	ArrayList<Edge> unresolvedEdges;
 	public SimpleBinner(BDGraph graph){
 		this.graph = graph;
@@ -454,7 +454,7 @@ public class SimpleBinner {
 		return (PopBin)node.getAttribute("unique");
 	}
 	//also take into account nodes that transformed to unique after reduced
-	public PopBin getBinIfUniqueNow(Node node){
+	static public PopBin getBinIfUniqueNow(Node node){
 		PopBin retval=getBinIfUnique(node);
 		if(retval==null && node.getNumber("len") > TRANSFORMED_ANCHOR_CTG_LEN && node2BinMap.containsKey(node)){
 			HashMap<PopBin, Integer> bc = node2BinMap.get(node);

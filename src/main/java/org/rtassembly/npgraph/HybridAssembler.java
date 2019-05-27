@@ -316,6 +316,7 @@ public class HybridAssembler {
 			else 				
 				throw new IOException("Assembly graph file must have .gfa or .fastg extension!");
 			
+			GraphUtil.fixDeadEnds(simGraph);
 		}catch(IOException e) {
 			setErrorLog("Issue when loading pre-assembly: \n" + e.getMessage());
 			return false;
