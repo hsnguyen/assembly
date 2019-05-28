@@ -63,9 +63,9 @@ public class GraphExploreDesktop {
 //    	String sample="random_sequences_no_repeats/";
 //    	String sample="random_sequences_some_repeats/";
 //    	String sample="Saccharomyces_cerevisiae_S288c/";
-    	String sample="Shigella_dysenteriae_Sd197/"; //SimpleBinner.ANCHOR_CTG_LEN=2000
+//    	String sample="Shigella_dysenteriae_Sd197/"; //SimpleBinner.ANCHOR_CTG_LEN=2000
 //    	String sample="Shigella_sonnei_53G/";
-//    	String sample="Streptococcus_suis_BM407/";
+    	String sample="Streptococcus_suis_BM407/";
     	
     	
 //    	String quality="bad/";
