@@ -34,10 +34,10 @@
 
 package org.rtassembly;
 
-import org.rtassembly.scaffold.ContigBridge;
-import org.rtassembly.scaffold.RealtimeScaffolding;
-import org.rtassembly.scaffold.ScaffoldGraph;
-import org.rtassembly.scaffold.ScaffoldGraphDFS;
+import org.rtassembly.npscarf.ContigBridge;
+import org.rtassembly.npscarf.RealtimeScaffolding;
+import org.rtassembly.npscarf.ScaffoldGraph;
+import org.rtassembly.npscarf.ScaffoldGraphDFS;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

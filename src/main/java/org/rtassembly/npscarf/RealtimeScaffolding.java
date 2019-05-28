@@ -1,4 +1,4 @@
-package org.rtassembly.scaffold;
+package org.rtassembly.npscarf;
 import htsjdk.samtools.SAMRecord;
 
 import htsjdk.samtools.SAMRecordIterator;

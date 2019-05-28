@@ -1,4 +1,4 @@
-package org.rtassembly.scaffold;
+package org.rtassembly.npscarf;
 
 import java.util.ArrayList;
 import java.util.Arrays;
