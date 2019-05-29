@@ -306,7 +306,8 @@ public class BDGraph extends MultiGraph{
 			List<Node> neighbors = node.neighborNodes().collect(Collectors.toList());	
 
 			removeNode(node);
-			System.out.println("Removing node " + node.getAttribute("name"));
+			if(HybridAssembler.VERBOSE)
+	    		LOG.info("Removing node " + node.getAttribute("name"));
 			neighbors.stream()
 				.filter(n->(binner.checkRemovableNode(n)))
 				.forEach(n->{if(!badNodes.contains(n)) badNodes.add(n);});
