@@ -632,7 +632,8 @@ public class SimpleBinner {
 	}
 	public static void main(String[] args) throws IOException {
 		HybridAssembler hbAss = new HybridAssembler();
-		hbAss.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/Kp13883-careful/assembly_graph.fastg");
+		hbAss.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/metaSPAdes/assembly_graph.fastg");
+		hbAss.setBinReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/metabat/bin");
 		hbAss.setShortReadsInputFormat("fastg");
 		hbAss.prepareShortReadsProcess();
 		
