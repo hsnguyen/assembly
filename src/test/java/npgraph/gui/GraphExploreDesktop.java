@@ -90,7 +90,7 @@ public class GraphExploreDesktop {
     	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/metaSPAdes/assembly_graph.fastg",
     			output="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/",
     			lInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/ont2fastg_mm2.sam";
-		binFile="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/metabat/bin";	
+//		binFile="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/metabat/bin";	
     	
 		
     	/*******************************************************************************
