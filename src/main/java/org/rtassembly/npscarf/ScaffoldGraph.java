@@ -32,7 +32,7 @@
  *  
  ****************************************************************************/
 
-package org.rtassembly.scaffold;
+package org.rtassembly.npscarf;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordIterator;
@@ -438,76 +438,6 @@ public abstract class ScaffoldGraph{
 			bwaProcess.waitFor();
 		}
 
-	}
-
-
-
-	/**
-	 * Forming bridges based on alignments. Used in batch mode only
-	 * 
-	 * @param bamFile
-	 * @param minCov
-	 * @param maxCov
-	 * @param threshold
-	 * @param qual
-	 * @throws IOException
-	 */
-	@Deprecated
-	public void makeConnections(String bamFile, double minCov, int qual) throws IOException{
-		SamReaderFactory.setDefaultValidationStringency(ValidationStringency.SILENT);
-
-		SamReader reader;
-		if ("-".equals(bamFile))
-			reader = SamReaderFactory.makeDefault().open(SamInputResource.of(System.in));
-		else
-			reader = SamReaderFactory.makeDefault().open(new File(bamFile));	
-
-		SAMRecordIterator iter = reader.iterator();
-
-		String readID = "";
-		ReadFilling readFilling = null;
-		AlignmentRecord myRec = null;
-		ArrayList<AlignmentRecord> samList = null;// alignment record of the same read;	
-
-		while (iter.hasNext()) {
-			SAMRecord rec = iter.next();
-			if (rec.getReadUnmappedFlag())
-				continue;
-			if (rec.getMappingQuality() < qual)
-				continue;
-
-			myRec = new AlignmentRecord(rec, contigs.get(rec.getReferenceIndex()));
-
-
-			//////////////////////////////////////////////////////////////////
-			// make bridge of contigs that align to the same (Nanopore) read. 
-			// Note that SAM file MUST be sorted based on readID (samtools sort -n)
-
-			//not the first occurrance				
-			if (readID.equals(myRec.readID)) {				
-				if (myRec.useful){				
-					for (AlignmentRecord s : samList) {
-						if (s.useful){
-							this.addBridge(readFilling, s, myRec, minCov); //stt(s) < stt(myRec) -> (s,myRec) appear once only!
-						}
-					}
-				}
-			} else {
-
-				samList = new ArrayList<AlignmentRecord>();
-				readID = myRec.readID;	
-				readFilling = new ReadFilling(new Sequence(Alphabet.DNA5(), rec.getReadString(), "R" + readID), samList);	
-			}			
-			samList.add(myRec);
-
-		}// while
-		iter.close();
-
-		//outOS.close();
-		reader.close();		
-
-		//Logging.info("Sort list of bridges");		
-		//Collections.sort(bridgeList);		
 	}
 
 

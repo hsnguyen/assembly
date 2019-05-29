@@ -32,7 +32,7 @@
  *  
  ****************************************************************************/
 
-package org.rtassembly.scaffold;
+package org.rtassembly.npscarf;
 
 
 

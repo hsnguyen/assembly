@@ -1,4 +1,4 @@
-package org.rtassembly.scaffold;
+package org.rtassembly.npscarf;
 import htsjdk.samtools.SAMRecord;
 
 import htsjdk.samtools.SAMRecordIterator;
@@ -109,34 +109,6 @@ public class RealtimeScaffolding {
 			bwaProcess  = pb.redirectError(ProcessBuilder.Redirect.to(new File("/dev/null"))).start();
 
 			Logging.info("BWA started!");			
-
-			//SequenceReader seqReader = SequenceReader.getReader(inFile);
-
-			//SequenceOutputStream 
-			//outStrs = new SequenceOutputStream(bwaProcess.getOutputStream());
-			//Logging.info("set up output from bwa");
-
-			//Start a new thread to feed the inFile into bwa input			
-			//Thread thread = new Thread(){
-			//	public void run(){
-			//		Sequence seq;
-			//		Alphabet dna = Alphabet.DNA16();
-			//		try {
-			//			Logging.info("Thread to feed bwa started");
-			//			while ( (seq = seqReader.nextSequence(dna)) !=null){
-			//				seq.writeFasta(outStrs);
-			//			}
-			//			outStrs.close();//as well as signaling
-			//			seqReader.close();
-			//		} catch (IOException e) {						//
-
-			//		}finally{
-
-			//		}
-			//	}
-			//};
-
-			//thread.start();
 			reader = SamReaderFactory.makeDefault().open(SamInputResource.of(bwaProcess.getInputStream()));
 
 		}
@@ -202,79 +174,6 @@ public class RealtimeScaffolding {
 
 	}
 
-	@Deprecated
-	public void scaffolding(String bamFile, int readNumber, int timeNumber, double minCov, int qual) 
-			throws IOException, InterruptedException{
-		scaffolder.setReadPeriod(readNumber);
-		scaffolder.setTimePeriod(timeNumber * 1000);
-
-		Logging.info("Scaffolding ready at " + new Date());
-
-		//...
-		SamReaderFactory.setDefaultValidationStringency(ValidationStringency.SILENT);
-
-		SamReader reader;
-		if ("-".equals(bamFile))
-			reader = SamReaderFactory.makeDefault().open(SamInputResource.of(System.in));
-		else
-			reader = SamReaderFactory.makeDefault().open(new File(bamFile));	
-
-		SAMRecordIterator iter = reader.iterator();
-
-		String readID = "";
-		ReadFilling readFilling = null;
-		AlignmentRecord myRec = null;
-		ArrayList<AlignmentRecord> samList = null;// alignment record of the same read;		
-
-		Thread thread = new Thread(scaffolder);
-		thread.start();	
-		while (iter.hasNext()) {
-			SAMRecord rec = iter.next();
-
-			if (rec.getReadUnmappedFlag() || rec.getMappingQuality() < qual){		
-				if (!readID.equals(rec.getReadName())){
-					readID = rec.getReadName();
-					synchronized(this){
-						currentReadCount ++;
-						currentBaseCount += rec.getReadLength();
-					}
-				}
-				continue;		
-			}
-			myRec = new AlignmentRecord(rec, graph.contigs.get(rec.getReferenceIndex()));
-
-			if (readID.equals(myRec.readID)) {				
-
-				if (myRec.useful){				
-					for (AlignmentRecord s : samList) {
-						if (s.useful){				
-							//...update with synchronized
-							synchronized(this.graph){
-								graph.addBridge(readFilling, s, myRec, minCov);
-								//Collections.sort(graph.bridgeList);
-							}
-						}
-					}
-				}
-			} else {
-				samList = new ArrayList<AlignmentRecord>();
-				readID = myRec.readID;	
-				readFilling = new ReadFilling(new Sequence(Alphabet.DNA5(), rec.getReadString(), "R" + readID), samList);	
-				synchronized(this){
-					currentReadCount ++;
-					currentBaseCount += rec.getReadLength();
-				}
-			}
-
-			samList.add(myRec);
-
-		}// while
-		scaffolder.stopWaiting();
-		thread.join();
-		iter.close();
-		reader.close();		
-
-	}
 	public static class RealtimeScaffolder extends RealtimeAnalysis{
 		RealtimeScaffolding scaffolding;
 		public SequenceOutputStream outOS;
