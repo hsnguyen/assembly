@@ -1,9 +1,9 @@
-package org.rtassembly.scaffold;
+package org.rtassembly.npscarf;
 
 import java.util.ArrayList;
 
-import org.rtassembly.scaffold.Edge;
-import org.rtassembly.scaffold.Vertex;
+import org.rtassembly.npscarf.Edge;
+import org.rtassembly.npscarf.Vertex;
 
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
