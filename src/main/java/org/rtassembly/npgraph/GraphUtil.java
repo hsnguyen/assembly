@@ -385,11 +385,13 @@ public class GraphUtil {
     				outCov=node.leavingEdges().map(e->e.getOpposite(node).getNumber("cov")).mapToDouble(Double::doubleValue).sum();
     		double compare=approxCompare(inCov, outCov);
     		if(compare > 0){
-    			LOG.info("Found one weird node {} inCov={}/{}, outCov={}/{}",(String)node.getAttribute("name"), inCov, node.getInDegree(), outCov, node.getOutDegree());
+    			if(HybridAssembler.VERBOSE)	
+    				LOG.info("Found one imbalance node {} inCov={}/{}, outCov={}/{}",(String)node.getAttribute("name"), inCov, node.getInDegree(), outCov, node.getOutDegree());
     			weirdNodes.add(new BDNodeState((BDNode) node, true));
     		}
     		else if(compare < 0){
-    			System.out.printf("Found one weird node {} inCov={}/{}, outCov={}/{}",(String)node.getAttribute("name"), inCov, node.getInDegree(), outCov, node.getOutDegree());
+    			if(HybridAssembler.VERBOSE)	
+    				LOG.info("Found one imbalance node {} inCov={}/{}, outCov={}/{}",(String)node.getAttribute("name"), inCov, node.getInDegree(), outCov, node.getOutDegree());
     			weirdNodes.add(new BDNodeState((BDNode) node, false));
 			}
     	}
@@ -410,7 +412,8 @@ public class GraphUtil {
         		int overlap=overlap(seq0,seq1);
         		if(overlap > 21){
         			BDEdge e=graph.addEdge(n0.getNode(), n1.getNode(), n0.getDir(), n1.getDir());
-        			LOG.info("adding omitted edge {} length={}", e.getId(), overlap);
+        			if(HybridAssembler.VERBOSE)
+        				LOG.info("adding omitted edge {} length={}", e.getId(), overlap);
         		}
     		}
     	}
