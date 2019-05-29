@@ -31,7 +31,7 @@
  * 3 Jan 2015 - Minh Duc Cao: Created                                        
  *  
  ****************************************************************************/
-package org.rtassembly.scaffold;
+package org.rtassembly.npscarf;
 
 import japsa.seq.JapsaFeature;
 import japsa.seq.Sequence;
