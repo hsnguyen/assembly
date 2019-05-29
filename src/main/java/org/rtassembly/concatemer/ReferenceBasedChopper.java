@@ -20,8 +20,8 @@ import japsa.seq.Sequence;
 import japsa.seq.SequenceOutputStream;
 import japsa.seq.SequenceReader;
 
-import org.rtassembly.scaffold.AlignmentRecord;
-import org.rtassembly.scaffold.Contig;
+import org.rtassembly.npscarf.AlignmentRecord;
+import org.rtassembly.npscarf.Contig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
