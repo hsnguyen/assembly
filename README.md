@@ -108,11 +108,11 @@ awk '/^S/{print ">"$2; print $3;}' assembly_graph.gfa | fold > assembly_graph.fa
 Note that GFA file from SPAdes is preferred over FASTG since the former gives hint about the k-mer parameter and others, also it is becoming the standard for assembly graph that adapted by many other software.
 And then you can generate SAM/BAM file with our recommended parameters:
 ```
-minimap2 -t16 -k15 -w5 -a <idx> <query> ...
+minimap2 -t16 -k15 -w5 -a assembly_graph.fasta nnp.fastq ...
 ```
 or
 ```
-bwa mem -t16 -k11 -W20 -r10 -A1 -B1 -O1 -E1 -L0 -a -Y <idx> <query> ...
+bwa mem -t16 -k11 -W20 -r10 -A1 -B1 -O1 -E1 -L0 -a -Y assembly_graph.fasta nnp.fastq ...
 ```
 
 It is important to emphasis the quality of the assembly graph to the final results. [Unicycler](https://github.com/rrwick/Unicycler) pre-process the graph data by running SPAdes with multiple *kmer* options to chose the best one. 
