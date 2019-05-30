@@ -24,7 +24,7 @@ The code has been developed with *Oracle Java 1.8.0_144* that enables lambda exp
 
 If JavaFX is not found from your compiler (e.g. OpenJDK or Oracle Java later version that might not include it in the future), you need to download jfxrt.jar and specify it from POM. So it's better to have Java 8 with JavaFX bundled.
 
-If an aligner is involved, [minimap2](https://github.com/lh3/minimap2) or [bwa](https://github.com/lh3/bwa) (later than 0.7.11) should be included.
+If an aligner is involved, [minimap2](https://github.com/lh3/minimap2) (recommended) or [bwa](https://github.com/lh3/bwa) (later than 0.7.11) should be included.
 
 ## Documentation
 For detail options of the commandline interface:
@@ -95,7 +95,7 @@ Without using GUI, the mandatory inputs are assembly graph file (*-si*) and long
 The assembly graph must be output from SPAdes in either FASTG or GFA format (normally *assembly_graph.fastg* or *assembly_graph.gfa*).
 
 The long-read data will be used for bridging and can be given as DNA sequences (FASTA/FASTQ format, possible .gz) or alignment records (SAM/BAM) as mentioned above. *npGraph* will try to guess the format of the inputs based on the extensions, but sometimes you'll have to specify it yourself (e.g. when "-" is provided to read from *stdin*). 
-If the sequences are given, then it's mandatory to have either BWA-MEM or minimap2 installed in your system to do the alignment between long reads and the pre-assemblies. 
+If the sequences are given, then it's mandatory to have either minimap2 (recommended) or BWA-MEM installed in your system to do the alignment between long reads and the pre-assemblies. 
 
 Alternative option is to use your favourite aligner and provide SAM/BAM to *npGraph*. In this case, you have to manually convert FASTG/GFA file to FASTA file to use as the reference for the alignment. You can use awk script to do this, e.g. for converting FASTG file
 ```
@@ -106,6 +106,14 @@ or if the graph file is GFA v1 we can use
 awk '/^S/{print ">"$2; print $3;}' assembly_graph.gfa | fold > assembly_graph.fasta
 ```
 Note that GFA file from SPAdes is preferred over FASTG since the former gives hint about the k-mer parameter and others, also it is becoming the standard for assembly graph that adapted by many other software.
+And then you can generate SAM/BAM file with our recommended parameters:
+```
+minimap2 -t16 -k15 -w5 -a <idx> <query> ...
+```
+or
+```
+bwa mem -t16 -k11 -W20 -r10 -A1 -B1 -O1 -E1 -L0 -a -Y <idx> <query> ...
+```
 
 It is important to emphasis the quality of the assembly graph to the final results. [Unicycler](https://github.com/rrwick/Unicycler) pre-process the graph data by running SPAdes with multiple *kmer* options to chose the best one. 
 *npGraph* v0.2 will use the best graph suggested by SPAdes when running through *-k 55,77,99,107,127* (normally at *k=127* for 2x150 Illumina pair-ended reads) and then try to scan the contigs' endings to find potential shorter overlaps and fix the dead-ends.
