@@ -20,12 +20,14 @@ import org.graphstream.graph.implementations.*;
 
 import com.google.common.util.concurrent.AtomicDouble;
 
+import japsa.seq.Alphabet;
 import japsa.seq.JapsaAnnotation;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceOutputStream;
 
 
 public class BDGraph extends MultiGraph{
+	static boolean circular=true; // circular or linear preference for the output genome
     static int KMER=127;
     static double RCOV=0.0;
 	SimpleBinner binner;
@@ -302,7 +304,62 @@ public class BDGraph extends MultiGraph{
     	binner.estimatePathsByCoverage();
     	initGraphComponents();
     }
-    
+    //Scanning for shorter overlaps (<k) in a DBG graph 
+    //Recommend for circular genomes
+    synchronized public void fixDeadEnds(){
+    	List<BDNodeState> weirdNodes = new ArrayList<>();
+    	for(Node node:this){
+//    		if(node.getDegree()==0 
+//				|| (node.getInDegree()*node.getOutDegree()!=0)
+////				|| SimpleBinner.getBinIfUnique(node)!=null //?should we
+//				) 
+//    			continue;
+    		if(node.getNumber("len") < SimpleBinner.UNIQUE_CTG_LEN)
+    			continue;
+    		
+    		double 	inCov=node.enteringEdges().map(e->e.getOpposite(node).getNumber("cov")).mapToDouble(Double::doubleValue).sum(),
+    				outCov=node.leavingEdges().map(e->e.getOpposite(node).getNumber("cov")).mapToDouble(Double::doubleValue).sum();
+    		double compare=GraphUtil.approxCompare(inCov, outCov);
+    		if(inCov*outCov==0){
+    			if(inCov==0){
+        			System.out.printf("Found one weird node %s inCov=%.2f/%d, outCov=%.2f/%d\n",(String)node.getAttribute("name"), inCov, node.getInDegree(), outCov, node.getOutDegree());
+        			weirdNodes.add(new BDNodeState((BDNode) node, false));
+    			}
+    			if(outCov==0){
+        			System.out.printf("Found one weird node %s inCov=%.2f/%d, outCov=%.2f/%d\n",(String)node.getAttribute("name"), inCov, node.getInDegree(), outCov, node.getOutDegree());
+        			weirdNodes.add(new BDNodeState((BDNode) node, true));
+    			}
+    		}else if(compare > 0){
+    			System.out.printf("Found one weird node %s inCov=%.2f/%d, outCov=%.2f/%d\n",(String)node.getAttribute("name"), inCov, node.getInDegree(), outCov, node.getOutDegree());
+    			weirdNodes.add(new BDNodeState((BDNode) node, true));
+    		}
+    		else if(compare < 0){
+    			System.out.printf("Found one weird node %s inCov=%.2f/%d, outCov=%.2f/%d\n",(String)node.getAttribute("name"), inCov, node.getInDegree(), outCov, node.getOutDegree());
+    			weirdNodes.add(new BDNodeState((BDNode) node, false));
+			}
+    	}
+    	BDNodeState n0,n1;
+    	Sequence seq0,seq1;
+    	for(int i=0;i<weirdNodes.size();i++){
+    		n0 = weirdNodes.get(i);
+    		seq0=(Sequence)(n0.getNode().getAttribute("seq"));
+    		if(!n0.getDir())
+    			seq0=Alphabet.DNA.complement(seq0);
+    		
+    		for(int j=i+1; j<weirdNodes.size();j++){
+    			n1 = weirdNodes.get(j);
+        		seq1=(Sequence)(n1.getNode().getAttribute("seq"));
+        		if(n1.getDir())
+        			seq1=Alphabet.DNA.complement(seq0);
+        		
+        		int overlap=GraphUtil.overlap(seq0,seq1);
+        		if(overlap > 21){
+        			BDEdge e=addEdge(n0.getNode(), n1.getNode(), n0.getDir(), n1.getDir());
+        			System.out.printf("adding omitted edge %s length=%d\n", e.getId(), overlap);
+        		}
+    		}
+    	}
+    }
 	//Remove nodes with degree <=1 and length || cov low
     synchronized public void cleanInsignificantNodes(){
 		if(binner==null)
