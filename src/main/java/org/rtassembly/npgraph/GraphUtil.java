@@ -177,9 +177,9 @@ public class GraphUtil {
 		 */
 //		graph.nodes().filter(n->n.getNumber("cov") < .2*BDGraph.RCOV).forEach(n->{n.edges().forEach(e->graph.removeEdge(e));});
 		
-		graph.cleanInsignificantNodes();
-		graph.fixDeadEnds();
+//		graph.fixDeadEnds();
 		graph.binning(binFileName);
+		graph.cleanInsignificantNodes();
 		/*
 		 * 3. Now scan for the contigs.path file in SPAdes folder for the paths if specified
 		 */
@@ -358,10 +358,11 @@ public class GraphUtil {
 		/*
 		 * 2. Binning the graph
 		 */
-		graph.cleanInsignificantNodes();
-		graph.fixDeadEnds();
-		graph.binning(binFileName);
 
+//		graph.fixDeadEnds();
+		graph.binning(binFileName);
+		graph.cleanInsignificantNodes();
+		
 		/*
 		 * 3. Reduce the SPAdes path if specified
 		 */

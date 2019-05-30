@@ -305,7 +305,7 @@ public class BDGraph extends MultiGraph{
     	initGraphComponents();
     }
     //Scanning for shorter overlaps (<k) in a DBG graph 
-    //Recommend for circular genomes
+    //TODO: do it when there's enough long reads supporting
     synchronized public void fixDeadEnds(){
     	List<BDNodeState> weirdNodes = new ArrayList<>();
     	for(Node node:this){
@@ -353,9 +353,9 @@ public class BDGraph extends MultiGraph{
         			seq1=Alphabet.DNA.complement(seq0);
         		
         		int overlap=GraphUtil.overlap(seq0,seq1);
-        		if(overlap > 21){
+        		if(overlap > 55){
         			BDEdge e=addEdge(n0.getNode(), n1.getNode(), n0.getDir(), n1.getDir());
-        			System.out.printf("adding omitted edge %s length=%d\n", e.getId(), overlap);
+        			System.out.printf("adding potential edge %s length=%d\n", e.getId(), overlap);
         		}
     		}
     	}
