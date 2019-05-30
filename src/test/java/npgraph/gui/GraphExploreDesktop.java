@@ -50,31 +50,31 @@ public class GraphExploreDesktop {
     	/*
     	 * unicycler data set
     	 */
-//    	String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/unicycler/synthetic/";
-////    	String sample="Acinetobacter_A1/";
-////    	String sample="Acinetobacter_AB30/"; //SimpleBinner.ANCHOR_CTG_LEN=2000 || Alignment.MIN_QUAL=10
-////    	String sample="E_coli_K-12_MG1655/";
-////    	String sample="E_coli_O25b_H4-ST131/";
-////    	String sample="Klebsiella_30660_NJST258_1/";
-////    	String sample="Klebsiella_MGH_78578/"; //SimpleBinner.ANCHOR_CTG_LEN=500
-////    	String sample="Klebsiella_NTUH-K2044/";
-////    	String sample="Mycobacterium_tuberculosis_H37Rv/";
-////    	String sample="random_sequences_many_repeats/";
-////    	String sample="random_sequences_no_repeats/";
-////    	String sample="random_sequences_some_repeats/";
-////    	String sample="Saccharomyces_cerevisiae_S288c/";
-////    	String sample="Shigella_dysenteriae_Sd197/"; //SimpleBinner.ANCHOR_CTG_LEN=2000
-////    	String sample="Shigella_sonnei_53G/";
+    	String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/unicycler/synthetic/";
+//    	String sample="Acinetobacter_A1/";
+//    	String sample="Acinetobacter_AB30/"; //SimpleBinner.ANCHOR_CTG_LEN=2000 || Alignment.MIN_QUAL=10
+//    	String sample="E_coli_K-12_MG1655/";
+//    	String sample="E_coli_O25b_H4-ST131/";
+//    	String sample="Klebsiella_30660_NJST258_1/";
+//    	String sample="Klebsiella_MGH_78578/"; //SimpleBinner.ANCHOR_CTG_LEN=500
+//    	String sample="Klebsiella_NTUH-K2044/";
+//    	String sample="Mycobacterium_tuberculosis_H37Rv/";
+//    	String sample="random_sequences_many_repeats/";
+//    	String sample="random_sequences_no_repeats/";
+//    	String sample="random_sequences_some_repeats/";
+//    	String sample="Saccharomyces_cerevisiae_S288c/";
+    	String sample="Shigella_dysenteriae_Sd197/"; //SimpleBinner.ANCHOR_CTG_LEN=2000
+//    	String sample="Shigella_sonnei_53G/";
 //    	String sample="Streptococcus_suis_BM407/";
-//    	
-//    	
-////    	String quality="bad/";
-////    	String quality="medium/";
-//    	String quality="good/";
-//
-//    	String sInput=dataFolder+sample+quality+"spades/assembly_graph.fastg",
-//    			output=dataFolder+sample+quality+"/",
-//    			lInput=dataFolder+sample+quality+"mm2.sam";	
+    	
+    	
+//    	String quality="bad/";
+//    	String quality="medium/";
+    	String quality="good/";
+
+    	String sInput=dataFolder+sample+quality+"spades/assembly_graph.fastg",
+    			output=dataFolder+sample+quality+"/",
+    			lInput=dataFolder+sample+quality+"mm2.sam";	
     
     	
     	/*
@@ -87,10 +87,10 @@ public class GraphExploreDesktop {
     	/*
     	 * Porecamp data:
     	 */
-    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/metaSPAdes/assembly_graph.fastg",
-    			output="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/",
-    			lInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/ont2fastg_mm2.sam";
-		binFile="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/metabat/bin";	
+//    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/metaSPAdes/assembly_graph.fastg",
+//    			output="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/",
+//    			lInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/ont2fastg_mm2.sam";
+//		binFile="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/metabat/bin";	
     	
 		
     	/*******************************************************************************
