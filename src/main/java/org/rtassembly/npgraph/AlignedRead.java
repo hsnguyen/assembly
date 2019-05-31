@@ -170,4 +170,11 @@ public class AlignedRead{
 		}			
 		return retval;
 	}
+	
+	//Return the long read sequence between (inclusive) 2 unique ends
+	//with the aligned parts are replaced by corresponding reference parts (of Illumina data)
+	public Sequence getCorrectedSequence(){
+		return null;
+		
+	}
 }
