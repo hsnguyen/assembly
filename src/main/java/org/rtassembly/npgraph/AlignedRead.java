@@ -37,6 +37,8 @@ package org.rtassembly.npgraph;
 
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
+import japsa.seq.SequenceBuilder;
+
 import java.util.ArrayList;
 import java.util.Collections;
 
@@ -171,10 +173,127 @@ public class AlignedRead{
 		return retval;
 	}
 	
-	//Return the long read sequence between (inclusive) 2 unique ends
+	//Return the long read sequence between 2 unique nodes' alignments: start and end 
 	//with the aligned parts are replaced by corresponding reference parts (of Illumina data)
-	public Sequence getCorrectedSequence(){
-		return null;
+	//TODO: check if including 2 flanking sequences increases the poa performance
+
+	public Sequence getCorrectedSequence(Alignment start, Alignment end){
+		assert alignments.contains(start)&&alignments.contains(end):"Ending alignments not belong to the read!";
+		BDNode 	fromContig = start.node,
+				toContig = end.node;
+		SequenceBuilder seqBuilder = new SequenceBuilder(Alphabet.DNA5(), 1024*1024,  getEndingsID());
+		if(start.readAlignmentStart() > end.readAlignmentEnd())
+			reverse();
+		//1. Appending (k-1)-flanking sequence from the start node
+		
+		
+		//2. Filling the sequence in-between
+		int posReadEnd   = start.readAlignmentEnd();
+		int posReadFinal = end.readAlignmentStart();// I need as far as posReadFinal
+		// locate the last position being extended...
+		if(posReadEnd >= posReadFinal ){
+			//TODO: Scan for overlap, append sufficient DNA and return;
+		}
+		
+		for (Alignment record:alignments){
+			BDNode contig = record.node;
+//			if (contig.getIndex() == fromContig.getIndex())
+//				continue;
+
+			if (posReadEnd >= posReadFinal -1)
+				break; 
+
+
+			if (record.readAlignmentEnd() <= posReadEnd)
+				continue;				
+		
+			if (record.readAlignmentStart() > posReadEnd){
+				//Really need to fill in using read information
+				int newPosReadEnd = Math.min(posReadFinal - 1, record.readAlignmentStart() -1);
+				if (newPosReadEnd > posReadEnd){
+					seqBuilder.append(readSequence.subSequence(posReadEnd, newPosReadEnd));
+					posReadEnd = newPosReadEnd;
+					
+				}
+				if (posReadEnd + 1 >= posReadFinal)
+					continue;//Done
+
+				//Now get information on the contig from start
+				if (contig.getIndex() == toContig.getIndex())
+					continue;//tandem
+				if (record.strand){
+					int refLeft = record.refStart;
+					int refRight = record.refEnd;
+
+					if (posReadFinal <= record.readAlignmentEnd()){
+						refRight = record.positionOnRef(posReadFinal) -1; 
+						posReadEnd = posReadFinal -1;
+					}else{
+						posReadEnd = record.readAlignmentEnd();
+					}
+					if(refLeft > refRight)
+						continue;
+			
+					seqBuilder.append(((Sequence)contig.getAttribute("seq")).subSequence(refLeft - 1, refRight));
+
+				}else{//neg strain
+					int refRight = record.refStart;
+					int refLeft = record.refEnd;
+
+					if (posReadFinal <= record.readAlignmentEnd()){
+						refLeft = record.positionOnRef(posReadFinal) + 1; 
+						posReadEnd = posReadFinal -1;
+					}else{
+						posReadEnd = record.readAlignmentEnd();
+					}
+					if(refLeft < refRight)
+						continue;
+					
+				
+					seqBuilder.append(Alphabet.DNA.complement(((Sequence)contig.getAttribute("seq")).subSequence(refRight - 1, refLeft)));
+				}
+			}//if record.readAlignmentStart() > posReadEnd
+			else{//Now get information on the contig from start
+				if (contig.getIndex() == toContig.getIndex())
+					continue;//tandem
+				if (record.strand){
+					int refLeft = record.positionOnRef(posReadEnd) + 1;						
+					int refRight = record.refEnd;
+
+					if (posReadFinal <= record.readAlignmentEnd()){
+						refRight = record.positionOnRef(posReadFinal) -1; 
+						posReadEnd = posReadFinal -1;
+					}else{
+						posReadEnd = record.readAlignmentEnd();
+					}
+					if(refLeft > refRight)
+						continue;
+					
+					
+					seqBuilder.append(((Sequence)contig.getAttribute("seq")).subSequence(refLeft - 1, refRight));
+				}else{//neg strand						
+					int refLeft = record.positionOnRef(posReadEnd) + 1;		
+					int refRight = record.refStart;
+
+					if (posReadFinal <= record.readAlignmentEnd()){
+						refRight = record.positionOnRef(posReadFinal) + 1; 
+						posReadEnd = posReadFinal -1;
+					}else{
+						posReadEnd = record.readAlignmentEnd();
+					}
+					if(refLeft < refRight)
+						continue;
+					
+					seqBuilder.append(Alphabet.DNA.complement(((Sequence)contig.getAttribute("seq")).subSequence(refRight - 1, refLeft)));
+				}
+			}
+		}
+		
+		//3. Appending the k-flanking sequence of the ending node
+		
+		
+		
+		return seqBuilder.toSequence();
 		
 	}
 }

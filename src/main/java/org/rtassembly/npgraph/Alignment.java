@@ -35,6 +35,7 @@
 package org.rtassembly.npgraph;
 
 import java.util.ArrayList;
+
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.SAMRecord;
@@ -213,6 +214,70 @@ public class Alignment implements Comparable<Alignment> {
 //
 //		return (retval.size() > 0)?retval:list;
 //	}
+	/**
+	 * Return the position on the reference that corresponds to a given position
+	 * on read.
+	 *  
+	 * @param posInRead
+	 * @param record
+	 * @return
+	 */
+	public int positionOnRef(int readLookingPositon){
+		if(HybridAssembler.VERBOSE)
+			System.out.println("...locating position on reference of read's position " + readLookingPositon + 
+								"(" + readAlignmentStart() + "," + readAlignmentEnd() + ")");
+		if (readLookingPositon < readAlignmentStart() || readLookingPositon > readAlignmentEnd())
+			return 0;
+
+		if (!strand)
+			readLookingPositon = readLength - readLookingPositon + 1; // use direction of ref (forward)
+
+
+		int posOnRead = strand?readStart:(readLength + 1 - readStart);
+		int posOnRef = refStart;
+
+		if(alignmentCigars.isEmpty()){ //perfect alignment made by overlapped EDGES (when using assembly graph)
+			return posOnRef + readLookingPositon - posOnRead;
+			
+		}else{	
+			for (final CigarElement e : alignmentCigars) {
+				final int  length = e.getLength();
+				switch (e.getOperator()) {
+				case H :
+				case S :					
+				case P :
+					break; // ignore pads and clips
+				case I :				
+					//insert
+					if (posOnRead + length < readLookingPositon){
+						posOnRead += length;				
+					}else{
+						return posOnRef;
+					}
+					break;
+				case M ://match or mismatch				
+				case EQ://match
+				case X ://mismatch
+					if (posOnRead + length < readLookingPositon){
+						posOnRead += length;
+						posOnRef += length;
+					}else{
+						return posOnRef + readLookingPositon - posOnRead;
+					}
+					break;
+				case D :
+					posOnRef += length;
+					break;
+				case N :	
+					posOnRef += length;
+					break;								
+				default : throw new IllegalStateException("Case statement didn't deal with cigar op: " + e.getOperator());
+				}//casse
+			}//for		
+		}
+		return 0;
+	}
+	
 	/* (non-Javadoc)
 	 * @see java.lang.Comparable#compareTo(java.lang.Object)
 	 */
