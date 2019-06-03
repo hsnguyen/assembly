@@ -175,30 +175,32 @@ public class AlignedRead{
 	
 	//Return the long read sequence between 2 unique nodes' alignments: start and end 
 	//with the aligned parts are replaced by corresponding reference parts (of Illumina data)
-	//TODO: check if including 2 flanking sequences increases the poa performance
 
 	public Sequence getCorrectedSequence(Alignment start, Alignment end){
-		assert alignments.contains(start)&&alignments.contains(end):"Ending alignments not belong to the read!";
 		BDNode 	fromContig = start.node,
 				toContig = end.node;
+		assert alignments.contains(start)&&alignments.contains(end):"Ending alignments not belong to the read!";
+		assert SimpleBinner.getBinIfUniqueNow(fromContig)!=null && SimpleBinner.getBinIfUniqueNow(toContig)!=null:"Ending nodes not unique!";
+		
 		SequenceBuilder seqBuilder = new SequenceBuilder(Alphabet.DNA5(), 1024*1024,  getEndingsID());
 		if(start.readAlignmentStart() > end.readAlignmentEnd())
 			reverse();
+		sortAlignment();
 		//1. Appending (k-1)-flanking sequence from the start node
-		
+		if(start.strand)
+			seqBuilder.append((Sequence)fromContig.getAttribute("seq"), (int)fromContig.getNumber("len")-BDGraph.getKmerSize()+1, (int)fromContig.getNumber("len"));
+		else
+			seqBuilder.append(Alphabet.DNA.complement(((Sequence)fromContig.getAttribute("seq"))), 0, BDGraph.getKmerSize()-1);
 		
 		//2. Filling the sequence in-between
-		int posReadEnd   = start.readAlignmentEnd();
-		int posReadFinal = end.readAlignmentStart();// I need as far as posReadFinal
-		// locate the last position being extended...
-		if(posReadEnd >= posReadFinal ){
-			//TODO: Scan for overlap, append sufficient DNA and return;
-		}
+//		int posReadEnd   = start.readAlignmentEnd();
+//		int posReadFinal = end.readAlignmentStart();// I need as far as posReadFinal
+		//extrapolating...
+		int posReadEnd=start.getReadPositionAtReferencePosition(start.strand?(int)fromContig.getNumber("len"):1);
+		int posReadFinal = end.getReadPositionAtReferencePosition(end.strand?1:(int)toContig.getNumber("len"));
 		
 		for (Alignment record:alignments){
 			BDNode contig = record.node;
-//			if (contig.getIndex() == fromContig.getIndex())
-//				continue;
 
 			if (posReadEnd >= posReadFinal -1)
 				break; 
@@ -219,14 +221,14 @@ public class AlignedRead{
 					continue;//Done
 
 				//Now get information on the contig from start
-				if (contig.getIndex() == toContig.getIndex())
-					continue;//tandem
+				if (contig == toContig)
+					break;
 				if (record.strand){
 					int refLeft = record.refStart;
 					int refRight = record.refEnd;
 
 					if (posReadFinal <= record.readAlignmentEnd()){
-						refRight = record.positionOnRef(posReadFinal) -1; 
+						refRight = record.getReferencePositionAtReadPosition(posReadFinal) -1; 
 						posReadEnd = posReadFinal -1;
 					}else{
 						posReadEnd = record.readAlignmentEnd();
@@ -241,7 +243,7 @@ public class AlignedRead{
 					int refLeft = record.refEnd;
 
 					if (posReadFinal <= record.readAlignmentEnd()){
-						refLeft = record.positionOnRef(posReadFinal) + 1; 
+						refLeft = record.getReferencePositionAtReadPosition(posReadFinal) + 1; 
 						posReadEnd = posReadFinal -1;
 					}else{
 						posReadEnd = record.readAlignmentEnd();
@@ -254,14 +256,14 @@ public class AlignedRead{
 				}
 			}//if record.readAlignmentStart() > posReadEnd
 			else{//Now get information on the contig from start
-				if (contig.getIndex() == toContig.getIndex())
-					continue;//tandem
+				if (contig == toContig)
+					break;
 				if (record.strand){
-					int refLeft = record.positionOnRef(posReadEnd) + 1;						
+					int refLeft = record.getReferencePositionAtReadPosition(posReadEnd) + 1;						
 					int refRight = record.refEnd;
 
 					if (posReadFinal <= record.readAlignmentEnd()){
-						refRight = record.positionOnRef(posReadFinal) -1; 
+						refRight = record.getReferencePositionAtReadPosition(posReadFinal) -1; 
 						posReadEnd = posReadFinal -1;
 					}else{
 						posReadEnd = record.readAlignmentEnd();
@@ -272,11 +274,11 @@ public class AlignedRead{
 					
 					seqBuilder.append(((Sequence)contig.getAttribute("seq")).subSequence(refLeft - 1, refRight));
 				}else{//neg strand						
-					int refLeft = record.positionOnRef(posReadEnd) + 1;		
+					int refLeft = record.getReferencePositionAtReadPosition(posReadEnd) + 1;		
 					int refRight = record.refStart;
 
 					if (posReadFinal <= record.readAlignmentEnd()){
-						refRight = record.positionOnRef(posReadFinal) + 1; 
+						refRight = record.getReferencePositionAtReadPosition(posReadFinal) + 1; 
 						posReadEnd = posReadFinal -1;
 					}else{
 						posReadEnd = record.readAlignmentEnd();
@@ -289,7 +291,7 @@ public class AlignedRead{
 			}
 		}
 		
-		//3. Appending the k-flanking sequence of the ending node
+		//3. Make sure the (k-1)-flanking sequence of the ending node is included at last.
 		
 		
 		
