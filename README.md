@@ -12,6 +12,8 @@ This approach can give better accuracy, but as the trade-off, are more computati
 
 A (rather simple at the moment) Graphical User Interface is implemented for better interaction. [GraphStream](http://graphstream-project.org/), a dynamic graph library for Java, has been employed for such task. At the moment, only a few among sea of amazing features of this library had been used, leaving many room for visualiazation improvements.
 ## Quick installation guide
+Note: version 0.2 and ealier has not yet been tested on other operating system than Linux, such as Window, Mac.
+
 After cloning the project, the tool is included and can be built with maven2 by following command:
 ```
  mvn clean package
