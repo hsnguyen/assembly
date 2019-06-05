@@ -214,9 +214,6 @@ public class Alignment implements Comparable<Alignment> {
 	 * @return
 	 */
 	public int getReferencePositionAtReadPosition(int readLookingPositon){
-		if(HybridAssembler.VERBOSE)
-			System.out.println("...locating position on reference of read's position " + readLookingPositon + 
-								"(" + readAlignmentStart() + "," + readAlignmentEnd() + ")");
 		if (readLookingPositon < readAlignmentStart() || readLookingPositon > readAlignmentEnd())
 			return 1;
 
@@ -278,7 +275,7 @@ public class Alignment implements Comparable<Alignment> {
 	 */
 	public int getReadPositionAtReferencePosition(int posOnRef){
 		// read htsjdk.samtools.* API
-		int location = -1;
+		int location=0;
 		
 		if ((posOnRef - refStart)*(posOnRef - refEnd) >= 0){
 			if (Math.abs(posOnRef-refStart) > Math.abs(posOnRef-refEnd))
@@ -325,7 +322,7 @@ public class Alignment implements Comparable<Alignment> {
 				}//casse
 			}//for		
 			//convert back to coordinate based on read direction
-			location = strand?location:readLength-location+1;
+			location = strand?location:readLength-location+1; //1-index
 		}
 
 		location=location>1?location:1;

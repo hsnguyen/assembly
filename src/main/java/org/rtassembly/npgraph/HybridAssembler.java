@@ -247,11 +247,21 @@ public class HybridAssembler {
 		if(!checkFolder(getPrefix()))
 			return false;
 		try{
-			System.setProperty("usr.dir", getPrefix());
+			System.setProperty("usr.dir", getPrefix());			
 		}
 		catch(NullPointerException | IllegalArgumentException | SecurityException exception ){
 			setErrorLog("Fail to set working directory usr.dir to " + getPrefix());
 			return false;
+		}
+		
+		//create temporary folder to store bridging reads
+		File tmpFolder=new File(getOutputTemporaryFolder());
+		if(!tmpFolder.mkdir()){
+			//check free space, no???
+			setErrorLog("Cannot set temporary folder " + tmpFolder.getAbsolutePath());
+			return false;
+		}else{
+			AlignedRead.tmpFolder=tmpFolder.getAbsolutePath();
 		}
 		
 		//if long reads data not given in SAM/BAM, need to invoke minimap2
@@ -586,6 +596,10 @@ public class HybridAssembler {
 		
 		return true;
 			
+    }
+    
+    public String getOutputTemporaryFolder(){
+    	return getPrefix()+"/tmp/";
     }
 
 	public static void main(String[] argv) throws IOException, InterruptedException{

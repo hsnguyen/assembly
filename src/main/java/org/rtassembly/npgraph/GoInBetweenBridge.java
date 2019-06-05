@@ -14,6 +14,7 @@ import org.graphstream.graph.Node;
 
 //A bridge structure that the first node must be unique
 public class GoInBetweenBridge {
+	int numberOfFullReads=0; //number of read spanning this *whole* bridge
 
 	BDGraph graph;
 	PopBin bin;

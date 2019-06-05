@@ -44,6 +44,8 @@ import java.util.Collections;
 
 
 public class AlignedRead{
+	public static String tmpFolder="/tmp/"; //folder to save spanning reads of the bridge
+
 	/**
 	 * The read sequence
 	 */
@@ -185,24 +187,29 @@ public class AlignedRead{
 		SequenceBuilder seqBuilder = new SequenceBuilder(Alphabet.DNA5(), 1024*1024,  getEndingsID());
 		if(start.readAlignmentStart() > end.readAlignmentEnd())
 			reverse();
+		
 		sortAlignment();
 		//1. Appending (k-1)-flanking sequence from the start node
+		Sequence flank0=((Sequence)fromContig.getAttribute("seq"))
+						.subSequence(	(int)fromContig.getNumber("len")-BDGraph.getKmerSize()+1, 
+										(int)fromContig.getNumber("len"));
+		
 		if(start.strand)
-			seqBuilder.append((Sequence)fromContig.getAttribute("seq"), (int)fromContig.getNumber("len")-BDGraph.getKmerSize()+1, (int)fromContig.getNumber("len"));
-		else
-			seqBuilder.append(Alphabet.DNA.complement(((Sequence)fromContig.getAttribute("seq"))), 0, BDGraph.getKmerSize()-1);
+			flank0=Alphabet.DNA.complement(flank0);
+
+		seqBuilder.append(flank0);
 		
 		//2. Filling the sequence in-between
 //		int posReadEnd   = start.readAlignmentEnd();
 //		int posReadFinal = end.readAlignmentStart();// I need as far as posReadFinal
 		//extrapolating...
-		int posReadEnd=start.getReadPositionAtReferencePosition(start.strand?(int)fromContig.getNumber("len"):1);
+		int posReadEnd = start.getReadPositionAtReferencePosition(start.strand?(int)fromContig.getNumber("len"):1);
 		int posReadFinal = end.getReadPositionAtReferencePosition(end.strand?1:(int)toContig.getNumber("len"));
 		
 		for (Alignment record:alignments){
 			BDNode contig = record.node;
 
-			if (posReadEnd >= posReadFinal -1)
+			if (posReadEnd >= posReadFinal)
 				break; 
 
 
@@ -211,13 +218,13 @@ public class AlignedRead{
 		
 			if (record.readAlignmentStart() > posReadEnd){
 				//Really need to fill in using read information
-				int newPosReadEnd = Math.min(posReadFinal - 1, record.readAlignmentStart() -1);
+				int newPosReadEnd = Math.min(posReadFinal, record.readAlignmentStart());
 				if (newPosReadEnd > posReadEnd){
-					seqBuilder.append(readSequence.subSequence(posReadEnd, newPosReadEnd));
+					seqBuilder.append(readSequence.subSequence(posReadEnd-1, newPosReadEnd-1)); //subsequence is 0-index
 					posReadEnd = newPosReadEnd;
 					
 				}
-				if (posReadEnd + 1 >= posReadFinal)
+				if (posReadEnd >= posReadFinal)
 					continue;//Done
 
 				//Now get information on the contig from start
@@ -228,23 +235,23 @@ public class AlignedRead{
 					int refRight = record.refEnd;
 
 					if (posReadFinal <= record.readAlignmentEnd()){
-						refRight = record.getReferencePositionAtReadPosition(posReadFinal) -1; 
-						posReadEnd = posReadFinal -1;
+						refRight = record.getReferencePositionAtReadPosition(posReadFinal); 
+						posReadEnd = posReadFinal;
 					}else{
 						posReadEnd = record.readAlignmentEnd();
 					}
 					if(refLeft > refRight)
 						continue;
 			
-					seqBuilder.append(((Sequence)contig.getAttribute("seq")).subSequence(refLeft - 1, refRight));
+					seqBuilder.append(((Sequence)contig.getAttribute("seq")).subSequence(refLeft-1, refRight-1));
 
 				}else{//neg strain
 					int refRight = record.refStart;
 					int refLeft = record.refEnd;
 
 					if (posReadFinal <= record.readAlignmentEnd()){
-						refLeft = record.getReferencePositionAtReadPosition(posReadFinal) + 1; 
-						posReadEnd = posReadFinal -1;
+						refLeft = record.getReferencePositionAtReadPosition(posReadFinal); 
+						posReadEnd = posReadFinal;
 					}else{
 						posReadEnd = record.readAlignmentEnd();
 					}
@@ -252,19 +259,19 @@ public class AlignedRead{
 						continue;
 					
 				
-					seqBuilder.append(Alphabet.DNA.complement(((Sequence)contig.getAttribute("seq")).subSequence(refRight - 1, refLeft)));
+					seqBuilder.append(Alphabet.DNA.complement(((Sequence)contig.getAttribute("seq")).subSequence(refRight-1, refLeft-1)));
 				}
 			}//if record.readAlignmentStart() > posReadEnd
 			else{//Now get information on the contig from start
 				if (contig == toContig)
 					break;
 				if (record.strand){
-					int refLeft = record.getReferencePositionAtReadPosition(posReadEnd) + 1;						
+					int refLeft = record.getReferencePositionAtReadPosition(posReadEnd);						
 					int refRight = record.refEnd;
 
 					if (posReadFinal <= record.readAlignmentEnd()){
-						refRight = record.getReferencePositionAtReadPosition(posReadFinal) -1; 
-						posReadEnd = posReadFinal -1;
+						refRight = record.getReferencePositionAtReadPosition(posReadFinal); 
+						posReadEnd = posReadFinal;
 					}else{
 						posReadEnd = record.readAlignmentEnd();
 					}
@@ -272,28 +279,41 @@ public class AlignedRead{
 						continue;
 					
 					
-					seqBuilder.append(((Sequence)contig.getAttribute("seq")).subSequence(refLeft - 1, refRight));
+					seqBuilder.append(((Sequence)contig.getAttribute("seq")).subSequence(refLeft-1, refRight-1));
 				}else{//neg strand						
-					int refLeft = record.getReferencePositionAtReadPosition(posReadEnd) + 1;		
+					int refLeft = record.getReferencePositionAtReadPosition(posReadEnd);		
 					int refRight = record.refStart;
 
 					if (posReadFinal <= record.readAlignmentEnd()){
-						refRight = record.getReferencePositionAtReadPosition(posReadFinal) + 1; 
-						posReadEnd = posReadFinal -1;
+						refRight = record.getReferencePositionAtReadPosition(posReadFinal); 
+						posReadEnd = posReadFinal;
 					}else{
 						posReadEnd = record.readAlignmentEnd();
 					}
 					if(refLeft < refRight)
 						continue;
 					
-					seqBuilder.append(Alphabet.DNA.complement(((Sequence)contig.getAttribute("seq")).subSequence(refRight - 1, refLeft)));
+					seqBuilder.append(Alphabet.DNA.complement(((Sequence)contig.getAttribute("seq")).subSequence(refRight - 1, refLeft-1)));
 				}
 			}
 		}
 		
 		//3. Make sure the (k-1)-flanking sequence of the ending node is included at last.
 		
+		Sequence flank1=((Sequence)toContig.getAttribute("seq"))
+						.subSequence(0, BDGraph.getKmerSize()-1);
+		if(end.strand)
+				flank1=Alphabet.DNA.complement(flank1);
 		
+		if(posReadEnd>posReadFinal){
+			//scan for overlap
+			int overlap=GraphUtil.overlap(flank0, flank1);
+			if(overlap>0)
+				seqBuilder.append(flank1.subSequence(overlap, flank1.length()));
+		}else{
+			//just append
+			seqBuilder.append(flank1);
+		}
 		
 		return seqBuilder.toSequence();
 		
