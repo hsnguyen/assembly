@@ -185,7 +185,7 @@ public class GraphUtil {
 		 */
 		if(spadesBridging){
 			File graphFile = new File(graphFileName);
-			String pathsFile = FilenameUtils.getFullPathNoEndSeparator(graphFile.getAbsolutePath()) + "/contigs.paths";
+			String pathsFile = FilenameUtils.getFullPathNoEndSeparator(graphFile.getAbsolutePath()) + File.separator + "contigs.paths";
 			if(! new File(pathsFile).exists()){
 				LOG.warn("Path file {} couldn't be found in SPAdes output! Skipped!", pathsFile);
 				return;

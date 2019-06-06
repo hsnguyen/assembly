@@ -737,11 +737,6 @@ public class BDGraph extends MultiGraph{
 				}
 				if(storedBridge.getCompletionLevel()==4 || (state&0b01)>0 || extend)
 					retval.addAll(storedBridge.scanForNewUniquePaths());
-				
-//    			if(storedBridge.getCompletionLevel()==4){
-//    				System.out.printf("=> final path: %s\n ", storedBridge.getAllPossiblePaths());
-//    				retval.addAll(chopPathAtAnchors(storedBridge.getBestPath(storedBridge.steps.start.getNode(), storedBridge.steps.end.getNode())));
-//    			}
 					
 //				//also update the reversed bridge: important e.g. Acinetobacter_AB30. WHY??? (already updated and merged 2 homo bridges)
 				if(read.getEFlag()==3) {
@@ -754,22 +749,20 @@ public class BDGraph extends MultiGraph{
 						
 						if(anotherBridge.getCompletionLevel()==4 || (anotherState&0b01)>0)
 							retval.addAll(anotherBridge.scanForNewUniquePaths());
-//						if(anotherBridge.getCompletionLevel()==4){
-//							System.out.printf("=> final path: %s\n ", anotherBridge.getAllPossiblePaths());
-//							retval.addAll(chopPathAtAnchors(anotherBridge.getBestPath(anotherBridge.steps.start.getNode(), anotherBridge.steps.end.getNode())));
-//						}
+
 					}
 				}
+				
+				//finally save the inbetween sequence for later consensus call
+				read.saveCorrectedSequenceInBetween();
 			}			
 			
 
 		}else{
 			storedBridge=new GoInBetweenBridge(this,read, bin);
-			updateBridgesMap(storedBridge);		
-// 			if(storedBridge.getCompletionLevel()==4){
-// 				System.out.printf("=> final path: %s\n ", storedBridge.getAllPossiblePaths());
-// 				retval.addAll(storedBridge.getBestPath(storedBridge.steps.start.getNode(), storedBridge.steps.end.getNode()).chopPathAtAnchors());
-// 			}
+			updateBridgesMap(storedBridge);					
+			//finally save the inbetween sequence for later consensus call
+			read.saveCorrectedSequenceInBetween();
 		}
 		
 		return retval;

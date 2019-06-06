@@ -38,13 +38,18 @@ package org.rtassembly.npgraph;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceBuilder;
+import japsa.seq.SequenceOutputStream;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 
 
 public class AlignedRead{
-	public static String tmpFolder="/tmp/"; //folder to save spanning reads of the bridge
+	public static String tmpFolder=System.getProperty("usr.dir")+File.separator+"npGraph_tmp"; //folder to save spanning reads of the bridge
 
 	/**
 	 * The read sequence
@@ -175,14 +180,18 @@ public class AlignedRead{
 		return retval;
 	}
 	
-	//Return the long read sequence between 2 unique nodes' alignments: start and end 
+	//Save the long read sequence between 2 unique nodes' alignments: start and end 
 	//with the aligned parts are replaced by corresponding reference parts (of Illumina data)
 
-	public Sequence getCorrectedSequence(Alignment start, Alignment end){
+	public void saveCorrectedSequenceInBetween(){
+		Alignment 	start = getFirstAlignment(), 
+					end = getLastAlignment();
 		BDNode 	fromContig = start.node,
 				toContig = end.node;
-		assert alignments.contains(start)&&alignments.contains(end):"Ending alignments not belong to the read!";
-		assert SimpleBinner.getBinIfUniqueNow(fromContig)!=null && SimpleBinner.getBinIfUniqueNow(toContig)!=null:"Ending nodes not unique!";
+		
+		if(SimpleBinner.getBinIfUniqueNow(fromContig)==null || SimpleBinner.getBinIfUniqueNow(toContig)==null)
+			return;
+	
 		
 		SequenceBuilder seqBuilder = new SequenceBuilder(Alphabet.DNA5(), 1024*1024,  getEndingsID());
 		if(start.readAlignmentStart() > end.readAlignmentEnd())
@@ -315,7 +324,16 @@ public class AlignedRead{
 			seqBuilder.append(flank1);
 		}
 		
-		return seqBuilder.toSequence();
-		
+		//seqBuilder.toSequence();
+		String fileName=tmpFolder+File.separator+BDEdge.createID(fromContig, toContig, start.strand, !end.strand)+".fasta";
+		try {
+			SequenceOutputStream out = new SequenceOutputStream(new FileOutputStream(fileName,true));
+			seqBuilder.toSequence().writeFasta(out);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			System.exit(1);
+		}
 	}
+	
 }

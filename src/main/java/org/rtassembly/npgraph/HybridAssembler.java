@@ -132,7 +132,7 @@ public class HybridAssembler {
 		
 		overwrite = new SimpleBooleanProperty(true);
 		useSPAdesPath = new SimpleBooleanProperty(false);
-	    prefix = new SimpleStringProperty("/tmp/");
+	    prefix = new SimpleStringProperty(System.getProperty("java.io.tmpdir"));
 	    aligner = new SimpleStringProperty("");
 		alignerPath = new SimpleStringProperty(""); 
 		alignerOpt = new SimpleStringProperty("");
@@ -255,7 +255,9 @@ public class HybridAssembler {
 		}
 		
 		//create temporary folder to store bridging reads
-		File tmpFolder=new File(getOutputTemporaryFolder());
+		File tmpFolder=new File(getPrefix()+File.separator+"npGraph_tmp");
+		if(tmpFolder.exists())
+			tmpFolder.delete();
 		if(!tmpFolder.mkdir()){
 			//check free space, no???
 			setErrorLog("Cannot set temporary folder " + tmpFolder.getAbsolutePath());
@@ -270,15 +272,15 @@ public class HybridAssembler {
         	ArrayList<String> idxCmd = new ArrayList<>();
         	idxCmd.add(getFullPathOfAligner());
         	if(getAligner().equals("minimap2")) { 	
-				indexFile=new File(getPrefix()+"/assembly_graph.mmi");												
+				indexFile=new File(getPrefix()+File.separator+"assembly_graph.mmi");												
 				if(!checkMinimap2()) 
 						return false;
 				idxCmd.addAll(Arrays.asList(getAlignerOpts().split("\\s")));
 				idxCmd.add("-d");
-				idxCmd.add(getPrefix()+"/assembly_graph.mmi");
+				idxCmd.add(getPrefix()+File.separator+"assembly_graph.mmi");
 														
         	}else if(getAligner().equals("bwa")) {
-				indexFile=new File(getPrefix()+"/assembly_graph.fasta.bwt");
+				indexFile=new File(getPrefix()+File.separator+"assembly_graph.fasta.bwt");
 				if(!checkBWA()) 
 						return false;
 				idxCmd.add("index");
@@ -287,11 +289,11 @@ public class HybridAssembler {
         		setErrorLog("Invalid aligner! Set to BWA or minimap2 please!");
         		return false;
         	}
-			idxCmd.add(getPrefix()+"/assembly_graph.fasta");
+			idxCmd.add(getPrefix()+File.separator+"assembly_graph.fasta");
 
 			if(getOverwrite() || !indexFile.exists()) {						
 				try{
-					simGraph.outputFASTA(getPrefix()+"/assembly_graph.fasta");
+					simGraph.outputFASTA(getPrefix()+File.separator+"assembly_graph.fasta");
 					
 					ProcessBuilder pb = new ProcessBuilder(idxCmd);
 					Process indexProcess =  pb.start();
@@ -364,14 +366,14 @@ public class HybridAssembler {
 				command.add("-a");
 				command.addAll(Arrays.asList(getAlignerOpts().split("\\s")));
 				command.add("-K20000");
-				command.add(getPrefix()+"/assembly_graph.mmi");
+				command.add(getPrefix()+File.separator+"assembly_graph.mmi");
 				command.add(getLongReadsInput());
 			}
 			else if(getAligner().equals("bwa")) {
 				command.add("mem");
 				command.addAll(Arrays.asList(getAlignerOpts().split("\\s")));
 				command.add("-K20000");
-				command.add(getPrefix()+"/assembly_graph.fasta");
+				command.add(getPrefix()+File.separator+"assembly_graph.fasta");
 				command.add(getLongReadsInput());
 			}
 			
@@ -381,8 +383,7 @@ public class HybridAssembler {
 				pb = new ProcessBuilder(command);
 			}
 
-//			alignmentProcess  = pb.redirectError(ProcessBuilder.Redirect.to(new File("/dev/null"))).start();
-			alignmentProcess  = pb.redirectError(ProcessBuilder.Redirect.to(new File(getPrefix()+"/alignment.log"))).start();
+			alignmentProcess  = pb.redirectError(ProcessBuilder.Redirect.to(new File(getPrefix()+File.separator+"alignment.log"))).start();
 
 			LOG.info("{} started!", getAligner());			
 
@@ -495,9 +496,9 @@ public class HybridAssembler {
         observer.update(true);
 		System.out.printf("Input stats: read count=%d base count=%d\n", currentReadCount, currentBaseCount);
 		
-		observer.outputFASTA(getPrefix()+"/npgraph_assembly.fasta");
-		observer.outputJAPSA(getPrefix()+"/npgraph_assembly.japsa");
-		observer.outputGFA(getPrefix()+"/npgraph_assembly.gfa");
+		observer.outputFASTA(getPrefix()+File.separator+"npgraph_assembly.fasta");
+		observer.outputJAPSA(getPrefix()+File.separator+"npgraph_assembly.japsa");
+		observer.outputGFA(getPrefix()+File.separator+"npgraph_assembly.gfa");
 
 	}
 	
@@ -598,9 +599,6 @@ public class HybridAssembler {
 			
     }
     
-    public String getOutputTemporaryFolder(){
-    	return getPrefix()+"/tmp/";
-    }
 
 	public static void main(String[] argv) throws IOException, InterruptedException{
 		HybridAssembler hbAss = new HybridAssembler();
