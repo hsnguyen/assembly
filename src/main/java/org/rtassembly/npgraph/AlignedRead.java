@@ -193,7 +193,7 @@ public class AlignedRead{
 			return;
 	
 		
-		SequenceBuilder seqBuilder = new SequenceBuilder(Alphabet.DNA5(), 1024*1024,  getEndingsID());
+		SequenceBuilder seqBuilder = new SequenceBuilder(Alphabet.DNA5(), 1024*1024,  readSequence.getName());
 		if(start.readAlignmentStart() > end.readAlignmentEnd())
 			reverse();
 		
@@ -217,7 +217,9 @@ public class AlignedRead{
 		
 		for (Alignment record:alignments){
 			BDNode contig = record.node;
-
+			System.out.println("Current alignment record: " + record.toString());
+			System.out.println("posReadEnd=" + posReadEnd + " posReadFinal=" + posReadFinal);
+			System.out.println("Read " + readSequence.getName() + " length=" + readSequence.length());
 			if (posReadEnd >= posReadFinal)
 				break; 
 
@@ -329,6 +331,7 @@ public class AlignedRead{
 		try {
 			SequenceOutputStream out = new SequenceOutputStream(new FileOutputStream(fileName,true));
 			seqBuilder.toSequence().writeFasta(out);
+			out.close();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

@@ -4,8 +4,11 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.lang.ProcessBuilder.Redirect;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Scanner;
@@ -256,10 +259,19 @@ public class HybridAssembler {
 		
 		//create temporary folder to store bridging reads
 		File tmpFolder=new File(getPrefix()+File.separator+"npGraph_tmp");
-		if(tmpFolder.exists())
-			tmpFolder.delete();
+		if(tmpFolder.exists()){
+		  try {
+			Files.walk(tmpFolder.toPath())
+			    .sorted(Comparator.reverseOrder())
+			    .map(Path::toFile)
+			    .forEach(File::delete);
+			} catch (IOException e) {
+				LOG.info("Cannot remove existed temporary folder {}!", tmpFolder.getPath());
+				e.printStackTrace();
+			}
+  		}
+		
 		if(!tmpFolder.mkdir()){
-			//check free space, no???
 			setErrorLog("Cannot set temporary folder " + tmpFolder.getAbsolutePath());
 			return false;
 		}else{
@@ -395,64 +407,55 @@ public class HybridAssembler {
 		String readID = "";
 		Sequence nnpRead = null;
 		ArrayList<Alignment> samList =  new ArrayList<Alignment>();// alignment record of the same read;	
-		SAMRecord rec=null;
+		SAMRecord curRecord=null;
 		while (iter.hasNext()) {
 			if(getStopSignal())
 				break;
 			
 			try {
-				rec = iter.next();
+				curRecord = iter.next();
 			}catch(Exception e) {
 				LOG.warn("Ignore one faulty SAM record: \n {}", e.getMessage());
-				e.printStackTrace();
 				continue;
 			}
 			
-			if (rec.getReadUnmappedFlag() || rec.getMappingQuality() < Alignment.MIN_QUAL){		
-				if (!readID.equals(rec.getReadName())){
-					readID = rec.getReadName();
-					synchronized(this){
-						currentReadCount ++;
-						currentBaseCount += rec.getReadLength();
-					}
+			if (curRecord.getReadUnmappedFlag() || curRecord.getMappingQuality() < Alignment.MIN_QUAL){		
+				LOG.info("Ignore one unmapped or low-quality map record!");
+				if (!readID.equals(curRecord.getReadName())){
+					update(nnpRead, samList, curRecord);
+					samList = new ArrayList<Alignment>();
+					nnpRead = new Sequence(Alphabet.DNA5(), curRecord.getReadString(), curRecord.getReadName());
+					readID = curRecord.getReadName();
 				}
 				continue;		
 			}
 			
-			String refName = rec.getReferenceName();
+			String refName = curRecord.getReferenceName();
 			String refID = refName.split("_").length > 1 ? refName.split("_")[1]:refName;
 			
+			//check if this node still in. FIXME: do not remove nodes for metagenomics' graph?
 			if (simGraph.getNode(refID)==null) {
-				LOG.info("Node {} not found from the graph: ignored!", refID);
+				LOG.info("Ignore record with reference {} not found (removed) from the graph!", refID);
+				if (!readID.equals(curRecord.getReadName())){
+					update(nnpRead, samList, curRecord);
+					samList = new ArrayList<Alignment>();
+					nnpRead = new Sequence(Alphabet.DNA5(), curRecord.getReadString(), curRecord.getReadName());
+					readID = curRecord.getReadName();
+				}
 				continue;
 			}
-			Alignment myRec = new Alignment(rec, (BDNode) simGraph.getNode(refID)); 
+			Alignment curAlignment = new Alignment(curRecord, (BDNode) simGraph.getNode(refID)); 
 
 			//////////////////////////////////////////////////////////////////
 			
-			if (!readID.equals("") && !readID.equals(myRec.readID)) {	
-//				synchronized(simGraph) { uncomment if below replacement failed!
-				synchronized(this) {
-					currentReadCount ++;
-					currentBaseCount += rec.getReadLength();
-					
-					List<BDPath> paths=simGraph.uniqueBridgesFinding(nnpRead, samList);
-					if(paths!=null){	
-						for(BDPath path:paths) 
-						{
-							//path here is already unique! (2 unique ending nodes)
-					    	if(simGraph.reduceUniquePath(path)) {
-					    		observer.update(false);		
-					    		System.out.printf("Input stats: read count=%d base count=%d\n", currentReadCount, currentBaseCount);
-					    	}
-						}
-					}
-				}
+			if (!readID.equals("") && !readID.equals(curRecord.getReadName())) {	
+				update(nnpRead, samList, curRecord);
 				samList = new ArrayList<Alignment>();
-				nnpRead = new Sequence(Alphabet.DNA5(), rec.getReadString(), "R" + readID);
+				nnpRead = new Sequence(Alphabet.DNA5(), curRecord.getReadString(), curRecord.getReadName());
+				readID = curRecord.getReadName();
+
 			}	
-			readID = myRec.readID;
-			samList.add(myRec); 
+			samList.add(curAlignment); 
 		}// while
 		iter.close();
 		reader.close();
@@ -460,7 +463,25 @@ public class HybridAssembler {
 		terminateAlignmentProcess();	
 		
 	}
-			
+	//update when SAMRecord of another read coming in
+	synchronized void update(Sequence nnpRead, ArrayList<Alignment> alignments, SAMRecord curRecord){
+		currentReadCount ++;
+		currentBaseCount += curRecord.getReadLength();
+		if(alignments.isEmpty())
+			return;
+		List<BDPath> paths=simGraph.uniqueBridgesFinding(nnpRead, alignments);
+		if(paths!=null){	
+			for(BDPath path:paths) 
+			{
+				//path here is already unique! (2 unique ending nodes)
+		    	if(simGraph.reduceUniquePath(path)) {
+		    		observer.update(false);		
+		    		System.out.printf("Input stats: read count=%d base count=%d\n", currentReadCount, currentBaseCount);
+		    	}
+			}
+		}
+	} 		
+	
 	public void terminateAlignmentProcess() {
  		if (alignmentProcess != null){
  			alignmentProcess.destroy();
