@@ -31,28 +31,28 @@ public class GraphExploreDesktop {
     	/*
     	 * npScarf data set
     	 */
-//    	String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/";
-//    	
-////    	String sample="EcK12S-careful";
-//    	String sample="Kp2146-careful";
-////    	String sample="Kp13883-careful";
-// 
-////    	String sample="W303-careful";
-////    	String sample="meta-careful";
-////    	String sample="cp_S5";
-//    	String sInput=dataFolder+sample+"/assembly_graph.fastg",
-//    			output=dataFolder+sample+"/",
-//    			lInput=dataFolder+sample+"/assembly_graph.sam";
+    	String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/";
+    	
+//    	String sample="EcK12S-careful";
+    	String sample="Kp2146-careful";
+//    	String sample="Kp13883-careful";
+ 
+//    	String sample="W303-careful";
+//    	String sample="meta-careful";
+//    	String sample="cp_S5";
+    	String sInput=dataFolder+sample+"/assembly_graph.fastg",
+    			output=dataFolder+sample+"/",
+    			lInput=dataFolder+sample+"/assembly_graph.sam";
     	
     	
     	
     	
-    	/*
-    	 * unicycler data set
-    	 */
+//    	/*
+//    	 * unicycler data set
+//    	 */
 //    	String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/unicycler/synthetic/";
 ////    	String sample="Acinetobacter_A1/";
-////    	String sample="Acinetobacter_AB30/"; //SimpleBinner.ANCHOR_CTG_LEN=2000 || Alignment.MIN_QUAL=10
+//    	String sample="Acinetobacter_AB30/"; //SimpleBinner.ANCHOR_CTG_LEN=2000 || Alignment.MIN_QUAL=10
 ////    	String sample="E_coli_K-12_MG1655/";
 ////    	String sample="E_coli_O25b_H4-ST131/";
 ////    	String sample="Klebsiella_30660_NJST258_1/";
@@ -63,7 +63,7 @@ public class GraphExploreDesktop {
 ////    	String sample="random_sequences_no_repeats/";
 ////    	String sample="random_sequences_some_repeats/";
 ////    	String sample="Saccharomyces_cerevisiae_S288c/";
-//    	String sample="Shigella_dysenteriae_Sd197/"; //SimpleBinner.ANCHOR_CTG_LEN=2000
+////    	String sample="Shigella_dysenteriae_Sd197/"; //SimpleBinner.ANCHOR_CTG_LEN=2000
 ////    	String sample="Shigella_sonnei_53G/";
 ////    	String sample="Streptococcus_suis_BM407/";
 //    	
@@ -80,19 +80,19 @@ public class GraphExploreDesktop {
     	/*
     	 * To test unicycler's graph:
     	 */
-//    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/npgraph/results_2/unicycler/citrobacter-freundii_CAV1374/003_bridges_applied.gfa",
-//    			output="/home/sonhoanghguyen/Projects/scaffolding/npgraph/results_2/spades/citrobacter-freundii_CAV1374/",
-//    			lInput="";	
-    	
-    	/*
-    	 * Porecamp data:
-    	 */
-    	String sass="metaSPAdes";
-//    	String sass="megaHIT";
-    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/"+sass+"/assembly_graph.fastg",
-    			output="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/",
-    			lInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/"+sass+"/assembly_graph.sam";
-		binFile="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/metabat/"+sass+"_contigs.bin";	
+////    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/npgraph/results_2/unicycler/citrobacter-freundii_CAV1374/003_bridges_applied.gfa",
+////    			output="/home/sonhoanghguyen/Projects/scaffolding/npgraph/results_2/spades/citrobacter-freundii_CAV1374/",
+////    			lInput="";	
+//    	
+//    	/*
+//    	 * Porecamp data:
+//    	 */
+//    	String sass="metaSPAdes";
+////    	String sass="megaHIT";
+//    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/"+sass+"/assembly_graph.fastg",
+//    			output="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/",
+//    			lInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/"+sass+"/assembly_graph.sam";
+//		binFile="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/metabat/"+sass+"_contigs.bin";	
     	
 		
     	/*******************************************************************************
@@ -132,9 +132,9 @@ public class GraphExploreDesktop {
         
 //        HybridAssembler.promptEnterKey();
         hbAss.postProcessGraph();
-//        for (Node node : graph) {
-//            node.setAttribute("ui.label", node.getId());
-//        }
+        for (Node node : graph) {
+            node.setAttribute("ui.label", node.getId());
+        }
         HybridAssembler.promptEnterKey();
         viewer.disableAutoLayout();
         

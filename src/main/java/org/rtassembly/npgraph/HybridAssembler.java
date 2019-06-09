@@ -521,6 +521,21 @@ public class HybridAssembler {
 		observer.outputJAPSA(getPrefix()+File.separator+"npgraph_assembly.japsa");
 		observer.outputGFA(getPrefix()+File.separator+"npgraph_assembly.gfa");
 
+		
+		//delete temporary files
+//		File tmpFolder=new File(getPrefix()+File.separator+"npGraph_tmp");
+//		if(tmpFolder.exists()){
+//		  try {
+//			Files.walk(tmpFolder.toPath())
+//			    .sorted(Comparator.reverseOrder())
+//			    .map(Path::toFile)
+//			    .forEach(File::delete);
+//			} catch (IOException e) {
+//				LOG.info("Cannot remove existed temporary folder {}!", tmpFolder.getPath());
+//				e.printStackTrace();
+//			}
+//  		}
+		
 	}
 	
 

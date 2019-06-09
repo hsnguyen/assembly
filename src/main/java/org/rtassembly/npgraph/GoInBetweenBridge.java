@@ -119,6 +119,7 @@ public class GoInBetweenBridge {
 		
 		if(getCompletionLevel() < 3){
 			BDNodeVecState.NWAlignment(steps.nodes, qSteps.nodes);
+			scanForAnEnd(false);
 		}else{
 			while(iterator.hasNext()){
 				current=iterator.next();
@@ -144,7 +145,7 @@ public class GoInBetweenBridge {
 		}
 		for(BridgeSegment sg:changedSegments)
 			if(sg.removeUnlikelyPaths())
-				retval=0b01;//code representing number of paths reduced to 1
+				retval=0b01;//code representing number of paths of at least 1 segment reduced to 1
 		
 		if(toConnect && getCompletionLevel()<3)
 			steps.connectBridgeSteps(false);	
@@ -198,7 +199,8 @@ public class GoInBetweenBridge {
 		Set<BridgeSegment> changedSegments = new HashSet<>();
 		
 		if(getCompletionLevel()<3){
-			BDNodeVecState.NWAlignment(steps.nodes, new BridgeSteps(read).nodes);			
+			BDNodeVecState.NWAlignment(steps.nodes, new BridgeSteps(read).nodes);	
+			scanForAnEnd(false);
 		}else{
 			for(Alignment alg:read.getAlignmentRecords()) {
 				current=new BDNodeVecState(alg, read.getVector(start,alg));
@@ -224,7 +226,7 @@ public class GoInBetweenBridge {
 		
 		for(BridgeSegment sg:changedSegments)
 			if(sg.removeUnlikelyPaths())
-				retval=0b01;//code representing number of paths reduced to 1
+				retval=0b01;//code representing number of paths of at least 1 segment reduced to 1
 		
 		if(toConnect && getCompletionLevel()<3)
 			steps.connectBridgeSteps(false);		
@@ -430,18 +432,20 @@ public class GoInBetweenBridge {
 	public boolean scanForAnEnd(boolean force){
 		if(steps==null)
 			return false;
-		Iterator<BDNodeVecState> ite = steps.nodes.descendingIterator();
+		Iterator<BDNodeVecState> ite = steps.nodes.descendingIterator();//reversed order
 		while(ite.hasNext()){
 			BDNodeVecState tmp=ite.next();
-			if(!tmp.qc() && !force)
-				continue;
+//			if(!tmp.qc() && !force)
+//				continue;
 			if(tmp==steps.start || tmp==steps.end) //there is no (new) end detected
 				return false;
 			
 			PopBin b=SimpleBinner.getBinIfUniqueNow(tmp.node);
 			if(b!=null && b.isCloseTo(bin)){
-				steps.end=tmp;
-				return true;
+				if(steps.end==null || (steps.end!=tmp && steps.end.nvsScore < tmp.nvsScore)){
+					steps.end=tmp;
+					return true;
+				}
 			}
 				
 		}
@@ -548,8 +552,7 @@ public class GoInBetweenBridge {
 		
 			return retval;
 		}
-		//this function must go right after invoke locatedAndVote() for list of nv 
-		//only return value of locateAndVote is positive (it changed)
+		//return true iff there is only one candidate left <=> result found!
 		public boolean removeUnlikelyPaths(){
 			if(connectedPaths==null || connectedPaths.isEmpty())
 				return false;
@@ -686,8 +689,13 @@ public class GoInBetweenBridge {
 			//FIXME: eliminate nodes with shortest distance greater than estimated one
 			if(!shortestMapFromRight.containsKey(key)){
 				memory.put(pairKey, null);
-				System.out.println(": unreachable!");
-				return null;
+				System.out.print(": unreachable");
+				if(!force){
+					System.out.println("-> stop");		
+					return null;
+				}
+				else
+					System.out.println("-> proceed");
 			}else
 				System.out.println(": reachable!");
 
@@ -758,7 +766,7 @@ public class GoInBetweenBridge {
 			System.out.println("\n"+getAllNodeVector());
 				
 			HashMap<String, ArrayList<BridgeSegment>> memory = new HashMap<>();
-			ArrayList<BridgeSegment> segs=greedyConnect(memory, startFrom, endAt, force);
+			ArrayList<BridgeSegment> segs=greedyConnect(memory, startFrom, endAt, force||numberOfFullReads>=BDGraph.GOOD_SUPPORT);
 			
 			if(segs==null||segs.isEmpty()){
 				segments=null;

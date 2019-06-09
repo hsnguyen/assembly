@@ -272,7 +272,7 @@ public class AlignedRead{
 				
 					seqBuilder.append(Alphabet.DNA.complement(((Sequence)contig.getAttribute("seq")).subSequence(refRight-1, refLeft-1)));
 				}
-			}//if record.readAlignmentStart() > posReadEnd
+			}//FIXME: scan for overlap between suggested references instead of blindly go based on alignments
 			else{//Now get information on the contig from start
 				if (contig == toContig)
 					break;

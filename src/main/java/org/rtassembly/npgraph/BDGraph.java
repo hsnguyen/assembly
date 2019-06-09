@@ -38,7 +38,7 @@ public class BDGraph extends MultiGraph{
 
     //these should be changed in another thread, e.g. settings from GUI
 	public static volatile double ILLUMINA_READ_LENGTH=300; //Illumina MiSeq
-    
+    public static final int GOOD_SUPPORT=100; //number of minimum spanning reads for an affirmative bridge. TODO: reduce this to test
 	public static final double ALPHA=.5; //coverage less than alpha*bin_cov will be considered noise
     public static final int D_LIMIT=5000; //distance bigger than this will be ignored
     public static int S_LIMIT=300;// maximum number of graph traversing steps
@@ -199,29 +199,15 @@ public class BDGraph extends MultiGraph{
 					end1=bidirectedBridge.pBridge.n1.toString();
 			GoInBetweenBridge 	brg0=bridgesMap.get(end0),		
 								brg1=bridgesMap.get(end1);
-			GoInBetweenBridge ultimateBridge=bidirectedBridge;
-			if(brg0!=null&&brg0!=bidirectedBridge) {
-				if(brg0.getCompletionLevel()>bidirectedBridge.getCompletionLevel()) {
-					brg0.merge(bidirectedBridge,true);
-					ultimateBridge=brg0;
-				}else {
-					bidirectedBridge.merge(brg0,true);
-					ultimateBridge=bidirectedBridge;
-				}
-			}
+			if(brg0!=null&&brg0!=bidirectedBridge) 
+				bidirectedBridge.merge(brg0,true);			
 			
-			if(brg1!=null&&brg1!=bidirectedBridge) {
-				if(brg1.getCompletionLevel()>bidirectedBridge.getCompletionLevel()) {
-					brg1.merge(bidirectedBridge,true);
-					ultimateBridge=brg1;
-				}else {
-					bidirectedBridge.merge(brg1,true);
-					ultimateBridge=bidirectedBridge;
-				}
-			}
+			if(brg1!=null&&brg1!=bidirectedBridge) 
+				bidirectedBridge.merge(brg1,true);
+
 			
-			bridgesMap.put(end0, ultimateBridge);
-    		bridgesMap.put(end1, ultimateBridge);
+			bridgesMap.put(end0, bidirectedBridge);
+    		bridgesMap.put(end1, bidirectedBridge);
 
 		}
 
@@ -247,7 +233,7 @@ public class BDGraph extends MultiGraph{
 	    	if(SimpleBinner.getBinIfUnique(endNode)!=null){
 	    		tmp=bridgesMap.get(endNode.getId()+(endNodeDir?"o":"i"));
 	    		if(tmp!=null){
-	    			if(retval==null||retval.getNumberOfAnchors()<tmp.getNumberOfAnchors())
+	    			if(retval==null||retval.getCompletionLevel()<tmp.getCompletionLevel())
 	    				retval=tmp;
 	    			
 	    		}
@@ -525,8 +511,6 @@ public class BDGraph extends MultiGraph{
 		
 		if(possiblePaths.isEmpty()){
 			if(SimpleBinner.getBinIfUnique(srcNode)!=null && SimpleBinner.getBinIfUnique(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 && force){
-				//save the corresponding content of long reads to this edge
-				//TODO: save nanopore reads into this pseudo edge to run consensus later
 				BDEdge pseudoEdge = addEdge(srcNode, dstNode, srcDir, dstDir);
 				pseudoEdge.setAttribute("dist", distance);
 				path.add(pseudoEdge);
@@ -713,7 +697,7 @@ public class BDGraph extends MultiGraph{
     
     private List<BDPath> buildBridge(AlignedRead read, PopBin bin){
     	List<BDPath> retval=new ArrayList<BDPath>();
-		GoInBetweenBridge 	storedBridge=getBridgeFromMap(read);
+		GoInBetweenBridge 	storedBridge=getBridgeFromMap(read), reversedBridge;
 		System.out.printf("+++%s <=> %s\n", read.getEndingsID(), storedBridge==null?"null":storedBridge.getEndingsID());
 		
 		if(storedBridge!=null) {
@@ -738,32 +722,42 @@ public class BDGraph extends MultiGraph{
 				if(storedBridge.getCompletionLevel()==4 || (state&0b01)>0 || extend)
 					retval.addAll(storedBridge.scanForNewUniquePaths());
 					
-//				//also update the reversed bridge: important e.g. Acinetobacter_AB30. WHY??? (already updated and merged 2 homo bridges)
+//				//also update the reversed bridge: important e.g. Shigella_dysenteriae_Sd197. WHY??? (already updated and merged 2 homo bridges)
 				if(read.getEFlag()==3) {
 					read.reverse();
-					GoInBetweenBridge anotherBridge = getBridgeFromMap(read);
-					if(anotherBridge!=storedBridge) {
-						byte anotherState=anotherBridge.merge(read, true);
+					reversedBridge = getBridgeFromMap(read);
+					if(reversedBridge!=storedBridge) {
+						byte anotherState=reversedBridge.merge(read, true);
 						if((anotherState&0b10)>0)//number of anchors has changed after merging
-							updateBridgesMap(anotherBridge);											
+							updateBridgesMap(reversedBridge);											
 						
-						if(anotherBridge.getCompletionLevel()==4 || (anotherState&0b01)>0)
-							retval.addAll(anotherBridge.scanForNewUniquePaths());
+						if(reversedBridge.getCompletionLevel()==4 || (anotherState&0b01)>0)
+							retval.addAll(reversedBridge.scanForNewUniquePaths());
 
 					}
+					
+					//finally save the inbetween sequence for later consensus call
+					if(read.saveCorrectedSequenceInBetween()){
+						storedBridge.numberOfFullReads++;
+						reversedBridge.numberOfFullReads++;
+					}
 				}
-				
-				//finally save the inbetween sequence for later consensus call
-				if(read.saveCorrectedSequenceInBetween())
-					storedBridge.numberOfFullReads++;
+
 			}			
 			
 
 		}else{
 			storedBridge=new GoInBetweenBridge(this,read, bin);
-			updateBridgesMap(storedBridge);					
-			if(read.saveCorrectedSequenceInBetween())
+			updateBridgesMap(storedBridge);		
+			
+			read.reverse();
+			reversedBridge = new GoInBetweenBridge(this,read, bin);
+			updateBridgesMap(reversedBridge);
+			
+			if(read.saveCorrectedSequenceInBetween()){
 				storedBridge.numberOfFullReads++;
+				reversedBridge.numberOfFullReads++;
+			}
 		}
 		
 		return retval;
