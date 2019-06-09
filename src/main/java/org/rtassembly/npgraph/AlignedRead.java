@@ -180,17 +180,17 @@ public class AlignedRead{
 		return retval;
 	}
 	
+	
 	//Save the long read sequence between 2 unique nodes' alignments: start and end 
 	//with the aligned parts are replaced by corresponding reference parts (of Illumina data)
-
-	public void saveCorrectedSequenceInBetween(){
+	public boolean saveCorrectedSequenceInBetween(){
 		Alignment 	start = getFirstAlignment(), 
 					end = getLastAlignment();
 		BDNode 	fromContig = start.node,
 				toContig = end.node;
 		
-		if(SimpleBinner.getBinIfUniqueNow(fromContig)==null || SimpleBinner.getBinIfUniqueNow(toContig)==null)
-			return;
+		if(getEFlag()<3)
+			return false;
 	
 		
 		SequenceBuilder seqBuilder = new SequenceBuilder(Alphabet.DNA5(), 1024*1024,  readSequence.getName());
@@ -315,7 +315,7 @@ public class AlignedRead{
 						.subSequence(0, BDGraph.getKmerSize()-1);
 		if(end.strand)
 				flank1=Alphabet.DNA.complement(flank1);
-		
+		//TODO: double-check this case
 		if(posReadEnd>posReadFinal){
 			//scan for overlap
 			int overlap=GraphUtil.overlap(flank0, flank1);
@@ -335,8 +335,10 @@ public class AlignedRead{
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			System.exit(1);
+			return false;
 		}
+		
+		return true;
 	}
 	
 }

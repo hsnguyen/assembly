@@ -754,15 +754,16 @@ public class BDGraph extends MultiGraph{
 				}
 				
 				//finally save the inbetween sequence for later consensus call
-				read.saveCorrectedSequenceInBetween();
+				if(read.saveCorrectedSequenceInBetween())
+					storedBridge.numberOfFullReads++;
 			}			
 			
 
 		}else{
 			storedBridge=new GoInBetweenBridge(this,read, bin);
 			updateBridgesMap(storedBridge);					
-			//finally save the inbetween sequence for later consensus call
-			read.saveCorrectedSequenceInBetween();
+			if(read.saveCorrectedSequenceInBetween())
+				storedBridge.numberOfFullReads++;
 		}
 		
 		return retval;
