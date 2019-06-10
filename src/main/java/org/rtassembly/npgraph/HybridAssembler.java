@@ -36,7 +36,7 @@ import javafx.beans.property.SimpleBooleanProperty;
 public class HybridAssembler {
     private static final Logger LOG = LoggerFactory.getLogger(HybridAssembler.class);
 	//setting parameter for the GUI
-    private boolean ready=false;
+    private boolean ready=false, metagenomics=false;
     private BooleanProperty overwrite, useSPAdesPath;
     private StringProperty 	prefix,
     						aligner,
@@ -57,6 +57,9 @@ public class HybridAssembler {
 	//==============================================================================================//
 	public void setReady(boolean isReady) {ready=isReady;}
 	public boolean getReady() {return ready;}
+	
+	public void setMetagenomics(boolean isMetagenomics) {metagenomics=isMetagenomics;}
+	public boolean getMetagenomics() {return metagenomics;}
 	
 	public final void setOverwrite(boolean owr) {overwrite.set(owr);}
 	public final boolean getOverwrite() {return overwrite.get();}
@@ -335,9 +338,9 @@ public class HybridAssembler {
 		//try to read input file
 		try {
 			if(getShortReadsInputFormat().toLowerCase().equals("gfa")) 
-				GraphUtil.loadFromGFA(getShortReadsInput(), getBinReadsInput(), simGraph, getUseSPAdesPath());
+				GraphUtil.loadFromGFA(getShortReadsInput(), getBinReadsInput(), simGraph, getUseSPAdesPath(), getMetagenomics());
 			else if(getShortReadsInputFormat().toLowerCase().equals("fastg"))
-				GraphUtil.loadFromFASTG(getShortReadsInput(), getBinReadsInput(), simGraph, getUseSPAdesPath());
+				GraphUtil.loadFromFASTG(getShortReadsInput(), getBinReadsInput(), simGraph, getUseSPAdesPath(), getMetagenomics());
 			else 				
 				throw new IOException("Assembly graph file must have .gfa or .fastg extension!");
 			

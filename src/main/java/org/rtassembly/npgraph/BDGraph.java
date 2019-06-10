@@ -1,5 +1,6 @@
 package org.rtassembly.npgraph;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -38,7 +39,7 @@ public class BDGraph extends MultiGraph{
 
     //these should be changed in another thread, e.g. settings from GUI
 	public static volatile double ILLUMINA_READ_LENGTH=300; //Illumina MiSeq
-    public static final int GOOD_SUPPORT=100; //number of minimum spanning reads for an affirmative bridge. TODO: reduce this to test
+    public static final int GOOD_SUPPORT=50; //number of minimum spanning reads for an affirmative bridge. TODO: reduce this to test
 	public static final double ALPHA=.5; //coverage less than alpha*bin_cov will be considered noise
     public static final int D_LIMIT=5000; //distance bigger than this will be ignored
     public static int S_LIMIT=300;// maximum number of graph traversing steps
@@ -290,8 +291,7 @@ public class BDGraph extends MultiGraph{
     	binner.estimatePathsByCoverage();
     	initGraphComponents();
     }
-    //Scanning for shorter overlaps (<k) in a DBG graph 
-    //TODO: do it when there's enough long reads supporting
+    //Scanning for shorter overlaps (<k) in a DBG graph. Not making difference??! 
     synchronized public void fixDeadEnds(){
     	List<BDNodeState> weirdNodes = new ArrayList<>();
     	for(Node node:this){
@@ -435,7 +435,6 @@ public class BDGraph extends MultiGraph{
 							to = (BDNode) curEdge.getOpposite(from);
 					
 					//Important: an anchor is not allowed in the result path
-					//TODO: consider avoid nodes with too low likelihood???
 					if(SimpleBinner.getBinIfUnique(to)!=null && to!=dstNode)
 						continue;
 					
@@ -510,13 +509,27 @@ public class BDGraph extends MultiGraph{
 		System.out.println("select from list of " + possiblePaths.size() + " DFS paths:");
 		
 		if(possiblePaths.isEmpty()){
-			if(SimpleBinner.getBinIfUnique(srcNode)!=null && SimpleBinner.getBinIfUnique(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 && force){
-				BDEdge pseudoEdge = addEdge(srcNode, dstNode, srcDir, dstDir);
-				pseudoEdge.setAttribute("dist", distance);
-				path.add(pseudoEdge);
-				possiblePaths.add(path);
-				System.out.println("pseudo path from " + srcNode.getId() + " to " + dstNode.getId() + " distance=" + distance);
-				
+			if(SimpleBinner.getBinIfUnique(srcNode)!=null && SimpleBinner.getBinIfUnique(dstNode)!=null && srcNode.getDegree() <= 1 && dstNode.getDegree() <=1 && force){					
+				String id = BDEdge.createID(srcNode, dstNode, srcDir, dstDir);				
+				try{
+					BDNode n=(BDNode) addNode("000"+AlignedRead.PSEUDO_ID++);
+					System.out.println("Pseudo node " + n.getId());
+					Sequence seq=GraphUtil.consensusSequence(AlignedRead.tmpFolder+File.separator+id+".fasta", distance, id, "poa");
+					n.setAttribute("seq", seq);
+					n.setAttribute("len", seq.length());
+					n.setAttribute("cov",SimpleBinner.getBinIfUnique(srcNode).estCov);
+					boolean disagreement=srcNode.getId().compareTo(dstNode.getId()) > 0 
+							|| (srcNode==dstNode && srcDir==false && dstDir==true);
+					Edge 	e0=addEdge(srcNode, n, srcDir, disagreement),
+							e1=addEdge(n,dstNode,!disagreement,dstDir);	
+
+					path.add(e0);
+					path.add(e1);						
+					possiblePaths.add(path);
+				}catch(Exception e){
+					System.err.println("Failed to make consensus sequence for " + id);
+					e.printStackTrace();
+				}	
 				return possiblePaths;
     		}else
     			return null;
@@ -533,7 +546,6 @@ public class BDGraph extends MultiGraph{
 			System.out.printf("Hit added: %s deviation=%d; depth=%d; likelihood score=%.2f\n", p.getId(), p.getDeviation(), p.size(), p.getPathEstats());
 		}
 		
-		//TODO: reduce the number of returned paths here (calculate edit distance with nanopore read: dynamic programming?)
 		return retval;
 	}    
 	

@@ -41,7 +41,6 @@ import japsa.seq.SequenceBuilder;
 import japsa.seq.SequenceOutputStream;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -49,6 +48,7 @@ import java.util.Collections;
 
 
 public class AlignedRead{
+	public static int PSEUDO_ID=1;
 	public static String tmpFolder=System.getProperty("usr.dir")+File.separator+"npGraph_tmp"; //folder to save spanning reads of the bridge
 
 	/**
@@ -194,10 +194,18 @@ public class AlignedRead{
 	
 		
 		SequenceBuilder seqBuilder = new SequenceBuilder(Alphabet.DNA5(), 1024*1024,  readSequence.getName());
-		if(start.readAlignmentStart() > end.readAlignmentEnd())
+		if(		fromContig.getId().compareTo(toContig.getId()) > 0 
+			|| (fromContig==toContig && start.strand==false && end.strand==false)) //to agree with BDEdge.createID()
+		{
 			reverse();
+			start = getFirstAlignment();
+			end = getLastAlignment();
+			fromContig = start.node;
+			toContig = end.node;
+			
+		}
 		
-		sortAlignment();
+//		sortAlignment();
 		//1. Appending (k-1)-flanking sequence from the start node
 		Sequence flank0=((Sequence)fromContig.getAttribute("seq"))
 						.subSequence(	(int)fromContig.getNumber("len")-BDGraph.getKmerSize()+1, 

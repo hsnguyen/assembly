@@ -658,7 +658,6 @@ public class GoInBetweenBridge {
 		 * To connect the bridge based on the steps identified inbetween
 		 */
 		//////////////////////////////////////////////////////////////////////////////////////
-		//TODO: integrate AlignedRead (with split()) to include nanopore data for edit-distance-guide traversal
 		
 		//need this because BDNodeVecState.compareTo() not fit for this purpose
 		private TreeSet<BDNodeVecState> subSet(BDNodeVecState left, BDNodeVecState right){

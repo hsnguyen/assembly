@@ -28,21 +28,22 @@ public class GraphExploreDesktop {
     	System.setProperty("org.graphstream.ui", "javafx");
     	//System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer"); 
     	String binFile="";
+    	boolean met=false;
     	/*
     	 * npScarf data set
     	 */
-    	String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/";
-    	
-//    	String sample="EcK12S-careful";
-    	String sample="Kp2146-careful";
-//    	String sample="Kp13883-careful";
- 
-//    	String sample="W303-careful";
-//    	String sample="meta-careful";
-//    	String sample="cp_S5";
-    	String sInput=dataFolder+sample+"/assembly_graph.fastg",
-    			output=dataFolder+sample+"/",
-    			lInput=dataFolder+sample+"/assembly_graph.sam";
+//    	String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/";
+//    	
+////    	String sample="EcK12S-careful";
+//    	String sample="Kp2146-careful";
+////    	String sample="Kp13883-careful";
+// 
+////    	String sample="W303-careful";
+////    	String sample="meta-careful";
+////    	String sample="cp_S5";
+//    	String sInput=dataFolder+sample+"/assembly_graph.fastg",
+//    			output=dataFolder+sample+"/",
+//    			lInput=dataFolder+sample+"/assembly_graph.sam";
     	
     	
     	
@@ -87,18 +88,19 @@ public class GraphExploreDesktop {
 //    	/*
 //    	 * Porecamp data:
 //    	 */
-//    	String sass="metaSPAdes";
-////    	String sass="megaHIT";
-//    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/"+sass+"/assembly_graph.fastg",
-//    			output="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/",
-//    			lInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/"+sass+"/assembly_graph.sam";
-//		binFile="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/metabat/"+sass+"_contigs.bin";	
-    	
+    	String sass="metaSPAdes";
+//    	String sass="megaHIT";
+    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/"+sass+"/assembly_graph.fastg",
+    			output="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/",
+    			lInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/"+sass+"/assembly_graph.sam";
+		binFile="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/metabat/"+sass+"_contigs.bin";	
+    	met=true;
 		
     	/*******************************************************************************
     	 ****************************** Share code *************************************
     	 *******************************************************************************/
 		HybridAssembler hbAss = new HybridAssembler();
+		hbAss.setMetagenomics(met);
 		hbAss.setShortReadsInput(sInput);
 		hbAss.setPrefix(output);
 		if(!binFile.isEmpty())
