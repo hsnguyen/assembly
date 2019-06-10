@@ -33,7 +33,7 @@ public class BDGraph extends MultiGraph{
 	SimpleBinner binner;
 
 	//not gonna change these parameters in other thread
-    public static final double R_TOL=.2;// relative tolerate: can be interpreted as long read error rate (10-25%)
+    public static final double R_TOL=.25;// relative tolerate: can be interpreted as long read error rate (10-25%)
     public static final int A_TOL=300;// absolute tolerate: can be interpreted as long read absolute error bases (100bp)
 
     //these should be changed in another thread, e.g. settings from GUI
@@ -715,7 +715,6 @@ public class BDGraph extends MultiGraph{
 				boolean extend=false;
 				if(storedBridge.getCompletionLevel()==1){
 					if(storedBridge.scanForAnEnd(false)){
-						System.out.println("FOUND NEW TRANSFORMED END: " + storedBridge.steps.end.getNode().getId());
 						extend=storedBridge.steps.connectBridgeSteps(false);
 					}					
 				}

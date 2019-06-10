@@ -252,6 +252,7 @@ public class GoInBetweenBridge {
 		System.out.printf("Reversing the bridge %s(start=%s end=%s):\n%s\n", getEndingsID(), steps.start.toString(), steps.end.toString(), getAllNodeVector());
 
 		pBridge=pBridge.reverse();
+		int direction=pBridge.getDir0()?1:-1;
 		//reverse the segments
 		if(segments!=null){
 			ArrayList<BridgeSegment> tmp = segments;
@@ -263,7 +264,23 @@ public class GoInBetweenBridge {
 			}
 		}
 		//reverse the nodes list
-		steps.reverse();
+		TreeSet<BDNodeVecState> reversedSet = new TreeSet<BDNodeVecState>();
+		ScaffoldVector rev=ScaffoldVector.reverse(steps.end.getVector());//anchors number = 2 so there exist end node
+		BDNodeVecState tmp = null;
+		//re-assign start and end
+		tmp=steps.start;
+		steps.start=steps.end;
+		steps.end=tmp;
+		
+		//need to do this to re-sort the changed elements
+		for(BDNodeVecState nv:steps.nodes) {
+			nv.setVector(ScaffoldVector.composition(nv.getVector(), rev));
+			if(nv.getVector().isIdentity() || (nv.getVector().getMagnitute()-BDGraph.A_TOL)*direction>0)
+				reversedSet.add(nv);
+
+		}
+
+		steps.nodes=reversedSet;
 		
 		System.out.printf("Reversed bridge %s(start=%s end=%s):\n%s\n", getEndingsID(), steps.start.toString(), steps.end.toString(), getAllNodeVector());
 
@@ -429,22 +446,23 @@ public class GoInBetweenBridge {
 	
 	//Try to look for an ending unique node of a unidentifiable bridge
 	//by using isUniqueNow()
-	public boolean scanForAnEnd(boolean force){
+	public boolean scanForAnEnd(boolean greedy){
 		if(steps==null)
 			return false;
 		Iterator<BDNodeVecState> ite = steps.nodes.descendingIterator();//reversed order
 		while(ite.hasNext()){
 			BDNodeVecState tmp=ite.next();
-//			if(!tmp.qc() && !force)
-//				continue;
-			if(tmp==steps.start || tmp==steps.end) //there is no (new) end detected
+			if(tmp==getLastExtendedTip()) //there is no (new) end detected
 				return false;
 			
 			PopBin b=SimpleBinner.getBinIfUniqueNow(tmp.node);
 			if(b!=null && b.isCloseTo(bin)){
-				if(steps.end==null || (steps.end!=tmp && steps.end.nvsScore < tmp.nvsScore)){
-					steps.end=tmp;
-					return true;
+				if(steps.end==null || greedy || steps.end.nvsScore < tmp.nvsScore){
+					if(steps.end!=tmp){
+						steps.end=tmp;
+						System.out.println("FOUND NEW END: " + steps.end.getNode().getId());
+						return true;
+					}
 				}
 			}
 				
@@ -828,25 +846,7 @@ public class GoInBetweenBridge {
 			
 			return start.qc() && end.qc();
 		}
-		void reverse() {
-			//reverse the nodes list
-			TreeSet<BDNodeVecState> reversedSet = new TreeSet<BDNodeVecState>();
-			ScaffoldVector rev=ScaffoldVector.reverse(end.getVector());//anchors number = 2 so there exist end node
-			BDNodeVecState tmp = null;
-			//need to do this to re-sort the changed elements
-			for(BDNodeVecState nv:nodes) {
-				nv.setVector(ScaffoldVector.composition(nv.getVector(), rev));
-				reversedSet.add(nv);
 
-			}
-
-			nodes=reversedSet;
-			//re-assign start and end
-			tmp=start;
-			start=end;
-			end=tmp;
-
-		}
 		public void setNodes(TreeSet<BDNodeVecState> nodes){
 			this.nodes=nodes;
 		}

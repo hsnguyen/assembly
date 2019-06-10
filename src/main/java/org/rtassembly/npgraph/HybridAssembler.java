@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Scanner;
 import java.util.regex.Matcher;
@@ -488,31 +489,39 @@ public class HybridAssembler {
  		}		
  	}
 
-	
 	public void postProcessGraph() throws IOException{
-		//Take the current best path among the candidate of a bridge and connect the bridge(greedy)
-		for(GoInBetweenBridge brg:simGraph.getUnsolvedBridges()){
-			System.out.printf("Last attempt on incomplete bridge %s : anchors=%d \n %s \n", brg.getEndingsID(), brg.getNumberOfAnchors(), brg.getAllPossiblePaths());
-//			if(brg.getCompletionLevel()<=2) {//examine bridge with completion level = 2 that unable to connected
-//				brg.steps.connectBridgeSteps(true);
-//			}
-			
-			if(brg.getCompletionLevel()>=3) 
-				simGraph.chopPathAtAnchors(brg.getBestPath(brg.pBridge.getNode0(),brg.pBridge.getNode1())).stream().forEach(p->simGraph.reduceUniquePath(p));
-			else{
-				brg.scanForAnEnd(true);
-				//selective connecting
-				brg.steps.connectBridgeSteps(true);
-				//return appropriate path
-				if(brg.segments!=null)
-					simGraph.chopPathAtAnchors(brg.getBestPath(brg.steps.start.getNode(),brg.steps.end.getNode())).stream().forEach(p->simGraph.reduceUniquePath(p));
-				else
-					System.out.printf("Last attempt failed \n");
+		HashSet<GoInBetweenBridge> 		unsolved=simGraph.getUnsolvedBridges(),
+										solved=new HashSet<>();
+		while(true){
+			boolean changed=false;
+			for(GoInBetweenBridge brg:unsolved){
+				System.out.printf("Last attempt on incomplete bridge %s : anchors=%d \n %s \n", brg.getEndingsID(), brg.getNumberOfAnchors(), brg.getAllPossiblePaths());
+				//Take the current best path among the candidate of a bridge and connect the bridge(greedy)
+				if(brg.getCompletionLevel()>=3){ 
+					simGraph.chopPathAtAnchors(brg.getBestPath(brg.pBridge.getNode0(),brg.pBridge.getNode1())).stream().forEach(p->simGraph.reduceUniquePath(p));
+					solved.add(brg);
+					changed=true;
+				}else{
+					brg.scanForAnEnd(true);	
+					changed=brg.steps.connectBridgeSteps(true);
+					
+					//return appropriate path
+					if(brg.segments!=null){
+						simGraph.chopPathAtAnchors(brg.getBestPath(brg.steps.start.getNode(),brg.steps.end.getNode())).stream().forEach(p->simGraph.reduceUniquePath(p));
+					}
+					else
+						System.out.printf("Last attempt failed \n");
+				}
+	
 			}
-
-
+			if(solved.isEmpty()&&!changed)
+				break;
+			else{
+				unsolved.removeAll(solved);
+				solved.clear();
+			}
+				
 		}
-		
         //update for the last time
         observer.update(true);
 		System.out.printf("Input stats: read count=%d base count=%d\n", currentReadCount, currentBaseCount);
