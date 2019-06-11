@@ -37,7 +37,7 @@ public class GraphWatcher {
 		List<Node> 	removeNodes=new ArrayList<Node>();
 		
 		for (Iterator<ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
-			ConnectedComponent comp = compIter.next();
+			ConnectedComponent comp = compIter.next();		
 			AtomicDouble lengthWeightedCov = new AtomicDouble(0.0);
 			AtomicInteger length = new AtomicInteger(0);
 			comp.nodes().forEach(n->{
@@ -63,9 +63,6 @@ public class GraphWatcher {
 	synchronized void update(boolean lastTime) {
 		//cleaning...
 		removeBadComponents();
-//		if(last)
-//			cleanInsignificantNodes();
-		
 		cutEdges = new HashSet<BDEdge>();
 		//then set the cut edges: just for outputGraph stats (will reset after)
 		inputGraph.nodes()
@@ -90,7 +87,8 @@ public class GraphWatcher {
 		for (Iterator<ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
 			ConnectedComponent comp = compIter.next();
 //			System.out.printf("... id=%s edges=%d nodes=%d \n", comp.id, comp.getEdgeCount(), comp.getNodeCount());
-					
+			if(comp.getNodeCount()==0)
+				continue;
 			//Start analyzing significant components from here
 			//check comp: should be linear paths, should start with node+
 			 Node node = comp.nodes().toArray(Node[]::new)[0];

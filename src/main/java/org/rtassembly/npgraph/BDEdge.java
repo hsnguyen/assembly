@@ -94,7 +94,7 @@ public class BDEdge extends AbstractEdge{
 			BDPath tmp=(BDPath) this.getAttribute("path");
 			return (int)(tmp.getLength()-tmp.getFirstNode().getNumber("len")-tmp.getLastNode().getNumber("len"));
 		}else
-			return -BDGraph.getKmerSize();
+			return -BDGraph.getKmerSize()+1;
 	}
 
 	public Boolean getNodeDirection(AbstractNode node){

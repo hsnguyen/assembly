@@ -181,7 +181,7 @@ public class GraphUtil {
 		
 		graph.fixDeadEnds();
 		graph.binning(binFileName);
-		if(metagenomics)
+		if(!metagenomics)
 			graph.cleanInsignificantNodes();
 		/*
 		 * 3. Now scan for the contigs.path file in SPAdes folder for the paths if specified
@@ -364,7 +364,7 @@ public class GraphUtil {
 
 		graph.fixDeadEnds();
 		graph.binning(binFileName);
-		if(metagenomics)
+		if(!metagenomics)
 			graph.cleanInsignificantNodes();
 		
 		/*

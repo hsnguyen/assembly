@@ -39,7 +39,7 @@ public class BDGraph extends MultiGraph{
 
     //these should be changed in another thread, e.g. settings from GUI
 	public static volatile double ILLUMINA_READ_LENGTH=300; //Illumina MiSeq
-    public static final int GOOD_SUPPORT=50; //number of minimum spanning reads for an affirmative bridge. TODO: reduce this to test
+    public static final int GOOD_SUPPORT=20; //number of minimum spanning reads for an affirmative bridge. TODO: reduce this to test
 	public static final double ALPHA=.5; //coverage less than alpha*bin_cov will be considered noise
     public static final int D_LIMIT=5000; //distance bigger than this will be ignored
     public static int S_LIMIT=300;// maximum number of graph traversing steps
@@ -512,19 +512,43 @@ public class BDGraph extends MultiGraph{
 			if(SimpleBinner.getBinIfUnique(srcNode)!=null && SimpleBinner.getBinIfUnique(dstNode)!=null && srcNode.getDegree() <= 1 && dstNode.getDegree() <=1 && force){					
 				String id = BDEdge.createID(srcNode, dstNode, srcDir, dstDir);				
 				try{
-					BDNode n=(BDNode) addNode("000"+AlignedRead.PSEUDO_ID++);
-					System.out.println("Pseudo node " + n.getId());
-					Sequence seq=GraphUtil.consensusSequence(AlignedRead.tmpFolder+File.separator+id+".fasta", distance, id, "poa");
+					//Option 1: hide long-read consensus from the graph
+					BDNode n=new BDNode(this, "000"+AlignedRead.PSEUDO_ID++);
+					Sequence seq=GraphUtil.consensusSequence(AlignedRead.tmpFolder+File.separator+id+".fasta", distance, id, "kalign");
+					if(seq==null)
+						return null;
 					n.setAttribute("seq", seq);
 					n.setAttribute("len", seq.length());
 					n.setAttribute("cov",SimpleBinner.getBinIfUnique(srcNode).estCov);
 					boolean disagreement=srcNode.getId().compareTo(dstNode.getId()) > 0 
 							|| (srcNode==dstNode && srcDir==false && dstDir==true);
-					Edge 	e0=addEdge(srcNode, n, srcDir, disagreement),
-							e1=addEdge(n,dstNode,!disagreement,dstDir);	
+					BDEdge 	e0=new BDEdge(srcNode, n, srcDir, disagreement),
+							e1=new BDEdge(n,dstNode,!disagreement,dstDir);	
+					BDPath p = new BDPath(srcNode);					
+					p.add(e0);
+					p.add(e1);
+					BDEdge pseudoEdge=addEdge(srcNode, dstNode, srcDir, dstDir);
+					pseudoEdge.setAttribute("path", p);
+					path.add(pseudoEdge);
 
-					path.add(e0);
-					path.add(e1);						
+//					//Option 2: or using this to create&display a "pseudo node"
+//					BDNode n=(BDNode) addNode("000"+AlignedRead.PSEUDO_ID++);
+//					Sequence seq=GraphUtil.consensusSequence(AlignedRead.tmpFolder+File.separator+id+".fasta", distance, id, "poa");
+//					if(seq==null)
+//						return null;
+//					n.setAttribute("seq", seq);
+//					n.setAttribute("len", seq.length());
+//					n.setAttribute("cov",SimpleBinner.getBinIfUnique(srcNode).estCov);
+//					n.setGUI("red", "diamond");
+//					n.setAttribute("unique", SimpleBinner.getBinIfUnique(srcNode));
+//					boolean disagreement=srcNode.getId().compareTo(dstNode.getId()) > 0 
+//							|| (srcNode==dstNode && srcDir==false && dstDir==true);
+//					Edge 	e0=addEdge(srcNode, n, srcDir, disagreement),
+//							e1=addEdge(n,dstNode,!disagreement,dstDir);	
+//
+//					path.add(e0);
+//					path.add(e1);
+					
 					possiblePaths.add(path);
 				}catch(Exception e){
 					System.err.println("Failed to make consensus sequence for " + id);
@@ -927,28 +951,13 @@ public class BDGraph extends MultiGraph{
     	}
     	
     	for (Node node : this) {		
-    		/*
-    		 * Re-assign colors based on coverage/length
-    		 */
-    		Sequence seq = (Sequence) node.getAttribute("seq");
-    		double lengthScale = 1+(Math.log10(seq.length())-2)/3.5; //100->330,000
-          
-			if(lengthScale<1) lengthScale=1;
-			else if(lengthScale>2) lengthScale=2;
-	          
 			String color="rgb(255,255,255)";
 			PopBin bin=SimpleBinner.getBinIfUnique(node);
 			if(bin!=null){
 				color=bin2color.get(bin.getId());
 			}
 			
-			
-//			node.setAttribute("ui.label", node.getId());
-			node.setAttribute("ui.style", "	size: " + lengthScale + "gu;" +
-        		  						"	fill-color: "+color+";" +
-        		  			            " 	stroke-mode: plain;" +
-        		  			            "	stroke-color: black;" +
-        		  			            "	stroke-width: 2px;");
+			((BDNode)node).setGUI(color, "circle");
     	}
 
     }

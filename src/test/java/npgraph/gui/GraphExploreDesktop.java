@@ -3,6 +3,7 @@ package npgraph.gui;
 import java.io.IOException;
 
 import org.graphstream.graph.Node;
+import org.graphstream.ui.view.View;
 import org.graphstream.ui.view.Viewer;
 import org.rtassembly.npgraph.BDGraph;
 import org.rtassembly.npgraph.GraphUtil;
@@ -111,7 +112,8 @@ public class GraphExploreDesktop {
     	BDGraph graph= hbAss.simGraph;
     	
     	graph.setAttribute("ui.style", GraphUtil.styleSheet);
-
+    	graph.setAttribute("layout.stabilization-limit", .7);
+    	graph.setAttribute("layout.weight", 0);
         Viewer viewer=graph.display();
 //        HybridAssembler.promptEnterKey();
         System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
@@ -134,12 +136,11 @@ public class GraphExploreDesktop {
         
 //        HybridAssembler.promptEnterKey();
         hbAss.postProcessGraph();
-        for (Node node : graph) {
-            node.setAttribute("ui.label", node.getId());
-        }
+//        for (Node node : graph) {
+//            node.setAttribute("ui.label", node.getId());
+//        }
         HybridAssembler.promptEnterKey();
         viewer.disableAutoLayout();
-        
        
     }
     
