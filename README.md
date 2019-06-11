@@ -145,6 +145,12 @@ awk -F'[:;]' -v q="'" '/^>/{if(index($1,q) ==0 ) flag=1; else flag=0;} {if(flag)
 ~/sw/metabat/metabat2  --saveCls --noBinOut --inFile metaSPAdes/assembly_graph.fasta --abdFile depth.txt --outFile metabat/bin
 ```
 
+Below is how it looked like using *npGraph* with a mock community of 11 species from PoreCamp.
+
+<p align="center">
+  <img src="http://drive.google.com/uc?export=view&id=1c29S6cSNwEg9JpXcy28ngo8bFsuF2SXi" alt="npGraph"/>
+</p>
+
 ### Output
 The tool generates the assembly in a FASTA file *npgraph_assembly.fasta* and a [GFA v1](https://github.com/GFA-spec/GFA-spec/blob/master/GFA1.md) file *npgraph_assembly.gfa* .
 The FASTA file output contains the significant contigs only while the GFA file contains all the original contigs and the links between them. The repetitive elements will be duplicated in the GFA output for easier examination. For example, we can see from the second column of the S(egment) line somethings like <X.Y> means this is the Yth copy of the original contig X (without suffix). 
