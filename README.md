@@ -145,7 +145,7 @@ awk -F'[:;]' -v q="'" '/^>/{if(index($1,q) ==0 ) flag=1; else flag=0;} {if(flag)
 ~/sw/metabat/metabat2  --saveCls --noBinOut --inFile metaSPAdes/assembly_graph.fasta --abdFile depth.txt --outFile metabat/bin
 ```
 
-Below is how it looked like using *npGraph* with a mock community of 11 species from PoreCamp.
+Below is how it looked like using *npGraph* with a mock community of 11 species from PoreCamp. This application is still on development (under branch feature_optimize).
 
 <p align="center">
   <img src="http://drive.google.com/uc?export=view&id=1c29S6cSNwEg9JpXcy28ngo8bFsuF2SXi" alt="npGraph"/>
