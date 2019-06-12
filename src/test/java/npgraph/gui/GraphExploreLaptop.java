@@ -50,8 +50,10 @@ public class GraphExploreLaptop {
     	 ***********************************************************************/
     	String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/unicycler/"; //unicycler synthetic
 //    	String sample="E_coli_O25b_H4-ST131/good";
-    	String sample="Shigella_dysenteriae_Sd197/good";
+    	String sample="Acinetobacter_AB30/good";
+//    	String sample="Shigella_dysenteriae_Sd197/good";
 //    	String sample="Shigella_sonnei_53G/good";
+    	
     	String 	sInput=dataFolder+sample+"/spades/assembly_graph.fastg",
     			lInput=dataFolder+sample+"/mm2.sam";
 		
