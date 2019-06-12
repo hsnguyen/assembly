@@ -1,5 +1,6 @@
 package org.rtassembly.npgraph;
 
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -75,6 +76,18 @@ public class BDEdge extends AbstractEdge{
 	public String toString() {
 		return String.format("%s:%s-%s-%s-%s", getId(), getNode0(), (dir0?">":"<"), (dir1?"<":">"), getNode1());
 	}
+	@Override
+	public boolean equals(final Object obj){
+        if (this == obj)
+            return true; 
+
+        if (obj == null || obj.getClass() != this.getClass()) { 
+        	return false; 
+    	}
+
+        final BDEdge other = (BDEdge) obj;
+        return other.getId().equals(getId());
+	}
 	
 	public void setDir0(boolean dir){
 		this.dir0=dir;
@@ -94,7 +107,7 @@ public class BDEdge extends AbstractEdge{
 			BDPath tmp=(BDPath) this.getAttribute("path");
 			return (int)(tmp.getLength()-tmp.getFirstNode().getNumber("len")-tmp.getLastNode().getNumber("len"));
 		}else
-			return -BDGraph.getKmerSize();
+			return -BDGraph.getKmerSize()+1;
 	}
 
 	public Boolean getNodeDirection(AbstractNode node){

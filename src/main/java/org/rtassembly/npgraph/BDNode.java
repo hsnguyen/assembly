@@ -4,6 +4,8 @@ import org.graphstream.graph.implementations.AbstractEdge;
 import org.graphstream.graph.implementations.AbstractGraph;
 import org.graphstream.graph.implementations.MultiNode;
 
+import japsa.seq.Sequence;
+
 public class BDNode extends MultiNode {
 
 //    private static final Logger LOG = LoggerFactory.getLogger(BDNode.class);
@@ -53,5 +55,21 @@ public class BDNode extends MultiNode {
 	@Override
 	public String toString() {
 		return String.format("[Node %s: cov=%.2f len=%d]", getId(), getNumber("cov"), (int)getNumber("len"));
+	}
+	
+	public void setGUI(String color, String shape){
+		Sequence seq = (Sequence) getAttribute("seq");
+		double lengthScale = 1.0;
+		if(seq!=null)
+			lengthScale+=(Math.log10(seq.length())-2)/3.5; //100->330,000  
+		if(lengthScale<1) lengthScale=1.0;
+		else if(lengthScale>2) lengthScale=2.0;
+		this.setAttribute("ui.style", "	size: " + lengthScale + "gu;"
+					+"	shape: "+shape+";"
+					+"	fill-color: "+color+";"
+		            +" 	stroke-mode: plain;"
+		            +"	stroke-color: black;"
+		            +"	stroke-width: 2px;"
+		            );
 	}
 }

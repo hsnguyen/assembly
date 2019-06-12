@@ -5,9 +5,9 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -26,7 +26,9 @@ import com.joptimizer.optimizers.OptimizationRequest;
 import japsa.seq.Alphabet;
 import japsa.seq.FastaReader;
 import japsa.seq.Sequence;
+import japsa.seq.SequenceBuilder;
 import japsa.seq.SequenceReader;
+import japsa.seq.Alphabet.DNA;
 
 public class GraphUtil {
 
@@ -177,15 +179,16 @@ public class GraphUtil {
 		 */
 //		graph.nodes().filter(n->n.getNumber("cov") < .2*BDGraph.RCOV).forEach(n->{n.edges().forEach(e->graph.removeEdge(e));});
 		
-		graph.cleanInsignificantNodes();
 		graph.fixDeadEnds();
 		graph.binning(binFileName);
+		if(!BDGraph.isMetagenomics)
+			graph.cleanInsignificantNodes();
 		/*
 		 * 3. Now scan for the contigs.path file in SPAdes folder for the paths if specified
 		 */
 		if(spadesBridging){
 			File graphFile = new File(graphFileName);
-			String pathsFile = FilenameUtils.getFullPathNoEndSeparator(graphFile.getAbsolutePath()) + "/contigs.paths";
+			String pathsFile = FilenameUtils.getFullPathNoEndSeparator(graphFile.getAbsolutePath()) + File.separator + "contigs.paths";
 			if(! new File(pathsFile).exists()){
 				LOG.warn("Path file {} couldn't be found in SPAdes output! Skipped!", pathsFile);
 				return;
@@ -358,10 +361,12 @@ public class GraphUtil {
 		/*
 		 * 2. Binning the graph
 		 */
-		graph.cleanInsignificantNodes();
+
 		graph.fixDeadEnds();
 		graph.binning(binFileName);
-
+		if(!BDGraph.isMetagenomics)
+			graph.cleanInsignificantNodes();
+		
 		/*
 		 * 3. Reduce the SPAdes path if specified
 		 */
@@ -690,4 +695,112 @@ public class GraphUtil {
 			"edge { fill-color: rgb(255,50,50); size: 2px; }" +
 			"edge.cut { fill-color: rgba(200,200,200,128); }";
     
+	//Adapt from japsa without need to output fasta input file
+	public static Sequence consensusSequence(String faiFile, int distance, String prefix, String msa) throws IOException, InterruptedException{
+		Sequence consensus = null;
+		String faoFile = AlignedRead.tmpFolder+File.separator+prefix+"_"+msa+".fasta";
+		//1.0 Check faiFile?
+		FastaReader faiReader =  new FastaReader(faiFile);
+		int count=0;
+		while(faiReader.nextSequence(Alphabet.DNA5())!=null)
+			count++;
+		
+		faiReader.close();
+		if(count<BDGraph.SAFE_COUNTS)
+			return consensus;
+		
+		
+		//2.0 Run multiple alignment
+		{
+			String cmd  = "";
+			if (msa.startsWith("poa")){
+				String poaDir="/home/sonhoanghguyen/sw/poaV2/";//test
+				cmd = poaDir+"poa -read_fasta " + faiFile + " -clustal " + faoFile + " -hb " + poaDir+"blosum80.mat";
+			}else if (msa.startsWith("muscle")){
+				cmd = "muscle -in " + faiFile + " -out " + faoFile + " -maxiters 5 -quiet";				
+			}else if (msa.startsWith("clustal")) {
+				cmd = "clustalo --force -i " + faiFile + " -o " + faoFile;
+			}else if (msa.startsWith("kalign")){
+				cmd = "kalign -gpo 60 -gpe 10 -tgpe 0 -bonus 0 -q -i " + faiFile	+ " -o " + faoFile;
+			}else if (msa.startsWith("msaprobs")){
+				cmd = "msaprobs -o " + faoFile + " " + faiFile;
+			}else if (msa.startsWith("mafft")){
+				cmd = "mafft_wrapper.sh  " + faiFile + " " + faoFile;
+			}else{
+				LOG.error("Unknown msa function " + msa);
+				return null;
+			}
+
+			LOG.info("Running " + cmd);
+			Process process = Runtime.getRuntime().exec(cmd);
+			process.waitFor();
+			LOG.info("Done " + cmd);
+		}
+
+
+		if ("poa".equals(msa)){
+			SequenceBuilder sb = new SequenceBuilder(Alphabet.DNA(), (int) ((1+BDGraph.R_TOL)*distance)+2*BDGraph.getKmerSize());
+			BufferedReader bf =  FastaReader.openFile(faoFile);
+			String line = bf.readLine();
+			while ( (line = bf.readLine()) != null){
+				if (line.startsWith("CONSENS0")){
+					for (int i = 10;i < line.length();i++){
+						char c = line.charAt(i);
+						int base = DNA.DNA().char2int(c);
+						if (base >= 0 && base < 4)
+							sb.append((byte)base);
+					}//for							
+				}//if
+			}//while
+			sb.setName(prefix+"_consensus");
+			LOG.info(sb.getName() + "  " + sb.length());
+			return sb.toSequence();
+		}
+
+		//3.0 Read in multiple alignment
+		ArrayList<Sequence> seqList = new ArrayList<Sequence>();
+		{
+			SequenceReader msaReader = FastaReader.getReader(faoFile);
+			Sequence nSeq = null;
+			while ((nSeq = msaReader.nextSequence(Alphabet.DNA())) != null) {
+				seqList.add(nSeq);						
+			}
+			msaReader.close();
+		}
+
+		//4.0 get consensus and write to facFile				
+		{
+			int [] coef = new int[seqList.size()];			
+			for (int y = 0; y < seqList.size(); y++){
+				coef[y] = 1;				
+			}
+			//TODO: combine error profiles?? 
+			int [] counts = new int[6];
+
+			SequenceBuilder sb = new SequenceBuilder(Alphabet.DNA(), seqList.get(0).length());
+			for (int x = 0; x < seqList.get(0).length();x++){		
+				Arrays.fill(counts, 0);
+				for (int y = 0; y < seqList.size(); y++){					
+					byte base = seqList.get(y).getBase(x);
+					if (base >= 6) 
+						counts[4] += coef[y];//N
+					else
+						counts[base] += coef[y];
+				}//for y
+				int maxIdx = 0;
+				for (int y = 1; y < counts.length; y++){
+					if (counts[y] > counts[maxIdx])
+						maxIdx = y;					
+				}//for y
+				if (maxIdx < Alphabet.DNA.GAP){//not a gap
+					sb.append((byte)maxIdx);
+				}//if
+			}//for x
+			sb.setName(prefix+"_consensus");
+			LOG.info(sb.getName() + "  " + sb.length());
+			consensus = sb.toSequence();
+		}
+
+		return consensus;
+	}
 }

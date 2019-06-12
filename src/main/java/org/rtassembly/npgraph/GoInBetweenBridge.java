@@ -14,6 +14,7 @@ import org.graphstream.graph.Node;
 
 //A bridge structure that the first node must be unique
 public class GoInBetweenBridge {
+	int numberOfFullReads=0; //number of read spanning this *whole* bridge
 
 	BDGraph graph;
 	PopBin bin;
@@ -118,6 +119,7 @@ public class GoInBetweenBridge {
 		
 		if(getCompletionLevel() < 3){
 			BDNodeVecState.NWAlignment(steps.nodes, qSteps.nodes);
+			scanForAnEnd(false);
 		}else{
 			while(iterator.hasNext()){
 				current=iterator.next();
@@ -143,7 +145,7 @@ public class GoInBetweenBridge {
 		}
 		for(BridgeSegment sg:changedSegments)
 			if(sg.removeUnlikelyPaths())
-				retval=0b01;//code representing number of paths reduced to 1
+				retval=0b01;//code representing number of paths of at least 1 segment reduced to 1
 		
 		if(toConnect && getCompletionLevel()<3)
 			steps.connectBridgeSteps(false);	
@@ -197,7 +199,8 @@ public class GoInBetweenBridge {
 		Set<BridgeSegment> changedSegments = new HashSet<>();
 		
 		if(getCompletionLevel()<3){
-			BDNodeVecState.NWAlignment(steps.nodes, new BridgeSteps(read).nodes);			
+			BDNodeVecState.NWAlignment(steps.nodes, new BridgeSteps(read).nodes);	
+			scanForAnEnd(false);
 		}else{
 			for(Alignment alg:read.getAlignmentRecords()) {
 				current=new BDNodeVecState(alg, read.getVector(start,alg));
@@ -223,7 +226,7 @@ public class GoInBetweenBridge {
 		
 		for(BridgeSegment sg:changedSegments)
 			if(sg.removeUnlikelyPaths())
-				retval=0b01;//code representing number of paths reduced to 1
+				retval=0b01;//code representing number of paths of at least 1 segment reduced to 1
 		
 		if(toConnect && getCompletionLevel()<3)
 			steps.connectBridgeSteps(false);		
@@ -249,6 +252,7 @@ public class GoInBetweenBridge {
 		System.out.printf("Reversing the bridge %s(start=%s end=%s):\n%s\n", getEndingsID(), steps.start.toString(), steps.end.toString(), getAllNodeVector());
 
 		pBridge=pBridge.reverse();
+		int direction=pBridge.getDir0()?1:-1;
 		//reverse the segments
 		if(segments!=null){
 			ArrayList<BridgeSegment> tmp = segments;
@@ -260,7 +264,23 @@ public class GoInBetweenBridge {
 			}
 		}
 		//reverse the nodes list
-		steps.reverse();
+		TreeSet<BDNodeVecState> reversedSet = new TreeSet<BDNodeVecState>();
+		ScaffoldVector rev=ScaffoldVector.reverse(steps.end.getVector());//anchors number = 2 so there exist end node
+		BDNodeVecState tmp = null;
+		//re-assign start and end
+		tmp=steps.start;
+		steps.start=steps.end;
+		steps.end=tmp;
+		
+		//need to do this to re-sort the changed elements
+		for(BDNodeVecState nv:steps.nodes) {
+			nv.setVector(ScaffoldVector.composition(nv.getVector(), rev));
+			if(nv.getVector().isIdentity() || (nv.getVector().getMagnitute()-BDGraph.A_TOL)*direction>0)
+				reversedSet.add(nv);
+
+		}
+
+		steps.nodes=reversedSet;
 		
 		System.out.printf("Reversed bridge %s(start=%s end=%s):\n%s\n", getEndingsID(), steps.start.toString(), steps.end.toString(), getAllNodeVector());
 
@@ -426,21 +446,24 @@ public class GoInBetweenBridge {
 	
 	//Try to look for an ending unique node of a unidentifiable bridge
 	//by using isUniqueNow()
-	public boolean scanForAnEnd(boolean force){
+	public boolean scanForAnEnd(boolean greedy){
 		if(steps==null)
 			return false;
-		Iterator<BDNodeVecState> ite = steps.nodes.descendingIterator();
+		Iterator<BDNodeVecState> ite = steps.nodes.descendingIterator();//reversed order
 		while(ite.hasNext()){
 			BDNodeVecState tmp=ite.next();
-			if(!tmp.qc() && !force)
-				continue;
-			if(tmp==steps.start || tmp==steps.end) //there is no (new) end detected
+			if(tmp==getLastExtendedTip()) //there is no (new) end detected
 				return false;
 			
 			PopBin b=SimpleBinner.getBinIfUniqueNow(tmp.node);
 			if(b!=null && b.isCloseTo(bin)){
-				steps.end=tmp;
-				return true;
+				if(steps.end==null || greedy || steps.end.nvsScore < tmp.nvsScore){
+					if(steps.end!=tmp){
+						steps.end=tmp;
+						System.out.println("FOUND NEW END: " + steps.end.getNode().getId());
+						return true;
+					}
+				}
 			}
 				
 		}
@@ -547,8 +570,7 @@ public class GoInBetweenBridge {
 		
 			return retval;
 		}
-		//this function must go right after invoke locatedAndVote() for list of nv 
-		//only return value of locateAndVote is positive (it changed)
+		//return true iff there is only one candidate left <=> result found!
 		public boolean removeUnlikelyPaths(){
 			if(connectedPaths==null || connectedPaths.isEmpty())
 				return false;
@@ -636,7 +658,6 @@ public class GoInBetweenBridge {
 		 * To connect the bridge based on the steps identified inbetween
 		 */
 		//////////////////////////////////////////////////////////////////////////////////////
-		//TODO: integrate AlignedRead (with split()) to include nanopore data for edit-distance-guide traversal
 		
 		//need this because BDNodeVecState.compareTo() not fit for this purpose
 		private TreeSet<BDNodeVecState> subSet(BDNodeVecState left, BDNodeVecState right){
@@ -685,8 +706,13 @@ public class GoInBetweenBridge {
 			//FIXME: eliminate nodes with shortest distance greater than estimated one
 			if(!shortestMapFromRight.containsKey(key)){
 				memory.put(pairKey, null);
-				System.out.println(": unreachable!");
-				return null;
+				System.out.print(": unreachable");
+				if(!force){
+					System.out.println("-> stop");		
+					return null;
+				}
+				else
+					System.out.println("-> proceed");
 			}else
 				System.out.println(": reachable!");
 
@@ -757,7 +783,7 @@ public class GoInBetweenBridge {
 			System.out.println("\n"+getAllNodeVector());
 				
 			HashMap<String, ArrayList<BridgeSegment>> memory = new HashMap<>();
-			ArrayList<BridgeSegment> segs=greedyConnect(memory, startFrom, endAt, force);
+			ArrayList<BridgeSegment> segs=greedyConnect(memory, startFrom, endAt, force||numberOfFullReads>=BDGraph.GOOD_SUPPORT);
 			
 			if(segs==null||segs.isEmpty()){
 				segments=null;
@@ -819,25 +845,7 @@ public class GoInBetweenBridge {
 			
 			return start.qc() && end.qc();
 		}
-		void reverse() {
-			//reverse the nodes list
-			TreeSet<BDNodeVecState> reversedSet = new TreeSet<BDNodeVecState>();
-			ScaffoldVector rev=ScaffoldVector.reverse(end.getVector());//anchors number = 2 so there exist end node
-			BDNodeVecState tmp = null;
-			//need to do this to re-sort the changed elements
-			for(BDNodeVecState nv:nodes) {
-				nv.setVector(ScaffoldVector.composition(nv.getVector(), rev));
-				reversedSet.add(nv);
 
-			}
-
-			nodes=reversedSet;
-			//re-assign start and end
-			tmp=start;
-			start=end;
-			end=tmp;
-
-		}
 		public void setNodes(TreeSet<BDNodeVecState> nodes){
 			this.nodes=nodes;
 		}

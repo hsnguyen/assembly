@@ -4,9 +4,13 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.lang.ProcessBuilder.Redirect;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Scanner;
 import java.util.regex.Matcher;
@@ -54,6 +58,8 @@ public class HybridAssembler {
 	public void setReady(boolean isReady) {ready=isReady;}
 	public boolean getReady() {return ready;}
 	
+	public void setMetagenomics(boolean isMetagenomics) {BDGraph.isMetagenomics=isMetagenomics;}
+	
 	public final void setOverwrite(boolean owr) {overwrite.set(owr);}
 	public final boolean getOverwrite() {return overwrite.get();}
 	public BooleanProperty overwriteProperty() {return overwrite;}
@@ -83,7 +89,7 @@ public class HybridAssembler {
 	
 	public final String getFullPathOfAligner() {return getAlignerPath()+"/"+getAligner();}
 	
-	public final void setBinReadsInput(String brInput) {binReadsInput.set(brInput);}
+	public final void setBinReadsInput(String brInput) {binReadsInput.set(brInput); setMetagenomics(true);}
 	public final String getBinReadsInput() {return binReadsInput.get();}
 	public StringProperty binReadsInputProperty() {return binReadsInput;}
 	
@@ -132,7 +138,7 @@ public class HybridAssembler {
 		
 		overwrite = new SimpleBooleanProperty(true);
 		useSPAdesPath = new SimpleBooleanProperty(false);
-	    prefix = new SimpleStringProperty("/tmp/");
+	    prefix = new SimpleStringProperty(System.getProperty("java.io.tmpdir"));
 	    aligner = new SimpleStringProperty("");
 		alignerPath = new SimpleStringProperty(""); 
 		alignerOpt = new SimpleStringProperty("");
@@ -247,11 +253,32 @@ public class HybridAssembler {
 		if(!checkFolder(getPrefix()))
 			return false;
 		try{
-			System.setProperty("usr.dir", getPrefix());
+			System.setProperty("usr.dir", getPrefix());			
 		}
 		catch(NullPointerException | IllegalArgumentException | SecurityException exception ){
 			setErrorLog("Fail to set working directory usr.dir to " + getPrefix());
 			return false;
+		}
+		
+		//create temporary folder to store bridging reads
+		File tmpFolder=new File(getPrefix()+File.separator+"npGraph_tmp");
+		if(tmpFolder.exists()){
+		  try {
+			Files.walk(tmpFolder.toPath())
+			    .sorted(Comparator.reverseOrder())
+			    .map(Path::toFile)
+			    .forEach(File::delete);
+			} catch (IOException e) {
+				LOG.info("Cannot remove existed temporary folder {}!", tmpFolder.getPath());
+				e.printStackTrace();
+			}
+  		}
+		
+		if(!tmpFolder.mkdir()){
+			setErrorLog("Cannot set temporary folder " + tmpFolder.getAbsolutePath());
+			return false;
+		}else{
+			AlignedRead.tmpFolder=tmpFolder.getAbsolutePath();
 		}
 		
 		//if long reads data not given in SAM/BAM, need to invoke minimap2
@@ -260,15 +287,15 @@ public class HybridAssembler {
         	ArrayList<String> idxCmd = new ArrayList<>();
         	idxCmd.add(getFullPathOfAligner());
         	if(getAligner().equals("minimap2")) { 	
-				indexFile=new File(getPrefix()+"/assembly_graph.mmi");												
+				indexFile=new File(getPrefix()+File.separator+"assembly_graph.mmi");												
 				if(!checkMinimap2()) 
 						return false;
 				idxCmd.addAll(Arrays.asList(getAlignerOpts().split("\\s")));
 				idxCmd.add("-d");
-				idxCmd.add(getPrefix()+"/assembly_graph.mmi");
+				idxCmd.add(getPrefix()+File.separator+"assembly_graph.mmi");
 														
         	}else if(getAligner().equals("bwa")) {
-				indexFile=new File(getPrefix()+"/assembly_graph.fasta.bwt");
+				indexFile=new File(getPrefix()+File.separator+"assembly_graph.fasta.bwt");
 				if(!checkBWA()) 
 						return false;
 				idxCmd.add("index");
@@ -277,11 +304,11 @@ public class HybridAssembler {
         		setErrorLog("Invalid aligner! Set to BWA or minimap2 please!");
         		return false;
         	}
-			idxCmd.add(getPrefix()+"/assembly_graph.fasta");
+			idxCmd.add(getPrefix()+File.separator+"assembly_graph.fasta");
 
 			if(getOverwrite() || !indexFile.exists()) {						
 				try{
-					simGraph.outputFASTA(getPrefix()+"/assembly_graph.fasta");
+					simGraph.outputFASTA(getPrefix()+File.separator+"assembly_graph.fasta");
 					
 					ProcessBuilder pb = new ProcessBuilder(idxCmd);
 					Process indexProcess =  pb.start();
@@ -354,14 +381,14 @@ public class HybridAssembler {
 				command.add("-a");
 				command.addAll(Arrays.asList(getAlignerOpts().split("\\s")));
 				command.add("-K20000");
-				command.add(getPrefix()+"/assembly_graph.mmi");
+				command.add(getPrefix()+File.separator+"assembly_graph.mmi");
 				command.add(getLongReadsInput());
 			}
 			else if(getAligner().equals("bwa")) {
 				command.add("mem");
 				command.addAll(Arrays.asList(getAlignerOpts().split("\\s")));
 				command.add("-K20000");
-				command.add(getPrefix()+"/assembly_graph.fasta");
+				command.add(getPrefix()+File.separator+"assembly_graph.fasta");
 				command.add(getLongReadsInput());
 			}
 			
@@ -371,8 +398,7 @@ public class HybridAssembler {
 				pb = new ProcessBuilder(command);
 			}
 
-//			alignmentProcess  = pb.redirectError(ProcessBuilder.Redirect.to(new File("/dev/null"))).start();
-			alignmentProcess  = pb.redirectError(ProcessBuilder.Redirect.to(new File(getPrefix()+"/alignment.log"))).start();
+			alignmentProcess  = pb.redirectError(ProcessBuilder.Redirect.to(new File(getPrefix()+File.separator+"alignment.log"))).start();
 
 			LOG.info("{} started!", getAligner());			
 
@@ -384,64 +410,55 @@ public class HybridAssembler {
 		String readID = "";
 		Sequence nnpRead = null;
 		ArrayList<Alignment> samList =  new ArrayList<Alignment>();// alignment record of the same read;	
-		SAMRecord rec=null;
+		SAMRecord curRecord=null;
 		while (iter.hasNext()) {
 			if(getStopSignal())
 				break;
 			
 			try {
-				rec = iter.next();
+				curRecord = iter.next();
 			}catch(Exception e) {
 				LOG.warn("Ignore one faulty SAM record: \n {}", e.getMessage());
-				e.printStackTrace();
 				continue;
 			}
 			
-			if (rec.getReadUnmappedFlag() || rec.getMappingQuality() < Alignment.MIN_QUAL){		
-				if (!readID.equals(rec.getReadName())){
-					readID = rec.getReadName();
-					synchronized(this){
-						currentReadCount ++;
-						currentBaseCount += rec.getReadLength();
-					}
+			if (curRecord.getReadUnmappedFlag() || curRecord.getMappingQuality() < Alignment.MIN_QUAL){		
+				LOG.info("Ignore one unmapped or low-quality map record!");
+				if (!readID.equals(curRecord.getReadName())){
+					update(nnpRead, samList, curRecord);
+					samList = new ArrayList<Alignment>();
+					nnpRead = new Sequence(Alphabet.DNA5(), curRecord.getReadString(), curRecord.getReadName());
+					readID = curRecord.getReadName();
 				}
 				continue;		
 			}
 			
-			String refName = rec.getReferenceName();
+			String refName = curRecord.getReferenceName();
 			String refID = refName.split("_").length > 1 ? refName.split("_")[1]:refName;
 			
+			//check if this node still in. FIXME: do not remove nodes for metagenomics' graph?
 			if (simGraph.getNode(refID)==null) {
-				LOG.info("Node {} not found from the graph: ignored!", refID);
+				LOG.info("Ignore record with reference {} not found (removed) from the graph!", refID);
+				if (!readID.equals(curRecord.getReadName())){
+					update(nnpRead, samList, curRecord);
+					samList = new ArrayList<Alignment>();
+					nnpRead = new Sequence(Alphabet.DNA5(), curRecord.getReadString(), curRecord.getReadName());
+					readID = curRecord.getReadName();
+				}
 				continue;
 			}
-			Alignment myRec = new Alignment(rec, (BDNode) simGraph.getNode(refID)); 
+			Alignment curAlignment = new Alignment(curRecord, (BDNode) simGraph.getNode(refID)); 
 
 			//////////////////////////////////////////////////////////////////
 			
-			if (!readID.equals("") && !readID.equals(myRec.readID)) {	
-//				synchronized(simGraph) { uncomment if below replacement failed!
-				synchronized(this) {
-					currentReadCount ++;
-					currentBaseCount += rec.getReadLength();
-					
-					List<BDPath> paths=simGraph.uniqueBridgesFinding(nnpRead, samList);
-					if(paths!=null){	
-						for(BDPath path:paths) 
-						{
-							//path here is already unique! (2 unique ending nodes)
-					    	if(simGraph.reduceUniquePath(path)) {
-					    		observer.update(false);		
-					    		System.out.printf("Input stats: read count=%d base count=%d\n", currentReadCount, currentBaseCount);
-					    	}
-						}
-					}
-				}
+			if (!readID.equals("") && !readID.equals(curRecord.getReadName())) {	
+				update(nnpRead, samList, curRecord);
 				samList = new ArrayList<Alignment>();
-				nnpRead = new Sequence(Alphabet.DNA5(), rec.getReadString(), "R" + readID);
+				nnpRead = new Sequence(Alphabet.DNA5(), curRecord.getReadString(), curRecord.getReadName());
+				readID = curRecord.getReadName();
+
 			}	
-			readID = myRec.readID;
-			samList.add(myRec); 
+			samList.add(curAlignment); 
 		}// while
 		iter.close();
 		reader.close();
@@ -449,46 +466,87 @@ public class HybridAssembler {
 		terminateAlignmentProcess();	
 		
 	}
-			
+	//update when SAMRecord of another read coming in
+	synchronized void update(Sequence nnpRead, ArrayList<Alignment> alignments, SAMRecord curRecord){
+		currentReadCount ++;
+		currentBaseCount += curRecord.getReadLength();
+		if(alignments.isEmpty())
+			return;
+		List<BDPath> paths=simGraph.uniqueBridgesFinding(nnpRead, alignments);
+		if(paths!=null){	
+			for(BDPath path:paths) 
+			{
+				//path here is already unique! (2 unique ending nodes)
+		    	if(simGraph.reduceUniquePath(path)) {
+		    		observer.update(false);		
+		    		System.out.printf("Input stats: read count=%d base count=%d\n", currentReadCount, currentBaseCount);
+		    	}
+			}
+		}
+	} 		
+	
 	public void terminateAlignmentProcess() {
  		if (alignmentProcess != null){
  			alignmentProcess.destroy();
  		}		
  	}
 
-	
 	public void postProcessGraph() throws IOException{
-		//Take the current best path among the candidate of a bridge and connect the bridge(greedy)
-		for(GoInBetweenBridge brg:simGraph.getUnsolvedBridges()){
-			System.out.printf("Last attempt on incomplete bridge %s : anchors=%d \n %s \n", brg.getEndingsID(), brg.getNumberOfAnchors(), brg.getAllPossiblePaths());
-//			if(brg.getCompletionLevel()<=2) {//examine bridge with completion level = 2 that unable to connected
-//				brg.steps.connectBridgeSteps(true);
-//			}
-			
-			if(brg.getCompletionLevel()>=3) 
-				simGraph.chopPathAtAnchors(brg.getBestPath(brg.pBridge.getNode0(),brg.pBridge.getNode1())).stream().forEach(p->simGraph.reduceUniquePath(p));
-			else{
-				brg.scanForAnEnd(true);
-				//selective connecting
-				brg.steps.connectBridgeSteps(true);
-				//return appropriate path
-				if(brg.segments!=null)
-					simGraph.chopPathAtAnchors(brg.getBestPath(brg.steps.start.getNode(),brg.steps.end.getNode())).stream().forEach(p->simGraph.reduceUniquePath(p));
-				else
-					System.out.printf("Last attempt failed \n");
+		HashSet<GoInBetweenBridge> 		unsolved=simGraph.getUnsolvedBridges(),
+										solved=new HashSet<>();
+		while(true){
+			boolean changed=false;
+			for(GoInBetweenBridge brg:unsolved){
+				System.out.printf("Last attempt on incomplete bridge %s : anchors=%d \n %s \n", brg.getEndingsID(), brg.getNumberOfAnchors(), brg.getAllPossiblePaths());
+				//Take the current best path among the candidate of a bridge and connect the bridge(greedy)
+				if(brg.getCompletionLevel()>=3){ 
+					simGraph.chopPathAtAnchors(brg.getBestPath(brg.pBridge.getNode0(),brg.pBridge.getNode1())).stream().forEach(p->simGraph.reduceUniquePath(p));
+					solved.add(brg);
+					changed=true;
+				}else{
+					brg.scanForAnEnd(true);	
+					changed=brg.steps.connectBridgeSteps(true);
+					
+					//return appropriate path
+					if(brg.segments!=null){
+						simGraph.chopPathAtAnchors(brg.getBestPath(brg.steps.start.getNode(),brg.steps.end.getNode())).stream().forEach(p->simGraph.reduceUniquePath(p));
+					}
+					else
+						System.out.printf("Last attempt failed \n");
+				}
+	
 			}
-
-
+			if(solved.isEmpty()&&!changed)
+				break;
+			else{
+				unsolved.removeAll(solved);
+				solved.clear();
+			}
+				
 		}
-		
         //update for the last time
         observer.update(true);
 		System.out.printf("Input stats: read count=%d base count=%d\n", currentReadCount, currentBaseCount);
 		
-		observer.outputFASTA(getPrefix()+"/npgraph_assembly.fasta");
-		observer.outputJAPSA(getPrefix()+"/npgraph_assembly.japsa");
-		observer.outputGFA(getPrefix()+"/npgraph_assembly.gfa");
+		observer.outputFASTA(getPrefix()+File.separator+"npgraph_assembly.fasta");
+		observer.outputJAPSA(getPrefix()+File.separator+"npgraph_assembly.japsa");
+		observer.outputGFA(getPrefix()+File.separator+"npgraph_assembly.gfa");
 
+		
+		//delete temporary files
+//		File tmpFolder=new File(getPrefix()+File.separator+"npGraph_tmp");
+//		if(tmpFolder.exists()){
+//		  try {
+//			Files.walk(tmpFolder.toPath())
+//			    .sorted(Comparator.reverseOrder())
+//			    .map(Path::toFile)
+//			    .forEach(File::delete);
+//			} catch (IOException e) {
+//				LOG.info("Cannot remove existed temporary folder {}!", tmpFolder.getPath());
+//				e.printStackTrace();
+//			}
+//  		}
+		
 	}
 	
 
@@ -587,6 +645,7 @@ public class HybridAssembler {
 		return true;
 			
     }
+    
 
 	public static void main(String[] argv) throws IOException, InterruptedException{
 		HybridAssembler hbAss = new HybridAssembler();

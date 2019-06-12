@@ -35,6 +35,9 @@
 package org.rtassembly.npgraph;
 
 import java.util.ArrayList;
+
+import org.rtassembly.npscarf.AlignmentRecord;
+
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.SAMRecord;
@@ -68,7 +71,6 @@ public class Alignment implements Comparable<Alignment> {
 	public boolean prime = true;//primary alignment
 	public boolean goodMargin = false;
 	public boolean useful = false;
-	//SAMRecord mySam;
 	
 	ArrayList<CigarElement> alignmentCigars = new ArrayList<CigarElement>();
 	
@@ -202,17 +204,133 @@ public class Alignment implements Comparable<Alignment> {
 				+ ", qual=: " + quality;
 	}
 	
-//	//scan a group of homo-alignments and return marker if available
-//	public static ArrayList<Alignment> scanGroup(ArrayList<Alignment> list){
-//		ArrayList<Alignment> retval=new ArrayList<Alignment>();
-//		for (Alignment alg:list) {
-//			if(alg.quality>=MIN_QUAL) {
-//				retval.add(alg);
-//			}
-//		}
-//
-//		return (retval.size() > 0)?retval:list;
-//	}
+	/**
+	 * Re-implement what already in htsjdk (2.10.1) SAMRecord because we exclude SAMRecord from Alignment
+	 * Return the position on the reference that corresponds to a given position
+	 * on read.
+	 *  
+	 * @param posInRead
+	 * @param record
+	 * @return
+	 */
+	public int getReferencePositionAtReadPosition(int readLookingPositon){
+		if (readLookingPositon < readAlignmentStart() || readLookingPositon > readAlignmentEnd())
+			return 1;
+
+		if (!strand)
+			readLookingPositon = readLength - readLookingPositon + 1; // use direction of ref (forward)
+
+
+		int posOnRead = strand?readStart:(readLength + 1 - readStart);
+		int posOnRef = refStart;
+
+		if(alignmentCigars.isEmpty()){ //perfect alignment made by overlapped EDGES (when using assembly graph)
+			return posOnRef + readLookingPositon - posOnRead;
+			
+		}else{	
+			for (final CigarElement e : alignmentCigars) {
+				final int  length = e.getLength();
+				switch (e.getOperator()) {
+				case H :
+				case S :					
+				case P :
+					break; // ignore pads and clips
+				case I :				
+					//insert
+					if (posOnRead + length < readLookingPositon){
+						posOnRead += length;				
+					}else{
+						return posOnRef;
+					}
+					break;
+				case M ://match or mismatch				
+				case EQ://match
+				case X ://mismatch
+					if (posOnRead + length < readLookingPositon){
+						posOnRead += length;
+						posOnRef += length;
+					}else{
+						return posOnRef + readLookingPositon - posOnRead;
+					}
+					break;
+				case D :
+					posOnRef += length;
+					break;
+				case N :	
+					posOnRef += length;
+					break;								
+				default : throw new IllegalStateException("Case statement didn't deal with cigar op: " + e.getOperator());
+				}//casse
+			}//for		
+		}
+		return 1;
+	}
+	/**
+	 * Return the position on the read that corresponds to a given position
+	 * on reference with extrapolate if neccessary.
+	 *  
+	 * @param posInRef
+	 * @param record
+	 * @return
+	 */
+	public int getReadPositionAtReferencePosition(int posOnRef){
+		// read htsjdk.samtools.* API
+		int location=0;
+		
+		if ((posOnRef - refStart)*(posOnRef - refEnd) >= 0){
+			if (Math.abs(posOnRef-refStart) > Math.abs(posOnRef-refEnd))
+				location = strand?readEnd+posOnRef-refEnd:readEnd-posOnRef+refEnd;			
+			else
+				location = strand?readStart+posOnRef-refStart:readStart-posOnRef+refStart;
+		}
+		else{
+			// current coordinate on read, followed the reference contig's direction
+			int posOnRead = strand?readStart:readLength-readStart+1;
+			 // current position on ref 
+			int pos = refStart;
+			
+			for (final CigarElement e : alignmentCigars) {
+				final int  length = e.getLength();
+				switch (e.getOperator()) {
+				case H :
+				case S :					
+				case P :
+					break; // ignore pads and clips
+				case I :			
+					posOnRead += length;
+					break;	
+				case M ://match or mismatch				
+				case EQ://match
+				case X ://mismatch
+					if (pos + length < posOnRef){
+						pos += length;
+						posOnRead += length;
+					}else{
+						location = posOnRef + posOnRead - pos;
+					}
+					break;
+				case D :
+				case N :	
+					//delete
+					if (pos + length < posOnRef){
+						pos += length;				
+					}else{
+						location = posOnRead;
+					}
+					break;	
+				default : throw new IllegalStateException("Case statement didn't deal with cigar op: " + e.getOperator());
+				}//casse
+			}//for		
+			//convert back to coordinate based on read direction
+			location = strand?location:readLength-location+1; //1-index
+		}
+
+		location=location>1?location:1;
+		location=location<readLength?location:readLength;
+		
+		return location;
+	}
+	
 	/* (non-Javadoc)
 	 * @see java.lang.Comparable#compareTo(java.lang.Object)
 	 */

@@ -1,5 +1,6 @@
 package org.rtassembly.npgraph;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -27,18 +28,19 @@ import japsa.seq.SequenceOutputStream;
 
 
 public class BDGraph extends MultiGraph{
-	static boolean circular=true; // circular or linear preference for the output genome
-    static int KMER=127;
+	static boolean 	circular=true, // circular or linear preference for the output genome
+					isMetagenomics=false;
+	static int KMER=127;
     static double RCOV=0.0;
-	SimpleBinner binner;
+    SimpleBinner binner;
 
 	//not gonna change these parameters in other thread
-    public static final double R_TOL=.2;// relative tolerate: can be interpreted as long read error rate (10-25%)
+    public static final double R_TOL=.25;// relative tolerate: can be interpreted as long read error rate (10-25%)
     public static final int A_TOL=300;// absolute tolerate: can be interpreted as long read absolute error bases (100bp)
 
     //these should be changed in another thread, e.g. settings from GUI
 	public static volatile double ILLUMINA_READ_LENGTH=300; //Illumina MiSeq
-    
+    public static final int GOOD_SUPPORT=20; //number of minimum spanning reads for an affirmative bridge. TODO: reduce this to test
 	public static final double ALPHA=.5; //coverage less than alpha*bin_cov will be considered noise
     public static final int D_LIMIT=5000; //distance bigger than this will be ignored
     public static int S_LIMIT=300;// maximum number of graph traversing steps
@@ -139,6 +141,14 @@ public class BDGraph extends MultiGraph{
 		return tmp;
 	}
 	
+	@Override
+	public Node removeNode(Node node){
+//		System.out.println("Remove node " + node.getAttribute("name"));
+		Node retval=super.removeNode(node);
+		//clear bridge map
+//		removeNodeFromBridgesMap(node);
+		return retval;
+	}
 	
 	public String printEdgesOfNode(BDNode node){
 		Stream<Edge> 	ins = getNode(node.getId()).enteringEdges(),
@@ -182,9 +192,9 @@ public class BDGraph extends MultiGraph{
 
     
     // when this unique node actually contained by a bridge
-    synchronized public void updateBridgesMap(Node unqNode, GoInBetweenBridge bidirectedBridge){
-    	bridgesMap.put(unqNode.getId()+"o", bidirectedBridge);
-    	bridgesMap.put(unqNode.getId()+"i", bidirectedBridge);
+    synchronized public void removeNodeFromBridgesMap(Node unqNode){
+    	bridgesMap.remove(unqNode.getId()+"o");
+    	bridgesMap.remove(unqNode.getId()+"i");
     }
     // when there is new unique bridge 
     synchronized protected void updateBridgesMap(GoInBetweenBridge bidirectedBridge) {
@@ -199,29 +209,15 @@ public class BDGraph extends MultiGraph{
 					end1=bidirectedBridge.pBridge.n1.toString();
 			GoInBetweenBridge 	brg0=bridgesMap.get(end0),		
 								brg1=bridgesMap.get(end1);
-			GoInBetweenBridge ultimateBridge=bidirectedBridge;
-			if(brg0!=null&&brg0!=bidirectedBridge) {
-				if(brg0.getCompletionLevel()>bidirectedBridge.getCompletionLevel()) {
-					brg0.merge(bidirectedBridge,true);
-					ultimateBridge=brg0;
-				}else {
-					bidirectedBridge.merge(brg0,true);
-					ultimateBridge=bidirectedBridge;
-				}
-			}
+			if(brg0!=null&&brg0!=bidirectedBridge) 
+				bidirectedBridge.merge(brg0,true);			
 			
-			if(brg1!=null&&brg1!=bidirectedBridge) {
-				if(brg1.getCompletionLevel()>bidirectedBridge.getCompletionLevel()) {
-					brg1.merge(bidirectedBridge,true);
-					ultimateBridge=brg1;
-				}else {
-					bidirectedBridge.merge(brg1,true);
-					ultimateBridge=bidirectedBridge;
-				}
-			}
+			if(brg1!=null&&brg1!=bidirectedBridge) 
+				bidirectedBridge.merge(brg1,true);
+
 			
-			bridgesMap.put(end0, ultimateBridge);
-    		bridgesMap.put(end1, ultimateBridge);
+			bridgesMap.put(end0, bidirectedBridge);
+    		bridgesMap.put(end1, bidirectedBridge);
 
 		}
 
@@ -247,7 +243,7 @@ public class BDGraph extends MultiGraph{
 	    	if(SimpleBinner.getBinIfUnique(endNode)!=null){
 	    		tmp=bridgesMap.get(endNode.getId()+(endNodeDir?"o":"i"));
 	    		if(tmp!=null){
-	    			if(retval==null||retval.getNumberOfAnchors()<tmp.getNumberOfAnchors())
+	    			if(retval==null||retval.getCompletionLevel()<tmp.getCompletionLevel())
 	    				retval=tmp;
 	    			
 	    		}
@@ -304,8 +300,7 @@ public class BDGraph extends MultiGraph{
     	binner.estimatePathsByCoverage();
     	initGraphComponents();
     }
-    //Scanning for shorter overlaps (<k) in a DBG graph 
-    //Recommend for circular genomes
+    //Scanning for shorter overlaps (<k) in a DBG graph. Not making difference??! 
     synchronized public void fixDeadEnds(){
     	List<BDNodeState> weirdNodes = new ArrayList<>();
     	for(Node node:this){
@@ -353,9 +348,9 @@ public class BDGraph extends MultiGraph{
         			seq1=Alphabet.DNA.complement(seq0);
         		
         		int overlap=GraphUtil.overlap(seq0,seq1);
-        		if(overlap > 21){
+        		if(overlap > 55){
         			BDEdge e=addEdge(n0.getNode(), n1.getNode(), n0.getDir(), n1.getDir());
-        			System.out.printf("adding omitted edge %s length=%d\n", e.getId(), overlap);
+        			System.out.printf("adding potential edge %s length=%d\n", e.getId(), overlap);
         		}
     		}
     	}
@@ -370,9 +365,7 @@ public class BDGraph extends MultiGraph{
 		while(!badNodes.isEmpty()) {
 			Node node = badNodes.remove(0);
 			List<Node> neighbors = node.neighborNodes().collect(Collectors.toList());	
-
 			removeNode(node);
-			System.out.println("Removing node " + node.getAttribute("name"));
 			neighbors.stream()
 				.filter(n->(binner.checkRemovableNode(n)))
 				.forEach(n->{if(!badNodes.contains(n)) badNodes.add(n);});
@@ -449,7 +442,6 @@ public class BDGraph extends MultiGraph{
 							to = (BDNode) curEdge.getOpposite(from);
 					
 					//Important: an anchor is not allowed in the result path
-					//TODO: consider avoid nodes with too low likelihood???
 					if(SimpleBinner.getBinIfUnique(to)!=null && to!=dstNode)
 						continue;
 					
@@ -524,15 +516,51 @@ public class BDGraph extends MultiGraph{
 		System.out.println("select from list of " + possiblePaths.size() + " DFS paths:");
 		
 		if(possiblePaths.isEmpty()){
-			if(SimpleBinner.getBinIfUnique(srcNode)!=null && SimpleBinner.getBinIfUnique(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 && force){
-				//save the corresponding content of long reads to this edge
-				//TODO: save nanopore reads into this pseudo edge to run consensus later
-				BDEdge pseudoEdge = addEdge(srcNode, dstNode, srcDir, dstDir);
-				pseudoEdge.setAttribute("dist", distance);
-				path.add(pseudoEdge);
-				possiblePaths.add(path);
-				System.out.println("pseudo path from " + srcNode.getId() + " to " + dstNode.getId() + " distance=" + distance);
-				
+			if(SimpleBinner.getBinIfUnique(srcNode)!=null && SimpleBinner.getBinIfUnique(dstNode)!=null && srcNode.getDegree() <= 1 && dstNode.getDegree() <=1 && force){					
+				String id = BDEdge.createID(srcNode, dstNode, srcDir, dstDir);				
+				try{
+					//Option 1: hide long-read consensus from the graph
+					BDNode n=new BDNode(this, "000"+AlignedRead.PSEUDO_ID++);
+					Sequence seq=GraphUtil.consensusSequence(AlignedRead.tmpFolder+File.separator+id+".fasta", distance, id, "kalign");
+					if(seq==null)
+						return null;
+					n.setAttribute("seq", seq);
+					n.setAttribute("len", seq.length());
+					n.setAttribute("cov",SimpleBinner.getBinIfUnique(srcNode).estCov);
+					boolean disagreement=srcNode.getId().compareTo(dstNode.getId()) > 0 
+							|| (srcNode==dstNode && srcDir==false && dstDir==true);
+					BDEdge 	e0=new BDEdge(srcNode, n, srcDir, disagreement),
+							e1=new BDEdge(n,dstNode,!disagreement,dstDir);	
+					BDPath p = new BDPath(srcNode);					
+					p.add(e0);
+					p.add(e1);
+					BDEdge pseudoEdge=addEdge(srcNode, dstNode, srcDir, dstDir);
+					pseudoEdge.setAttribute("path", p);
+					path.add(pseudoEdge);
+
+//					//Option 2: or using this to create&display a "pseudo node"
+//					BDNode n=(BDNode) addNode("000"+AlignedRead.PSEUDO_ID++);
+//					Sequence seq=GraphUtil.consensusSequence(AlignedRead.tmpFolder+File.separator+id+".fasta", distance, id, "poa");
+//					if(seq==null)
+//						return null;
+//					n.setAttribute("seq", seq);
+//					n.setAttribute("len", seq.length());
+//					n.setAttribute("cov",SimpleBinner.getBinIfUnique(srcNode).estCov);
+//					n.setGUI("red", "diamond");
+//					n.setAttribute("unique", SimpleBinner.getBinIfUnique(srcNode));
+//					boolean disagreement=srcNode.getId().compareTo(dstNode.getId()) > 0 
+//							|| (srcNode==dstNode && srcDir==false && dstDir==true);
+//					Edge 	e0=addEdge(srcNode, n, srcDir, disagreement),
+//							e1=addEdge(n,dstNode,!disagreement,dstDir);	
+//
+//					path.add(e0);
+//					path.add(e1);
+					
+					possiblePaths.add(path);
+				}catch(Exception e){
+					System.err.println("Failed to make consensus sequence for " + id +"!");
+					System.err.println("Reason: "+ e.getMessage());
+				}	
 				return possiblePaths;
     		}else
     			return null;
@@ -549,7 +577,6 @@ public class BDGraph extends MultiGraph{
 			System.out.printf("Hit added: %s deviation=%d; depth=%d; likelihood score=%.2f\n", p.getId(), p.getDeviation(), p.size(), p.getPathEstats());
 		}
 		
-		//TODO: reduce the number of returned paths here (calculate edit distance with nanopore read: dynamic programming?)
 		return retval;
 	}    
 	
@@ -713,7 +740,7 @@ public class BDGraph extends MultiGraph{
     
     private List<BDPath> buildBridge(AlignedRead read, PopBin bin){
     	List<BDPath> retval=new ArrayList<BDPath>();
-		GoInBetweenBridge 	storedBridge=getBridgeFromMap(read);
+		GoInBetweenBridge 	storedBridge=getBridgeFromMap(read), reversedBridge;
 		System.out.printf("+++%s <=> %s\n", read.getEndingsID(), storedBridge==null?"null":storedBridge.getEndingsID());
 		
 		if(storedBridge!=null) {
@@ -731,45 +758,48 @@ public class BDGraph extends MultiGraph{
 				boolean extend=false;
 				if(storedBridge.getCompletionLevel()==1){
 					if(storedBridge.scanForAnEnd(false)){
-						System.out.println("FOUND NEW TRANSFORMED END: " + storedBridge.steps.end.getNode().getId());
 						extend=storedBridge.steps.connectBridgeSteps(false);
 					}					
 				}
 				if(storedBridge.getCompletionLevel()==4 || (state&0b01)>0 || extend)
 					retval.addAll(storedBridge.scanForNewUniquePaths());
-				
-//    			if(storedBridge.getCompletionLevel()==4){
-//    				System.out.printf("=> final path: %s\n ", storedBridge.getAllPossiblePaths());
-//    				retval.addAll(chopPathAtAnchors(storedBridge.getBestPath(storedBridge.steps.start.getNode(), storedBridge.steps.end.getNode())));
-//    			}
 					
-//				//also update the reversed bridge: important e.g. Acinetobacter_AB30. WHY??? (already updated and merged 2 homo bridges)
+//				//also update the reversed bridge: important e.g. Shigella_dysenteriae_Sd197. WHY??? (already updated and merged 2 homo bridges)
 				if(read.getEFlag()==3) {
 					read.reverse();
-					GoInBetweenBridge anotherBridge = getBridgeFromMap(read);
-					if(anotherBridge!=storedBridge) {
-						byte anotherState=anotherBridge.merge(read, true);
+					reversedBridge = getBridgeFromMap(read);
+					if(reversedBridge!=storedBridge) {
+						byte anotherState=reversedBridge.merge(read, true);
 						if((anotherState&0b10)>0)//number of anchors has changed after merging
-							updateBridgesMap(anotherBridge);											
+							updateBridgesMap(reversedBridge);											
 						
-						if(anotherBridge.getCompletionLevel()==4 || (anotherState&0b01)>0)
-							retval.addAll(anotherBridge.scanForNewUniquePaths());
-//						if(anotherBridge.getCompletionLevel()==4){
-//							System.out.printf("=> final path: %s\n ", anotherBridge.getAllPossiblePaths());
-//							retval.addAll(chopPathAtAnchors(anotherBridge.getBestPath(anotherBridge.steps.start.getNode(), anotherBridge.steps.end.getNode())));
-//						}
+						if(reversedBridge.getCompletionLevel()==4 || (anotherState&0b01)>0)
+							retval.addAll(reversedBridge.scanForNewUniquePaths());
+
+					}
+					
+					//finally save the inbetween sequence for later consensus call
+					if(read.saveCorrectedSequenceInBetween()){
+						storedBridge.numberOfFullReads++;
+						reversedBridge.numberOfFullReads++;
 					}
 				}
+
 			}			
 			
 
 		}else{
 			storedBridge=new GoInBetweenBridge(this,read, bin);
 			updateBridgesMap(storedBridge);		
-// 			if(storedBridge.getCompletionLevel()==4){
-// 				System.out.printf("=> final path: %s\n ", storedBridge.getAllPossiblePaths());
-// 				retval.addAll(storedBridge.getBestPath(storedBridge.steps.start.getNode(), storedBridge.steps.end.getNode()).chopPathAtAnchors());
-// 			}
+			
+			read.reverse();
+			reversedBridge = new GoInBetweenBridge(this,read, bin);
+			updateBridgesMap(reversedBridge);
+			
+			if(read.saveCorrectedSequenceInBetween()){
+				storedBridge.numberOfFullReads++;
+				reversedBridge.numberOfFullReads++;
+			}
 		}
 		
 		return retval;
@@ -928,28 +958,13 @@ public class BDGraph extends MultiGraph{
     	}
     	
     	for (Node node : this) {		
-    		/*
-    		 * Re-assign colors based on coverage/length
-    		 */
-    		Sequence seq = (Sequence) node.getAttribute("seq");
-    		double lengthScale = 1+(Math.log10(seq.length())-2)/3.5; //100->330,000
-          
-			if(lengthScale<1) lengthScale=1;
-			else if(lengthScale>2) lengthScale=2;
-	          
 			String color="rgb(255,255,255)";
 			PopBin bin=SimpleBinner.getBinIfUnique(node);
 			if(bin!=null){
 				color=bin2color.get(bin.getId());
 			}
 			
-			
-//			node.setAttribute("ui.label", node.getId());
-			node.setAttribute("ui.style", "	size: " + lengthScale + "gu;" +
-        		  						"	fill-color: "+color+";" +
-        		  			            " 	stroke-mode: plain;" +
-        		  			            "	stroke-color: black;" +
-        		  			            "	stroke-width: 2px;");
+			((BDNode)node).setGUI(color, "circle");
     	}
 
     }
