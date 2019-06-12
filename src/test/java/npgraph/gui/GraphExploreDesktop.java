@@ -58,14 +58,14 @@ public class GraphExploreDesktop {
 ////    	String sample="E_coli_K-12_MG1655/";
 ////    	String sample="E_coli_O25b_H4-ST131/";
 ////    	String sample="Klebsiella_30660_NJST258_1/";
-////    	String sample="Klebsiella_MGH_78578/"; //SimpleBinner.ANCHOR_CTG_LEN=500
+//    	String sample="Klebsiella_MGH_78578/"; //SimpleBinner.ANCHOR_CTG_LEN=500
 ////    	String sample="Klebsiella_NTUH-K2044/";
 ////    	String sample="Mycobacterium_tuberculosis_H37Rv/";
 ////    	String sample="random_sequences_many_repeats/";
 ////    	String sample="random_sequences_no_repeats/";
 ////    	String sample="random_sequences_some_repeats/";
 ////    	String sample="Saccharomyces_cerevisiae_S288c/";
-//    	String sample="Shigella_dysenteriae_Sd197/"; //SimpleBinner.ANCHOR_CTG_LEN=2000
+////    	String sample="Shigella_dysenteriae_Sd197/"; //SimpleBinner.ANCHOR_CTG_LEN=2000
 ////    	String sample="Shigella_sonnei_53G/";
 ////    	String sample="Streptococcus_suis_BM407/";
 //    	
@@ -112,8 +112,8 @@ public class GraphExploreDesktop {
     	BDGraph graph= hbAss.simGraph;
     	
     	graph.setAttribute("ui.style", GraphUtil.styleSheet);
-    	graph.setAttribute("layout.stabilization-limit", .7);
-    	graph.setAttribute("layout.weight", 0);
+    	graph.setAttribute("layout.force", .5);
+    	graph.setAttribute("layout.weight", .1);
         Viewer viewer=graph.display();
 //        HybridAssembler.promptEnterKey();
         System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());

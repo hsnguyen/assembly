@@ -39,7 +39,7 @@ public class GraphUtil {
     //TODO: read from ABySS assembly graph (graph of final contigs, not like SPAdes)
 	public static volatile double DISTANCE_THRES=3.0; //i like number 3
     
-    public static void loadFromFASTG(String graphFileName, String binFileName, BDGraph graph, boolean spadesBridging, boolean metagenomics) throws IOException{
+    public static void loadFromFASTG(String graphFileName, String binFileName, BDGraph graph, boolean spadesBridging) throws IOException{
         graph.setAutoCreate(true);
         graph.setStrict(false);
 		/*
@@ -181,7 +181,7 @@ public class GraphUtil {
 		
 		graph.fixDeadEnds();
 		graph.binning(binFileName);
-		if(!metagenomics)
+		if(!BDGraph.isMetagenomics)
 			graph.cleanInsignificantNodes();
 		/*
 		 * 3. Now scan for the contigs.path file in SPAdes folder for the paths if specified
@@ -224,7 +224,7 @@ public class GraphUtil {
     
     
     
-    public static void loadFromGFA(String graphFile, String binFileName, BDGraph graph, boolean spadesBridging, boolean metagenomics) throws IOException{
+    public static void loadFromGFA(String graphFile, String binFileName, BDGraph graph, boolean spadesBridging) throws IOException{
         graph.setAutoCreate(true);
         graph.setStrict(false);
 		/*
@@ -364,7 +364,7 @@ public class GraphUtil {
 
 		graph.fixDeadEnds();
 		graph.binning(binFileName);
-		if(!metagenomics)
+		if(!BDGraph.isMetagenomics)
 			graph.cleanInsignificantNodes();
 		
 		/*

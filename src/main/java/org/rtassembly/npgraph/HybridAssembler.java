@@ -36,7 +36,7 @@ import javafx.beans.property.SimpleBooleanProperty;
 public class HybridAssembler {
     private static final Logger LOG = LoggerFactory.getLogger(HybridAssembler.class);
 	//setting parameter for the GUI
-    private boolean ready=false, metagenomics=false;
+    private boolean ready=false;
     private BooleanProperty overwrite, useSPAdesPath;
     private StringProperty 	prefix,
     						aligner,
@@ -58,8 +58,7 @@ public class HybridAssembler {
 	public void setReady(boolean isReady) {ready=isReady;}
 	public boolean getReady() {return ready;}
 	
-	public void setMetagenomics(boolean isMetagenomics) {metagenomics=isMetagenomics;}
-	public boolean getMetagenomics() {return metagenomics;}
+	public void setMetagenomics(boolean isMetagenomics) {BDGraph.isMetagenomics=isMetagenomics;}
 	
 	public final void setOverwrite(boolean owr) {overwrite.set(owr);}
 	public final boolean getOverwrite() {return overwrite.get();}
@@ -90,7 +89,7 @@ public class HybridAssembler {
 	
 	public final String getFullPathOfAligner() {return getAlignerPath()+"/"+getAligner();}
 	
-	public final void setBinReadsInput(String brInput) {binReadsInput.set(brInput);}
+	public final void setBinReadsInput(String brInput) {binReadsInput.set(brInput); setMetagenomics(true);}
 	public final String getBinReadsInput() {return binReadsInput.get();}
 	public StringProperty binReadsInputProperty() {return binReadsInput;}
 	
@@ -338,9 +337,9 @@ public class HybridAssembler {
 		//try to read input file
 		try {
 			if(getShortReadsInputFormat().toLowerCase().equals("gfa")) 
-				GraphUtil.loadFromGFA(getShortReadsInput(), getBinReadsInput(), simGraph, getUseSPAdesPath(), getMetagenomics());
+				GraphUtil.loadFromGFA(getShortReadsInput(), getBinReadsInput(), simGraph, getUseSPAdesPath());
 			else if(getShortReadsInputFormat().toLowerCase().equals("fastg"))
-				GraphUtil.loadFromFASTG(getShortReadsInput(), getBinReadsInput(), simGraph, getUseSPAdesPath(), getMetagenomics());
+				GraphUtil.loadFromFASTG(getShortReadsInput(), getBinReadsInput(), simGraph, getUseSPAdesPath());
 			else 				
 				throw new IOException("Assembly graph file must have .gfa or .fastg extension!");
 			

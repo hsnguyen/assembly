@@ -17,7 +17,6 @@ import com.google.common.util.concurrent.AtomicDouble;
 
 import japsa.seq.JapsaAnnotation;
 import japsa.seq.Sequence;
-import japsa.seq.SequenceOutputStream;
 
 public class GraphWatcher {
 	BDGraph inputGraph, outputGraph;
@@ -35,18 +34,26 @@ public class GraphWatcher {
 
 	synchronized private void removeBadComponents() {
 		List<Node> 	removeNodes=new ArrayList<Node>();
-		
+		double threshold=inputGraph.binner.leastBin.estCov; //lower-bound for coverage?!
 		for (Iterator<ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
 			ConnectedComponent comp = compIter.next();		
 			AtomicDouble lengthWeightedCov = new AtomicDouble(0.0);
 			AtomicInteger length = new AtomicInteger(0);
-			comp.nodes().forEach(n->{
+			boolean protect=false;
+			for(Node n:comp.getNodeSet()){
+				if(SimpleBinner.getBinIfUnique(n)!=null){
+					protect=true;
+					break;
+				}
+				
 				int len = (int) (n.getNumber("len")-BDGraph.getKmerSize());
 				length.getAndAdd(len);
 				lengthWeightedCov.getAndAdd(n.getNumber("cov")*len);
-			});
-			double aveCov=lengthWeightedCov.get()/length.get();
-			if(GraphUtil.approxCompare(aveCov, inputGraph.binner.leastBin.estCov) < 0 || length.get() < SimpleBinner.ANCHOR_CTG_LEN)
+			}
+			if(protect)
+				continue;
+			double 	aveCov=lengthWeightedCov.get()/length.get();
+			if(GraphUtil.approxCompare(aveCov, threshold) < 0 || length.get() < SimpleBinner.ANCHOR_CTG_LEN)
 				comp.nodes().forEach(n->removeNodes.add(n));
 				
 		}
@@ -217,7 +224,9 @@ public class GraphWatcher {
 					}
 						
 				}else{
-					outputGraph.addEdge((BDNode)nn0, (BDNode)nn1 , d0, d1);
+					String id=BDEdge.createID((BDNode)nn0, (BDNode)nn1 , d0, d1);
+					if(outputGraph.getEdge(id)==null)
+						outputGraph.addEdge((BDNode)nn0, (BDNode)nn1 , d0, d1);
 				}
 
 			}

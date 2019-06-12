@@ -225,9 +225,9 @@ public class AlignedRead{
 		
 		for (Alignment record:alignments){
 			BDNode contig = record.node;
-			System.out.println("Current alignment record: " + record.toString());
-			System.out.println("posReadEnd=" + posReadEnd + " posReadFinal=" + posReadFinal);
-			System.out.println("Read " + readSequence.getName() + " length=" + readSequence.length());
+//			System.out.println("Current alignment record: " + record.toString());
+//			System.out.println("posReadEnd=" + posReadEnd + " posReadFinal=" + posReadFinal);
+//			System.out.println("Read " + readSequence.getName() + " length=" + readSequence.length());
 			if (posReadEnd >= posReadFinal)
 				break; 
 

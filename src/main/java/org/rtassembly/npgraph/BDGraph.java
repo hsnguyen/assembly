@@ -28,10 +28,11 @@ import japsa.seq.SequenceOutputStream;
 
 
 public class BDGraph extends MultiGraph{
-	static boolean circular=true; // circular or linear preference for the output genome
-    static int KMER=127;
+	static boolean 	circular=true, // circular or linear preference for the output genome
+					isMetagenomics=false;
+	static int KMER=127;
     static double RCOV=0.0;
-	SimpleBinner binner;
+    SimpleBinner binner;
 
 	//not gonna change these parameters in other thread
     public static final double R_TOL=.25;// relative tolerate: can be interpreted as long read error rate (10-25%)
@@ -140,6 +141,14 @@ public class BDGraph extends MultiGraph{
 		return tmp;
 	}
 	
+	@Override
+	public Node removeNode(Node node){
+//		System.out.println("Remove node " + node.getAttribute("name"));
+		Node retval=super.removeNode(node);
+		//clear bridge map
+//		removeNodeFromBridgesMap(node);
+		return retval;
+	}
 	
 	public String printEdgesOfNode(BDNode node){
 		Stream<Edge> 	ins = getNode(node.getId()).enteringEdges(),
@@ -183,9 +192,9 @@ public class BDGraph extends MultiGraph{
 
     
     // when this unique node actually contained by a bridge
-    synchronized public void updateBridgesMap(Node unqNode, GoInBetweenBridge bidirectedBridge){
-    	bridgesMap.put(unqNode.getId()+"o", bidirectedBridge);
-    	bridgesMap.put(unqNode.getId()+"i", bidirectedBridge);
+    synchronized public void removeNodeFromBridgesMap(Node unqNode){
+    	bridgesMap.remove(unqNode.getId()+"o");
+    	bridgesMap.remove(unqNode.getId()+"i");
     }
     // when there is new unique bridge 
     synchronized protected void updateBridgesMap(GoInBetweenBridge bidirectedBridge) {
@@ -356,9 +365,7 @@ public class BDGraph extends MultiGraph{
 		while(!badNodes.isEmpty()) {
 			Node node = badNodes.remove(0);
 			List<Node> neighbors = node.neighborNodes().collect(Collectors.toList());	
-
 			removeNode(node);
-			System.out.println("Removing node " + node.getAttribute("name"));
 			neighbors.stream()
 				.filter(n->(binner.checkRemovableNode(n)))
 				.forEach(n->{if(!badNodes.contains(n)) badNodes.add(n);});
@@ -551,8 +558,8 @@ public class BDGraph extends MultiGraph{
 					
 					possiblePaths.add(path);
 				}catch(Exception e){
-					System.err.println("Failed to make consensus sequence for " + id);
-					e.printStackTrace();
+					System.err.println("Failed to make consensus sequence for " + id +"!");
+					System.err.println("Reason: "+ e.getMessage());
 				}	
 				return possiblePaths;
     		}else
