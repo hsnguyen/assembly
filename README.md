@@ -163,7 +163,7 @@ Also, the stats of the assembly process is reported in the GUI dashboard and/or 
 Note that the ultimate output graph (when you hit Stop button from the dashboard or when the EOF of the long read data is reached) is undergone a post-processing step to greedily connect *insignificant* bridges. 
 
 ### Note
-* GUI consumes quite a lot memory, considering increase JVM heap size (java -Xmx) if it's slow to response. If the number of vertices in the assembly graph greater than 10000, you shouldn't show the graph in real-time if running on the normal desktop.
+* GUI consumes quite a lot memory, considering increase JVM heap size (java -Xmx) if it's slow to response. If the number of vertices in the assembly graph greater than 10000, you shouldn't show the graph in real-time if running on a normal desktop.
 * If aligner is used along side, there is more resource occupied. Considering separate alignment and npGraph+GUI on different machines communicating through network socket e.g. by Japsa utility [jsa.util.streamServer](https://japsa.readthedocs.io/en/latest/tools/jsa.util.streamServer.html) and [jsa.util.streamClient](https://japsa.readthedocs.io/en/latest/tools/jsa.util.streamClient.html)
 * Most suitable for bacterial data (assembly graph not too complicated). Consider using *npScarf* for bigger data set.
 * To keep the lightweight property that suitable for real-time analysis, a quick alignment-based voting & scoring system is implemented for the path finding over the candidate nodes instead of the expensive consensus phasing. *minimap2* is also recommended over *bwa* due to its speed, however sometimes *bwa* returns more sensitive alignments than the former.
