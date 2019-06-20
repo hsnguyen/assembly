@@ -13,11 +13,13 @@ import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.Stack;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graphstream.graph.*;
 import org.graphstream.graph.implementations.*;
+import org.rtassembly.npscarf.AlignmentRecord;
 
 import com.google.common.util.concurrent.AtomicDouble;
 
@@ -52,6 +54,11 @@ public class BDGraph extends MultiGraph{
     //provide mapping from unique directed node to its corresponding bridge
     //E.g: 103-: <103-82-> also 82+:<82+103+>
     private HashMap<String, GoInBetweenBridge> bridgesMap; 
+    
+    //mapping long but unknown contigs to unique successors and predecessor 
+    //with number of supported reads
+    private HashMap<String, Set<BDNodeState>> unknownBinMap;
+    
     // *** Constructors ***
 	/**
 	 * Creates an empty graph.
@@ -224,7 +231,6 @@ public class BDGraph extends MultiGraph{
     	
     }
     
-    
     //Return bridge in the map (if any) that share the same bases (unique end) 
     synchronized public GoInBetweenBridge getBridgeFromMap(AlignedRead algRead){
     	GoInBetweenBridge retval = null, tmp = null;
@@ -254,6 +260,89 @@ public class BDGraph extends MultiGraph{
     	return retval;
     }
 
+    /*****************************************************************
+     * Utility functions for real-time binning based on long reads
+     * for unknown long contigs from initial binning step (SimpleBinner or metabat)
+     *****************************************************************/
+    public void addUnknownNodes(BDNode node){
+    	unknownBinMap.put(node.getId()+"o", new TreeSet<BDNodeState>());
+    	unknownBinMap.put(node.getId()+"i", new TreeSet<BDNodeState>());
+    }
+    
+    //add successors&predecessors of unknown nodes based on AlignedRead
+    //read must have either start or end as unique and no more
+    public void addReadsToUnknowMap(AlignedRead read){
+    	if(read.getEFlag() < 1)
+    		return;
+    	Alignment 	a0=read.getFirstAlignment(),
+    				a1=read.getLastAlignment();
+    	BDNodeState ns0=null,ns1=null;
+    	if(SimpleBinner.getBinIfUnique(a0.node)!=null)
+    		ns0=new BDNodeState(a0.node, a0.strand,1);
+    	if(SimpleBinner.getBinIfUnique(a1.node)!=null)
+    		ns1=new BDNodeState(a1.node, !a1.strand,1);
+    	
+    	for(Alignment alg:read.getAlignmentRecords()){
+    		if(SimpleBinner.getBinIfUnique(alg.node)!=null)
+    			continue;
+    		String key;
+    		if(ns0!=null){
+    			key=alg.node.getId()+(alg.strand?"i":"o");
+    			Set<BDNodeState> values=unknownBinMap.get(key);
+    			if(values!=null){
+    				Iterator<BDNodeState> iterator=values.iterator();
+    				boolean found=false;
+    				while(iterator.hasNext()){
+    					BDNodeState ns=iterator.next();
+    					if(ns.equals(ns0)){
+    						ns.weight++;
+    						found=true;
+    						break;
+    					}
+    				}
+    				if(!found)
+    					values.add(ns0);
+    			}
+    		}
+    		
+    		if(ns1!=null){
+      			key=alg.node.getId()+(alg.strand?"o":"i");
+    			Set<BDNodeState> values=unknownBinMap.get(key);
+    			if(values!=null){
+    				Iterator<BDNodeState> iterator=values.iterator();
+    				boolean found=false;
+    				while(iterator.hasNext()){
+    					BDNodeState ns=iterator.next();
+    					if(ns.equals(ns1)){
+    						ns.weight++;
+    						found=true;
+    						break;
+    					}
+    				}
+    				if(!found)
+    					values.add(ns1);
+    			}
+    		}
+    		
+    	}
+    	
+    }
+    
+    //get multiplicity after a while (20X???)...
+    //NOPE: can only know if unique or repetitive based on the previous&next unique nodes
+    public boolean getUniquenessFromLongReads(BDNode node){
+    	boolean retval = false;
+    	String 	ko=node.getId()+"o",
+    			ki=node.getId()+"i";
+    	Set<BDNodeState> 	successors=unknownBinMap.get(ko),
+							predecessors=unknownBinMap.get(ki);
+    	if(successors==null && predecessors==null)
+    		return true;
+    	//now validate successors and predecessors based on number of support reads
+    	  
+    	
+    	return retval;
+    }
     
     //If the node was wrongly identified as unique before, do things...
 //    synchronized public void destroyFalseBridges(Node node){
@@ -294,7 +383,7 @@ public class BDGraph extends MultiGraph{
 //    	}
 //    		
 //    }
-
+    
     synchronized public void binning(String binFileName) {   		
     	binner=new SimpleBinner(this, binFileName);
     	binner.estimatePathsByCoverage();
@@ -819,8 +908,7 @@ public class BDGraph extends MultiGraph{
     		System.out.println("Reducing path: " + path.getId());
 
     	Set<Edge> 	potentialRemovedEdges = binner.walkAlongUniquePath(path);
-		HashMap<PopBin, Integer> oneBin = new HashMap<>();
-		oneBin.put(path.getConsensusUniqueBinOfPath(), 1);
+		Multiplicity oneBin = new Multiplicity(path.getConsensusUniqueBinOfPath(), 1);
     	
     	if(potentialRemovedEdges!=null && potentialRemovedEdges.size()>1){
 	    	//remove appropriate edges
