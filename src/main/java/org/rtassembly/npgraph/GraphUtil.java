@@ -706,7 +706,7 @@ public class GraphUtil {
 			count++;
 		
 		faiReader.close();
-		if(count<BDGraph.SAFE_COUNTS)
+		if(count<BDGraph.MIN_SUPPORT)
 			return consensus;
 		
 		

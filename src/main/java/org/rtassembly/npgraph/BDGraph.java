@@ -48,7 +48,7 @@ public class BDGraph extends MultiGraph{
     public static int S_LIMIT=300;// maximum number of graph traversing steps
     public static int MAX_PATHS=100; //maximum number of candidate DFS paths
     
-	public static volatile int SAFE_COUNTS=3; //safe counts: use for confident estimation
+	public static volatile int MIN_SUPPORT=3; //minimal support reads for bridging
 
 	
     //provide mapping from unique directed node to its corresponding bridge
@@ -57,7 +57,7 @@ public class BDGraph extends MultiGraph{
     
     //mapping long but unknown contigs to unique successors and predecessor 
     //with number of supported reads
-    private HashMap<String, Set<BDNodeState>> unknownBinMap;
+    private static HashMap<String, Set<BDNodeState>> unknownBinMap=new HashMap<>();
     
     // *** Constructors ***
 	/**
@@ -330,17 +330,50 @@ public class BDGraph extends MultiGraph{
     
     //get multiplicity after a while (20X???)...
     //NOPE: can only know if unique or repetitive based on the previous&next unique nodes
-    public boolean getUniquenessFromLongReads(BDNode node){
-    	boolean retval = false;
+    synchronized public static PopBin getUniqueBinFromLongReads(BDNode node){
     	String 	ko=node.getId()+"o",
     			ki=node.getId()+"i";
     	Set<BDNodeState> 	successors=unknownBinMap.get(ko),
 							predecessors=unknownBinMap.get(ki);
+    	int c=0, co=0, ci=0;
+
     	if(successors==null && predecessors==null)
-    		return true;
-    	//now validate successors and predecessors based on number of support reads
-    	  
+    		return null;
     	
+    	//FIXME: checking stats from GraphWatcher instead???
+    	if(successors!=null)
+    		c+=successors.stream().mapToInt(ns->ns.getWeight()).sum();
+    	if(predecessors!=null)
+    		c+=predecessors.stream().mapToInt(ns->ns.getWeight()).sum();
+    	
+    	if(c<GOOD_SUPPORT)//just need a number
+    		return null;
+    	
+    	//now validate successors and predecessors based on number of support reads
+    	PopBin retval=null;
+
+    	for(BDNodeState ns:successors){
+    		if(ns.getWeight()<BDGraph.MIN_SUPPORT)
+    			continue;
+    		co++;
+    		if(co>1)
+    			return null;
+    		retval=SimpleBinner.getBinIfUnique(ns.getNode());//check??
+    	} 
+    	for(BDNodeState ns:predecessors){
+    		if(ns.getWeight()<BDGraph.MIN_SUPPORT)
+    			continue;
+    		ci++;
+    		if(ci>1)
+    			return null;
+    		if(retval!=null&&!PopBin.isCloseTo(retval, SimpleBinner.getBinIfUnique(ns.getNode())))
+				return null;
+    	} 
+    	
+    	//reove this from unknowmap
+    	unknownBinMap.remove("ko");
+    	unknownBinMap.remove("ki");
+    	System.out.println("FOUND NEW UNIQUE CONTIG BY LONG READS: " + node.getId() + " DEGREE= " + node.getDegree());
     	return retval;
     }
     
@@ -797,7 +830,7 @@ public class BDGraph extends MultiGraph{
  	    	
   			
     		if(curBin!=null){
-    			if(curBin.isCloseTo(prevUnqBin))
+    			if(PopBin.isCloseTo(curBin, prevUnqBin))
     				flag+=2;
     			else if(prevUnqBin!=null)
     				continue;
@@ -831,7 +864,8 @@ public class BDGraph extends MultiGraph{
     	List<BDPath> retval=new ArrayList<BDPath>();
 		GoInBetweenBridge 	storedBridge=getBridgeFromMap(read), reversedBridge;
 		System.out.printf("+++%s <=> %s\n", read.getEndingsID(), storedBridge==null?"null":storedBridge.getEndingsID());
-		
+		//long read give info about unique successor and predecessor
+		addReadsToUnknowMap(read);
 		if(storedBridge!=null) {
 			if(storedBridge.getCompletionLevel()==4){//important since it will ignore the wrong transformed unique nodes here!!!
 				System.out.println(storedBridge.getEndingsID() + ": already solved and reduced: ignore!");

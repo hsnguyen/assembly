@@ -82,7 +82,7 @@ public class SimpleBinner {
 		if(unknownLeavingEdges.size()==1){
 			Edge e = unknownLeavingEdges.get(0);
 			induceEdgeBin=nbins.substract(leavingEdgeBinCount);
-			if(induceEdgeBin.getSum() > 0){
+			if(induceEdgeBin!=null && induceEdgeBin.getSum() > 0){
 				edge2BinMap.put(e, induceEdgeBin);
 				System.out.printf("From node %s%s firing edge %s%s\n",node.getId(),getBinsOfNode(node), e.getId(), getBinsOfEdge(e));
 				exploringFromEdge(e);
@@ -102,7 +102,7 @@ public class SimpleBinner {
 		if(unknownEnteringEdges.size()==1){
 			Edge e = unknownEnteringEdges.get(0);
 			induceEdgeBin=nbins.substract(enteringEdgeBinCount);
-			if(induceEdgeBin.getSum() > 0){
+			if(induceEdgeBin!=null && induceEdgeBin.getSum() > 0){
 				edge2BinMap.put(e, induceEdgeBin);
 				System.out.printf("From node %s%s firing edge %s%s\n",node.getId(),getBinsOfNode(node), e.getId(), getBinsOfEdge(e));
 				exploringFromEdge(e);
@@ -380,18 +380,19 @@ public class SimpleBinner {
 		//3.3 Assign unique nodes here: need more tricks
 		for(Node node:graph) {
 			if(	node2BinMap.containsKey(node) && node.getNumber("len") > ANCHOR_CTG_LEN ){ 
+				Multiplicity bc = node2BinMap.get(node);
 				if(Math.max(node.getInDegree(), node.getOutDegree()) <= 1){ //not true if e.g. sequencing errors inside unique contig
-					Multiplicity bc = node2BinMap.get(node);
 					Set<PopBin> counts = bc.getBinsSet();
 	//				if(counts.size()==1 && bc.get(counts.get(0))==1){ //and should check for any conflict???
 					int totOcc = bc.getSum();
 					if(totOcc==1) //and should check for any conflict???
 						node.setAttribute("unique", counts.toArray()[0]);
 				} else{ // REMOVE NODES WITH MULTIPLICITY > 3 SINCE THEY'RE NOT SO CONFIDENT 
-					if(node2BinMap.get(node).getSum() > 3)
+					if(bc.getSum() > 3)
 						node2BinMap.remove(node);
 				}
-			}
+			}else if(node.getNumber("len") > TRANSFORMED_ANCHOR_CTG_LEN) //significant unbinned nodes
+				graph.addUnknownNodes((BDNode) node);
 		}
 		
 		
@@ -413,14 +414,17 @@ public class SimpleBinner {
 	//also take into account nodes that transformed to unique after reduced
 	static public PopBin getBinIfUniqueNow(Node node){
 		PopBin retval=getBinIfUnique(node);
-		if(retval==null && node.getNumber("len") > TRANSFORMED_ANCHOR_CTG_LEN && node2BinMap.containsKey(node)){
-			Multiplicity bc = node2BinMap.get(node);
-			if(bc.getSum() == 1){
-				retval=Iterables.getOnlyElement(bc.getBinsSet());
-			}
+		if(retval==null && node.getNumber("len") > TRANSFORMED_ANCHOR_CTG_LEN){
+			if(node2BinMap.containsKey(node)){
+				Multiplicity bc = node2BinMap.get(node);
+				if(bc.getSum() == 1){
+					retval=Iterables.getOnlyElement(bc.getBinsSet());
+				}
+			}else
+				retval=BDGraph.getUniqueBinFromLongReads((BDNode) node);
 		}
 		return retval;
-		
+		  
 	}
 	
 	public boolean checkRemovableNode(Node node) {
@@ -465,12 +469,12 @@ public class SimpleBinner {
 			node2BinMap.remove(path.getRoot());
 			node2BinMap.remove(path.peekNode());
 			return null;
-		}else if(!uniqueBin.isCloseTo(startBin)){
+		}else if(!PopBin.isCloseTo(uniqueBin,startBin)){
 			System.err.printf("Ignored: consensus bin %s doesn't agree with one of the endings bin %s at node %s\n", uniqueBin, startBin, path.getRoot());
 			node2BinMap.remove(path.getRoot());
 			//clean from bin map here...
 			return null;
-		}else if(!uniqueBin.isCloseTo(endBin)){
+		}else if(!PopBin.isCloseTo(uniqueBin,endBin)){
 			System.err.printf("Ignored: consensus bin %s doesn't agree with one of the endings bin %s at node %s\n", uniqueBin, endBin, path.peekNode());
 			node2BinMap.remove(path.peekNode());
 			//clean from bin map here...

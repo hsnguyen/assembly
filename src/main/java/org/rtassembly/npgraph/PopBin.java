@@ -54,11 +54,11 @@ public class PopBin{
 	/*
 	 * A-stats here?
 	 */
-	public boolean isCloseTo(PopBin b) {
-		if(b==null)
+	public static boolean isCloseTo(PopBin a, PopBin b) {
+		if(a==null||b==null)
 			return false;
 		else
-			return GraphUtil.approxCompare(this.estCov, b.estCov)==0;
+			return GraphUtil.approxCompare(a.estCov, b.estCov)==0;
 	} 
 
 }

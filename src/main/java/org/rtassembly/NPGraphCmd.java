@@ -59,7 +59,7 @@ public class NPGraphCmd extends CommandLine{
 				gui = cmdLine.getBooleanVal("gui");
 			
 		Alignment.MIN_QUAL = cmdLine.getIntVal("qual");
-		BDGraph.SAFE_COUNTS=cmdLine.getIntVal("mcov");
+		BDGraph.MIN_SUPPORT=cmdLine.getIntVal("mcov");
 		BDGraph.S_LIMIT=cmdLine.getIntVal("slim");
 		//Default output dir 
 		if(outputDir == null) {
