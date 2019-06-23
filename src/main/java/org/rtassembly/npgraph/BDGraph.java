@@ -42,7 +42,7 @@ public class BDGraph extends MultiGraph{
 
     //these should be changed in another thread, e.g. settings from GUI
 	public static volatile double ILLUMINA_READ_LENGTH=300; //Illumina MiSeq
-    public static final int GOOD_SUPPORT=20; //number of minimum spanning reads for an affirmative bridge. TODO: reduce this to test
+    public static final int GOOD_SUPPORT=10; //number of minimum spanning reads for an affirmative bridge. TODO: reduce this to test
 	public static final double ALPHA=.5; //coverage less than alpha*bin_cov will be considered noise
     public static final int D_LIMIT=5000; //distance bigger than this will be ignored
     public static int S_LIMIT=300;// maximum number of graph traversing steps
@@ -373,7 +373,7 @@ public class BDGraph extends MultiGraph{
     	//reove this from unknowmap
     	unknownBinMap.remove("ko");
     	unknownBinMap.remove("ki");
-    	System.out.println("FOUND NEW UNIQUE CONTIG BY LONG READS: " + node.getId() + " DEGREE= " + node.getDegree());
+    	System.out.println("FOUND NEW UNIQUE CONTIG BY LONG READS: ID=" + node.getId() + " degree= " + node.getDegree() + " out=" + co + " in=" + ci + " read count="+c);
     	return retval;
     }
     
@@ -494,23 +494,13 @@ public class BDGraph extends MultiGraph{
 		}
 	}
 	
-    synchronized ArrayList<BDPath> pathsFinding(Alignment from, Alignment to, boolean force){
-    	assert from.readID==to.readID && to.compareTo(from)>=0:"Illegal alignment pair to find path!"; 	
-    	int distance=to.readAlignmentStart()-from.readAlignmentEnd();
-    	BDNode srcNode = from.node,
-						dstNode = to.node;
-    	boolean srcDir = from.strand, dstDir = !to.strand;
-    	return DFSAllPaths(srcNode, dstNode, srcDir, dstDir, distance, force);
-    }
     
     //Depth First Search strategy
-	synchronized ArrayList<BDPath> DFSAllPaths(BDNode srcNode, BDNode dstNode, boolean srcDir, boolean dstDir, int distance, boolean force)
+	synchronized ArrayList<BDPath> DFSAllPaths(BDNode srcNode, BDNode dstNode, boolean srcDir, boolean dstDir, int distance)
 	{
-    	if(distance>BDGraph.D_LIMIT && !force)
-    		return null;
     	System.out.printf("Looking for DFS path between %s%s to %s%s with distance=%d\n",srcNode.getId(), srcDir?"o":"i", dstNode.getId(), dstDir?"o":"i" ,distance);
-		ArrayList<BDPath> possiblePaths = new ArrayList<BDPath>(), 
-									retval=new ArrayList<BDPath>();
+		ArrayList<BDPath> 	possiblePaths = new ArrayList<BDPath>(), 
+							retval=new ArrayList<BDPath>();
 		//1. First build shortest tree from dstNode 		
 		HashMap<String,Integer> shortestMap = getShortestTreeFromNode(dstNode, dstDir, distance);
 		// The good thing is that we need only 1 temporary path variable
@@ -637,57 +627,59 @@ public class BDGraph extends MultiGraph{
 		} 
 		System.out.println("select from list of " + possiblePaths.size() + " DFS paths:");
 		
-		if(possiblePaths.isEmpty()){
-			if(SimpleBinner.getBinIfUnique(srcNode)!=null && SimpleBinner.getBinIfUnique(dstNode)!=null && srcNode.getDegree() <= 1 && dstNode.getDegree() <=1 && force){					
-				String id = BDEdge.createID(srcNode, dstNode, srcDir, dstDir);				
-				try{
-					//Option 1: hide long-read consensus from the graph
-					BDNode n=new BDNode(this, "000"+AlignedRead.PSEUDO_ID++);
-					Sequence seq=GraphUtil.consensusSequence(AlignedRead.tmpFolder+File.separator+id+".fasta", distance, id, "kalign");
-					if(seq==null)
-						return null;
-					n.setAttribute("seq", seq);
-					n.setAttribute("len", seq.length());
-					n.setAttribute("cov",SimpleBinner.getBinIfUnique(srcNode).estCov);
-					boolean disagreement=srcNode.getId().compareTo(dstNode.getId()) > 0 
-							|| (srcNode==dstNode && srcDir==false && dstDir==true);
-					BDEdge 	e0=new BDEdge(srcNode, n, srcDir, disagreement),
-							e1=new BDEdge(n,dstNode,!disagreement,dstDir);	
-					BDPath p = new BDPath(srcNode);					
-					p.add(e0);
-					p.add(e1);
-					BDEdge pseudoEdge=addEdge(srcNode, dstNode, srcDir, dstDir);
-					pseudoEdge.setAttribute("path", p);
-					path.add(pseudoEdge);
-
-//					//Option 2: or using this to create&display a "pseudo node"
-//					BDNode n=(BDNode) addNode("000"+AlignedRead.PSEUDO_ID++);
-//					Sequence seq=GraphUtil.consensusSequence(AlignedRead.tmpFolder+File.separator+id+".fasta", distance, id, "poa");
+//		if(possiblePaths.isEmpty()){
+//			if(SimpleBinner.getBinIfUniqueNow(srcNode)!=null && SimpleBinner.getBinIfUniqueNow(dstNode)!=null && srcNode.getDegree() <= 1 && dstNode.getDegree() <=1 && force){					
+//				String id = BDEdge.createID(srcNode, dstNode, srcDir, dstDir);				
+//				try{
+//					//Option 1: hide long-read consensus from the graph
+//					BDNode n=new BDNode(this, "000"+AlignedRead.PSEUDO_ID++);
+//					Sequence seq=GraphUtil.consensusSequence(AlignedRead.tmpFolder+File.separator+id+".fasta", distance, id, "kalign");
 //					if(seq==null)
 //						return null;
 //					n.setAttribute("seq", seq);
 //					n.setAttribute("len", seq.length());
-//					n.setAttribute("cov",SimpleBinner.getBinIfUnique(srcNode).estCov);
-//					n.setGUI("red", "diamond");
-//					n.setAttribute("unique", SimpleBinner.getBinIfUnique(srcNode));
+//					n.setAttribute("cov",SimpleBinner.getBinIfUniqueNow(srcNode).estCov);
 //					boolean disagreement=srcNode.getId().compareTo(dstNode.getId()) > 0 
 //							|| (srcNode==dstNode && srcDir==false && dstDir==true);
-//					Edge 	e0=addEdge(srcNode, n, srcDir, disagreement),
-//							e1=addEdge(n,dstNode,!disagreement,dstDir);	
+//					BDEdge 	e0=new BDEdge(srcNode, n, srcDir, disagreement),
+//							e1=new BDEdge(n,dstNode,!disagreement,dstDir);	
+//					BDPath p = new BDPath(srcNode);					
+//					p.add(e0);
+//					p.add(e1);
+//					BDEdge pseudoEdge=addEdge(srcNode, dstNode, srcDir, dstDir);
+//					pseudoEdge.setAttribute("path", p);
+//					path.add(pseudoEdge);
 //
-//					path.add(e0);
-//					path.add(e1);
-					
-					possiblePaths.add(path);
-				}catch(Exception e){
-					System.err.println("Failed to make consensus sequence for " + id +"!");
-					System.err.println("Reason: "+ e.getMessage());
-				}	
-				return possiblePaths;
-    		}else
-    			return null;
-
-		}
+////					//Option 2: or using this to create&display a "pseudo node"
+////					BDNode n=(BDNode) addNode("000"+AlignedRead.PSEUDO_ID++);
+////					Sequence seq=GraphUtil.consensusSequence(AlignedRead.tmpFolder+File.separator+id+".fasta", distance, id, "poa");
+////					if(seq==null)
+////						return null;
+////					n.setAttribute("seq", seq);
+////					n.setAttribute("len", seq.length());
+////					n.setAttribute("cov",SimpleBinner.getBinIfUnique(srcNode).estCov);
+////					n.setGUI("red", "diamond");
+////					n.setAttribute("unique", SimpleBinner.getBinIfUnique(srcNode));
+////					boolean disagreement=srcNode.getId().compareTo(dstNode.getId()) > 0 
+////							|| (srcNode==dstNode && srcDir==false && dstDir==true);
+////					Edge 	e0=addEdge(srcNode, n, srcDir, disagreement),
+////							e1=addEdge(n,dstNode,!disagreement,dstDir);	
+////
+////					path.add(e0);
+////					path.add(e1);
+//					
+//					possiblePaths.add(path);
+//				}catch(Exception e){
+//					System.err.println("Failed to make consensus sequence for " + id +"!");
+//					System.err.println("Reason: "+ e.getMessage());
+//				}	
+//				return possiblePaths;
+//    		}else
+//    			return null;
+//
+//		}
+		if(possiblePaths.isEmpty())
+			return null;
 		
 		double closestDist=Math.abs(possiblePaths.get(0).getDeviation());
 		int keepMax = MAX_PATHS;//only keep this many possible paths 
@@ -902,10 +894,8 @@ public class BDGraph extends MultiGraph{
 					}
 					
 					//finally save the inbetween sequence for later consensus call
-					if(read.saveCorrectedSequenceInBetween()){
-						storedBridge.numberOfFullReads++;
-						reversedBridge.numberOfFullReads++;
-					}
+					storedBridge.saveReadToDisk(read);
+					reversedBridge.saveReadToDisk(read);
 				}
 
 			}			
@@ -919,10 +909,9 @@ public class BDGraph extends MultiGraph{
 			reversedBridge = new GoInBetweenBridge(this,read, bin);
 			updateBridgesMap(reversedBridge);
 			
-			if(read.saveCorrectedSequenceInBetween()){
-				storedBridge.numberOfFullReads++;
-				reversedBridge.numberOfFullReads++;
-			}
+			storedBridge.saveReadToDisk(read);
+			reversedBridge.saveReadToDisk(read);
+			
 		}
 		
 		return retval;

@@ -183,16 +183,17 @@ public class AlignedRead{
 	
 	//Save the long read sequence between 2 unique nodes' alignments: start and end 
 	//with the aligned parts are replaced by corresponding reference parts (of Illumina data)
-	public boolean saveCorrectedSequenceInBetween(){
+	//return length of non-Illumina bases from the success written sequence
+	public int saveCorrectedSequenceInBetween(){
 		Alignment 	start = getFirstAlignment(), 
 					end = getLastAlignment();
 		BDNode 	fromContig = start.node,
 				toContig = end.node;
 		
 		if(getEFlag()<3)
-			return false;
+			return -1;
 	
-		
+		int gap=0;
 		SequenceBuilder seqBuilder = new SequenceBuilder(Alphabet.DNA5(), 1024*1024,  readSequence.getName());
 		if(		fromContig.getId().compareTo(toContig.getId()) > 0 
 			|| (fromContig==toContig && start.strand==false && end.strand==false)) //to agree with BDEdge.createID()
@@ -240,6 +241,7 @@ public class AlignedRead{
 				int newPosReadEnd = Math.min(posReadFinal, record.readAlignmentStart());
 				if (newPosReadEnd > posReadEnd){
 					seqBuilder.append(readSequence.subSequence(posReadEnd-1, newPosReadEnd-1)); //subsequence is 0-index
+					gap+=newPosReadEnd-posReadEnd;
 					posReadEnd = newPosReadEnd;
 					
 				}
@@ -343,10 +345,10 @@ public class AlignedRead{
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			return false;
+			return -1;
 		}
 		
-		return true;
+		return gap;
 	}
 	
 }

@@ -697,7 +697,6 @@ public class GraphUtil {
     
 	//Adapt from japsa without need to output fasta input file
 	public static Sequence consensusSequence(String faiFile, int distance, String prefix, String msa) throws IOException, InterruptedException{
-		Sequence consensus = null;
 		String faoFile = AlignedRead.tmpFolder+File.separator+prefix+"_"+msa+".fasta";
 		//1.0 Check faiFile?
 		FastaReader faiReader =  new FastaReader(faiFile);
@@ -706,10 +705,10 @@ public class GraphUtil {
 			count++;
 		
 		faiReader.close();
-		if(count<BDGraph.MIN_SUPPORT)
-			return consensus;
+		if(count<BDGraph.GOOD_SUPPORT*.5) //at least half of the good read count is required
+			return null;
 		
-		
+		Sequence consensus = null;
 		//2.0 Run multiple alignment
 		{
 			String cmd  = "";

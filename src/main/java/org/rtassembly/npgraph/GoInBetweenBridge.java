@@ -1,5 +1,6 @@
 package org.rtassembly.npgraph;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -11,6 +12,8 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import org.graphstream.graph.Node;
+
+import japsa.seq.Sequence;
 
 //A bridge structure that the first node must be unique
 public class GoInBetweenBridge {
@@ -471,6 +474,19 @@ public class GoInBetweenBridge {
 		
 	}
 	
+	//no check: use with care
+	public void saveReadToDisk(AlignedRead read){
+		int g=read.saveCorrectedSequenceInBetween();
+		if(g>=0)
+			numberOfFullReads++;
+		
+	}
+	
+	//check if it's enough to run MSA for long reads consensus
+	//need estimation of gap (BridgStep) versus number of spanning reads
+	public boolean checkMSACoverage(){
+		return false;
+	}
 
 	/************************************************************************************************
 	 ************************************************************************************************
@@ -479,27 +495,78 @@ public class GoInBetweenBridge {
 	 ************************************************************************************************/
 	class BridgeSegment{
 //		ArrayList<Sequence> nnpReads; // to store nanopore data if needed
-		ArrayList<BDPath> connectedPaths;
+		ArrayList<BDPath> connectedPaths=null;
 		BDEdgePrototype pSegment;
 		BDNodeVecState startNV, endNV;
 		BridgeSegment(){}
-
-		BridgeSegment(Alignment start, Alignment end, AlignedRead read, boolean force){
-			pSegment=new BDEdgePrototype(start.node, end.node, start.strand, !end.strand);
-			//invoke findPath()?
-			startNV=new BDNodeVecState(start, read.getVector(read.getFirstAlignment(), start));
-			endNV=new BDNodeVecState(end, read.getVector(read.getFirstAlignment(), end));
-			connectedPaths = graph.pathsFinding(start, end, force);
-						
-		}
 		
-		BridgeSegment(BDNodeVecState nv1, BDNodeVecState nv2, boolean dir1, boolean dir2, boolean force){
+		BridgeSegment(BDNodeVecState nv1, BDNodeVecState nv2, boolean dir1, boolean dir2, boolean greedy){
 			assert Math.abs(nv1.getVector().getMagnitute()) < Math.abs(nv2.getVector().magnitude): "Illegal order of node position!";
-			pSegment = new BDEdgePrototype(nv1.getNode(),nv2.getNode(),dir1,dir2);
+			BDNode srcNode=nv1.getNode(), dstNode=nv2.getNode();
+			pSegment = new BDEdgePrototype(srcNode,dstNode,dir1,dir2);
 			startNV = nv1; endNV = nv2;
-			int d = ScaffoldVector.composition(nv2.getVector(), ScaffoldVector.reverse(nv1.getVector())).distance(nv1.getNode(), nv2.getNode());
-			connectedPaths = graph.DFSAllPaths((BDNode)nv1.getNode(), (BDNode)nv2.getNode(), dir1, dir2, d, force);
-		
+			int d = ScaffoldVector.composition(nv2.getVector(), ScaffoldVector.reverse(nv1.getVector())).distance(srcNode, dstNode);
+			if(d<=BDGraph.D_LIMIT || greedy)
+	    		connectedPaths = graph.DFSAllPaths(srcNode, dstNode, dir1, dir2, d);
+
+			//call consensus when time come!
+			if(	(connectedPaths==null || connectedPaths.isEmpty())){
+				System.out.println("numberOfFullReads="+numberOfFullReads);
+				
+				//TODO: more anchors connecting!!! Here just connect unique dead-end unique nodes
+				if(	(numberOfFullReads >= BDGraph.GOOD_SUPPORT || greedy)
+					&& SimpleBinner.getBinIfUnique(srcNode)!=null && SimpleBinner.getBinIfUnique(dstNode)!=null 
+					&& srcNode.getDegree() <= 1 && dstNode.getDegree() <=1){					
+					connectedPaths=new ArrayList<>();
+					BDPath path = new BDPath(srcNode);
+					String id = BDEdge.createID(srcNode, dstNode, dir1, dir2);				
+					try{
+						//Option 1: hide long-read consensus from the graph
+						BDNode n=new BDNode(graph, "000"+AlignedRead.PSEUDO_ID++);
+						Sequence seq=GraphUtil.consensusSequence(AlignedRead.tmpFolder+File.separator+id+".fasta", d, id, "kalign");
+						if(seq==null)
+							return;
+						n.setAttribute("seq", seq);
+						n.setAttribute("len", seq.length());
+						n.setAttribute("cov",SimpleBinner.getBinIfUnique(srcNode).estCov);
+						boolean disagreement=srcNode.getId().compareTo(dstNode.getId()) > 0 
+								|| (srcNode==dstNode && dir1==false && dir2==true);
+						BDEdge 	e0=new BDEdge(srcNode, n, dir1, disagreement),
+								e1=new BDEdge(n,dstNode,!disagreement,dir2);	
+						BDPath p = new BDPath(srcNode);					
+						p.add(e0);
+						p.add(e1);
+						BDEdge pseudoEdge=graph.addEdge(srcNode, dstNode, dir1, dir2);
+						pseudoEdge.setAttribute("path", p);
+						path.add(pseudoEdge);
+
+//							//Option 2: or using this to create&display a "pseudo node"
+//							BDNode n=(BDNode) graph.addNode("000"+AlignedRead.PSEUDO_ID++);
+//							Sequence seq=GraphUtil.consensusSequence(AlignedRead.tmpFolder+File.separator+id+".fasta", distance, id, "poa");
+//							if(seq==null)
+//								return null;
+//							n.setAttribute("seq", seq);
+//							n.setAttribute("len", seq.length());
+//							n.setAttribute("cov",SimpleBinner.getBinIfUnique(srcNode).estCov);
+//							n.setGUI("red", "diamond");
+//							n.setAttribute("unique", SimpleBinner.getBinIfUnique(srcNode));
+//							boolean disagreement=srcNode.getId().compareTo(dstNode.getId()) > 0 
+//									|| (srcNode==dstNode && srcDir==false && dstDir==true);
+//							Edge 	e0=addEdge(srcNode, n, srcDir, disagreement),
+//									e1=addEdge(n,dstNode,!disagreement,dstDir);	
+	//
+//							path.add(e0);
+//							path.add(e1);
+						
+						connectedPaths.add(path);
+					}catch(Exception e){
+						System.err.println("Failed to make consensus sequence for " + id +"!");
+						System.err.println("Reason: "+ e.getMessage());
+					}	
+	    		}
+
+				
+			}
 		}
 		
 		BridgeSegment(BDPath path){
@@ -680,7 +747,7 @@ public class GoInBetweenBridge {
 			return retval;
 		}
 		
-		private ArrayList<BridgeSegment> greedyConnect(HashMap<String, ArrayList<BridgeSegment>> memory, BDNodeVecState left, BDNodeVecState right, boolean force){
+		private ArrayList<BridgeSegment> greedyConnect(HashMap<String, ArrayList<BridgeSegment>> memory, BDNodeVecState left, BDNodeVecState right, boolean greedy){
 			System.out.print("\nConnecting " + left + " to " + right);
 			if(left==right)
 				return null;
@@ -707,7 +774,7 @@ public class GoInBetweenBridge {
 			if(!shortestMapFromRight.containsKey(key)){
 				memory.put(pairKey, null);
 				System.out.print(": unreachable");
-				if(!force){
+				if(!greedy){
 					System.out.println("-> stop");		
 					return null;
 				}
@@ -722,7 +789,7 @@ public class GoInBetweenBridge {
 				BDNodeVecState mid=inBetween.poll();
 				System.out.println("..cut at mid="+mid.toString());
 				
-				lBridge = greedyConnect(memory, left, mid, force);
+				lBridge = greedyConnect(memory, left, mid, greedy);
 				if(lBridge==null||lBridge.isEmpty()){
 					continue;
 				}
@@ -730,7 +797,7 @@ public class GoInBetweenBridge {
 					retval=new ArrayList<>(lBridge);
 				}
 				
-				rBridge = greedyConnect(memory, mid, right, force);
+				rBridge = greedyConnect(memory, mid, right, greedy);
 				if(rBridge==null||rBridge.isEmpty()){
 					continue;
 				}
@@ -747,7 +814,7 @@ public class GoInBetweenBridge {
 									right, 
 									left.getVector().isIdentity()?pBridge.getDir0():!left.getDirection(pBridge.getDir0()), 
 									right.getDirection(pBridge.getDir0()), 
-									force);
+									greedy);
 			if(seg.isConnected()){
 				retval=new ArrayList<>();
 				retval.add(seg);
@@ -783,7 +850,7 @@ public class GoInBetweenBridge {
 			System.out.println("\n"+getAllNodeVector());
 				
 			HashMap<String, ArrayList<BridgeSegment>> memory = new HashMap<>();
-			ArrayList<BridgeSegment> segs=greedyConnect(memory, startFrom, endAt, force||numberOfFullReads>=BDGraph.GOOD_SUPPORT);
+			ArrayList<BridgeSegment> segs=greedyConnect(memory, startFrom, endAt, force);
 			
 			if(segs==null||segs.isEmpty()){
 				segments=null;

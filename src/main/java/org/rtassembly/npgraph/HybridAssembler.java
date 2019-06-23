@@ -58,7 +58,10 @@ public class HybridAssembler {
 	public void setReady(boolean isReady) {ready=isReady;}
 	public boolean getReady() {return ready;}
 	
-	public void setMetagenomics(boolean isMetagenomics) {BDGraph.isMetagenomics=isMetagenomics;}
+	public void setMetagenomics(boolean isMetagenomics) {
+		BDGraph.isMetagenomics=isMetagenomics; 
+//		BDGraph.MIN_SUPPORT=5; //increase lower bound for confident bridges
+	}
 	
 	public final void setOverwrite(boolean owr) {overwrite.set(owr);}
 	public final boolean getOverwrite() {return overwrite.get();}
@@ -490,7 +493,9 @@ public class HybridAssembler {
  			alignmentProcess.destroy();
  		}		
  	}
-
+	
+	
+	//last attempt to connect bridges, being greedy now
 	public void postProcessGraph() throws IOException{
 		HashSet<GoInBetweenBridge> 		unsolved=simGraph.getUnsolvedBridges(),
 										solved=new HashSet<>();

@@ -82,13 +82,13 @@ public class GraphExploreDesktop {
     	/*
     	 * To test unicycler's graph:
     	 */
-////    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/npgraph/results_2/unicycler/citrobacter-freundii_CAV1374/003_bridges_applied.gfa",
-////    			output="/home/sonhoanghguyen/Projects/scaffolding/npgraph/results_2/spades/citrobacter-freundii_CAV1374/",
-////    			lInput="";	
-//    	
-//    	/*
-//    	 * Porecamp data:
-//    	 */
+//    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/npgraph/results_2/unicycler/citrobacter-freundii_CAV1374/003_bridges_applied.gfa",
+//    			output="/home/sonhoanghguyen/Projects/scaffolding/npgraph/results_2/spades/citrobacter-freundii_CAV1374/",
+//    			lInput="";	
+    	
+    	/*
+    	 * Porecamp data:
+    	 */
     	String sass="metaSPAdes";
 //    	String sass="megaHIT";
     	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/"+sass+"/assembly_graph.fastg",
@@ -139,8 +139,8 @@ public class GraphExploreDesktop {
 //        for (Node node : graph) {
 //            node.setAttribute("ui.label", node.getId());
 //        }
-        HybridAssembler.promptEnterKey();
-        viewer.disableAutoLayout();
+//        HybridAssembler.promptEnterKey();
+//        viewer.disableAutoLayout();
        
     }
     
