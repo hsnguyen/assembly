@@ -476,14 +476,17 @@ public class GoInBetweenBridge {
 	
 	//no check: use with care
 	public void saveReadToDisk(AlignedRead read){
+		if(numberOfFullReads>=BDGraph.MAX_LISTING)
+			return;
+		
 		int g=read.saveCorrectedSequenceInBetween();
 		if(g>=0)
 			numberOfFullReads++;
 		
 	}
 	
-	//check if it's enough to run MSA for long reads consensus
-	//need estimation of gap (BridgStep) versus number of spanning reads
+	//TODO: check if it's enough to run MSA for long reads consensus
+	//need estimation of gap (depend on level of completion) versus number of spanning reads
 	public boolean checkMSACoverage(){
 		return false;
 	}
@@ -764,24 +767,24 @@ public class GoInBetweenBridge {
 			}
 			
 			PriorityQueue<BDNodeVecState> inBetween=getInBetweenSteps(left, right);
-			int distance=ScaffoldVector.composition(right.getVector(), ScaffoldVector.reverse(left.getVector())).distance(left.getNode(), right.getNode());
-			HashMap<String,Integer> shortestMapFromRight = graph.getShortestTreeFromNode(right.getNode(), right.getDirection(pBridge.getDir0()), distance);
+//			int distance=ScaffoldVector.composition(right.getVector(), ScaffoldVector.reverse(left.getVector())).distance(left.getNode(), right.getNode());
+//			HashMap<String,Integer> shortestMapFromRight = graph.getShortestTreeFromNode(right.getNode(), right.getDirection(pBridge.getDir0()), distance);
 
-			String key=start.getNode().getId()+(pBridge.getDir0()?"i":"o");
-			if(left.getNode()!=pBridge.getNode0())
-				key=left.getNode().getId()+(left.getDirection(pBridge.getDir0())?"o":"i");
-			//FIXME: eliminate nodes with shortest distance greater than estimated one
-			if(!shortestMapFromRight.containsKey(key)){
-				memory.put(pairKey, null);
-				System.out.print(": unreachable");
-				if(!greedy){
-					System.out.println("-> stop");		
-					return null;
-				}
-				else
-					System.out.println("-> proceed");
-			}else
-				System.out.println(": reachable!");
+//			String key=start.getNode().getId()+(pBridge.getDir0()?"i":"o");
+//			if(left.getNode()!=pBridge.getNode0())
+//				key=left.getNode().getId()+(left.getDirection(pBridge.getDir0())?"o":"i");
+//			//FIXME: eliminate nodes with shortest distance greater than estimated one
+//			if(!shortestMapFromRight.containsKey(key)){
+//				memory.put(pairKey, null);
+//				System.out.print(": unreachable");
+//				if(!greedy){
+//					System.out.println("-> stop");		
+//					return null;
+//				}
+//				else
+//					System.out.println("-> proceed");
+//			}else
+//				System.out.println(": reachable!");
 
 			
 			ArrayList<BridgeSegment> lBridge, rBridge;

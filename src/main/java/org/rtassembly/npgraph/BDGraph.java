@@ -46,7 +46,7 @@ public class BDGraph extends MultiGraph{
 	public static final double ALPHA=.5; //coverage less than alpha*bin_cov will be considered noise
     public static final int D_LIMIT=5000; //distance bigger than this will be ignored
     public static int S_LIMIT=300;// maximum number of graph traversing steps
-    public static int MAX_PATHS=100; //maximum number of candidate DFS paths
+    public static int MAX_LISTING=100; //maximum number of candidate DFS paths
     
 	public static volatile int MIN_SUPPORT=3; //minimal support reads for bridging
 
@@ -682,7 +682,7 @@ public class BDGraph extends MultiGraph{
 			return null;
 		
 		double closestDist=Math.abs(possiblePaths.get(0).getDeviation());
-		int keepMax = MAX_PATHS;//only keep this many possible paths 
+		int keepMax = MAX_LISTING;//only keep this many possible paths 
 		for(int i=0;i<possiblePaths.size();i++){
 			BDPath p = possiblePaths.get(i);
 			if(Math.abs(p.getDeviation())>closestDist+Math.abs(distance+getKmerSize())*R_TOL || i>=keepMax)
