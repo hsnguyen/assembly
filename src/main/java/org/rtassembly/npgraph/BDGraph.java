@@ -42,7 +42,7 @@ public class BDGraph extends MultiGraph{
 
     //these should be changed in another thread, e.g. settings from GUI
 	public static volatile double ILLUMINA_READ_LENGTH=300; //Illumina MiSeq
-    public static final int GOOD_SUPPORT=10; //number of minimum spanning reads for an affirmative bridge. TODO: reduce this to test
+    public static final int GOOD_SUPPORT=20; //number of minimum spanning reads for an affirmative bridge. TODO: reduce this to test
 	public static final double ALPHA=.5; //coverage less than alpha*bin_cov will be considered noise
     public static final int D_LIMIT=5000; //distance bigger than this will be ignored
     public static int S_LIMIT=300;// maximum number of graph traversing steps
@@ -54,7 +54,7 @@ public class BDGraph extends MultiGraph{
     //provide mapping from unique directed node to its corresponding bridge
     //E.g: 103-: <103-82-> also 82+:<82+103+>
     private HashMap<String, GoInBetweenBridge> bridgesMap; 
-    
+    private static HashMap<String, Integer> brg2ReadsNum=new HashMap<>();
     //mapping long but unknown contigs to unique successors and predecessor 
     //with number of supported reads
     private static HashMap<String, Set<BDNodeState>> unknownBinMap=new HashMap<>();
@@ -196,7 +196,16 @@ public class BDGraph extends MultiGraph{
     /**************************************************************************************************
      ********************** utility functions to serve the assembly algo ****************************** 
      * ***********************************************************************************************/
-
+    static public void addBrg2ReadsNum(String key){
+    	if(!brg2ReadsNum.containsKey(key))
+    		brg2ReadsNum.put(key, 1);
+    	else
+    		brg2ReadsNum.put(key, brg2ReadsNum.get(key)+1);
+    }
+    static public int getReadsNumOfBrg(String key){
+    	return brg2ReadsNum.containsKey(key)?brg2ReadsNum.get(key):0;
+    }
+    
     
     // when this unique node actually contained by a bridge
     synchronized public void removeNodeFromBridgesMap(Node unqNode){
@@ -264,6 +273,9 @@ public class BDGraph extends MultiGraph{
      * Utility functions for real-time binning based on long reads
      * for unknown long contigs from initial binning step (SimpleBinner or metabat)
      *****************************************************************/
+    public static boolean isSuspectedNode(BDNode node){
+    	return unknownBinMap.containsKey(node.getId()+"o")&&unknownBinMap.containsKey(node.getId()+"i");
+    }
     public void addUnknownNodes(BDNode node){
     	unknownBinMap.put(node.getId()+"o", new TreeSet<BDNodeState>());
     	unknownBinMap.put(node.getId()+"i", new TreeSet<BDNodeState>());
@@ -371,8 +383,9 @@ public class BDGraph extends MultiGraph{
     	} 
     	
     	//reove this from unknowmap
-    	unknownBinMap.remove("ko");
-    	unknownBinMap.remove("ki");
+    	unknownBinMap.remove(ko);
+    	unknownBinMap.remove(ki);
+    	node.setAttribute("unique", retval);
     	System.out.println("FOUND NEW UNIQUE CONTIG BY LONG READS: ID=" + node.getId() + " degree= " + node.getDegree() + " out=" + co + " in=" + ci + " read count="+c);
     	return retval;
     }

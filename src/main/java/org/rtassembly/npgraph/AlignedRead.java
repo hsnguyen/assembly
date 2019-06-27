@@ -128,7 +128,7 @@ public class AlignedRead{
 			return "-,-";
 		else{
 			BDEdgePrototype tmp = new BDEdgePrototype(getFirstAlignment(),getLastAlignment());
-			return tmp.toString();
+			return BDEdge.createID(getFirstAlignment().node, getLastAlignment().node, getFirstAlignment().strand, !getLastAlignment().strand);
 			
 		}
 	}
@@ -163,20 +163,25 @@ public class AlignedRead{
 	
 	//Split an AlignedRead at a specific alignment record.
 	//E.g. <...a,b,c,d...> split at (c) becoming: <...a,b,c> <c,d,...>
-	public ArrayList<AlignedRead> split(Alignment cutPoint){
+	public ArrayList<AlignedRead> split(){
+		if(alignments==null||alignments.isEmpty())
+			return null;
 		ArrayList<AlignedRead> retval = new ArrayList<AlignedRead>();
-		//recursive function?
-		if(alignments!=null){
-			int idx=alignments.indexOf(cutPoint);
-			if(idx>=0){
-				AlignedRead left = new AlignedRead( readSequence.subSequence(0, cutPoint.readAlignmentEnd()+1), 
-													new ArrayList<>(alignments.subList(0, idx+1))),
-							right = new AlignedRead(readSequence.subSequence(cutPoint.readAlignmentStart(), readSequence.length()), 
-													new ArrayList<>(alignments.subList(idx, alignments.size())));
-				retval.add(left);
-				retval.add(right);
-			}				
-		}			
+		ArrayList<Alignment> curList=new ArrayList<>();
+		Alignment start=null;
+		for(int i=0; i<alignments.size();i++){
+			Alignment curAlg=alignments.get(i);
+			curList.add(curAlg);
+			if(SimpleBinner.isAnchorNode(curAlg.node)){
+				if(start!=null){
+					retval.add(new AlignedRead(readSequence,curList));
+				}
+				start=curAlg;
+				curList=new ArrayList<>();
+				curList.add(curAlg);
+
+			}
+		}
 		return retval;
 	}
 	
@@ -189,9 +194,6 @@ public class AlignedRead{
 					end = getLastAlignment();
 		BDNode 	fromContig = start.node,
 				toContig = end.node;
-		
-		if(getEFlag()<3)
-			return -1;
 	
 		int gap=0;
 		SequenceBuilder seqBuilder = new SequenceBuilder(Alphabet.DNA5(), 1024*1024,  readSequence.getName());
@@ -337,11 +339,13 @@ public class AlignedRead{
 		}
 		
 		//seqBuilder.toSequence();
-		String fileName=tmpFolder+File.separator+BDEdge.createID(fromContig, toContig, start.strand, !end.strand)+".fasta";
+		String key=getEndingsID();
+		String fileName=tmpFolder+File.separator+key+".fasta";
 		try {
 			SequenceOutputStream out = new SequenceOutputStream(new FileOutputStream(fileName,true));
 			seqBuilder.toSequence().writeFasta(out);
 			out.close();
+			BDGraph.addBrg2ReadsNum(key);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

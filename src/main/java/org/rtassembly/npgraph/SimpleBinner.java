@@ -427,6 +427,9 @@ public class SimpleBinner {
 		  
 	}
 	
+	static public boolean isAnchorNode(BDNode node){
+		return getBinIfUnique(node)!=null||(BDGraph.isSuspectedNode(node)&&node.getDegree()<3);
+	}
 	public boolean checkRemovableNode(Node node) {
 //		LOG.info("Checking node {}", node.getAttribute("name"));
 		if(node.getInDegree()*node.getOutDegree()!=0 || SimpleBinner.getBinIfUnique(node)!=null) {

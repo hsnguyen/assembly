@@ -17,8 +17,6 @@ import japsa.seq.Sequence;
 
 //A bridge structure that the first node must be unique
 public class GoInBetweenBridge {
-	int numberOfFullReads=0; //number of read spanning this *whole* bridge
-
 	BDGraph graph;
 	PopBin bin;
 	BDEdgePrototype pBridge; //note: the ending nodes must be unique, or else omitted
@@ -476,13 +474,14 @@ public class GoInBetweenBridge {
 	
 	//no check: use with care
 	public void saveReadToDisk(AlignedRead read){
-		if(numberOfFullReads>=BDGraph.MAX_LISTING)
+		if(BDGraph.getReadsNumOfBrg(read.getEndingsID())>=BDGraph.MAX_LISTING)
 			return;
 		
-		int g=read.saveCorrectedSequenceInBetween();
-		if(g>=0)
-			numberOfFullReads++;
-		
+		if(read.getEFlag()>=3)
+			read.saveCorrectedSequenceInBetween();
+		else
+			read.split().forEach(r->r.saveCorrectedSequenceInBetween());
+			
 	}
 	
 	//TODO: check if it's enough to run MSA for long reads consensus
@@ -514,10 +513,10 @@ public class GoInBetweenBridge {
 
 			//call consensus when time come!
 			if(	(connectedPaths==null || connectedPaths.isEmpty())){
-				System.out.println("numberOfFullReads="+numberOfFullReads);
+				System.out.println("numberOfFullReads="+BDGraph.getReadsNumOfBrg(pSegment.getEdgeID()));
 				
 				//TODO: more anchors connecting!!! Here just connect unique dead-end unique nodes
-				if(	(numberOfFullReads >= BDGraph.GOOD_SUPPORT || greedy)
+				if(	(BDGraph.getReadsNumOfBrg(pSegment.getEdgeID()) >= BDGraph.GOOD_SUPPORT || greedy)
 					&& SimpleBinner.getBinIfUnique(srcNode)!=null && SimpleBinner.getBinIfUnique(dstNode)!=null 
 					&& srcNode.getDegree() <= 1 && dstNode.getDegree() <=1){					
 					connectedPaths=new ArrayList<>();
