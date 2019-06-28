@@ -420,7 +420,7 @@ public class GoInBetweenBridge {
 			if(seg.isConnected() && seg.connectedPaths.size()==1){
 				sbin=SimpleBinner.getBinIfUniqueNow(seg.startNV.getNode());
 //				System.out.println("Tony Tony Chopper: " + (curPath==null?"null":curPath.getId()) + " seg=" + seg.getId() + " start node=" + seg.startNV.getNode().getId() + " bin=" + (sbin==null?"null":sbin.binID));
-				if(PopBin.isCloseTo(sbin,bin)){
+				if(PopBin.isCloseBins(sbin,bin)){
 					if(curPath!=null){ 
 //						System.out.println("Tony Tony Chopper: " + curPath.getId());
 						graph.chopPathAtAnchors(curPath).stream().forEach(p->retval.add(p));
@@ -457,7 +457,7 @@ public class GoInBetweenBridge {
 				return false;
 			
 			PopBin b=SimpleBinner.getBinIfUniqueNow(tmp.node);
-			if(PopBin.isCloseTo(b,bin)){
+			if(PopBin.isCloseBins(b,bin)){
 				if(steps.end==null || greedy || steps.end.nvsScore < tmp.nvsScore){
 					if(steps.end!=tmp){
 						steps.end=tmp;
@@ -480,7 +480,7 @@ public class GoInBetweenBridge {
 		if(read.getEFlag()>=3)
 			read.saveCorrectedSequenceInBetween();
 		else
-			read.split().forEach(r->r.saveCorrectedSequenceInBetween());
+			read.splitAtPotentialAnchors().forEach(r->r.saveCorrectedSequenceInBetween());
 			
 	}
 	

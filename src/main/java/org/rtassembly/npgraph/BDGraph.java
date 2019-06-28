@@ -378,7 +378,7 @@ public class BDGraph extends MultiGraph{
     		ci++;
     		if(ci>1)
     			return null;
-    		if(retval!=null&&!PopBin.isCloseTo(retval, SimpleBinner.getBinIfUnique(ns.getNode())))
+    		if(retval!=null&&!PopBin.isCloseBins(retval, SimpleBinner.getBinIfUnique(ns.getNode())))
 				return null;
     	} 
     	
@@ -835,7 +835,7 @@ public class BDGraph extends MultiGraph{
  	    	
   			
     		if(curBin!=null){
-    			if(PopBin.isCloseTo(curBin, prevUnqBin))
+    			if(PopBin.isCloseBins(curBin, prevUnqBin))
     				flag+=2;
     			else if(prevUnqBin!=null)
     				continue;

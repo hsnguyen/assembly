@@ -54,11 +54,11 @@ public class PopBin{
 	/*
 	 * A-stats here?
 	 */
-	public static boolean isCloseTo(PopBin a, PopBin b) {
+	public static boolean isCloseBins(PopBin a, PopBin b) {
 		if(a==null||b==null)
 			return false;
 		else
-			return GraphUtil.approxCompare(a.estCov, b.estCov)==0;
+			return BDGraph.isMetagenomics||GraphUtil.approxCompare(a.estCov, b.estCov)==0;
 	} 
 
 }

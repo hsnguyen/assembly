@@ -126,11 +126,9 @@ public class AlignedRead{
 	public String getEndingsID() {
 		if(alignments==null || alignments.isEmpty())
 			return "-,-";
-		else{
-			BDEdgePrototype tmp = new BDEdgePrototype(getFirstAlignment(),getLastAlignment());
+		else
 			return BDEdge.createID(getFirstAlignment().node, getLastAlignment().node, getFirstAlignment().strand, !getLastAlignment().strand);
-			
-		}
+		
 	}
 	public String getCompsString() {
 		String retval = "";
@@ -161,9 +159,7 @@ public class AlignedRead{
 		return new ScaffoldVector(gP, alignD);	
 	}
 	
-	//Split an AlignedRead at a specific alignment record.
-	//E.g. <...a,b,c,d...> split at (c) becoming: <...a,b,c> <c,d,...>
-	public ArrayList<AlignedRead> split(){
+	public ArrayList<AlignedRead> splitAtPotentialAnchors(){
 		if(alignments==null||alignments.isEmpty())
 			return null;
 		ArrayList<AlignedRead> retval = new ArrayList<AlignedRead>();
@@ -172,7 +168,7 @@ public class AlignedRead{
 		for(int i=0; i<alignments.size();i++){
 			Alignment curAlg=alignments.get(i);
 			curList.add(curAlg);
-			if(SimpleBinner.isAnchorNode(curAlg.node)){
+			if(SimpleBinner.isPotentialAnchorNode(curAlg.node)){
 				if(start!=null){
 					retval.add(new AlignedRead(readSequence,curList));
 				}

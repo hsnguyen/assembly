@@ -427,7 +427,7 @@ public class SimpleBinner {
 		  
 	}
 	
-	static public boolean isAnchorNode(BDNode node){
+	static public boolean isPotentialAnchorNode(BDNode node){
 		return getBinIfUnique(node)!=null||(BDGraph.isSuspectedNode(node)&&node.getDegree()<3);
 	}
 	public boolean checkRemovableNode(Node node) {
@@ -472,12 +472,12 @@ public class SimpleBinner {
 			node2BinMap.remove(path.getRoot());
 			node2BinMap.remove(path.peekNode());
 			return null;
-		}else if(!PopBin.isCloseTo(uniqueBin,startBin)){
+		}else if(!PopBin.isCloseBins(uniqueBin,startBin)){
 			System.err.printf("Ignored: consensus bin %s doesn't agree with one of the endings bin %s at node %s\n", uniqueBin, startBin, path.getRoot());
 			node2BinMap.remove(path.getRoot());
 			//clean from bin map here...
 			return null;
-		}else if(!PopBin.isCloseTo(uniqueBin,endBin)){
+		}else if(!PopBin.isCloseBins(uniqueBin,endBin)){
 			System.err.printf("Ignored: consensus bin %s doesn't agree with one of the endings bin %s at node %s\n", uniqueBin, endBin, path.peekNode());
 			node2BinMap.remove(path.peekNode());
 			//clean from bin map here...
