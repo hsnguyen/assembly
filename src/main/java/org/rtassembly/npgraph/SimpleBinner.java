@@ -253,6 +253,7 @@ public class SimpleBinner {
 		while((line=binReader.readLine()) != null){			
 			String[] comps= line.split("\\s+");
 			binID=comps[1];
+			//FIXME: contigs binned "0" from metaBAT is unspecified? unique?
 			if(binID.equals("0"))
 				continue;
 			
@@ -454,48 +455,46 @@ public class SimpleBinner {
 	synchronized public Set<Edge> walkAlongUniquePath(BDPath path) {
 		System.out.printf("Path %s being processed based on binning info...\n", path.getId());
 		Node  	curNode = path.getRoot(), nextNode;
-		PopBin 	uniqueBin=path.getConsensusUniqueBinOfPath(),
-				startBin=getBinIfUnique(path.getRoot()),
-				endBin=getBinIfUnique(path.peekNode());
-		if(startBin==null)
-			startBin=getBinIfUniqueNow(path.getRoot());
-		if(endBin==null)
-			endBin=getBinIfUniqueNow(path.peekNode());
+		PopBin 	consensusBin=path.getConsensusUniqueBinOfPath(),
+				startBin=getBinIfUniqueNow(path.getRoot()),
+				endBin=getBinIfUniqueNow(path.peekNode());
 		
 		
-		if(uniqueBin==null||startBin==null||endBin==null){
+		if(consensusBin==null||startBin==null||endBin==null){
 			System.err.println("Ignored: population bin of the path (either at ending node or global) is not known!");
 			return null;
-		}else if(uniqueBin!=startBin && uniqueBin!=endBin){//at least one end must agree with the wholepath bin
-			System.err.println("Ignored: consensus bin must be one of the endings bin: Ignored!");
-			//clean from bin map here...
+		}
+//		else if(uniqueBin!=startBin && uniqueBin!=endBin){//at least one end must agree with the wholepath bin
+//			System.err.println("Ignored: consensus bin must be one of the endings bin: " + uniqueBin.getId() + " != " + startBin.getId() + " or " + endBin.getId() );
+//			//clean from bin map here...
+//			node2BinMap.remove(path.getRoot());
+//			node2BinMap.remove(path.peekNode());
+//			return null;
+//		}
+		else if(!PopBin.isCloseBins(consensusBin,startBin)){
+			System.err.printf("Ignored: consensus bin %s doesn't agree with one of the endings bin %s at node %s\n", consensusBin, startBin, path.getRoot());
 			node2BinMap.remove(path.getRoot());
-			node2BinMap.remove(path.peekNode());
-			return null;
-		}else if(!PopBin.isCloseBins(uniqueBin,startBin)){
-			System.err.printf("Ignored: consensus bin %s doesn't agree with one of the endings bin %s at node %s\n", uniqueBin, startBin, path.getRoot());
-			node2BinMap.remove(path.getRoot());
 			//clean from bin map here...
 			return null;
-		}else if(!PopBin.isCloseBins(uniqueBin,endBin)){
-			System.err.printf("Ignored: consensus bin %s doesn't agree with one of the endings bin %s at node %s\n", uniqueBin, endBin, path.peekNode());
+		}else if(!PopBin.isCloseBins(consensusBin,endBin)){
+			System.err.printf("Ignored: consensus bin %s doesn't agree with one of the endings bin %s at node %s\n", consensusBin, endBin, path.peekNode());
 			node2BinMap.remove(path.peekNode());
 			//clean from bin map here...
 			return null;
 		}
-		PopBin other=(uniqueBin==startBin?endBin:startBin);
-		Multiplicity 	oneBin=new Multiplicity(uniqueBin,1),
+		PopBin other=(consensusBin==startBin?endBin:startBin);
+		Multiplicity 	oneBin=new Multiplicity(consensusBin,1),
 						otherBin=new Multiplicity(other,1);
 		
 		Set<Edge> retval = new HashSet<Edge>();	
-		double aveCov=uniqueBin.estCov;
+		double aveCov=consensusBin.estCov;
 		Boolean dir=null;
 		for(Edge ep:path.getEdgePath()){
 			nextNode=ep.getOpposite(curNode);
 			Multiplicity edgeBinsCount, bcMinusOne=null,  
 							nodeBinsCount;	
-			//remove faulty edge of unique nodes (that has degree=3)
-			if(getBinIfUnique(curNode)!=null || getBinIfUniqueNow(curNode)!=null){
+			//remove corresponding edges from the unique nodes
+			if(getBinIfUniqueNow(curNode)!=null){
 					dir=((BDEdge)ep).getNodeDirection((BDNode)curNode);
 					if(dir!=null){
 						Stream<Edge> streamEdges=dir?curNode.leavingEdges():curNode.enteringEdges();
@@ -503,7 +502,7 @@ public class SimpleBinner {
 					}
 
 			}
-			if(getBinIfUnique(nextNode)!=null || getBinIfUniqueNow(nextNode)!=null){
+			if(getBinIfUniqueNow(nextNode)!=null){
 					dir=((BDEdge)ep).getNodeDirection((BDNode)nextNode);
 					if(dir!=null){
 						Stream<Edge> streamEdges=dir?nextNode.leavingEdges():nextNode.enteringEdges();
@@ -513,7 +512,7 @@ public class SimpleBinner {
 			
 			if(edge2BinMap.containsKey(ep)) {
 				edgeBinsCount=edge2BinMap.get(ep);
-				if(edgeBinsCount.getBinCount(uniqueBin) > 0) {
+				if(edgeBinsCount.getBinCount(consensusBin) > 0) {
 					bcMinusOne=edgeBinsCount.substract(oneBin);
 					edge2BinMap.replace(ep, bcMinusOne);
 
@@ -545,7 +544,7 @@ public class SimpleBinner {
 			bcMinusOne=null;
 			if(curNode!=path.getRoot() && curNode!=path.peekNode()) {
 				if(node2BinMap.containsKey(curNode)) {
-					if(node2BinMap.get(curNode).getBinCount(uniqueBin) > 0) {
+					if(node2BinMap.get(curNode).getBinCount(consensusBin) > 0) {
 						nodeBinsCount=node2BinMap.get(curNode);
 						bcMinusOne=nodeBinsCount.substract(oneBin);
 						node2BinMap.replace(curNode, bcMinusOne);

@@ -42,7 +42,7 @@ public class BDGraph extends MultiGraph{
 
     //these should be changed in another thread, e.g. settings from GUI
 	public static volatile double ILLUMINA_READ_LENGTH=300; //Illumina MiSeq
-    public static final int GOOD_SUPPORT=20; //number of minimum spanning reads for an affirmative bridge. TODO: reduce this to test
+    public static final int GOOD_SUPPORT=10; //number of minimum spanning reads for an affirmative bridge. TODO: reduce this to test
 	public static final double ALPHA=.5; //coverage less than alpha*bin_cov will be considered noise
     public static final int D_LIMIT=5000; //distance bigger than this will be ignored
     public static int S_LIMIT=300;// maximum number of graph traversing steps
@@ -585,7 +585,6 @@ public class BDGraph extends MultiGraph{
 					//note that traversing direction (true: template, false: reverse complement) of destination node 
 					//is opposite its defined direction (true: outward, false:inward) 
 					if(to==dstNode && dir==dstDir && Math.abs(delta) < tolerance){ 
-//					if(to==dstNode && dir==dstDir){ 
 
 				    	BDPath 	tmpPath=new BDPath(path);
 				    	tmpPath.setDeviation(delta);
@@ -640,57 +639,6 @@ public class BDGraph extends MultiGraph{
 		} 
 		System.out.println("select from list of " + possiblePaths.size() + " DFS paths:");
 		
-//		if(possiblePaths.isEmpty()){
-//			if(SimpleBinner.getBinIfUniqueNow(srcNode)!=null && SimpleBinner.getBinIfUniqueNow(dstNode)!=null && srcNode.getDegree() <= 1 && dstNode.getDegree() <=1 && force){					
-//				String id = BDEdge.createID(srcNode, dstNode, srcDir, dstDir);				
-//				try{
-//					//Option 1: hide long-read consensus from the graph
-//					BDNode n=new BDNode(this, "000"+AlignedRead.PSEUDO_ID++);
-//					Sequence seq=GraphUtil.consensusSequence(AlignedRead.tmpFolder+File.separator+id+".fasta", distance, id, "kalign");
-//					if(seq==null)
-//						return null;
-//					n.setAttribute("seq", seq);
-//					n.setAttribute("len", seq.length());
-//					n.setAttribute("cov",SimpleBinner.getBinIfUniqueNow(srcNode).estCov);
-//					boolean disagreement=srcNode.getId().compareTo(dstNode.getId()) > 0 
-//							|| (srcNode==dstNode && srcDir==false && dstDir==true);
-//					BDEdge 	e0=new BDEdge(srcNode, n, srcDir, disagreement),
-//							e1=new BDEdge(n,dstNode,!disagreement,dstDir);	
-//					BDPath p = new BDPath(srcNode);					
-//					p.add(e0);
-//					p.add(e1);
-//					BDEdge pseudoEdge=addEdge(srcNode, dstNode, srcDir, dstDir);
-//					pseudoEdge.setAttribute("path", p);
-//					path.add(pseudoEdge);
-//
-////					//Option 2: or using this to create&display a "pseudo node"
-////					BDNode n=(BDNode) addNode("000"+AlignedRead.PSEUDO_ID++);
-////					Sequence seq=GraphUtil.consensusSequence(AlignedRead.tmpFolder+File.separator+id+".fasta", distance, id, "poa");
-////					if(seq==null)
-////						return null;
-////					n.setAttribute("seq", seq);
-////					n.setAttribute("len", seq.length());
-////					n.setAttribute("cov",SimpleBinner.getBinIfUnique(srcNode).estCov);
-////					n.setGUI("red", "diamond");
-////					n.setAttribute("unique", SimpleBinner.getBinIfUnique(srcNode));
-////					boolean disagreement=srcNode.getId().compareTo(dstNode.getId()) > 0 
-////							|| (srcNode==dstNode && srcDir==false && dstDir==true);
-////					Edge 	e0=addEdge(srcNode, n, srcDir, disagreement),
-////							e1=addEdge(n,dstNode,!disagreement,dstDir);	
-////
-////					path.add(e0);
-////					path.add(e1);
-//					
-//					possiblePaths.add(path);
-//				}catch(Exception e){
-//					System.err.println("Failed to make consensus sequence for " + id +"!");
-//					System.err.println("Reason: "+ e.getMessage());
-//				}	
-//				return possiblePaths;
-//    		}else
-//    			return null;
-//
-//		}
 		if(possiblePaths.isEmpty())
 			return null;
 		
@@ -843,7 +791,7 @@ public class BDGraph extends MultiGraph{
     			curBuildingBlocks.setEFlag(flag);
     			////////////////////////////////////////////////////////////////////////////////////
     			
-    			retrievedPaths.addAll(buildBridge(curBuildingBlocks, curBin));
+    			retrievedPaths.addAll(buildBridge(curBuildingBlocks, PopBin.getDominateBin(curBin,prevUnqBin)));
     			   					
     			////////////////////////////////////////////////////////////////////////////////////
     			//start new building block
@@ -858,7 +806,7 @@ public class BDGraph extends MultiGraph{
  	    
  	    if(curBuildingBlocks.alignments.size() > 1){
  	    	curBuildingBlocks.setEFlag(1);
- 	    	retrievedPaths.addAll(buildBridge(curBuildingBlocks, prevUnqBin));
+ 	    	retrievedPaths.addAll(buildBridge(curBuildingBlocks, PopBin.getDominateBin(curBin,prevUnqBin)));
  	    }
 
  	    return retrievedPaths;
@@ -967,7 +915,7 @@ public class BDGraph extends MultiGraph{
 			System.out.println("after adding: \n\t" + printEdgesOfNode((BDNode) reducedEdge.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) reducedEdge.getNode1()));
 	    	return true;
     	}else {
-    		System.out.println("Path" + path.getId() + "has not reduced!");
+    		System.out.println("Path " + path.getId() + " doesn't need to be reduced!");
     		return false;
     	}
 

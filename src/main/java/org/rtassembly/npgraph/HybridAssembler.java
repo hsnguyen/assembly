@@ -513,8 +513,9 @@ public class HybridAssembler {
 					changed=brg.steps.connectBridgeSteps(true);
 					
 					//return appropriate path
-					if(brg.segments!=null){
+					if(changed){
 						simGraph.chopPathAtAnchors(brg.getBestPath(brg.steps.start.getNode(),brg.steps.end.getNode())).stream().forEach(p->simGraph.reduceUniquePath(p));
+						solved.add(brg);
 					}
 					else
 						System.out.printf("Last attempt failed \n");

@@ -23,7 +23,6 @@ public class GoInBetweenBridge {
 	ArrayList<BridgeSegment> segments;
 	BridgeSteps steps;
 	
-	//TODO: save (max) sequences from AlignedRead for later use
 	public GoInBetweenBridge(BDGraph graph, AlignedRead bb, PopBin bin) {
 		this.graph=graph;
 		this.bin=bin;
@@ -766,25 +765,6 @@ public class GoInBetweenBridge {
 			}
 			
 			PriorityQueue<BDNodeVecState> inBetween=getInBetweenSteps(left, right);
-//			int distance=ScaffoldVector.composition(right.getVector(), ScaffoldVector.reverse(left.getVector())).distance(left.getNode(), right.getNode());
-//			HashMap<String,Integer> shortestMapFromRight = graph.getShortestTreeFromNode(right.getNode(), right.getDirection(pBridge.getDir0()), distance);
-
-//			String key=start.getNode().getId()+(pBridge.getDir0()?"i":"o");
-//			if(left.getNode()!=pBridge.getNode0())
-//				key=left.getNode().getId()+(left.getDirection(pBridge.getDir0())?"o":"i");
-//			//FIXME: eliminate nodes with shortest distance greater than estimated one
-//			if(!shortestMapFromRight.containsKey(key)){
-//				memory.put(pairKey, null);
-//				System.out.print(": unreachable");
-//				if(!greedy){
-//					System.out.println("-> stop");		
-//					return null;
-//				}
-//				else
-//					System.out.println("-> proceed");
-//			}else
-//				System.out.println(": reachable!");
-
 			
 			ArrayList<BridgeSegment> lBridge, rBridge;
 			while(!inBetween.isEmpty()){
@@ -868,42 +848,7 @@ public class GoInBetweenBridge {
 			}
 		}
 		//////////////////////////////////////////////////////////////////////////////////////
-		
-//		void addNode(BDNodeVecState nv) {
-//			//NOTE: acting weird, not call equals() properly for 141o,20o: Because TreeSet used compareTo() instead of equals()!!! 
-//			//(https://dzone.com/articles/the-hidden-contract-between-equals-and-comparable)
-//			
-//			Iterator<BDNodeVecState> ite = nodes.iterator();
-//			boolean found=false;
-//			while(ite.hasNext()){
-//				BDNodeVecState tmp=ite.next();
-//				if(tmp.merge(nv)){
-//					//re-assign end node if there is another unique node with higher score
-//					if(SimpleBinner.getBinIfUnique(tmp.getNode())!=null && !tmp.getVector().isIdentity()) {
-//						if(!end.equals(tmp) && (end.nvsScore < tmp.nvsScore))
-//							end=tmp;		
-//					}
-//					//nv is already in the set
-//					found=true;
-//					break;
-//
-//				}
-//			}
-//			
-//			if(!found) {
-//				nodes.add(nv);
-//				if(SimpleBinner.getBinIfUnique(nv.getNode())!=null) {
-//					if(nv.getVector().isIdentity()){
-//						start=nv;	
-//					}else if(end==null){
-//						end=nv;
-//					}
-//				}
-//			}
-//
-//			
-//		}
-		
+			
 		boolean isIdentifiable(){
 			return start!=null && end!=null;
 		}
