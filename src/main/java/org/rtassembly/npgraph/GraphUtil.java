@@ -705,36 +705,36 @@ public class GraphUtil {
 			count++;
 		
 		faiReader.close();
-		if(count<BDGraph.GOOD_SUPPORT*.5) //at least half of the good read count is required
+		if(count<BDGraph.MIN_SUPPORT) //at least 3 of the good read count is required
 			return null;
 		
 		Sequence consensus = null;
 		//2.0 Run multiple alignment
-		{
-			String cmd  = "";
-			if (msa.startsWith("poa")){
-				String poaDir="/home/sonhoanghguyen/sw/poaV2/";//test
-				cmd = poaDir+"poa -read_fasta " + faiFile + " -clustal " + faoFile + " -hb " + poaDir+"blosum80.mat";
-			}else if (msa.startsWith("muscle")){
-				cmd = "muscle -in " + faiFile + " -out " + faoFile + " -maxiters 5 -quiet";				
-			}else if (msa.startsWith("clustal")) {
-				cmd = "clustalo --force -i " + faiFile + " -o " + faoFile;
-			}else if (msa.startsWith("kalign")){
-				cmd = "kalign -gpo 60 -gpe 10 -tgpe 0 -bonus 0 -q -i " + faiFile	+ " -o " + faoFile;
-			}else if (msa.startsWith("msaprobs")){
-				cmd = "msaprobs -o " + faoFile + " " + faiFile;
-			}else if (msa.startsWith("mafft")){
-				cmd = "mafft_wrapper.sh  " + faiFile + " " + faoFile;
-			}else{
-				LOG.error("Unknown msa function " + msa);
-				return null;
-			}
-
-			LOG.info("Running " + cmd);
-			Process process = Runtime.getRuntime().exec(cmd);
-			process.waitFor();
-			LOG.info("Done " + cmd);
+		
+		String cmd  = "";
+		if (msa.startsWith("poa")){
+			String poaDir="/home/sonhoanghguyen/sw/poaV2/";//test
+			cmd = poaDir+"poa -read_fasta " + faiFile + " -clustal " + faoFile + " -hb " + poaDir+"blosum80.mat";
+		}else if (msa.startsWith("muscle")){
+			cmd = "muscle -in " + faiFile + " -out " + faoFile + " -maxiters 5 -quiet";				
+		}else if (msa.startsWith("clustal")) {
+			cmd = "clustalo --force -i " + faiFile + " -o " + faoFile;
+		}else if (msa.startsWith("kalign")){
+			cmd = "kalign -gpo 60 -gpe 10 -tgpe 0 -bonus 0 -q -i " + faiFile	+ " -o " + faoFile;
+		}else if (msa.startsWith("msaprobs")){
+			cmd = "msaprobs -o " + faoFile + " " + faiFile;
+		}else if (msa.startsWith("mafft")){
+			cmd = "mafft_wrapper.sh  " + faiFile + " " + faoFile;
+		}else{
+			LOG.error("Unknown msa function " + msa);
+			return null;
 		}
+
+		LOG.info("Running " + cmd);
+		Process process = Runtime.getRuntime().exec(cmd);
+		process.waitFor();
+		LOG.info("Done " + cmd);
+		
 
 
 		if ("poa".equals(msa)){
