@@ -392,7 +392,7 @@ public class SimpleBinner {
 					if(bc.getSum() > 3)
 						node2BinMap.remove(node);
 				}
-			}else if(node.getNumber("len") > TRANSFORMED_ANCHOR_CTG_LEN) //significant unbinned nodes
+			}else if(node.getNumber("len") > TRANSFORMED_ANCHOR_CTG_LEN) //big unbinned nodes
 				graph.addUnknownNodes((BDNode) node);
 		}
 		
@@ -421,7 +421,7 @@ public class SimpleBinner {
 				if(bc.getSum() == 1){
 					retval=Iterables.getOnlyElement(bc.getBinsSet());
 				}
-			}else
+			}else //for unknown nodes only
 				retval=BDGraph.getUniqueBinFromLongReads((BDNode) node);
 		}
 		return retval;
@@ -429,7 +429,7 @@ public class SimpleBinner {
 	}
 	
 	static public boolean isPotentialAnchorNode(BDNode node){
-		return getBinIfUnique(node)!=null||(BDGraph.isSuspectedNode(node)&&node.getDegree()<3);
+		return getBinIfUnique(node)!=null||(BDGraph.isSuspectedNode(node)&&node.getInDegree()<=1&&node.getOutDegree()<=1);
 	}
 	public boolean checkRemovableNode(Node node) {
 //		LOG.info("Checking node {}", node.getAttribute("name"));

@@ -1,6 +1,5 @@
 package org.rtassembly.npgraph;
 
-import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -19,7 +18,6 @@ import java.util.stream.Stream;
 
 import org.graphstream.graph.*;
 import org.graphstream.graph.implementations.*;
-import org.rtassembly.npscarf.AlignmentRecord;
 
 import com.google.common.util.concurrent.AtomicDouble;
 
@@ -240,6 +238,11 @@ public class BDGraph extends MultiGraph{
     	
     }
     
+//    synchronized public boolean isGoodBridge(BDEdgePrototype pEdge){
+//    	return 		(bridgesMap.get(pEdge.n0.toString())!=null && bridgesMap.get(pEdge.n0.toString()).getCompletionLevel()>=3)
+//				|| (bridgesMap.get(pEdge.n1.toString())!=null && bridgesMap.get(pEdge.n1.toString()).getCompletionLevel()>=3);
+//    }
+    
     //Return bridge in the map (if any) that share the same bases (unique end) 
     synchronized public GoInBetweenBridge getBridgeFromMap(AlignedRead algRead){
     	GoInBetweenBridge retval = null, tmp = null;
@@ -273,6 +276,7 @@ public class BDGraph extends MultiGraph{
      * Utility functions for real-time binning based on long reads
      * for unknown long contigs from initial binning step (SimpleBinner or metabat)
      *****************************************************************/
+    //check if node is significant but not enough evidence to assign uniqueness
     public static boolean isSuspectedNode(BDNode node){
     	return unknownBinMap.containsKey(node.getId()+"o")&&unknownBinMap.containsKey(node.getId()+"i");
     }

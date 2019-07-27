@@ -511,17 +511,21 @@ public class GoInBetweenBridge {
 	    		connectedPaths = graph.DFSAllPaths(srcNode, dstNode, dir1, dir2, d);
 
 			//call consensus when time come!
-			if(	(connectedPaths==null || connectedPaths.isEmpty())){
-				System.out.println("numberOfFullReads="+BDGraph.getReadsNumOfBrg(pSegment.getEdgeID()));
-				
+			if(	(connectedPaths==null || connectedPaths.isEmpty())){				
 				//TODO: more anchors connecting!!! Here just connect unique dead-end unique nodes
 				if(	(BDGraph.getReadsNumOfBrg(pSegment.getEdgeID()) >= BDGraph.GOOD_SUPPORT || greedy)
-					&& SimpleBinner.getBinIfUnique(srcNode)!=null && SimpleBinner.getBinIfUnique(dstNode)!=null 
-					&& srcNode.getDegree() <= 1 && dstNode.getDegree() <=1){					
+					&& PopBin.isCloseBins(SimpleBinner.getBinIfUnique(srcNode), SimpleBinner.getBinIfUnique(dstNode)) 
+					)
+				{					
 					connectedPaths=new ArrayList<>();
 					BDPath path = new BDPath(srcNode);
 					String id = BDEdge.createID(srcNode, dstNode, dir1, dir2);				
 					try{
+						System.out.printf("Consensus calling with: numberOfFullReads=%d\n\tNode 0: bin=%s; degree=%d\n\tNode 1: bin=%s; degree=%d\n",
+								BDGraph.getReadsNumOfBrg(pSegment.getEdgeID()),
+								SimpleBinner.getBinIfUnique(srcNode), srcNode.getDegree(),
+								SimpleBinner.getBinIfUnique(dstNode), dstNode.getDegree());
+
 						//Option 1: hide long-read consensus from the graph
 						BDNode n=new BDNode(graph, "000"+AlignedRead.PSEUDO_ID++);
 						Sequence seq=GraphUtil.consensusSequence(AlignedRead.tmpFolder+File.separator+id+".fasta", d, id, "kalign");
