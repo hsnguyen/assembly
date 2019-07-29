@@ -40,7 +40,7 @@ public class BDGraph extends MultiGraph{
 
     //these should be changed in another thread, e.g. settings from GUI
 	public static volatile double ILLUMINA_READ_LENGTH=300; //Illumina MiSeq
-    public static final int GOOD_SUPPORT=20; //number of minimum spanning reads for an affirmative bridge. TODO: reduce this to test
+    public static final int GOOD_SUPPORT=120; //number of minimum spanning reads for an affirmative bridge. TODO: reduce this to test
 	public static final double ALPHA=.5; //coverage less than alpha*bin_cov will be considered noise
     public static final int D_LIMIT=5000; //distance bigger than this will be ignored
     public static int S_LIMIT=300;// maximum number of graph traversing steps
@@ -270,6 +270,12 @@ public class BDGraph extends MultiGraph{
     	}
     	
     	return retval;
+    }
+    
+    synchronized public boolean isConflictBridge(BDEdgePrototype brg){
+    	GoInBetweenBridge 	brg0=bridgesMap.get(brg.n0.toString()),
+    						brg1=bridgesMap.get(brg.n1.toString());
+    	return (brg0!=null&&brg0.getCompletionLevel()>=3) || (brg1!=null&&brg1.getCompletionLevel()>=3);
     }
 
     /*****************************************************************
@@ -857,10 +863,7 @@ public class BDGraph extends MultiGraph{
 							retval.addAll(reversedBridge.scanForNewUniquePaths());
 
 					}
-					
-					//finally save the inbetween sequence for later consensus call
-					storedBridge.saveReadToDisk(read);
-					reversedBridge.saveReadToDisk(read);
+
 				}
 
 			}			
@@ -874,10 +877,10 @@ public class BDGraph extends MultiGraph{
 			reversedBridge = new GoInBetweenBridge(this,read, bin);
 			updateBridgesMap(reversedBridge);
 			
-			storedBridge.saveReadToDisk(read);
-			reversedBridge.saveReadToDisk(read);
-			
 		}
+		
+		//finally save the inbetween sequence for later consensus call
+		GraphUtil.saveReadToDisk(read);
 		
 		return retval;
     }
@@ -934,7 +937,7 @@ public class BDGraph extends MultiGraph{
     	else
     		System.out.println("Input SPAdes path: " + path.getId());
     	//loop over the edges of path (like spelling())
-    	for(BDPath p:chopPathAtAnchors(path)){
+    	for(BDPath p:getNewSubPathsToReduce(path)){
     		if(reduceUniquePath(p))
     			retval=true;
     	}
@@ -944,8 +947,9 @@ public class BDGraph extends MultiGraph{
 
     
 	//Only call for the final reduce path with 2 unique ends: if path containing other unique nodes than 2 ends then we have list of paths to reduce
-    //exclude already-reduced path (by looking for corresponding reduce edge)
-	synchronized public ArrayList<BDPath> chopPathAtAnchors(BDPath path){
+    //Exclude already-reduced path (reduced edges would have composite "path" attribute,
+    //but consensus pseudo edge is special case)
+	synchronized public ArrayList<BDPath> getNewSubPathsToReduce(BDPath path){
 		ArrayList<BDPath> retval=new ArrayList<>();
 		if(path!=null){
 			BDPath curPath = new BDPath(path.getRoot(), path.getConsensusUniqueBinOfPath());
@@ -958,7 +962,7 @@ public class BDGraph extends MultiGraph{
 					id=curPath.getEndingID();
 					if(id!=null){
 						Edge rdEdge = getEdge(id);
-						if(rdEdge==null || !rdEdge.hasAttribute("path"))
+						if(rdEdge==null || !rdEdge.hasAttribute("path") || rdEdge.hasAttribute("consensus"))
 							retval.add(curPath);		
 					}
 					curPath=new BDPath(nextNode, path.getConsensusUniqueBinOfPath());

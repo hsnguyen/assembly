@@ -802,4 +802,17 @@ public class GraphUtil {
 
 		return consensus;
 	}
+	
+	
+	//no check: use with care
+	public static void saveReadToDisk(AlignedRead read){
+		if(BDGraph.getReadsNumOfBrg(read.getEndingsID())>=BDGraph.MAX_LISTING)
+			return;
+		
+		if(read.getEFlag()>=3)
+			read.saveCorrectedSequenceInBetween();
+		else
+			read.splitAtPotentialAnchors().forEach(r->r.saveCorrectedSequenceInBetween());
+			
+	}
 }

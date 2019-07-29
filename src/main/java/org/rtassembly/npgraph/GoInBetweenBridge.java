@@ -418,11 +418,11 @@ public class GoInBetweenBridge {
 		for(BridgeSegment seg:segments){
 			if(seg.isConnected() && seg.connectedPaths.size()==1){
 				sbin=SimpleBinner.getBinIfUniqueNow(seg.startNV.getNode());
-//				System.out.println("Tony Tony Chopper: " + (curPath==null?"null":curPath.getId()) + " seg=" + seg.getId() + " start node=" + seg.startNV.getNode().getId() + " bin=" + (sbin==null?"null":sbin.binID));
+//				System.out.println("Tony Tony Chopper: " + (curPath==null?"null":curPath.getId()) + " seg=" + seg.getId() + " start node=" + seg.startNV.getNode().getId() + " sbin=" + (sbin==null?"null":sbin.binID) + " bin=" + (bin==null?"null":bin.binID));
 				if(PopBin.isCloseBins(sbin,bin)){
 					if(curPath!=null){ 
 //						System.out.println("Tony Tony Chopper: " + curPath.getId());
-						graph.chopPathAtAnchors(curPath).stream().forEach(p->retval.add(p));
+						graph.getNewSubPathsToReduce(curPath).stream().forEach(p->retval.add(p)); //in case there're anchors within segment
 					}
 					
 					curPath=seg.connectedPaths.get(0);
@@ -438,7 +438,7 @@ public class GoInBetweenBridge {
 		
 		if(curPath!=null && curPath.getEdgeCount()>0) {
 //			System.out.println("Tony Tony Chopper: " + curPath.getId());
-			graph.chopPathAtAnchors(curPath).stream().forEach(p->retval.add(p));
+			graph.getNewSubPathsToReduce(curPath).stream().forEach(p->retval.add(p)); //in case there're anchors within segment
 		}
 		
 		return retval;
@@ -470,18 +470,7 @@ public class GoInBetweenBridge {
 		return false;
 		
 	}
-	
-	//no check: use with care
-	public void saveReadToDisk(AlignedRead read){
-		if(BDGraph.getReadsNumOfBrg(read.getEndingsID())>=BDGraph.MAX_LISTING)
-			return;
-		
-		if(read.getEFlag()>=3)
-			read.saveCorrectedSequenceInBetween();
-		else
-			read.splitAtPotentialAnchors().forEach(r->r.saveCorrectedSequenceInBetween());
-			
-	}
+
 	
 	//TODO: check if it's enough to run MSA for long reads consensus
 	//need estimation of gap (depend on level of completion) versus number of spanning reads
@@ -515,7 +504,7 @@ public class GoInBetweenBridge {
 				//TODO: more anchors connecting!!! Here just connect unique dead-end unique nodes
 				if(	(BDGraph.getReadsNumOfBrg(pSegment.getEdgeID()) >= BDGraph.GOOD_SUPPORT || greedy)
 					&& PopBin.isCloseBins(SimpleBinner.getBinIfUnique(srcNode), SimpleBinner.getBinIfUnique(dstNode)) 
-					)
+					&& !graph.isConflictBridge(pSegment))
 				{					
 					connectedPaths=new ArrayList<>();
 					BDPath path = new BDPath(srcNode);
@@ -543,6 +532,7 @@ public class GoInBetweenBridge {
 						p.add(e1);
 						BDEdge pseudoEdge=graph.addEdge(srcNode, dstNode, dir1, dir2);
 						pseudoEdge.setAttribute("path", p);
+						pseudoEdge.setAttribute("consensus");
 						path.add(pseudoEdge);
 
 //							//Option 2: or using this to create&display a "pseudo node"
@@ -648,7 +638,7 @@ public class GoInBetweenBridge {
 				return false;
 			connectedPaths.sort((a,b)->Integer.compare(Math.abs(a.getDeviation()), Math.abs(b.getDeviation())));
 			int bestDiff = 	connectedPaths.get(0).getDeviation();
-			connectedPaths.removeIf(p->(Math.abs(p.getDeviation()) > bestDiff+BDGraph.A_TOL));
+			connectedPaths.removeIf(p->(Math.abs(p.getDeviation()) > Math.abs(bestDiff)+BDGraph.A_TOL));
 			if(connectedPaths.size()==1)
 				return true;
 			else 

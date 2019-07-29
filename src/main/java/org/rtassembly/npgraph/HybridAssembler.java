@@ -505,7 +505,7 @@ public class HybridAssembler {
 				System.out.printf("Last attempt on incomplete bridge %s : anchors=%d \n %s \n", brg.getEndingsID(), brg.getNumberOfAnchors(), brg.getAllPossiblePaths());
 				//Take the current best path among the candidate of a bridge and connect the bridge(greedy)
 				if(brg.getCompletionLevel()>=3){ 
-					simGraph.chopPathAtAnchors(brg.getBestPath(brg.pBridge.getNode0(),brg.pBridge.getNode1())).stream().forEach(p->simGraph.reduceUniquePath(p));
+					simGraph.getNewSubPathsToReduce(brg.getBestPath(brg.pBridge.getNode0(),brg.pBridge.getNode1())).stream().forEach(p->simGraph.reduceUniquePath(p));
 					solved.add(brg);
 					changed=true;
 				}else{
@@ -514,7 +514,7 @@ public class HybridAssembler {
 					
 					//return appropriate path
 					if(changed){
-						simGraph.chopPathAtAnchors(brg.getBestPath(brg.steps.start.getNode(),brg.steps.end.getNode())).stream().forEach(p->simGraph.reduceUniquePath(p));
+						simGraph.getNewSubPathsToReduce(brg.getBestPath(brg.steps.start.getNode(),brg.steps.end.getNode())).stream().forEach(p->simGraph.reduceUniquePath(p));
 						solved.add(brg);
 					}
 					else
