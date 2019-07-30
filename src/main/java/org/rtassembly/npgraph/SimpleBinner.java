@@ -392,7 +392,9 @@ public class SimpleBinner {
 					if(bc.getSum() > 3)
 						node2BinMap.remove(node);
 				}
-			}else if(node.getNumber("len") > TRANSFORMED_ANCHOR_CTG_LEN) //big unbinned nodes
+			}else if(node.getNumber("len") > TRANSFORMED_ANCHOR_CTG_LEN //big unbinned nodes
+					&& Math.max(node.getInDegree(), node.getOutDegree()) <= 1 //to investigate unique nodes only
+					)
 				graph.addUnknownNodes((BDNode) node);
 		}
 		

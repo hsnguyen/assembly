@@ -29,7 +29,7 @@ public class GraphExploreDesktop {
     	System.setProperty("org.graphstream.ui", "javafx");
     	//System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer"); 
     	String binFile="";
-    	boolean met=false;
+    	boolean met=false, useSPAdesPath=false;
     	/*
     	 * npScarf data set
     	 */
@@ -52,31 +52,31 @@ public class GraphExploreDesktop {
     	/*
     	 * unicycler data set
     	 */
-    	String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/unicycler/synthetic/";
-//    	String sample="Acinetobacter_A1/";
-//    	String sample="Acinetobacter_AB30/"; //SimpleBinner.ANCHOR_CTG_LEN=2000 || Alignment.MIN_QUAL=10
-//    	String sample="E_coli_K-12_MG1655/";
-//    	String sample="E_coli_O25b_H4-ST131/";
-//    	String sample="Klebsiella_30660_NJST258_1/";
-    	String sample="Klebsiella_MGH_78578/"; //SimpleBinner.ANCHOR_CTG_LEN=500
-//    	String sample="Klebsiella_NTUH-K2044/";
-//    	String sample="Mycobacterium_tuberculosis_H37Rv/";
-//    	String sample="random_sequences_many_repeats/";
-//    	String sample="random_sequences_no_repeats/";
-//    	String sample="random_sequences_some_repeats/";
-//    	String sample="Saccharomyces_cerevisiae_S288c/";
-//    	String sample="Shigella_dysenteriae_Sd197/"; //SimpleBinner.ANCHOR_CTG_LEN=2000
-//    	String sample="Shigella_sonnei_53G/";
-//    	String sample="Streptococcus_suis_BM407/";
-//    	
-//    	
-//    	String quality="bad/";
-//    	String quality="medium/";
-    	String quality="good/";
-
-    	String sInput=dataFolder+sample+quality+"spades/assembly_graph.fastg",
-    			output=dataFolder+sample+quality+"/",
-    			lInput=dataFolder+sample+quality+"mm2.sam";	
+//    	String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/unicycler/synthetic/";
+////    	String sample="Acinetobacter_A1/";
+////    	String sample="Acinetobacter_AB30/"; //SimpleBinner.ANCHOR_CTG_LEN=2000 || Alignment.MIN_QUAL=10
+////    	String sample="E_coli_K-12_MG1655/";
+////    	String sample="E_coli_O25b_H4-ST131/";
+////    	String sample="Klebsiella_30660_NJST258_1/";
+//    	String sample="Klebsiella_MGH_78578/"; //SimpleBinner.ANCHOR_CTG_LEN=500
+////    	String sample="Klebsiella_NTUH-K2044/";
+////    	String sample="Mycobacterium_tuberculosis_H37Rv/";
+////    	String sample="random_sequences_many_repeats/";
+////    	String sample="random_sequences_no_repeats/";
+////    	String sample="random_sequences_some_repeats/";
+////    	String sample="Saccharomyces_cerevisiae_S288c/";
+////    	String sample="Shigella_dysenteriae_Sd197/"; //SimpleBinner.ANCHOR_CTG_LEN=2000
+////    	String sample="Shigella_sonnei_53G/";
+////    	String sample="Streptococcus_suis_BM407/";
+////    	
+////    	
+////    	String quality="bad/";
+////    	String quality="medium/";
+//    	String quality="good/";
+//
+//    	String sInput=dataFolder+sample+quality+"spades/assembly_graph.fastg",
+//    			output=dataFolder+sample+quality+"/",
+//    			lInput=dataFolder+sample+quality+"mm2.sam";	
     
     	
     	/*
@@ -89,14 +89,15 @@ public class GraphExploreDesktop {
 //    	/*
 //    	 * Porecamp data:
 //    	 */
-//    	String sass="metaSPAdes";
-////    	String sass="megaHIT";
-//    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/"+sass+"/assembly_graph.fastg",
-//    			output="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/",
-//    			lInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/"+sass+"/assembly_graph.sam";
-//		binFile="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/metabat/"+sass+"_contigs.bin";	
-//    	met=true;
-//    	BDGraph.MIN_SUPPORT=5;
+    	String sass="metaSPAdes";
+//    	String sass="megaHIT";
+    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/"+sass+"/assembly_graph.fastg",
+    			output="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/",
+    			lInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/"+sass+"/assembly_graph.sam";
+		binFile="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/metabat/"+sass+"_contigs.bin";	
+    	met=true;
+		useSPAdesPath=true;
+    	BDGraph.MIN_SUPPORT=5;
     	
 //    	/*
 //    	 * MRSA day 0
@@ -110,6 +111,7 @@ public class GraphExploreDesktop {
     	 *******************************************************************************/
 		HybridAssembler hbAss = new HybridAssembler();
 		hbAss.setMetagenomics(met);
+		hbAss.setUseSPAdesPath(useSPAdesPath);
 		hbAss.setShortReadsInput(sInput);
 		hbAss.setPrefix(output);
 		if(!binFile.isEmpty())

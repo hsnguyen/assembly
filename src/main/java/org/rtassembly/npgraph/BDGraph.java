@@ -40,7 +40,7 @@ public class BDGraph extends MultiGraph{
 
     //these should be changed in another thread, e.g. settings from GUI
 	public static volatile double ILLUMINA_READ_LENGTH=300; //Illumina MiSeq
-    public static final int GOOD_SUPPORT=120; //number of minimum spanning reads for an affirmative bridge. TODO: reduce this to test
+    public static final int GOOD_SUPPORT=20; //number of minimum spanning reads for an affirmative bridge. TODO: reduce this to test
 	public static final double ALPHA=.5; //coverage less than alpha*bin_cov will be considered noise
     public static final int D_LIMIT=5000; //distance bigger than this will be ignored
     public static int S_LIMIT=300;// maximum number of graph traversing steps
@@ -375,7 +375,7 @@ public class BDGraph extends MultiGraph{
     	PopBin retval=null;
 
     	for(BDNodeState ns:successors){
-    		if(ns.getWeight()<BDGraph.MIN_SUPPORT)
+    		if(ns.getWeight()<.1*BDGraph.GOOD_SUPPORT)//less than 10% will be ignored
     			continue;
     		co++;
     		if(co>1)
@@ -383,7 +383,7 @@ public class BDGraph extends MultiGraph{
     		retval=SimpleBinner.getBinIfUnique(ns.getNode());//check??
     	} 
     	for(BDNodeState ns:predecessors){
-    		if(ns.getWeight()<BDGraph.MIN_SUPPORT)
+    		if(ns.getWeight()<.1*BDGraph.GOOD_SUPPORT)
     			continue;
     		ci++;
     		if(ci>1)
@@ -915,7 +915,7 @@ public class BDGraph extends MultiGraph{
     		BDEdge reducedEdge = addEdge(path.getFirstNode(), path.getLastNode(), path.getFirstNodeDirection(), path.getLastNodeDirection());
     		System.out.println("ADDING EDGE " + reducedEdge.getId()+ " from " + reducedEdge.getNode0().getGraph().getId() + "-" + reducedEdge.getNode1().getGraph().getId());
 			if(reducedEdge!=null){
-				if(path.getEdgeCount()>1)
+				if(path.getPrimitivePath().getEdgeCount()>1)
 					reducedEdge.setAttribute("path", path);
 				binner.edge2BinMap.put(reducedEdge, oneBin);
 			}
