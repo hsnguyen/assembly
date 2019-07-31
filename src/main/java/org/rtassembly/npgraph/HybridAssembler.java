@@ -411,7 +411,7 @@ public class HybridAssembler {
 		SAMRecordIterator iter = reader.iterator();
 
 		String readID = "";
-		Sequence nnpRead = null;
+		Sequence read = null;
 		ArrayList<Alignment> samList =  new ArrayList<Alignment>();// alignment record of the same read;	
 		SAMRecord curRecord=null;
 		while (iter.hasNext()) {
@@ -428,9 +428,9 @@ public class HybridAssembler {
 			if (curRecord.getReadUnmappedFlag() || curRecord.getMappingQuality() < Alignment.MIN_QUAL){		
 				LOG.info("Ignore one unmapped or low-quality map record!");
 				if (!readID.equals(curRecord.getReadName())){
-					update(nnpRead, samList, curRecord);
+					update(read, samList, curRecord);
 					samList = new ArrayList<Alignment>();
-					nnpRead = new Sequence(Alphabet.DNA5(), curRecord.getReadString(), curRecord.getReadName());
+					read = GraphUtil.getQueryReadFromSAMRecord(curRecord);
 					readID = curRecord.getReadName();
 				}
 				continue;		
@@ -443,9 +443,9 @@ public class HybridAssembler {
 			if (simGraph.getNode(refID)==null) {
 				LOG.info("Ignore record with reference {} not found (removed) from the graph!", refID);
 				if (!readID.equals(curRecord.getReadName())){
-					update(nnpRead, samList, curRecord);
+					update(read, samList, curRecord);
 					samList = new ArrayList<Alignment>();
-					nnpRead = new Sequence(Alphabet.DNA5(), curRecord.getReadString(), curRecord.getReadName());
+					read = GraphUtil.getQueryReadFromSAMRecord(curRecord);
 					readID = curRecord.getReadName();
 				}
 				continue;
@@ -455,9 +455,9 @@ public class HybridAssembler {
 			//////////////////////////////////////////////////////////////////
 			
 			if (!readID.equals("") && !readID.equals(curRecord.getReadName())) {	
-				update(nnpRead, samList, curRecord);
+				update(read, samList, curRecord);
 				samList = new ArrayList<Alignment>();
-				nnpRead = new Sequence(Alphabet.DNA5(), curRecord.getReadString(), curRecord.getReadName());
+				read = GraphUtil.getQueryReadFromSAMRecord(curRecord);
 				readID = curRecord.getReadName();
 
 			}	

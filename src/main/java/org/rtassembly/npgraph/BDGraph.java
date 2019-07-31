@@ -1110,7 +1110,7 @@ public class BDGraph extends MultiGraph{
 	    //Print S (Segment)
 	    for(Node node:this){
 	    	Sequence seq=(Sequence) node.getAttribute("seq");
-	    	int kmer_count=(int)(GraphUtil.getRealCoverage(node.getNumber("cov"))*(BDGraph.ILLUMINA_READ_LENGTH-BDGraph.getKmerSize()+1)/BDGraph.ILLUMINA_READ_LENGTH);
+	    	int kmer_count=(int)(GraphUtil.getRealCoverage(node.getNumber("cov"))*(BDGraph.ILLUMINA_READ_LENGTH-BDGraph.getKmerSize())/BDGraph.ILLUMINA_READ_LENGTH);
 	    	printWriter.printf("S\t%s\t%s\tKC:i:%d\n", node.getId(), seq.toString(),kmer_count);
 	    	addedNodes.add(node.getId());
 	    }	    
@@ -1138,7 +1138,7 @@ public class BDGraph extends MultiGraph{
 		    		addedNodes.add(nextID);
 		    		
 		    		Sequence seq=(Sequence) nextNode.getAttribute("seq");
-			    	int kmer_count=(int)(GraphUtil.getRealCoverage(nextNode.getNumber("cov"))*(BDGraph.ILLUMINA_READ_LENGTH-BDGraph.getKmerSize()+1)/BDGraph.ILLUMINA_READ_LENGTH);
+			    	int kmer_count=(int)(GraphUtil.getRealCoverage(nextNode.getNumber("cov"))*(BDGraph.ILLUMINA_READ_LENGTH-BDGraph.getKmerSize())/BDGraph.ILLUMINA_READ_LENGTH);
 			    	printWriter.printf("S\t%s\t%s\tKC:i:%d\n", nextID, seq.toString(),kmer_count);
 
 	    		}

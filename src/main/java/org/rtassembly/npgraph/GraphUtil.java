@@ -23,6 +23,7 @@ import com.joptimizer.functions.PDQuadraticMultivariateRealFunction;
 import com.joptimizer.optimizers.NewtonUnconstrained;
 import com.joptimizer.optimizers.OptimizationRequest;
 
+import htsjdk.samtools.SAMRecord;
 import japsa.seq.Alphabet;
 import japsa.seq.FastaReader;
 import japsa.seq.Sequence;
@@ -379,7 +380,7 @@ public class GraphUtil {
     
     public static int overlap(Sequence s0, Sequence s1){
     	int retval;
-    	for(retval=BDGraph.getKmerSize()-1 ; retval>0; retval--){
+    	for(retval=BDGraph.getKmerSize() ; retval>0; retval--){
     		int match=0;
     		while(match < retval && s0.getBase(s0.length()-retval+match)==s1.getBase(match))
     			match++;
@@ -814,5 +815,17 @@ public class GraphUtil {
 		else
 			read.splitAtPotentialAnchors().forEach(r->r.saveCorrectedSequenceInBetween());
 			
+	}
+	
+	/*
+	 * Note that read sequence from SAMRecord could be reverse-complemented
+	 * https://www.biostars.org/p/289583/
+	 */
+	public static Sequence getQueryReadFromSAMRecord(SAMRecord sam){
+		Sequence retval = new Sequence(Alphabet.DNA5(), sam.getReadString(), sam.getReadName());
+		if(sam.getReadNegativeStrandFlag())
+			retval=Alphabet.DNA.complement(retval);
+		
+		return retval;
 	}
 }

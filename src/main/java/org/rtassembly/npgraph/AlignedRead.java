@@ -50,15 +50,16 @@ import java.util.Collections;
 public class AlignedRead{
 	public static int PSEUDO_ID=1;
 	public static String tmpFolder=System.getProperty("usr.dir")+File.separator+"npGraph_tmp"; //folder to save spanning reads of the bridge
-
-	/**
-	 * The read sequence
-	 */
-	Sequence readSequence;		
+	//The query long read sequence
+	Sequence readSequence;
 	private boolean sorted = false;
 	
 	//This is only used in uniqueBridgesFinding()
-	private int eFlag=0; // 0: both ends are from non-unique nodes; 1: start node is unique; 2: end node is unique; 3: both ends are from unique nodes
+	// 0: both ends are from non-unique nodes; 
+	// 1: start node is unique; 
+	// 2: end node is unique; 
+	// 3: both ends are from unique nodes
+	private int eFlag=0; 
 	
 	ArrayList<Alignment> alignments;	
 
@@ -71,7 +72,7 @@ public class AlignedRead{
 		append(alg);
 	}
 	
-	public Sequence getReadSequence(){
+	public Sequence getLongReadSequence(){ //the actual read used as query	
 		return readSequence;
 	}
 
@@ -104,15 +105,14 @@ public class AlignedRead{
 
 	
 	public void reverse(){
-		//return an (conceptually the same) read filling with the a reverse read
 		Sequence revRead = Alphabet.DNA.complement(readSequence);
 		revRead.setName("REV"+readSequence.getName());
+		readSequence=revRead;
 		ArrayList<Alignment> revAlignments = new ArrayList<Alignment>(); 
 		
 		for (Alignment alignment:alignments)
 			revAlignments.add(0,alignment.reverseRead());
 		
-		readSequence=revRead;
 		alignments=revAlignments;
 
 	}
@@ -190,7 +190,6 @@ public class AlignedRead{
 					end = getLastAlignment();
 		BDNode 	fromContig = start.node,
 				toContig = end.node;
-	
 		int gap=0;
 		SequenceBuilder seqBuilder = new SequenceBuilder(Alphabet.DNA5(), 1024*1024,  readSequence.getName());
 		if(		fromContig.getId().compareTo(toContig.getId()) > 0 
@@ -207,7 +206,7 @@ public class AlignedRead{
 //		sortAlignment();
 		//1. Appending (k-1)-flanking sequence from the start node
 		Sequence flank0=((Sequence)fromContig.getAttribute("seq"))
-						.subSequence(	(int)fromContig.getNumber("len")-BDGraph.getKmerSize()+1, 
+						.subSequence(	(int)fromContig.getNumber("len")-BDGraph.getKmerSize(), 
 										(int)fromContig.getNumber("len"));
 		
 		if(start.strand)
@@ -264,7 +263,7 @@ public class AlignedRead{
 			
 					seqBuilder.append(((Sequence)contig.getAttribute("seq")).subSequence(refLeft-1, refRight-1));
 
-				}else{//neg strain
+				}else{//neg strand
 					int refRight = record.refStart;
 					int refLeft = record.refEnd;
 
@@ -320,7 +319,7 @@ public class AlignedRead{
 		//3. Make sure the (k-1)-flanking sequence of the ending node is included at last.
 		
 		Sequence flank1=((Sequence)toContig.getAttribute("seq"))
-						.subSequence(0, BDGraph.getKmerSize()-1);
+						.subSequence(0, BDGraph.getKmerSize());
 		if(end.strand)
 				flank1=Alphabet.DNA.complement(flank1);
 		//TODO: double-check this case
