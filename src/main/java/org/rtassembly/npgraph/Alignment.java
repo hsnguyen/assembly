@@ -185,7 +185,7 @@ public class Alignment implements Comparable<Alignment> {
 		revAlign.useful = useful;			
 		revAlign.node = node;
 		revAlign.score = score;
-		revAlign.alignmentCigars = alignmentCigars;
+		revAlign.alignmentCigars = alignmentCigars;//https://www.biostars.org/p/289583/
 		revAlign.quality = quality;
 
 		return revAlign;

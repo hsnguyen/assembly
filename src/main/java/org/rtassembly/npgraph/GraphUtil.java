@@ -819,7 +819,6 @@ public class GraphUtil {
 	
 	/*
 	 * Note that read sequence from SAMRecord could be reverse-complemented
-	 * https://www.biostars.org/p/289583/
 	 */
 	public static Sequence getQueryReadFromSAMRecord(SAMRecord sam){
 		Sequence retval = new Sequence(Alphabet.DNA5(), sam.getReadString(), sam.getReadName());

@@ -105,9 +105,7 @@ public class AlignedRead{
 
 	
 	public void reverse(){
-		Sequence revRead = Alphabet.DNA.complement(readSequence);
-		revRead.setName("REV"+readSequence.getName());
-		readSequence=revRead;
+		readSequence = Alphabet.DNA.complement(readSequence);
 		ArrayList<Alignment> revAlignments = new ArrayList<Alignment>(); 
 		
 		for (Alignment alignment:alignments)
@@ -191,7 +189,6 @@ public class AlignedRead{
 		BDNode 	fromContig = start.node,
 				toContig = end.node;
 		int gap=0;
-		SequenceBuilder seqBuilder = new SequenceBuilder(Alphabet.DNA5(), 1024*1024,  readSequence.getName());
 		if(		fromContig.getId().compareTo(toContig.getId()) > 0 
 			|| (fromContig==toContig && start.strand==false && end.strand==false)) //to agree with BDEdge.createID()
 		{
@@ -202,16 +199,19 @@ public class AlignedRead{
 			toContig = end.node;
 			
 		}
-		
 //		sortAlignment();
 		//1. Appending (k-1)-flanking sequence from the start node
 		Sequence flank0=((Sequence)fromContig.getAttribute("seq"))
 						.subSequence(	(int)fromContig.getNumber("len")-BDGraph.getKmerSize(), 
 										(int)fromContig.getNumber("len"));
 		
-		if(start.strand)
+		if(start.strand){
+			flank0=((Sequence)fromContig.getAttribute("seq"))
+					.subSequence(0, BDGraph.getKmerSize());
 			flank0=Alphabet.DNA.complement(flank0);
-
+		}
+		
+		SequenceBuilder seqBuilder = new SequenceBuilder(Alphabet.DNA5(), 1024*1024,  readSequence.getName());
 		seqBuilder.append(flank0);
 		
 		//2. Filling the sequence in-between
@@ -320,8 +320,12 @@ public class AlignedRead{
 		
 		Sequence flank1=((Sequence)toContig.getAttribute("seq"))
 						.subSequence(0, BDGraph.getKmerSize());
-		if(end.strand)
+		if(end.strand){
+				flank1=((Sequence)toContig.getAttribute("seq"))
+						.subSequence(	(int)toContig.getNumber("len")-BDGraph.getKmerSize(), 
+										(int)toContig.getNumber("len"));
 				flank1=Alphabet.DNA.complement(flank1);
+		}
 		//TODO: double-check this case
 		if(posReadEnd>posReadFinal){
 			//scan for overlap
@@ -335,6 +339,11 @@ public class AlignedRead{
 		
 		//seqBuilder.toSequence();
 		String key=getEndingsID();
+		System.out.printf("Save read %s to bridge %s: %s -> %s\n", readSequence.getName(), key,
+																	fromContig.getId() + (start.strand?"+":"-"),
+																	toContig.getId() + (end.strand?"+":"-")
+																	);
+
 		String fileName=tmpFolder+File.separator+key+".fasta";
 		try {
 			SequenceOutputStream out = new SequenceOutputStream(new FileOutputStream(fileName,true));
