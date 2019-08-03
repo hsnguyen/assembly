@@ -200,12 +200,12 @@ public class AlignedRead{
 			
 		}
 //		sortAlignment();
-		//1. Appending (k-1)-flanking sequence from the start node
+		//1. Appending k-flanking sequence from the start node
 		Sequence flank0=((Sequence)fromContig.getAttribute("seq"))
 						.subSequence(	(int)fromContig.getNumber("len")-BDGraph.getKmerSize(), 
 										(int)fromContig.getNumber("len"));
 		
-		if(start.strand){
+		if(!start.strand){
 			flank0=((Sequence)fromContig.getAttribute("seq"))
 					.subSequence(0, BDGraph.getKmerSize());
 			flank0=Alphabet.DNA.complement(flank0);
@@ -316,11 +316,11 @@ public class AlignedRead{
 			}
 		}
 		
-		//3. Make sure the (k-1)-flanking sequence of the ending node is included at last.
+		//3. Make sure the k-flanking sequence of the ending node is included at last.
 		
 		Sequence flank1=((Sequence)toContig.getAttribute("seq"))
 						.subSequence(0, BDGraph.getKmerSize());
-		if(end.strand){
+		if(!end.strand){
 				flank1=((Sequence)toContig.getAttribute("seq"))
 						.subSequence(	(int)toContig.getNumber("len")-BDGraph.getKmerSize(), 
 										(int)toContig.getNumber("len"));
