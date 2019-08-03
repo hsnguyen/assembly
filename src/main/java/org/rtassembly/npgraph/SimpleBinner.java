@@ -32,15 +32,15 @@ public class SimpleBinner {
 	BDGraph graph;
 	ArrayList<PopBin> binList;
 	PopBin leastBin;
-	HashMap<Edge, HashMap<PopBin,Integer>> edge2BinMap;
-	static HashMap<Node, HashMap<PopBin, Integer>> node2BinMap;
+	HashMap<Edge, Multiplicity> edge2BinMap;
+	static HashMap<Node, Multiplicity> node2BinMap;
 	ArrayList<Edge> unresolvedEdges;
 	public SimpleBinner(BDGraph graph){
 		this.graph = graph;
 		binList = new ArrayList<PopBin>();
 		leastBin = null;
-		edge2BinMap = new HashMap<Edge, HashMap<PopBin,Integer>>();
-		node2BinMap = new HashMap<Node, HashMap<PopBin, Integer>>();
+		edge2BinMap = new HashMap<Edge, Multiplicity>();
+		node2BinMap = new HashMap<Node, Multiplicity>();
 		unresolvedEdges = new ArrayList<Edge>(graph.edges().collect(Collectors.toList()));
 	}
 
@@ -60,31 +60,29 @@ public class SimpleBinner {
 	 * When a node bin is set, traverse the graph to assign edges if possible
 	 */
 	private void exploringFromNode(Node node){
-		HashMap<PopBin, Integer> nbins = node2BinMap.get(node);
+		Multiplicity nbins = node2BinMap.get(node);
 		if(nbins == null || nbins.isEmpty())
 			return;
 		
 		ArrayList<Edge> unknownLeavingEdges = new ArrayList<>(),
 						unknownEnteringEdges = new ArrayList<>();
-		HashMap<PopBin,Integer> 	leavingEdgeBinCount=new HashMap<PopBin,Integer>(),
-									enteringEdgeBinCount=new HashMap<PopBin,Integer>(),
-									induceEdgeBin=new HashMap<PopBin, Integer>();
+		Multiplicity 	leavingEdgeBinCount=new Multiplicity(),
+						enteringEdgeBinCount=new Multiplicity(),
+						induceEdgeBin=new Multiplicity();
 		// Leaving edges
 		node.leavingEdges().forEach(e -> 
 		{
-			HashMap<PopBin, Integer> ebins = edge2BinMap.get(e); 
-			if(ebins == null || ebins.size()==0)
+			Multiplicity ebins = edge2BinMap.get(e); 
+			if(ebins == null || ebins.isEmpty())
 				unknownLeavingEdges.add(e);
-			else{
-				for(PopBin b:ebins.keySet()) {
-					leavingEdgeBinCount.put(b, ebins.get(b)+ (leavingEdgeBinCount.get(b)==null?0:leavingEdgeBinCount.get(b)));
-				}
-			}
+			else
+				leavingEdgeBinCount.add(ebins);
+			
 		});
 		if(unknownLeavingEdges.size()==1){
 			Edge e = unknownLeavingEdges.get(0);
-			induceEdgeBin=substract(nbins, leavingEdgeBinCount);
-			if(induceEdgeBin.values().stream().mapToInt(Integer::intValue).sum() > 0){
+			induceEdgeBin=nbins.substract(leavingEdgeBinCount);
+			if(induceEdgeBin!=null && induceEdgeBin.getSum() > 0){
 				edge2BinMap.put(e, induceEdgeBin);
 				System.out.printf("From node %s%s firing edge %s%s\n",node.getId(),getBinsOfNode(node), e.getId(), getBinsOfEdge(e));
 				exploringFromEdge(e);
@@ -94,19 +92,17 @@ public class SimpleBinner {
 		// Entering edges
 		node.enteringEdges().forEach(e -> 
 		{
-			HashMap<PopBin, Integer> ebins = edge2BinMap.get(e); 
-			if(ebins == null || ebins.size()==0)
+			Multiplicity ebins = edge2BinMap.get(e); 
+			if(ebins == null || ebins.isEmpty())
 				unknownEnteringEdges.add(e);
-			else{
-				for(PopBin b:ebins.keySet()) {
-					enteringEdgeBinCount.put(b, ebins.get(b)+ (enteringEdgeBinCount.get(b)==null?0:enteringEdgeBinCount.get(b)));
-				}
-			}
+			else
+				enteringEdgeBinCount.add(ebins);
+
 		});
 		if(unknownEnteringEdges.size()==1){
 			Edge e = unknownEnteringEdges.get(0);
-			induceEdgeBin=substract(nbins, enteringEdgeBinCount);
-			if(induceEdgeBin.values().stream().mapToInt(Integer::intValue).sum() > 0){
+			induceEdgeBin=nbins.substract(enteringEdgeBinCount);
+			if(induceEdgeBin!=null && induceEdgeBin.getSum() > 0){
 				edge2BinMap.put(e, induceEdgeBin);
 				System.out.printf("From node %s%s firing edge %s%s\n",node.getId(),getBinsOfNode(node), e.getId(), getBinsOfEdge(e));
 				exploringFromEdge(e);
@@ -129,21 +125,19 @@ public class SimpleBinner {
 			Stream<Edge> edgeSet0 = dir0?n0.leavingEdges():n0.enteringEdges();		
 			
 			ArrayList<Edge> edgeList0 = (ArrayList<Edge>) edgeSet0.collect(Collectors.toList());
-			HashMap<PopBin,Integer> binCounts0 = new HashMap<PopBin,Integer>();
+			Multiplicity binCounts0 = new Multiplicity();
 			boolean fully = true;
 			for(Edge e:edgeList0){
 				if(edge2BinMap.containsKey(e)){
-					binCounts0=sum(binCounts0, edge2BinMap.get(e));
+					binCounts0.add(edge2BinMap.get(e));
 				}else{
 					fully = false;
 					break;
 				}
 			}
 			//check if the total cov of inferred pop bins agree with its original coverage or not
-			double covSum=0.0;
-			for(PopBin b:binCounts0.keySet()){
-				covSum+=binCounts0.get(b)*b.estCov;
-			}
+			double covSum=binCounts0.getCoverage();
+
 			if(fully && GraphUtil.approxCompare(covSum, n0.getNumber("cov"))==0){
 				node2BinMap.put(n0, binCounts0);
 //				System.out.println("From edge " + edge.getId() + " updating node " + n0.getId());
@@ -162,11 +156,11 @@ public class SimpleBinner {
 			Stream<Edge> edgeSet1 = dir1?n1.leavingEdges():n1.enteringEdges();
 			
 			ArrayList<Edge> edgeList1 = (ArrayList<Edge>) edgeSet1.collect(Collectors.toList());
-			HashMap<PopBin,Integer> binCounts1 = new HashMap<PopBin,Integer>();
+			Multiplicity binCounts1 = new Multiplicity();
 			boolean fully = true;
 			for(Edge e:edgeList1){
 				if(edge2BinMap.containsKey(e)){
-					binCounts1=sum(binCounts1, edge2BinMap.get(e));
+					binCounts1.add(edge2BinMap.get(e));
 				}else{
 					fully = false;
 //					System.out.println("...node " + n1.getId() + " not yet fully solved at: " + e.getId());
@@ -174,10 +168,7 @@ public class SimpleBinner {
 				}
 			}
 			//check if the total cov of inferred pop bins agree with its original coverage or not
-			double covSum=0.0;
-			for(PopBin b:binCounts1.keySet()){
-				covSum+=binCounts1.get(b)*b.estCov;
-			}
+			double covSum=binCounts1.getCoverage();
 			
 			if(fully && GraphUtil.approxCompare(covSum, n1.getNumber("cov"))==0){				
 				node2BinMap.put(n1, binCounts1);
@@ -191,36 +182,6 @@ public class SimpleBinner {
 			System.out.printf("firing node %s%s\n", n1.getId(),getBinsOfNode(n1));
 			exploringFromNode(n1);
 		}
-	}
-	
-	private static HashMap<PopBin, Integer> substract(HashMap<PopBin, Integer> minuend, HashMap<PopBin, Integer> subtrahend){
-		HashMap<PopBin, Integer> difference = new HashMap<PopBin, Integer>();
-		for(PopBin b:minuend.keySet()){
-			int _minuend = minuend.get(b),
-				_diff = _minuend - (subtrahend.containsKey(b)?subtrahend.get(b):0);	
-			if(_diff > 0)
-				difference.put(b, _diff);
-//			else
-//				difference.put(b, 0);
-		}
-		
-		return difference;
-	}
-	
-	private static HashMap<PopBin, Integer> sum(HashMap<PopBin, Integer> augend, HashMap<PopBin, Integer> addend){
-		if(augend==null||addend==null)
-			return null;
-//		if(augend==null) return addend;
-//		if(addend==null) return augend;
-		
-		HashMap<PopBin, Integer> retval = new HashMap<PopBin, Integer>();
-		for(PopBin b:Sets.union(augend.keySet(), addend.keySet())){
-			int re=(augend.containsKey(b)?augend.get(b):0) + (addend.containsKey(b)?addend.get(b):0);
-			if(re>0)
-			retval.put(b, re);
-		}
-		
-		return retval;
 	}
 	
 	private PopBin scanAndGuess(double cov) {
@@ -265,8 +226,7 @@ public class SimpleBinner {
 			for(DoublePoint p:c.getPoints()) {
 				Node tmp = graph.getNode(((int)p.getPoint()[1])+"");
 				bin.addCoreNode(tmp);
-				HashMap<PopBin, Integer> entry = new HashMap<PopBin, Integer>();
-				entry.put(bin, 1);
+				Multiplicity entry = new Multiplicity(bin,1);
 				node2BinMap.put(tmp, entry);
 				
 			}
@@ -293,6 +253,7 @@ public class SimpleBinner {
 		while((line=binReader.readLine()) != null){			
 			String[] comps= line.split("\\s+");
 			binID=comps[1];
+			//FIXME: contigs binned "0" from metaBAT is unspecified? unique?
 			if(binID.equals("0"))
 				continue;
 			
@@ -309,8 +270,7 @@ public class SimpleBinner {
 			node = (BDNode) graph.getNode(nodeID);
 			bin.addCoreNode(node);
 			
-			HashMap<PopBin, Integer> entry = new HashMap<PopBin, Integer>();
-			entry.put(bin, 1);
+			Multiplicity entry = new Multiplicity(bin,1);
 			node2BinMap.put(node, entry);
 		}
 		
@@ -358,8 +318,7 @@ public class SimpleBinner {
 					
 					if(tmp==leastBin && GraphUtil.approxCompare(e.getNumber("cov"), leastBin.estCov) < 0){
 						Node n0=e.getNode0(), n1=e.getNode1();
-						HashMap<PopBin, Integer> unitBinMap = new HashMap<>();
-						unitBinMap.put(leastBin, 1);
+						Multiplicity unitBinMap = new Multiplicity(leastBin,1);
 						
 						if(n0.getNumber("len") > UNIQUE_CTG_LEN && getBinIfUnique(n0)==null){
 							n0.setAttribute("unique", leastBin);
@@ -397,8 +356,7 @@ public class SimpleBinner {
 							Edge guess = highlyPossibleEdges.get(b).remove(0);
 							System.out.print("...assigning " + guess.getId());
 							if(unresolvedEdges.contains(guess)){
-								HashMap<PopBin, Integer> bc = new HashMap<>();
-								bc.put(b, 1);
+								Multiplicity bc = new Multiplicity(b,1);
 								edge2BinMap.put(guess, bc);
 								System.out.println(": start explore");
 								exploringFromEdge(guess);
@@ -423,18 +381,21 @@ public class SimpleBinner {
 		//3.3 Assign unique nodes here: need more tricks
 		for(Node node:graph) {
 			if(	node2BinMap.containsKey(node) && node.getNumber("len") > ANCHOR_CTG_LEN ){ 
+				Multiplicity bc = node2BinMap.get(node);
 				if(Math.max(node.getInDegree(), node.getOutDegree()) <= 1){ //not true if e.g. sequencing errors inside unique contig
-					HashMap<PopBin, Integer> bc = node2BinMap.get(node);
-					ArrayList<PopBin> counts = new ArrayList<PopBin>(bc.keySet());
+					Set<PopBin> counts = bc.getBinsSet();
 	//				if(counts.size()==1 && bc.get(counts.get(0))==1){ //and should check for any conflict???
-					int totOcc = bc.values().stream().mapToInt(Integer::intValue).sum();
+					int totOcc = bc.getSum();
 					if(totOcc==1) //and should check for any conflict???
-						node.setAttribute("unique", counts.get(0));
+						node.setAttribute("unique", counts.toArray()[0]);
 				} else{ // REMOVE NODES WITH MULTIPLICITY > 3 SINCE THEY'RE NOT SO CONFIDENT 
-					if(node2BinMap.get(node).values().stream().mapToInt(Integer::intValue).sum() > 3)
+					if(bc.getSum() > 3)
 						node2BinMap.remove(node);
 				}
-			}
+			}else if(node.getNumber("len") > TRANSFORMED_ANCHOR_CTG_LEN //big unbinned nodes
+					&& Math.max(node.getInDegree(), node.getOutDegree()) <= 1 //to investigate unique nodes only
+					)
+				graph.addUnknownNodes((BDNode) node);
 		}
 		
 		
@@ -444,7 +405,7 @@ public class SimpleBinner {
 	 *****************************************************/
 	public boolean checkIfBinContainingNode(PopBin bin, Node node){
 		if(node2BinMap.containsKey(node)){
-			return node2BinMap.get(node).containsKey(bin) && node2BinMap.get(node).get(bin) > 0;
+			return node2BinMap.get(node).getBinCount(bin) > 0;
 		}else
 			return GraphUtil.approxCompare(bin.estCov, node.getNumber("cov"))>=0;
 	}
@@ -456,16 +417,22 @@ public class SimpleBinner {
 	//also take into account nodes that transformed to unique after reduced
 	static public PopBin getBinIfUniqueNow(Node node){
 		PopBin retval=getBinIfUnique(node);
-		if(retval==null && node.getNumber("len") > TRANSFORMED_ANCHOR_CTG_LEN && node2BinMap.containsKey(node)){
-			HashMap<PopBin, Integer> bc = node2BinMap.get(node);
-			if(bc.values().stream().mapToInt(Integer::intValue).sum() == 1){
-				retval=Iterables.getOnlyElement(bc.keySet());
-			}
+		if(retval==null && node.getNumber("len") > TRANSFORMED_ANCHOR_CTG_LEN){
+			if(node2BinMap.containsKey(node)){
+				Multiplicity bc = node2BinMap.get(node);
+				if(bc.getSum() == 1){
+					retval=Iterables.getOnlyElement(bc.getBinsSet());
+				}
+			}else //for unknown nodes only
+				retval=BDGraph.getUniqueBinFromLongReads((BDNode) node);
 		}
 		return retval;
-		
+		  
 	}
 	
+	static public boolean isPotentialAnchorNode(BDNode node){
+		return getBinIfUnique(node)!=null||(BDGraph.isSuspectedNode(node)&&node.getInDegree()<=1&&node.getOutDegree()<=1);
+	}
 	public boolean checkRemovableNode(Node node) {
 //		LOG.info("Checking node {}", node.getAttribute("name"));
 		if(node.getInDegree()*node.getOutDegree()!=0 || SimpleBinner.getBinIfUnique(node)!=null) {
@@ -473,7 +440,7 @@ public class SimpleBinner {
 			return false;
 		}
 		else if(node2BinMap.containsKey(node)) {
-			if(node2BinMap.get(node).values().stream().mapToInt(Integer::intValue).sum() != 0){
+			if(node2BinMap.get(node).getSum() != 0){
 //				LOG.info("2 not removable!");
 				return false;
 			}
@@ -490,50 +457,46 @@ public class SimpleBinner {
 	synchronized public Set<Edge> walkAlongUniquePath(BDPath path) {
 		System.out.printf("Path %s being processed based on binning info...\n", path.getId());
 		Node  	curNode = path.getRoot(), nextNode;
-		PopBin 	uniqueBin=path.getConsensusUniqueBinOfPath(),
-				startBin=getBinIfUnique(path.getRoot()),
-				endBin=getBinIfUnique(path.peekNode());
-		if(startBin==null)
-			startBin=getBinIfUniqueNow(path.getRoot());
-		if(endBin==null)
-			endBin=getBinIfUniqueNow(path.peekNode());
+		PopBin 	consensusBin=path.getConsensusUniqueBinOfPath(),
+				startBin=getBinIfUniqueNow(path.getRoot()),
+				endBin=getBinIfUniqueNow(path.peekNode());
 		
 		
-		if(uniqueBin==null||startBin==null||endBin==null){
+		if(consensusBin==null||startBin==null||endBin==null){
 			System.err.println("Ignored: population bin of the path (either at ending node or global) is not known!");
 			return null;
-		}else if(uniqueBin!=startBin && uniqueBin!=endBin){//at least one end must agree with the wholepath bin
-			System.err.println("Ignored: consensus bin must be one of the endings bin: Ignored!");
-			//clean from bin map here...
+		}
+//		else if(uniqueBin!=startBin && uniqueBin!=endBin){//at least one end must agree with the wholepath bin
+//			System.err.println("Ignored: consensus bin must be one of the endings bin: " + uniqueBin.getId() + " != " + startBin.getId() + " or " + endBin.getId() );
+//			//clean from bin map here...
+//			node2BinMap.remove(path.getRoot());
+//			node2BinMap.remove(path.peekNode());
+//			return null;
+//		}
+		else if(!PopBin.isCloseBins(consensusBin,startBin)){
+			System.err.printf("Ignored: consensus bin %s doesn't agree with one of the endings bin %s at node %s\n", consensusBin, startBin, path.getRoot());
 			node2BinMap.remove(path.getRoot());
-			node2BinMap.remove(path.peekNode());
-			return null;
-		}else if(!uniqueBin.isCloseTo(startBin)){
-			System.err.printf("Ignored: consensus bin %s doesn't agree with one of the endings bin %s at node %s\n", uniqueBin, startBin, path.getRoot());
-			node2BinMap.remove(path.getRoot());
 			//clean from bin map here...
 			return null;
-		}else if(!uniqueBin.isCloseTo(endBin)){
-			System.err.printf("Ignored: consensus bin %s doesn't agree with one of the endings bin %s at node %s\n", uniqueBin, endBin, path.peekNode());
+		}else if(!PopBin.isCloseBins(consensusBin,endBin)){
+			System.err.printf("Ignored: consensus bin %s doesn't agree with one of the endings bin %s at node %s\n", consensusBin, endBin, path.peekNode());
 			node2BinMap.remove(path.peekNode());
 			//clean from bin map here...
 			return null;
 		}
-		PopBin other=(uniqueBin==startBin?endBin:startBin);
-		HashMap<PopBin, Integer> 	oneBin=new HashMap<>(),
-									otherBin=new HashMap<>();
-		oneBin.put(uniqueBin, 1);
-		otherBin.put(other, 1);
+		PopBin other=(consensusBin==startBin?endBin:startBin);
+		Multiplicity 	oneBin=new Multiplicity(consensusBin,1),
+						otherBin=new Multiplicity(other,1);
 		
 		Set<Edge> retval = new HashSet<Edge>();	
-		double aveCov=uniqueBin.estCov;
+		double aveCov=consensusBin.estCov;
 		Boolean dir=null;
 		for(Edge ep:path.getEdgePath()){
 			nextNode=ep.getOpposite(curNode);
-			HashMap<PopBin, Integer> edgeBinsCount, bcMinusOne=null,  
-										nodeBinsCount;	
-			//remove faulty edge of unique nodes (that has degree=3)
-			if(getBinIfUnique(curNode)!=null || getBinIfUniqueNow(curNode)!=null){
+			Multiplicity edgeBinsCount, bcMinusOne=null,  
+							nodeBinsCount;	
+			//remove corresponding edges from the unique nodes
+			if(getBinIfUniqueNow(curNode)!=null){
 					dir=((BDEdge)ep).getNodeDirection((BDNode)curNode);
 					if(dir!=null){
 						Stream<Edge> streamEdges=dir?curNode.leavingEdges():curNode.enteringEdges();
@@ -541,7 +504,7 @@ public class SimpleBinner {
 					}
 
 			}
-			if(getBinIfUnique(nextNode)!=null || getBinIfUniqueNow(nextNode)!=null){
+			if(getBinIfUniqueNow(nextNode)!=null){
 					dir=((BDEdge)ep).getNodeDirection((BDNode)nextNode);
 					if(dir!=null){
 						Stream<Edge> streamEdges=dir?nextNode.leavingEdges():nextNode.enteringEdges();
@@ -551,13 +514,13 @@ public class SimpleBinner {
 			
 			if(edge2BinMap.containsKey(ep)) {
 				edgeBinsCount=edge2BinMap.get(ep);
-				if(edgeBinsCount.containsKey(uniqueBin)) {
-					bcMinusOne=substract(edgeBinsCount, oneBin);
+				if(edgeBinsCount.getBinCount(consensusBin) > 0) {
+					bcMinusOne=edgeBinsCount.substract(oneBin);
 					edge2BinMap.replace(ep, bcMinusOne);
 
-				}else if(edgeBinsCount.containsKey(other)){
+				}else if(edgeBinsCount.getBinCount(other) > 0){
 				//E.g. b2 vs b1 =>  b2==b1							//...
-					bcMinusOne=substract(edgeBinsCount, otherBin);
+					bcMinusOne=edgeBinsCount.substract(otherBin);
 					edge2BinMap.replace(ep, bcMinusOne);				
 
 				}else {
@@ -583,14 +546,14 @@ public class SimpleBinner {
 			bcMinusOne=null;
 			if(curNode!=path.getRoot() && curNode!=path.peekNode()) {
 				if(node2BinMap.containsKey(curNode)) {
-					if(node2BinMap.get(curNode).containsKey(uniqueBin)) {
+					if(node2BinMap.get(curNode).getBinCount(consensusBin) > 0) {
 						nodeBinsCount=node2BinMap.get(curNode);
-						bcMinusOne=substract(nodeBinsCount, oneBin);
+						bcMinusOne=nodeBinsCount.substract(oneBin);
 						node2BinMap.replace(curNode, bcMinusOne);
 
-					}else if(node2BinMap.get(curNode).containsKey(other)) {
+					}else if(node2BinMap.get(curNode).getBinCount(other) > 0) {
 						nodeBinsCount=node2BinMap.get(curNode);
-						bcMinusOne=substract(nodeBinsCount, otherBin);
+						bcMinusOne=nodeBinsCount.substract(otherBin);
 						node2BinMap.replace(curNode, bcMinusOne);
 //						if(!bcMinusOne.isEmpty()) {
 //							node2BinMap.replace(curNode, bcMinusOne);
@@ -650,29 +613,23 @@ public class SimpleBinner {
 	
 	public String getBinsOfNode(Node node) {
 		String retval="[";
-		HashMap<PopBin, Integer> binCount=node2BinMap.get(node);
+		Multiplicity binCount=node2BinMap.get(node);
 		if(binCount==null)
 			retval+="unknown";
-		else {
-			for(PopBin b:binCount.keySet()) {
-				int count=binCount.get(b);
-				retval+=b.getId()+":"+count+"; ";
-			}
-		}
+		else
+			retval+=binCount.toString();
+		
 		retval+="]";
 		return retval;
 	}
 	public String getBinsOfEdge(Edge edge) {
 		String retval="[";
-		HashMap<PopBin, Integer> binCount=edge2BinMap.get(edge);
+		Multiplicity binCount=edge2BinMap.get(edge);
 		if(binCount==null||binCount.isEmpty())
 			retval+="unknown";
-		else {
-			for(PopBin b:binCount.keySet()) {
-				int count=binCount.get(b);
-				retval+=b.getId()+":"+count+"; ";
-			}
-		}
+		else
+			retval+=binCount.toString();
+		
 		retval+="]";
 		return retval;
 	}
@@ -698,15 +655,13 @@ public class SimpleBinner {
 			while(ite.hasNext()) {
 				Edge e = ite.next();
 				System.out.println("Edge "+e.getId() + " cov=" + e.getNumber("cov") );
-				HashMap<PopBin,Integer> tmp = binner.edge2BinMap.get(e);
+				Multiplicity tmp = binner.edge2BinMap.get(e);
 				if(tmp==null) {
 					System.out.println("...has not yet assigned!");
 					continue;
 				}
-				for(PopBin b:tmp.keySet()) {
-					System.out.printf(" bin %d : %d, ", b.binID, tmp.get(b));
-				}
-				System.out.println();
+				
+				System.out.println(tmp);
 			}
 		}
 	}

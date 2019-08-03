@@ -29,7 +29,7 @@ public class BDNode extends MultiNode {
 	public int getDegree() {
 		int retval=degree;
 		for(int i=0;i<degree;i++)
-			if(edges[i].getNode0()==edges[i].getNode1())
+			if(edges[i].getNode0()==edges[i].getNode1() && edgeType(edges[i])!=IO_EDGE)
 				retval++;		
 		return retval;
 	}
@@ -38,7 +38,7 @@ public class BDNode extends MultiNode {
 	public int getInDegree() {
 		int retval=oStart;
 		for(int i=0;i<ioStart;i++)
-			if(edges[i].getNode0()==edges[i].getNode1())
+			if(edges[i].getNode0()==edges[i].getNode1() && edgeType(edges[i])!=IO_EDGE)
 				retval++;		
 		return retval;
 	}
@@ -47,7 +47,7 @@ public class BDNode extends MultiNode {
 	public int getOutDegree() {
 		int retval = degree - ioStart;
 		for(int i=oStart;i<degree;i++)
-			if(edges[i].getNode0()==edges[i].getNode1())
+			if(edges[i].getNode0()==edges[i].getNode1() && edgeType(edges[i])!=IO_EDGE)
 				retval++;	
 		return retval;
 	}

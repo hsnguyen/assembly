@@ -58,7 +58,10 @@ public class HybridAssembler {
 	public void setReady(boolean isReady) {ready=isReady;}
 	public boolean getReady() {return ready;}
 	
-	public void setMetagenomics(boolean isMetagenomics) {BDGraph.isMetagenomics=isMetagenomics;}
+	public void setMetagenomics(boolean isMetagenomics) {
+		BDGraph.isMetagenomics=isMetagenomics; 
+//		BDGraph.MIN_SUPPORT=5; //increase lower bound for confident bridges
+	}
 	
 	public final void setOverwrite(boolean owr) {overwrite.set(owr);}
 	public final boolean getOverwrite() {return overwrite.get();}
@@ -408,7 +411,7 @@ public class HybridAssembler {
 		SAMRecordIterator iter = reader.iterator();
 
 		String readID = "";
-		Sequence nnpRead = null;
+		Sequence read = null;
 		ArrayList<Alignment> samList =  new ArrayList<Alignment>();// alignment record of the same read;	
 		SAMRecord curRecord=null;
 		while (iter.hasNext()) {
@@ -425,9 +428,9 @@ public class HybridAssembler {
 			if (curRecord.getReadUnmappedFlag() || curRecord.getMappingQuality() < Alignment.MIN_QUAL){		
 				LOG.info("Ignore one unmapped or low-quality map record!");
 				if (!readID.equals(curRecord.getReadName())){
-					update(nnpRead, samList, curRecord);
+					update(read, samList, curRecord);
 					samList = new ArrayList<Alignment>();
-					nnpRead = new Sequence(Alphabet.DNA5(), curRecord.getReadString(), curRecord.getReadName());
+					read = GraphUtil.getQueryReadFromSAMRecord(curRecord);
 					readID = curRecord.getReadName();
 				}
 				continue;		
@@ -440,9 +443,9 @@ public class HybridAssembler {
 			if (simGraph.getNode(refID)==null) {
 				LOG.info("Ignore record with reference {} not found (removed) from the graph!", refID);
 				if (!readID.equals(curRecord.getReadName())){
-					update(nnpRead, samList, curRecord);
+					update(read, samList, curRecord);
 					samList = new ArrayList<Alignment>();
-					nnpRead = new Sequence(Alphabet.DNA5(), curRecord.getReadString(), curRecord.getReadName());
+					read = GraphUtil.getQueryReadFromSAMRecord(curRecord);
 					readID = curRecord.getReadName();
 				}
 				continue;
@@ -452,9 +455,9 @@ public class HybridAssembler {
 			//////////////////////////////////////////////////////////////////
 			
 			if (!readID.equals("") && !readID.equals(curRecord.getReadName())) {	
-				update(nnpRead, samList, curRecord);
+				update(read, samList, curRecord);
 				samList = new ArrayList<Alignment>();
-				nnpRead = new Sequence(Alphabet.DNA5(), curRecord.getReadString(), curRecord.getReadName());
+				read = GraphUtil.getQueryReadFromSAMRecord(curRecord);
 				readID = curRecord.getReadName();
 
 			}	
@@ -490,7 +493,9 @@ public class HybridAssembler {
  			alignmentProcess.destroy();
  		}		
  	}
-
+	
+	
+	//last attempt to connect bridges, being greedy now
 	public void postProcessGraph() throws IOException{
 		HashSet<GoInBetweenBridge> 		unsolved=simGraph.getUnsolvedBridges(),
 										solved=new HashSet<>();
@@ -500,7 +505,7 @@ public class HybridAssembler {
 				System.out.printf("Last attempt on incomplete bridge %s : anchors=%d \n %s \n", brg.getEndingsID(), brg.getNumberOfAnchors(), brg.getAllPossiblePaths());
 				//Take the current best path among the candidate of a bridge and connect the bridge(greedy)
 				if(brg.getCompletionLevel()>=3){ 
-					simGraph.chopPathAtAnchors(brg.getBestPath(brg.pBridge.getNode0(),brg.pBridge.getNode1())).stream().forEach(p->simGraph.reduceUniquePath(p));
+					simGraph.getNewSubPathsToReduce(brg.getBestPath(brg.pBridge.getNode0(),brg.pBridge.getNode1())).stream().forEach(p->simGraph.reduceUniquePath(p));
 					solved.add(brg);
 					changed=true;
 				}else{
@@ -508,8 +513,9 @@ public class HybridAssembler {
 					changed=brg.steps.connectBridgeSteps(true);
 					
 					//return appropriate path
-					if(brg.segments!=null){
-						simGraph.chopPathAtAnchors(brg.getBestPath(brg.steps.start.getNode(),brg.steps.end.getNode())).stream().forEach(p->simGraph.reduceUniquePath(p));
+					if(changed){
+						simGraph.getNewSubPathsToReduce(brg.getBestPath(brg.steps.start.getNode(),brg.steps.end.getNode())).stream().forEach(p->simGraph.reduceUniquePath(p));
+						solved.add(brg);
 					}
 					else
 						System.out.printf("Last attempt failed \n");

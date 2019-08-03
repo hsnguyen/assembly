@@ -50,15 +50,16 @@ import java.util.Collections;
 public class AlignedRead{
 	public static int PSEUDO_ID=1;
 	public static String tmpFolder=System.getProperty("usr.dir")+File.separator+"npGraph_tmp"; //folder to save spanning reads of the bridge
-
-	/**
-	 * The read sequence
-	 */
-	Sequence readSequence;		
+	//The query long read sequence
+	Sequence readSequence;
 	private boolean sorted = false;
 	
 	//This is only used in uniqueBridgesFinding()
-	private int eFlag=0; // 0: both ends are from non-unique nodes; 1: start node is unique; 2: end node is unique; 3: both ends are from unique nodes
+	// 0: both ends are from non-unique nodes; 
+	// 1: start node is unique; 
+	// 2: end node is unique; 
+	// 3: both ends are from unique nodes
+	private int eFlag=0; 
 	
 	ArrayList<Alignment> alignments;	
 
@@ -71,7 +72,7 @@ public class AlignedRead{
 		append(alg);
 	}
 	
-	public Sequence getReadSequence(){
+	public Sequence getLongReadSequence(){ //the actual read used as query	
 		return readSequence;
 	}
 
@@ -104,15 +105,12 @@ public class AlignedRead{
 
 	
 	public void reverse(){
-		//return an (conceptually the same) read filling with the a reverse read
-		Sequence revRead = Alphabet.DNA.complement(readSequence);
-		revRead.setName("REV"+readSequence.getName());
+		readSequence = Alphabet.DNA.complement(readSequence);
 		ArrayList<Alignment> revAlignments = new ArrayList<Alignment>(); 
 		
 		for (Alignment alignment:alignments)
 			revAlignments.add(0,alignment.reverseRead());
 		
-		readSequence=revRead;
 		alignments=revAlignments;
 
 	}
@@ -126,11 +124,9 @@ public class AlignedRead{
 	public String getEndingsID() {
 		if(alignments==null || alignments.isEmpty())
 			return "-,-";
-		else{
-			BDEdgePrototype tmp = new BDEdgePrototype(getFirstAlignment(),getLastAlignment());
-			return tmp.toString();
-			
-		}
+		else
+			return BDEdge.createID(getFirstAlignment().node, getLastAlignment().node, getFirstAlignment().strand, !getLastAlignment().strand);
+		
 	}
 	public String getCompsString() {
 		String retval = "";
@@ -161,39 +157,38 @@ public class AlignedRead{
 		return new ScaffoldVector(gP, alignD);	
 	}
 	
-	//Split an AlignedRead at a specific alignment record.
-	//E.g. <...a,b,c,d...> split at (c) becoming: <...a,b,c> <c,d,...>
-	public ArrayList<AlignedRead> split(Alignment cutPoint){
+	public ArrayList<AlignedRead> splitAtPotentialAnchors(){
+		if(alignments==null||alignments.isEmpty())
+			return null;
 		ArrayList<AlignedRead> retval = new ArrayList<AlignedRead>();
-		//recursive function?
-		if(alignments!=null){
-			int idx=alignments.indexOf(cutPoint);
-			if(idx>=0){
-				AlignedRead left = new AlignedRead( readSequence.subSequence(0, cutPoint.readAlignmentEnd()+1), 
-													new ArrayList<>(alignments.subList(0, idx+1))),
-							right = new AlignedRead(readSequence.subSequence(cutPoint.readAlignmentStart(), readSequence.length()), 
-													new ArrayList<>(alignments.subList(idx, alignments.size())));
-				retval.add(left);
-				retval.add(right);
-			}				
-		}			
+		ArrayList<Alignment> curList=new ArrayList<>();
+		Alignment start=null;
+		for(int i=0; i<alignments.size();i++){
+			Alignment curAlg=alignments.get(i);
+			curList.add(curAlg);
+			if(SimpleBinner.isPotentialAnchorNode(curAlg.node)){
+				if(start!=null){
+					retval.add(new AlignedRead(readSequence,curList));
+				}
+				start=curAlg;
+				curList=new ArrayList<>();
+				curList.add(curAlg);
+
+			}
+		}
 		return retval;
 	}
 	
 	
 	//Save the long read sequence between 2 unique nodes' alignments: start and end 
 	//with the aligned parts are replaced by corresponding reference parts (of Illumina data)
-	public boolean saveCorrectedSequenceInBetween(){
+	//return length of non-Illumina bases from the success written sequence
+	public int saveCorrectedSequenceInBetween(){
 		Alignment 	start = getFirstAlignment(), 
 					end = getLastAlignment();
 		BDNode 	fromContig = start.node,
 				toContig = end.node;
-		
-		if(getEFlag()<3)
-			return false;
-	
-		
-		SequenceBuilder seqBuilder = new SequenceBuilder(Alphabet.DNA5(), 1024*1024,  readSequence.getName());
+		int gap=0;
 		if(		fromContig.getId().compareTo(toContig.getId()) > 0 
 			|| (fromContig==toContig && start.strand==false && end.strand==false)) //to agree with BDEdge.createID()
 		{
@@ -204,16 +199,19 @@ public class AlignedRead{
 			toContig = end.node;
 			
 		}
-		
 //		sortAlignment();
-		//1. Appending (k-1)-flanking sequence from the start node
+		//1. Appending k-flanking sequence from the start node
 		Sequence flank0=((Sequence)fromContig.getAttribute("seq"))
-						.subSequence(	(int)fromContig.getNumber("len")-BDGraph.getKmerSize()+1, 
+						.subSequence(	(int)fromContig.getNumber("len")-BDGraph.getKmerSize(), 
 										(int)fromContig.getNumber("len"));
 		
-		if(start.strand)
+		if(!start.strand){
+			flank0=((Sequence)fromContig.getAttribute("seq"))
+					.subSequence(0, BDGraph.getKmerSize());
 			flank0=Alphabet.DNA.complement(flank0);
-
+		}
+		
+		SequenceBuilder seqBuilder = new SequenceBuilder(Alphabet.DNA5(), 1024*1024,  readSequence.getName());
 		seqBuilder.append(flank0);
 		
 		//2. Filling the sequence in-between
@@ -240,6 +238,7 @@ public class AlignedRead{
 				int newPosReadEnd = Math.min(posReadFinal, record.readAlignmentStart());
 				if (newPosReadEnd > posReadEnd){
 					seqBuilder.append(readSequence.subSequence(posReadEnd-1, newPosReadEnd-1)); //subsequence is 0-index
+					gap+=newPosReadEnd-posReadEnd;
 					posReadEnd = newPosReadEnd;
 					
 				}
@@ -264,7 +263,7 @@ public class AlignedRead{
 			
 					seqBuilder.append(((Sequence)contig.getAttribute("seq")).subSequence(refLeft-1, refRight-1));
 
-				}else{//neg strain
+				}else{//neg strand
 					int refRight = record.refStart;
 					int refLeft = record.refEnd;
 
@@ -317,12 +316,16 @@ public class AlignedRead{
 			}
 		}
 		
-		//3. Make sure the (k-1)-flanking sequence of the ending node is included at last.
+		//3. Make sure the k-flanking sequence of the ending node is included at last.
 		
 		Sequence flank1=((Sequence)toContig.getAttribute("seq"))
-						.subSequence(0, BDGraph.getKmerSize()-1);
-		if(end.strand)
+						.subSequence(0, BDGraph.getKmerSize());
+		if(!end.strand){
+				flank1=((Sequence)toContig.getAttribute("seq"))
+						.subSequence(	(int)toContig.getNumber("len")-BDGraph.getKmerSize(), 
+										(int)toContig.getNumber("len"));
 				flank1=Alphabet.DNA.complement(flank1);
+		}
 		//TODO: double-check this case
 		if(posReadEnd>posReadFinal){
 			//scan for overlap
@@ -335,18 +338,25 @@ public class AlignedRead{
 		}
 		
 		//seqBuilder.toSequence();
-		String fileName=tmpFolder+File.separator+BDEdge.createID(fromContig, toContig, start.strand, !end.strand)+".fasta";
+		String key=getEndingsID();
+		System.out.printf("Save read %s to bridge %s: %s -> %s\n", readSequence.getName(), key,
+																	fromContig.getId() + (start.strand?"+":"-"),
+																	toContig.getId() + (end.strand?"+":"-")
+																	);
+
+		String fileName=tmpFolder+File.separator+key+".fasta";
 		try {
 			SequenceOutputStream out = new SequenceOutputStream(new FileOutputStream(fileName,true));
 			seqBuilder.toSequence().writeFasta(out);
 			out.close();
+			BDGraph.addBrg2ReadsNum(key);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			return false;
+			return -1;
 		}
 		
-		return true;
+		return gap;
 	}
 	
 }

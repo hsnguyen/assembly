@@ -36,13 +36,15 @@ package org.rtassembly.npgraph;
 
 import java.util.ArrayList;
 
-import org.rtassembly.npscarf.AlignmentRecord;
-
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.SAMRecord;
 import japsa.seq.Sequence;
 
+/*
+ * Class holding alignment of a read to reference from a SAMRecord
+ * Only keep aligned coordinates, not the query read itself
+ */
 public class Alignment implements Comparable<Alignment> {
 //	public final static int OVERHANG_THRES=500; 
 	public final static int GOOD_QUAL=60; 
@@ -183,7 +185,7 @@ public class Alignment implements Comparable<Alignment> {
 		revAlign.useful = useful;			
 		revAlign.node = node;
 		revAlign.score = score;
-		revAlign.alignmentCigars = alignmentCigars;
+		revAlign.alignmentCigars = alignmentCigars;//https://www.biostars.org/p/289583/
 		revAlign.quality = quality;
 
 		return revAlign;

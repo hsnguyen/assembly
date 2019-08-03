@@ -24,7 +24,9 @@ public class GraphExploreLaptop {
     }
 
     public GraphExploreLaptop() throws IOException{
-    	System.setProperty("org.graphstream.ui", "javafx");
+    	System.setProperty("org.graphstream.ui", "javafx");    	
+    	String binFile="";
+    	boolean met=false;
     	//System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer"); 
     	
     	/***********************************************************************
@@ -48,27 +50,42 @@ public class GraphExploreLaptop {
     	/***********************************************************************
     	 * *********************    unicycler    *******************************
     	 ***********************************************************************/
-    	String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/unicycler/"; //unicycler synthetic
-//    	String sample="E_coli_O25b_H4-ST131/good";
-    	String sample="Acinetobacter_AB30/good";
-//    	String sample="Shigella_dysenteriae_Sd197/good";
-//    	String sample="Shigella_sonnei_53G/good";
+//    	String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/unicycler/"; //unicycler synthetic
+////    	String sample="E_coli_O25b_H4-ST131/good";
+//    	String sample="Acinetobacter_AB30/good";
+////    	String sample="Shigella_dysenteriae_Sd197/good";
+////    	String sample="Shigella_sonnei_53G/good";
+//    	
+//    	String 	sInput=dataFolder+sample+"/spades/assembly_graph.fastg",
+//    			lInput=dataFolder+sample+"/mm2.sam";
+		
+		
     	
-    	String 	sInput=dataFolder+sample+"/spades/assembly_graph.fastg",
-    			lInput=dataFolder+sample+"/mm2.sam";
-		
-		
+    	/*
+    	 * Porecamp data:
+    	 */
+    	String dataFolder="/home/s_hoangnguyen/Projects/scaffolding/test-graph/porecamp/";
+    	String sample="metaSPAdes";
+//    	String sample="megaHIT";
+    	String 	sInput=dataFolder+sample+"/assembly_graph.fastg",
+    			lInput=dataFolder+sample+"/assembly_graph.sam";
+		binFile=dataFolder+"metabat/" +sample+"_contigs.bin";	
+    	met=true;
+    	
 		/**********************************************************************************
 		 * Share code for test all kind of data set
 		 **********************************************************************************/
 		HybridAssembler hbAss = new HybridAssembler();
 		hbAss.setShortReadsInput(sInput);
 		hbAss.setPrefix(dataFolder+sample+"/");
+		if(!binFile.isEmpty())
+			hbAss.setBinReadsInput(binFile);
+		
 		hbAss.setShortReadsInputFormat("fastg");
 		hbAss.setAligner("bwa");
 		hbAss.setAlignerPath("/home/s_hoangnguyen/workspace/bwa/");
 		hbAss.prepareShortReadsProcess();//change true/false to use/not use SPAdes path
-    	HybridAssembler.promptEnterKey();
+//    	HybridAssembler.promptEnterKey();
 
 		
     	BDGraph graph= hbAss.simGraph;
@@ -96,9 +113,9 @@ public class GraphExploreLaptop {
 //        HybridAssembler.promptEnterKey();
         hbAss.postProcessGraph();
   
-        for (Node node : graph) {
-            node.setAttribute("ui.label", node.getId());
-        }
+//        for (Node node : graph) {
+//            node.setAttribute("ui.label", node.getId());
+//        }
         
         HybridAssembler.promptEnterKey();
         viewer.disableAutoLayout();

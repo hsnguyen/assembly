@@ -1,6 +1,5 @@
 package org.rtassembly.npgraph;
 
-import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -13,6 +12,7 @@ import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.Stack;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -44,14 +44,19 @@ public class BDGraph extends MultiGraph{
 	public static final double ALPHA=.5; //coverage less than alpha*bin_cov will be considered noise
     public static final int D_LIMIT=5000; //distance bigger than this will be ignored
     public static int S_LIMIT=300;// maximum number of graph traversing steps
-    public static int MAX_PATHS=100; //maximum number of candidate DFS paths
+    public static int MAX_LISTING=100; //maximum number of candidate DFS paths
     
-	public static volatile int SAFE_COUNTS=3; //safe counts: use for confident estimation
+	public static volatile int MIN_SUPPORT=3; //minimal support reads for bridging
 
 	
     //provide mapping from unique directed node to its corresponding bridge
     //E.g: 103-: <103-82-> also 82+:<82+103+>
     private HashMap<String, GoInBetweenBridge> bridgesMap; 
+    private static HashMap<String, Integer> brg2ReadsNum=new HashMap<>();
+    //mapping long but unknown contigs to unique successors and predecessor 
+    //with number of supported reads
+    private static HashMap<String, Set<BDNodeState>> unknownBinMap=new HashMap<>();
+    
     // *** Constructors ***
 	/**
 	 * Creates an empty graph.
@@ -189,7 +194,16 @@ public class BDGraph extends MultiGraph{
     /**************************************************************************************************
      ********************** utility functions to serve the assembly algo ****************************** 
      * ***********************************************************************************************/
-
+    static public void addBrg2ReadsNum(String key){
+    	if(!brg2ReadsNum.containsKey(key))
+    		brg2ReadsNum.put(key, 1);
+    	else
+    		brg2ReadsNum.put(key, brg2ReadsNum.get(key)+1);
+    }
+    static public int getReadsNumOfBrg(String key){
+    	return brg2ReadsNum.containsKey(key)?brg2ReadsNum.get(key):0;
+    }
+    
     
     // when this unique node actually contained by a bridge
     synchronized public void removeNodeFromBridgesMap(Node unqNode){
@@ -224,6 +238,10 @@ public class BDGraph extends MultiGraph{
     	
     }
     
+//    synchronized public boolean isGoodBridge(BDEdgePrototype pEdge){
+//    	return 		(bridgesMap.get(pEdge.n0.toString())!=null && bridgesMap.get(pEdge.n0.toString()).getCompletionLevel()>=3)
+//				|| (bridgesMap.get(pEdge.n1.toString())!=null && bridgesMap.get(pEdge.n1.toString()).getCompletionLevel()>=3);
+//    }
     
     //Return bridge in the map (if any) that share the same bases (unique end) 
     synchronized public GoInBetweenBridge getBridgeFromMap(AlignedRead algRead){
@@ -253,7 +271,134 @@ public class BDGraph extends MultiGraph{
     	
     	return retval;
     }
+    
+    synchronized public boolean isConflictBridge(BDEdgePrototype brg){
+    	GoInBetweenBridge 	brg0=bridgesMap.get(brg.n0.toString()),
+    						brg1=bridgesMap.get(brg.n1.toString());
+    	return (brg0!=null&&brg0.getCompletionLevel()>=3) || (brg1!=null&&brg1.getCompletionLevel()>=3);
+    }
 
+    /*****************************************************************
+     * Utility functions for real-time binning based on long reads
+     * for unknown long contigs from initial binning step (SimpleBinner or metabat)
+     *****************************************************************/
+    //check if node is significant but not enough evidence to assign uniqueness
+    public static boolean isSuspectedNode(BDNode node){
+    	return unknownBinMap.containsKey(node.getId()+"o")&&unknownBinMap.containsKey(node.getId()+"i");
+    }
+    public void addUnknownNodes(BDNode node){
+    	unknownBinMap.put(node.getId()+"o", new TreeSet<BDNodeState>());
+    	unknownBinMap.put(node.getId()+"i", new TreeSet<BDNodeState>());
+    }
+    
+    //add successors&predecessors of unknown nodes based on AlignedRead
+    //read must have either start or end as unique and no more
+    public void addReadsToUnknowMap(AlignedRead read){
+    	if(read.getEFlag() < 1)
+    		return;
+    	Alignment 	a0=read.getFirstAlignment(),
+    				a1=read.getLastAlignment();
+    	BDNodeState ns0=null,ns1=null;
+    	if(SimpleBinner.getBinIfUnique(a0.node)!=null)
+    		ns0=new BDNodeState(a0.node, a0.strand,1);
+    	if(SimpleBinner.getBinIfUnique(a1.node)!=null)
+    		ns1=new BDNodeState(a1.node, !a1.strand,1);
+    	
+    	for(Alignment alg:read.getAlignmentRecords()){
+    		if(SimpleBinner.getBinIfUnique(alg.node)!=null)
+    			continue;
+    		String key;
+    		if(ns0!=null){
+    			key=alg.node.getId()+(alg.strand?"i":"o");
+    			Set<BDNodeState> values=unknownBinMap.get(key);
+    			if(values!=null){
+    				Iterator<BDNodeState> iterator=values.iterator();
+    				boolean found=false;
+    				while(iterator.hasNext()){
+    					BDNodeState ns=iterator.next();
+    					if(ns.equals(ns0)){
+    						ns.weight++;
+    						found=true;
+    						break;
+    					}
+    				}
+    				if(!found)
+    					values.add(ns0);
+    			}
+    		}
+    		
+    		if(ns1!=null){
+      			key=alg.node.getId()+(alg.strand?"o":"i");
+    			Set<BDNodeState> values=unknownBinMap.get(key);
+    			if(values!=null){
+    				Iterator<BDNodeState> iterator=values.iterator();
+    				boolean found=false;
+    				while(iterator.hasNext()){
+    					BDNodeState ns=iterator.next();
+    					if(ns.equals(ns1)){
+    						ns.weight++;
+    						found=true;
+    						break;
+    					}
+    				}
+    				if(!found)
+    					values.add(ns1);
+    			}
+    		}
+    		
+    	}
+    	
+    }
+    
+    //get multiplicity after a while (20X???)...
+    //NOPE: can only know if unique or repetitive based on the previous&next unique nodes
+    synchronized public static PopBin getUniqueBinFromLongReads(BDNode node){
+    	String 	ko=node.getId()+"o",
+    			ki=node.getId()+"i";
+    	Set<BDNodeState> 	successors=unknownBinMap.get(ko),
+							predecessors=unknownBinMap.get(ki);
+    	int c=0, co=0, ci=0;
+
+    	if(successors==null && predecessors==null)
+    		return null;
+    	
+    	//FIXME: checking stats from GraphWatcher instead???
+    	if(successors!=null)
+    		c+=successors.stream().mapToInt(ns->ns.getWeight()).sum();
+    	if(predecessors!=null)
+    		c+=predecessors.stream().mapToInt(ns->ns.getWeight()).sum();
+    	
+    	if(c<GOOD_SUPPORT)//just need a number
+    		return null;
+    	
+    	//now validate successors and predecessors based on number of support reads
+    	PopBin retval=null;
+
+    	for(BDNodeState ns:successors){
+    		if(ns.getWeight()<.1*BDGraph.GOOD_SUPPORT)//less than 10% will be ignored
+    			continue;
+    		co++;
+    		if(co>1)
+    			return null;
+    		retval=SimpleBinner.getBinIfUnique(ns.getNode());//check??
+    	} 
+    	for(BDNodeState ns:predecessors){
+    		if(ns.getWeight()<.1*BDGraph.GOOD_SUPPORT)
+    			continue;
+    		ci++;
+    		if(ci>1)
+    			return null;
+    		if(retval!=null&&!PopBin.isCloseBins(retval, SimpleBinner.getBinIfUnique(ns.getNode())))
+				return null;
+    	} 
+    	
+    	//reove this from unknowmap
+    	unknownBinMap.remove(ko);
+    	unknownBinMap.remove(ki);
+    	node.setAttribute("unique", retval);
+    	System.out.println("FOUND NEW UNIQUE CONTIG BY LONG READS: ID=" + node.getId() + " degree= " + node.getDegree() + " out=" + co + " in=" + ci + " read count="+c);
+    	return retval;
+    }
     
     //If the node was wrongly identified as unique before, do things...
 //    synchronized public void destroyFalseBridges(Node node){
@@ -294,7 +439,7 @@ public class BDGraph extends MultiGraph{
 //    	}
 //    		
 //    }
-
+    
     synchronized public void binning(String binFileName) {   		
     	binner=new SimpleBinner(this, binFileName);
     	binner.estimatePathsByCoverage();
@@ -372,23 +517,13 @@ public class BDGraph extends MultiGraph{
 		}
 	}
 	
-    synchronized ArrayList<BDPath> pathsFinding(Alignment from, Alignment to, boolean force){
-    	assert from.readID==to.readID && to.compareTo(from)>=0:"Illegal alignment pair to find path!"; 	
-    	int distance=to.readAlignmentStart()-from.readAlignmentEnd();
-    	BDNode srcNode = from.node,
-						dstNode = to.node;
-    	boolean srcDir = from.strand, dstDir = !to.strand;
-    	return DFSAllPaths(srcNode, dstNode, srcDir, dstDir, distance, force);
-    }
     
     //Depth First Search strategy
-	synchronized ArrayList<BDPath> DFSAllPaths(BDNode srcNode, BDNode dstNode, boolean srcDir, boolean dstDir, int distance, boolean force)
+	synchronized ArrayList<BDPath> DFSAllPaths(BDNode srcNode, BDNode dstNode, boolean srcDir, boolean dstDir, int distance)
 	{
-    	if(distance>BDGraph.D_LIMIT && !force)
-    		return null;
     	System.out.printf("Looking for DFS path between %s%s to %s%s with distance=%d\n",srcNode.getId(), srcDir?"o":"i", dstNode.getId(), dstDir?"o":"i" ,distance);
-		ArrayList<BDPath> possiblePaths = new ArrayList<BDPath>(), 
-									retval=new ArrayList<BDPath>();
+		ArrayList<BDPath> 	possiblePaths = new ArrayList<BDPath>(), 
+							retval=new ArrayList<BDPath>();
 		//1. First build shortest tree from dstNode 		
 		HashMap<String,Integer> shortestMap = getShortestTreeFromNode(dstNode, dstDir, distance);
 		// The good thing is that we need only 1 temporary path variable
@@ -460,7 +595,6 @@ public class BDGraph extends MultiGraph{
 					//note that traversing direction (true: template, false: reverse complement) of destination node 
 					//is opposite its defined direction (true: outward, false:inward) 
 					if(to==dstNode && dir==dstDir && Math.abs(delta) < tolerance){ 
-//					if(to==dstNode && dir==dstDir){ 
 
 				    	BDPath 	tmpPath=new BDPath(path);
 				    	tmpPath.setDeviation(delta);
@@ -515,60 +649,11 @@ public class BDGraph extends MultiGraph{
 		} 
 		System.out.println("select from list of " + possiblePaths.size() + " DFS paths:");
 		
-		if(possiblePaths.isEmpty()){
-			if(SimpleBinner.getBinIfUnique(srcNode)!=null && SimpleBinner.getBinIfUnique(dstNode)!=null && srcNode.getDegree() <= 1 && dstNode.getDegree() <=1 && force){					
-				String id = BDEdge.createID(srcNode, dstNode, srcDir, dstDir);				
-				try{
-					//Option 1: hide long-read consensus from the graph
-					BDNode n=new BDNode(this, "000"+AlignedRead.PSEUDO_ID++);
-					Sequence seq=GraphUtil.consensusSequence(AlignedRead.tmpFolder+File.separator+id+".fasta", distance, id, "kalign");
-					if(seq==null)
-						return null;
-					n.setAttribute("seq", seq);
-					n.setAttribute("len", seq.length());
-					n.setAttribute("cov",SimpleBinner.getBinIfUnique(srcNode).estCov);
-					boolean disagreement=srcNode.getId().compareTo(dstNode.getId()) > 0 
-							|| (srcNode==dstNode && srcDir==false && dstDir==true);
-					BDEdge 	e0=new BDEdge(srcNode, n, srcDir, disagreement),
-							e1=new BDEdge(n,dstNode,!disagreement,dstDir);	
-					BDPath p = new BDPath(srcNode);					
-					p.add(e0);
-					p.add(e1);
-					BDEdge pseudoEdge=addEdge(srcNode, dstNode, srcDir, dstDir);
-					pseudoEdge.setAttribute("path", p);
-					path.add(pseudoEdge);
-
-//					//Option 2: or using this to create&display a "pseudo node"
-//					BDNode n=(BDNode) addNode("000"+AlignedRead.PSEUDO_ID++);
-//					Sequence seq=GraphUtil.consensusSequence(AlignedRead.tmpFolder+File.separator+id+".fasta", distance, id, "poa");
-//					if(seq==null)
-//						return null;
-//					n.setAttribute("seq", seq);
-//					n.setAttribute("len", seq.length());
-//					n.setAttribute("cov",SimpleBinner.getBinIfUnique(srcNode).estCov);
-//					n.setGUI("red", "diamond");
-//					n.setAttribute("unique", SimpleBinner.getBinIfUnique(srcNode));
-//					boolean disagreement=srcNode.getId().compareTo(dstNode.getId()) > 0 
-//							|| (srcNode==dstNode && srcDir==false && dstDir==true);
-//					Edge 	e0=addEdge(srcNode, n, srcDir, disagreement),
-//							e1=addEdge(n,dstNode,!disagreement,dstDir);	
-//
-//					path.add(e0);
-//					path.add(e1);
-					
-					possiblePaths.add(path);
-				}catch(Exception e){
-					System.err.println("Failed to make consensus sequence for " + id +"!");
-					System.err.println("Reason: "+ e.getMessage());
-				}	
-				return possiblePaths;
-    		}else
-    			return null;
-
-		}
+		if(possiblePaths.isEmpty())
+			return null;
 		
 		double closestDist=Math.abs(possiblePaths.get(0).getDeviation());
-		int keepMax = MAX_PATHS;//only keep this many possible paths 
+		int keepMax = MAX_LISTING;//only keep this many possible paths 
 		for(int i=0;i<possiblePaths.size();i++){
 			BDPath p = possiblePaths.get(i);
 			if(Math.abs(p.getDeviation())>closestDist+Math.abs(distance+getKmerSize())*R_TOL || i>=keepMax)
@@ -708,7 +793,7 @@ public class BDGraph extends MultiGraph{
  	    	
   			
     		if(curBin!=null){
-    			if(curBin.isCloseTo(prevUnqBin))
+    			if(PopBin.isCloseBins(curBin, prevUnqBin))
     				flag+=2;
     			else if(prevUnqBin!=null)
     				continue;
@@ -716,7 +801,7 @@ public class BDGraph extends MultiGraph{
     			curBuildingBlocks.setEFlag(flag);
     			////////////////////////////////////////////////////////////////////////////////////
     			
-    			retrievedPaths.addAll(buildBridge(curBuildingBlocks, curBin));
+    			retrievedPaths.addAll(buildBridge(curBuildingBlocks, PopBin.getDominateBin(curBin,prevUnqBin)));
     			   					
     			////////////////////////////////////////////////////////////////////////////////////
     			//start new building block
@@ -731,7 +816,7 @@ public class BDGraph extends MultiGraph{
  	    
  	    if(curBuildingBlocks.alignments.size() > 1){
  	    	curBuildingBlocks.setEFlag(1);
- 	    	retrievedPaths.addAll(buildBridge(curBuildingBlocks, prevUnqBin));
+ 	    	retrievedPaths.addAll(buildBridge(curBuildingBlocks, PopBin.getDominateBin(curBin,prevUnqBin)));
  	    }
 
  	    return retrievedPaths;
@@ -742,7 +827,8 @@ public class BDGraph extends MultiGraph{
     	List<BDPath> retval=new ArrayList<BDPath>();
 		GoInBetweenBridge 	storedBridge=getBridgeFromMap(read), reversedBridge;
 		System.out.printf("+++%s <=> %s\n", read.getEndingsID(), storedBridge==null?"null":storedBridge.getEndingsID());
-		
+		//long read give info about unique successor and predecessor
+		addReadsToUnknowMap(read);
 		if(storedBridge!=null) {
 			if(storedBridge.getCompletionLevel()==4){//important since it will ignore the wrong transformed unique nodes here!!!
 				System.out.println(storedBridge.getEndingsID() + ": already solved and reduced: ignore!");
@@ -777,12 +863,7 @@ public class BDGraph extends MultiGraph{
 							retval.addAll(reversedBridge.scanForNewUniquePaths());
 
 					}
-					
-					//finally save the inbetween sequence for later consensus call
-					if(read.saveCorrectedSequenceInBetween()){
-						storedBridge.numberOfFullReads++;
-						reversedBridge.numberOfFullReads++;
-					}
+
 				}
 
 			}			
@@ -796,11 +877,10 @@ public class BDGraph extends MultiGraph{
 			reversedBridge = new GoInBetweenBridge(this,read, bin);
 			updateBridgesMap(reversedBridge);
 			
-			if(read.saveCorrectedSequenceInBetween()){
-				storedBridge.numberOfFullReads++;
-				reversedBridge.numberOfFullReads++;
-			}
 		}
+		
+		//finally save the inbetween sequence for later consensus call
+		GraphUtil.saveReadToDisk(read);
 		
 		return retval;
     }
@@ -819,8 +899,7 @@ public class BDGraph extends MultiGraph{
     		System.out.println("Reducing path: " + path.getId());
 
     	Set<Edge> 	potentialRemovedEdges = binner.walkAlongUniquePath(path);
-		HashMap<PopBin, Integer> oneBin = new HashMap<>();
-		oneBin.put(path.getConsensusUniqueBinOfPath(), 1);
+		Multiplicity oneBin = new Multiplicity(path.getConsensusUniqueBinOfPath(), 1);
     	
     	if(potentialRemovedEdges!=null && potentialRemovedEdges.size()>1){
 	    	//remove appropriate edges
@@ -836,14 +915,14 @@ public class BDGraph extends MultiGraph{
     		BDEdge reducedEdge = addEdge(path.getFirstNode(), path.getLastNode(), path.getFirstNodeDirection(), path.getLastNodeDirection());
     		System.out.println("ADDING EDGE " + reducedEdge.getId()+ " from " + reducedEdge.getNode0().getGraph().getId() + "-" + reducedEdge.getNode1().getGraph().getId());
 			if(reducedEdge!=null){
-				if(path.getEdgeCount()>1)
+				if(path.getPrimitivePath().getEdgeCount()>1)
 					reducedEdge.setAttribute("path", path);
 				binner.edge2BinMap.put(reducedEdge, oneBin);
 			}
 			System.out.println("after adding: \n\t" + printEdgesOfNode((BDNode) reducedEdge.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) reducedEdge.getNode1()));
 	    	return true;
     	}else {
-    		System.out.println("Path" + path.getId() + "has not reduced!");
+    		System.out.println("Path " + path.getId() + " doesn't need to be reduced!");
     		return false;
     	}
 
@@ -858,7 +937,7 @@ public class BDGraph extends MultiGraph{
     	else
     		System.out.println("Input SPAdes path: " + path.getId());
     	//loop over the edges of path (like spelling())
-    	for(BDPath p:chopPathAtAnchors(path)){
+    	for(BDPath p:getNewSubPathsToReduce(path)){
     		if(reduceUniquePath(p))
     			retval=true;
     	}
@@ -868,8 +947,9 @@ public class BDGraph extends MultiGraph{
 
     
 	//Only call for the final reduce path with 2 unique ends: if path containing other unique nodes than 2 ends then we have list of paths to reduce
-    //exclude already-reduced path (by looking for corresponding reduce edge)
-	synchronized public ArrayList<BDPath> chopPathAtAnchors(BDPath path){
+    //Exclude already-reduced path (reduced edges would have composite "path" attribute,
+    //but consensus pseudo edge is special case)
+	synchronized public ArrayList<BDPath> getNewSubPathsToReduce(BDPath path){
 		ArrayList<BDPath> retval=new ArrayList<>();
 		if(path!=null){
 			BDPath curPath = new BDPath(path.getRoot(), path.getConsensusUniqueBinOfPath());
@@ -882,7 +962,7 @@ public class BDGraph extends MultiGraph{
 					id=curPath.getEndingID();
 					if(id!=null){
 						Edge rdEdge = getEdge(id);
-						if(rdEdge==null || !rdEdge.hasAttribute("path"))
+						if(rdEdge==null || !rdEdge.hasAttribute("path") || rdEdge.hasAttribute("consensus"))
 							retval.add(curPath);		
 					}
 					curPath=new BDPath(nextNode, path.getConsensusUniqueBinOfPath());
@@ -1030,7 +1110,7 @@ public class BDGraph extends MultiGraph{
 	    //Print S (Segment)
 	    for(Node node:this){
 	    	Sequence seq=(Sequence) node.getAttribute("seq");
-	    	int kmer_count=(int)(GraphUtil.getRealCoverage(node.getNumber("cov"))*(BDGraph.ILLUMINA_READ_LENGTH-BDGraph.getKmerSize()+1)/BDGraph.ILLUMINA_READ_LENGTH);
+	    	int kmer_count=(int)(GraphUtil.getRealCoverage(node.getNumber("cov"))*(BDGraph.ILLUMINA_READ_LENGTH-BDGraph.getKmerSize())/BDGraph.ILLUMINA_READ_LENGTH);
 	    	printWriter.printf("S\t%s\t%s\tKC:i:%d\n", node.getId(), seq.toString(),kmer_count);
 	    	addedNodes.add(node.getId());
 	    }	    
@@ -1058,7 +1138,7 @@ public class BDGraph extends MultiGraph{
 		    		addedNodes.add(nextID);
 		    		
 		    		Sequence seq=(Sequence) nextNode.getAttribute("seq");
-			    	int kmer_count=(int)(GraphUtil.getRealCoverage(nextNode.getNumber("cov"))*(BDGraph.ILLUMINA_READ_LENGTH-BDGraph.getKmerSize()+1)/BDGraph.ILLUMINA_READ_LENGTH);
+			    	int kmer_count=(int)(GraphUtil.getRealCoverage(nextNode.getNumber("cov"))*(BDGraph.ILLUMINA_READ_LENGTH-BDGraph.getKmerSize())/BDGraph.ILLUMINA_READ_LENGTH);
 			    	printWriter.printf("S\t%s\t%s\tKC:i:%d\n", nextID, seq.toString(),kmer_count);
 
 	    		}
