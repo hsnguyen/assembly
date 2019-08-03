@@ -119,7 +119,7 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
     }
     
 	public boolean qc() {
-		return nvsScore >= BDGraph.SAFE_COUNTS*Alignment.GOOD_QUAL; //60*2
+		return nvsScore >= BDGraph.MIN_SUPPORT*Alignment.GOOD_QUAL; //60*2
 	}
 
 	//Merging 2 equal NodeVectors

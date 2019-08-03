@@ -23,6 +23,7 @@ import com.joptimizer.functions.PDQuadraticMultivariateRealFunction;
 import com.joptimizer.optimizers.NewtonUnconstrained;
 import com.joptimizer.optimizers.OptimizationRequest;
 
+import htsjdk.samtools.SAMRecord;
 import japsa.seq.Alphabet;
 import japsa.seq.FastaReader;
 import japsa.seq.Sequence;
@@ -379,7 +380,7 @@ public class GraphUtil {
     
     public static int overlap(Sequence s0, Sequence s1){
     	int retval;
-    	for(retval=BDGraph.getKmerSize()-1 ; retval>0; retval--){
+    	for(retval=BDGraph.getKmerSize() ; retval>0; retval--){
     		int match=0;
     		while(match < retval && s0.getBase(s0.length()-retval+match)==s1.getBase(match))
     			match++;
@@ -697,7 +698,6 @@ public class GraphUtil {
     
 	//Adapt from japsa without need to output fasta input file
 	public static Sequence consensusSequence(String faiFile, int distance, String prefix, String msa) throws IOException, InterruptedException{
-		Sequence consensus = null;
 		String faoFile = AlignedRead.tmpFolder+File.separator+prefix+"_"+msa+".fasta";
 		//1.0 Check faiFile?
 		FastaReader faiReader =  new FastaReader(faiFile);
@@ -706,36 +706,36 @@ public class GraphUtil {
 			count++;
 		
 		faiReader.close();
-		if(count<BDGraph.SAFE_COUNTS)
-			return consensus;
+		if(count<BDGraph.MIN_SUPPORT) //at least 3 of the good read count is required
+			return null;
 		
-		
+		Sequence consensus = null;
 		//2.0 Run multiple alignment
-		{
-			String cmd  = "";
-			if (msa.startsWith("poa")){
-				String poaDir="/home/sonhoanghguyen/sw/poaV2/";//test
-				cmd = poaDir+"poa -read_fasta " + faiFile + " -clustal " + faoFile + " -hb " + poaDir+"blosum80.mat";
-			}else if (msa.startsWith("muscle")){
-				cmd = "muscle -in " + faiFile + " -out " + faoFile + " -maxiters 5 -quiet";				
-			}else if (msa.startsWith("clustal")) {
-				cmd = "clustalo --force -i " + faiFile + " -o " + faoFile;
-			}else if (msa.startsWith("kalign")){
-				cmd = "kalign -gpo 60 -gpe 10 -tgpe 0 -bonus 0 -q -i " + faiFile	+ " -o " + faoFile;
-			}else if (msa.startsWith("msaprobs")){
-				cmd = "msaprobs -o " + faoFile + " " + faiFile;
-			}else if (msa.startsWith("mafft")){
-				cmd = "mafft_wrapper.sh  " + faiFile + " " + faoFile;
-			}else{
-				LOG.error("Unknown msa function " + msa);
-				return null;
-			}
-
-			LOG.info("Running " + cmd);
-			Process process = Runtime.getRuntime().exec(cmd);
-			process.waitFor();
-			LOG.info("Done " + cmd);
+		
+		String cmd  = "";
+		if (msa.startsWith("poa")){
+			String poaDir="/home/sonhoanghguyen/sw/poaV2/";//test
+			cmd = poaDir+"poa -read_fasta " + faiFile + " -clustal " + faoFile + " -hb " + poaDir+"blosum80.mat";
+		}else if (msa.startsWith("muscle")){
+			cmd = "muscle -in " + faiFile + " -out " + faoFile + " -maxiters 5 -quiet";				
+		}else if (msa.startsWith("clustal")) {
+			cmd = "clustalo --force -i " + faiFile + " -o " + faoFile;
+		}else if (msa.startsWith("kalign")){
+			cmd = "kalign -gpo 60 -gpe 10 -tgpe 0 -bonus 0 -q -i " + faiFile	+ " -o " + faoFile;
+		}else if (msa.startsWith("msaprobs")){
+			cmd = "msaprobs -o " + faoFile + " " + faiFile;
+		}else if (msa.startsWith("mafft")){
+			cmd = "mafft_wrapper.sh  " + faiFile + " " + faoFile;
+		}else{
+			LOG.error("Unknown msa function " + msa);
+			return null;
 		}
+
+		LOG.info("Running " + cmd);
+		Process process = Runtime.getRuntime().exec(cmd);
+		process.waitFor();
+		LOG.info("Done " + cmd);
+		
 
 
 		if ("poa".equals(msa)){
@@ -802,5 +802,29 @@ public class GraphUtil {
 		}
 
 		return consensus;
+	}
+	
+	
+	//no check: use with care
+	public static void saveReadToDisk(AlignedRead read){
+		if(BDGraph.getReadsNumOfBrg(read.getEndingsID())>=BDGraph.MAX_LISTING)
+			return;
+		
+		if(read.getEFlag()>=3)
+			read.saveCorrectedSequenceInBetween();
+		else
+			read.splitAtPotentialAnchors().forEach(r->r.saveCorrectedSequenceInBetween());
+			
+	}
+	
+	/*
+	 * Note that read sequence from SAMRecord could be reverse-complemented
+	 */
+	public static Sequence getQueryReadFromSAMRecord(SAMRecord sam){
+		Sequence retval = new Sequence(Alphabet.DNA5(), sam.getReadString(), sam.getReadName());
+		if(sam.getReadNegativeStrandFlag())
+			retval=Alphabet.DNA.complement(retval);
+		
+		return retval;
 	}
 }

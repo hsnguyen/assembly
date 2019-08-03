@@ -29,7 +29,7 @@ public class GraphExploreDesktop {
     	System.setProperty("org.graphstream.ui", "javafx");
     	//System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer"); 
     	String binFile="";
-    	boolean met=false;
+    	boolean met=false, useSPAdesPath=false;
     	/*
     	 * npScarf data set
     	 */
@@ -49,9 +49,9 @@ public class GraphExploreDesktop {
     	
     	
     	
-//    	/*
-//    	 * unicycler data set
-//    	 */
+    	/*
+    	 * unicycler data set
+    	 */
 //    	String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/unicycler/synthetic/";
 ////    	String sample="Acinetobacter_A1/";
 ////    	String sample="Acinetobacter_AB30/"; //SimpleBinner.ANCHOR_CTG_LEN=2000 || Alignment.MIN_QUAL=10
@@ -68,8 +68,8 @@ public class GraphExploreDesktop {
 ////    	String sample="Shigella_dysenteriae_Sd197/"; //SimpleBinner.ANCHOR_CTG_LEN=2000
 ////    	String sample="Shigella_sonnei_53G/";
 ////    	String sample="Streptococcus_suis_BM407/";
-//    	
-//    	
+////    	
+////    	
 ////    	String quality="bad/";
 ////    	String quality="medium/";
 //    	String quality="good/";
@@ -82,30 +82,42 @@ public class GraphExploreDesktop {
     	/*
     	 * To test unicycler's graph:
     	 */
-////    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/npgraph/results_2/unicycler/citrobacter-freundii_CAV1374/003_bridges_applied.gfa",
-////    			output="/home/sonhoanghguyen/Projects/scaffolding/npgraph/results_2/spades/citrobacter-freundii_CAV1374/",
-////    			lInput="";	
-//    	
+//    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/npgraph/results_2/unicycler/citrobacter-freundii_CAV1374/003_bridges_applied.gfa",
+//    			output="/home/sonhoanghguyen/Projects/scaffolding/npgraph/results_2/spades/citrobacter-freundii_CAV1374/",
+//    			lInput="";	
+    	
 //    	/*
 //    	 * Porecamp data:
 //    	 */
-    	String sass="metaSPAdes";
-//    	String sass="megaHIT";
-    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/"+sass+"/assembly_graph.fastg",
-    			output="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/",
-    			lInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/"+sass+"/assembly_graph.sam";
-		binFile="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/metabat/"+sass+"_contigs.bin";	
-    	met=true;
-		
+//    	String sass="metaSPAdes";
+////    	String sass="megaHIT";
+//    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/"+sass+"/assembly_graph.fastg",
+//    			output="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/",
+//    			lInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/"+sass+"/assembly_graph.sam";
+//		binFile="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/metabat/"+sass+"_contigs.bin";	
+//    	met=true;
+//		useSPAdesPath=true;
+//    	BDGraph.MIN_SUPPORT=5;
+    	
+    	/*
+    	 * MRSA day 0
+    	 */
+    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/S.aureus_day0/spades/assembly_graph.fastg",
+    			output="/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/S.aureus_day0",
+    			lInput="/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/S.aureus_day0/MRSA_Rapid_230916.fastq";  
     	/*******************************************************************************
     	 ****************************** Share code *************************************
     	 *******************************************************************************/
 		HybridAssembler hbAss = new HybridAssembler();
 		hbAss.setMetagenomics(met);
+		hbAss.setUseSPAdesPath(useSPAdesPath);
 		hbAss.setShortReadsInput(sInput);
 		hbAss.setPrefix(output);
 		if(!binFile.isEmpty())
 			hbAss.setBinReadsInput(binFile);
+		
+		hbAss.setAligner("minimap2");
+		hbAss.setAlignerPath("/home/sonhoanghguyen/workspace/minimap2");
 		
 		hbAss.prepareShortReadsProcess();
 		
@@ -117,13 +129,14 @@ public class GraphExploreDesktop {
         Viewer viewer=graph.display();
 //        HybridAssembler.promptEnterKey();
         System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
-                
+//        for (Node node : graph) {
+//            node.setAttribute("ui.label", node.getId());
+//        }        
         /*
          * Testing reduce function
          */
         try {
         	hbAss.setLongReadsInput(lInput);
-        	hbAss.setLongReadsInputFormat("sam");
         	hbAss.prepareLongReadsProcess();
         	
         	hbAss.assembly();
@@ -133,13 +146,14 @@ public class GraphExploreDesktop {
 		}
         
         System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
-        
+                
 //        HybridAssembler.promptEnterKey();
         hbAss.postProcessGraph();
+        HybridAssembler.promptEnterKey();
+
 //        for (Node node : graph) {
 //            node.setAttribute("ui.label", node.getId());
 //        }
-        HybridAssembler.promptEnterKey();
         viewer.disableAutoLayout();
        
     }

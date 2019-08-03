@@ -1,5 +1,6 @@
 package org.rtassembly.npgraph;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -12,17 +13,16 @@ import java.util.TreeSet;
 
 import org.graphstream.graph.Node;
 
+import japsa.seq.Sequence;
+
 //A bridge structure that the first node must be unique
 public class GoInBetweenBridge {
-	int numberOfFullReads=0; //number of read spanning this *whole* bridge
-
 	BDGraph graph;
 	PopBin bin;
 	BDEdgePrototype pBridge; //note: the ending nodes must be unique, or else omitted
 	ArrayList<BridgeSegment> segments;
 	BridgeSteps steps;
 	
-	//TODO: save (max) sequences from AlignedRead for later use
 	public GoInBetweenBridge(BDGraph graph, AlignedRead bb, PopBin bin) {
 		this.graph=graph;
 		this.bin=bin;
@@ -418,11 +418,11 @@ public class GoInBetweenBridge {
 		for(BridgeSegment seg:segments){
 			if(seg.isConnected() && seg.connectedPaths.size()==1){
 				sbin=SimpleBinner.getBinIfUniqueNow(seg.startNV.getNode());
-//				System.out.println("Tony Tony Chopper: " + (curPath==null?"null":curPath.getId()) + " seg=" + seg.getId() + " start node=" + seg.startNV.getNode().getId() + " bin=" + (sbin==null?"null":sbin.binID));
-				if(sbin!=null && sbin.isCloseTo(bin)){
+//				System.out.println("Tony Tony Chopper: " + (curPath==null?"null":curPath.getId()) + " seg=" + seg.getId() + " start node=" + seg.startNV.getNode().getId() + " sbin=" + (sbin==null?"null":sbin.binID) + " bin=" + (bin==null?"null":bin.binID));
+				if(PopBin.isCloseBins(sbin,bin)){
 					if(curPath!=null){ 
 //						System.out.println("Tony Tony Chopper: " + curPath.getId());
-						graph.chopPathAtAnchors(curPath).stream().forEach(p->retval.add(p));
+						graph.getNewSubPathsToReduce(curPath).stream().forEach(p->retval.add(p)); //in case there're anchors within segment
 					}
 					
 					curPath=seg.connectedPaths.get(0);
@@ -438,7 +438,7 @@ public class GoInBetweenBridge {
 		
 		if(curPath!=null && curPath.getEdgeCount()>0) {
 //			System.out.println("Tony Tony Chopper: " + curPath.getId());
-			graph.chopPathAtAnchors(curPath).stream().forEach(p->retval.add(p));
+			graph.getNewSubPathsToReduce(curPath).stream().forEach(p->retval.add(p)); //in case there're anchors within segment
 		}
 		
 		return retval;
@@ -456,7 +456,7 @@ public class GoInBetweenBridge {
 				return false;
 			
 			PopBin b=SimpleBinner.getBinIfUniqueNow(tmp.node);
-			if(b!=null && b.isCloseTo(bin)){
+			if(PopBin.isCloseBins(b,bin)){
 				if(steps.end==null || greedy || steps.end.nvsScore < tmp.nvsScore){
 					if(steps.end!=tmp){
 						steps.end=tmp;
@@ -470,7 +470,13 @@ public class GoInBetweenBridge {
 		return false;
 		
 	}
+
 	
+	//TODO: check if it's enough to run MSA for long reads consensus
+	//need estimation of gap (depend on level of completion) versus number of spanning reads
+	public boolean checkMSACoverage(){
+		return false;
+	}
 
 	/************************************************************************************************
 	 ************************************************************************************************
@@ -479,27 +485,83 @@ public class GoInBetweenBridge {
 	 ************************************************************************************************/
 	class BridgeSegment{
 //		ArrayList<Sequence> nnpReads; // to store nanopore data if needed
-		ArrayList<BDPath> connectedPaths;
+		ArrayList<BDPath> connectedPaths=null;
 		BDEdgePrototype pSegment;
 		BDNodeVecState startNV, endNV;
 		BridgeSegment(){}
-
-		BridgeSegment(Alignment start, Alignment end, AlignedRead read, boolean force){
-			pSegment=new BDEdgePrototype(start.node, end.node, start.strand, !end.strand);
-			//invoke findPath()?
-			startNV=new BDNodeVecState(start, read.getVector(read.getFirstAlignment(), start));
-			endNV=new BDNodeVecState(end, read.getVector(read.getFirstAlignment(), end));
-			connectedPaths = graph.pathsFinding(start, end, force);
-						
-		}
 		
-		BridgeSegment(BDNodeVecState nv1, BDNodeVecState nv2, boolean dir1, boolean dir2, boolean force){
+		BridgeSegment(BDNodeVecState nv1, BDNodeVecState nv2, boolean dir1, boolean dir2, boolean greedy){
 			assert Math.abs(nv1.getVector().getMagnitute()) < Math.abs(nv2.getVector().magnitude): "Illegal order of node position!";
-			pSegment = new BDEdgePrototype(nv1.getNode(),nv2.getNode(),dir1,dir2);
+			BDNode srcNode=nv1.getNode(), dstNode=nv2.getNode();
+			pSegment = new BDEdgePrototype(srcNode,dstNode,dir1,dir2);
 			startNV = nv1; endNV = nv2;
-			int d = ScaffoldVector.composition(nv2.getVector(), ScaffoldVector.reverse(nv1.getVector())).distance(nv1.getNode(), nv2.getNode());
-			connectedPaths = graph.DFSAllPaths((BDNode)nv1.getNode(), (BDNode)nv2.getNode(), dir1, dir2, d, force);
-		
+			int d = ScaffoldVector.composition(nv2.getVector(), ScaffoldVector.reverse(nv1.getVector())).distance(srcNode, dstNode);
+			if(d<=BDGraph.D_LIMIT || greedy)
+	    		connectedPaths = graph.DFSAllPaths(srcNode, dstNode, dir1, dir2, d);
+
+			//call consensus when time come!
+			if(	(connectedPaths==null || connectedPaths.isEmpty())){				
+				//TODO: more anchors connecting!!! Here just connect unique dead-end unique nodes
+				if(	(BDGraph.getReadsNumOfBrg(pSegment.getEdgeID()) >= BDGraph.GOOD_SUPPORT || greedy)
+					&& PopBin.isCloseBins(SimpleBinner.getBinIfUnique(srcNode), SimpleBinner.getBinIfUnique(dstNode)) 
+					&& !graph.isConflictBridge(pSegment))
+				{					
+					connectedPaths=new ArrayList<>();
+					BDPath path = new BDPath(srcNode);
+					String id = BDEdge.createID(srcNode, dstNode, dir1, dir2);				
+					try{
+						System.out.printf("Consensus calling with: numberOfFullReads=%d\n\tNode 0: bin=%s; degree=%d\n\tNode 1: bin=%s; degree=%d\n",
+								BDGraph.getReadsNumOfBrg(pSegment.getEdgeID()),
+								SimpleBinner.getBinIfUnique(srcNode), srcNode.getDegree(),
+								SimpleBinner.getBinIfUnique(dstNode), dstNode.getDegree());
+
+						//Option 1: hide long-read consensus from the graph
+						BDNode n=new BDNode(graph, "000"+AlignedRead.PSEUDO_ID++);
+						Sequence seq=GraphUtil.consensusSequence(AlignedRead.tmpFolder+File.separator+id+".fasta", d, id, "kalign");
+						if(seq==null)
+							return;
+						n.setAttribute("seq", seq);
+						n.setAttribute("len", seq.length());
+						n.setAttribute("cov",SimpleBinner.getBinIfUnique(srcNode).estCov);
+						boolean disagreement=srcNode.getId().compareTo(dstNode.getId()) > 0 
+								|| (srcNode==dstNode && dir1==false && dir2==true);
+						BDEdge 	e0=new BDEdge(srcNode, n, dir1, disagreement),
+								e1=new BDEdge(n,dstNode,!disagreement,dir2);	
+						BDPath p = new BDPath(srcNode);					
+						p.add(e0);
+						p.add(e1);
+						BDEdge pseudoEdge=graph.addEdge(srcNode, dstNode, dir1, dir2);
+						pseudoEdge.setAttribute("path", p);
+						pseudoEdge.setAttribute("consensus");
+						path.add(pseudoEdge);
+
+//							//Option 2: or using this to create&display a "pseudo node"
+//							BDNode n=(BDNode) graph.addNode("000"+AlignedRead.PSEUDO_ID++);
+//							Sequence seq=GraphUtil.consensusSequence(AlignedRead.tmpFolder+File.separator+id+".fasta", distance, id, "poa");
+//							if(seq==null)
+//								return null;
+//							n.setAttribute("seq", seq);
+//							n.setAttribute("len", seq.length());
+//							n.setAttribute("cov",SimpleBinner.getBinIfUnique(srcNode).estCov);
+//							n.setGUI("red", "diamond");
+//							n.setAttribute("unique", SimpleBinner.getBinIfUnique(srcNode));
+//							boolean disagreement=srcNode.getId().compareTo(dstNode.getId()) > 0 
+//									|| (srcNode==dstNode && srcDir==false && dstDir==true);
+//							Edge 	e0=addEdge(srcNode, n, srcDir, disagreement),
+//									e1=addEdge(n,dstNode,!disagreement,dstDir);	
+	//
+//							path.add(e0);
+//							path.add(e1);
+						
+						connectedPaths.add(path);
+					}catch(Exception e){
+						System.err.println("Failed to make consensus sequence for " + id +"!");
+						System.err.println("Reason: "+ e.getMessage());
+					}	
+	    		}
+
+				
+			}
 		}
 		
 		BridgeSegment(BDPath path){
@@ -576,7 +638,7 @@ public class GoInBetweenBridge {
 				return false;
 			connectedPaths.sort((a,b)->Integer.compare(Math.abs(a.getDeviation()), Math.abs(b.getDeviation())));
 			int bestDiff = 	connectedPaths.get(0).getDeviation();
-			connectedPaths.removeIf(p->(Math.abs(p.getDeviation()) > bestDiff+BDGraph.A_TOL));
+			connectedPaths.removeIf(p->(Math.abs(p.getDeviation()) > Math.abs(bestDiff)+BDGraph.A_TOL));
 			if(connectedPaths.size()==1)
 				return true;
 			else 
@@ -680,7 +742,7 @@ public class GoInBetweenBridge {
 			return retval;
 		}
 		
-		private ArrayList<BridgeSegment> greedyConnect(HashMap<String, ArrayList<BridgeSegment>> memory, BDNodeVecState left, BDNodeVecState right, boolean force){
+		private ArrayList<BridgeSegment> greedyConnect(HashMap<String, ArrayList<BridgeSegment>> memory, BDNodeVecState left, BDNodeVecState right, boolean greedy){
 			System.out.print("\nConnecting " + left + " to " + right);
 			if(left==right)
 				return null;
@@ -697,32 +759,13 @@ public class GoInBetweenBridge {
 			}
 			
 			PriorityQueue<BDNodeVecState> inBetween=getInBetweenSteps(left, right);
-			int distance=ScaffoldVector.composition(right.getVector(), ScaffoldVector.reverse(left.getVector())).distance(left.getNode(), right.getNode());
-			HashMap<String,Integer> shortestMapFromRight = graph.getShortestTreeFromNode(right.getNode(), right.getDirection(pBridge.getDir0()), distance);
-
-			String key=start.getNode().getId()+(pBridge.getDir0()?"i":"o");
-			if(left.getNode()!=pBridge.getNode0())
-				key=left.getNode().getId()+(left.getDirection(pBridge.getDir0())?"o":"i");
-			//FIXME: eliminate nodes with shortest distance greater than estimated one
-			if(!shortestMapFromRight.containsKey(key)){
-				memory.put(pairKey, null);
-				System.out.print(": unreachable");
-				if(!force){
-					System.out.println("-> stop");		
-					return null;
-				}
-				else
-					System.out.println("-> proceed");
-			}else
-				System.out.println(": reachable!");
-
 			
 			ArrayList<BridgeSegment> lBridge, rBridge;
 			while(!inBetween.isEmpty()){
 				BDNodeVecState mid=inBetween.poll();
 				System.out.println("..cut at mid="+mid.toString());
 				
-				lBridge = greedyConnect(memory, left, mid, force);
+				lBridge = greedyConnect(memory, left, mid, greedy);
 				if(lBridge==null||lBridge.isEmpty()){
 					continue;
 				}
@@ -730,7 +773,7 @@ public class GoInBetweenBridge {
 					retval=new ArrayList<>(lBridge);
 				}
 				
-				rBridge = greedyConnect(memory, mid, right, force);
+				rBridge = greedyConnect(memory, mid, right, greedy);
 				if(rBridge==null||rBridge.isEmpty()){
 					continue;
 				}
@@ -747,7 +790,7 @@ public class GoInBetweenBridge {
 									right, 
 									left.getVector().isIdentity()?pBridge.getDir0():!left.getDirection(pBridge.getDir0()), 
 									right.getDirection(pBridge.getDir0()), 
-									force);
+									greedy);
 			if(seg.isConnected()){
 				retval=new ArrayList<>();
 				retval.add(seg);
@@ -783,7 +826,7 @@ public class GoInBetweenBridge {
 			System.out.println("\n"+getAllNodeVector());
 				
 			HashMap<String, ArrayList<BridgeSegment>> memory = new HashMap<>();
-			ArrayList<BridgeSegment> segs=greedyConnect(memory, startFrom, endAt, force||numberOfFullReads>=BDGraph.GOOD_SUPPORT);
+			ArrayList<BridgeSegment> segs=greedyConnect(memory, startFrom, endAt, force);
 			
 			if(segs==null||segs.isEmpty()){
 				segments=null;
@@ -799,42 +842,7 @@ public class GoInBetweenBridge {
 			}
 		}
 		//////////////////////////////////////////////////////////////////////////////////////
-		
-//		void addNode(BDNodeVecState nv) {
-//			//NOTE: acting weird, not call equals() properly for 141o,20o: Because TreeSet used compareTo() instead of equals()!!! 
-//			//(https://dzone.com/articles/the-hidden-contract-between-equals-and-comparable)
-//			
-//			Iterator<BDNodeVecState> ite = nodes.iterator();
-//			boolean found=false;
-//			while(ite.hasNext()){
-//				BDNodeVecState tmp=ite.next();
-//				if(tmp.merge(nv)){
-//					//re-assign end node if there is another unique node with higher score
-//					if(SimpleBinner.getBinIfUnique(tmp.getNode())!=null && !tmp.getVector().isIdentity()) {
-//						if(!end.equals(tmp) && (end.nvsScore < tmp.nvsScore))
-//							end=tmp;		
-//					}
-//					//nv is already in the set
-//					found=true;
-//					break;
-//
-//				}
-//			}
-//			
-//			if(!found) {
-//				nodes.add(nv);
-//				if(SimpleBinner.getBinIfUnique(nv.getNode())!=null) {
-//					if(nv.getVector().isIdentity()){
-//						start=nv;	
-//					}else if(end==null){
-//						end=nv;
-//					}
-//				}
-//			}
-//
-//			
-//		}
-		
+			
 		boolean isIdentifiable(){
 			return start!=null && end!=null;
 		}

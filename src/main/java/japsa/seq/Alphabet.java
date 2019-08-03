@@ -235,7 +235,7 @@ public abstract class Alphabet {
 		public static Sequence complement(Sequence seq){			
 			if (seq.alphabet() instanceof DNA){
 				DNA dna = (DNA) seq.alphabet();
-				Sequence comp = new Sequence(dna, seq.length());
+				Sequence comp = new Sequence(dna, seq.length(), seq.getName()+"_rev");
 				int j = 0;
 				for (int i = seq.length() - 1; i >=0;i--){
 					comp.setBase(j++, (byte) dna.complement(seq.getBase(i)));					

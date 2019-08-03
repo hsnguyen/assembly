@@ -31,6 +31,7 @@ public class NPGraphCmd extends CommandLine{
 		
 		addBoolean("overwrite", true, "Whether to overwrite or reuse the intermediate file");
 		addBoolean("sp", false, "Whether to use SPAdes contigs.paths for bridging.");
+		addBoolean("met", false, "Whether working with metagenomics.");
 		addInt("qual", 10, "Minimum quality of alignment to considered");
 		addInt("mcov", 3, "Minimum number of reads spanning a confident bridge");
 		addInt("slim", 300, "Maximum depth for searching path between 2 neighbors");
@@ -56,10 +57,11 @@ public class NPGraphCmd extends CommandLine{
 				algOpt = cmdLine.getStringVal("algOpt");
 		boolean overwrite = cmdLine.getBooleanVal("overwrite"),
 				spaths = cmdLine.getBooleanVal("sp"),
+				metagenomics = cmdLine.getBooleanVal("met"),
 				gui = cmdLine.getBooleanVal("gui");
 			
 		Alignment.MIN_QUAL = cmdLine.getIntVal("qual");
-		BDGraph.SAFE_COUNTS=cmdLine.getIntVal("mcov");
+		BDGraph.MIN_SUPPORT=cmdLine.getIntVal("mcov");
 		BDGraph.S_LIMIT=cmdLine.getIntVal("slim");
 		//Default output dir 
 		if(outputDir == null) {
@@ -93,6 +95,7 @@ public class NPGraphCmd extends CommandLine{
 		
 		hbAss.setOverwrite(overwrite);
 		hbAss.setUseSPAdesPath(spaths);
+		hbAss.setMetagenomics(metagenomics);
 		        
 		//4. Call the assembly function or invoke GUI to do so
         if(gui) {
