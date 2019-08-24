@@ -832,6 +832,7 @@ public class BDGraph extends MultiGraph{
 		if(storedBridge!=null) {
 			if(storedBridge.getCompletionLevel()==4){//important since it will ignore the wrong transformed unique nodes here!!!
 				System.out.println(storedBridge.getEndingsID() + ": already solved and reduced: ignore!");
+				return retval;
 			}else{
 				System.out.println(storedBridge.getEndingsID() + ": already built: fortify!");
 				//update available bridge using alignments

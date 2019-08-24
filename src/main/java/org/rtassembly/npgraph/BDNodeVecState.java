@@ -124,18 +124,22 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 
 	//Merging 2 equal NodeVectors
 	public boolean merge(BDNodeVecState nv){
-		if(!this.approximate(nv))
+		System.out.printf("Merging vector %s with %s => ", this.toString(), nv.toString());
+		if(!this.approximate(nv)){
+			System.out.println("failed!");
 			return false;
+		}
 
 		ScaffoldVector 	thisVector=this.getVector(),
 						thatVector=nv.getVector();
-		//update the vector
+		//update the vector. Trick: careful with value out of int range (>2 billions)
 		if(!thisVector.isIdentity()){
-			thisVector.setMagnitute( (int)((thisVector.getMagnitute()*this.nvsScore+thatVector.getMagnitute()*nv.nvsScore)/(this.nvsScore+nv.nvsScore)));
+			thisVector.setMagnitute( (int)(thisVector.getMagnitute()*this.nvsScore/(this.nvsScore+nv.nvsScore)+thatVector.getMagnitute()*nv.nvsScore/(this.nvsScore+nv.nvsScore)));
 		}
 		
 		//update coverage
 		this.nvsScore+=nv.nvsScore;
+		System.out.println(this.toString());
 		return true;
 	}
 	

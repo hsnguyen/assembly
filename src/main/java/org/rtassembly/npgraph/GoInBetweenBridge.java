@@ -743,7 +743,7 @@ public class GoInBetweenBridge {
 		}
 		
 		private ArrayList<BridgeSegment> greedyConnect(HashMap<String, ArrayList<BridgeSegment>> memory, BDNodeVecState left, BDNodeVecState right, boolean greedy){
-			System.out.print("\nConnecting " + left + " to " + right);
+			System.out.print("\nConnecting " + left + " to " + right+"...");
 			if(left==right)
 				return null;
 			String pairKey=left.toString()+right.toString();
@@ -835,9 +835,12 @@ public class GoInBetweenBridge {
 			}else{
 				segs.stream().forEach(segment->addSegment(segment));
 				//set pBridge end iff endAt node is original unique node
-				if(SimpleBinner.getBinIfUnique(endAt.node)!=null)
+				if(SimpleBinner.getBinIfUnique(endAt.node)!=null){
 					pBridge.n1=new BDNodeState(endAt.node, endAt.getDirection(pBridge.getDir0()));
-				System.out.println("Success to connect " + pBridge.toString());
+					System.out.println("Success to finish " + pBridge.toString());
+				} else
+					System.out.println("Success to extend " + pBridge.toString() + " to " + endAt.node.getId());
+
 				return true;
 			}
 		}

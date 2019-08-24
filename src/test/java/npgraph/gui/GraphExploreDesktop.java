@@ -86,25 +86,34 @@ public class GraphExploreDesktop {
 //    			output="/home/sonhoanghguyen/Projects/scaffolding/npgraph/results_2/spades/citrobacter-freundii_CAV1374/",
 //    			lInput="";	
     	
-//    	/*
-//    	 * Porecamp data:
-//    	 */
+    	/*
+    	 * Metagenomics data:
+    	 */
+    	//1. porecamp
 //    	String sass="metaSPAdes";
 ////    	String sass="megaHIT";
 //    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/"+sass+"/assembly_graph.fastg",
 //    			output="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/",
 //    			lInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/"+sass+"/assembly_graph.sam";
 //		binFile="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/metabat/"+sass+"_contigs.bin";	
-//    	met=true;
-//		useSPAdesPath=true;
-//    	BDGraph.MIN_SUPPORT=5;
     	
-    	/*
-    	 * MRSA day 0
-    	 */
-    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/S.aureus_day0/spades/assembly_graph.fastg",
-    			output="/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/S.aureus_day0",
-    			lInput="/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/S.aureus_day0/MRSA_Rapid_230916.fastq";  
+		//2.zymo
+    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/zymo/assembly_graph.fastg",
+    			output="/home/sonhoanghguyen/Projects/scaffolding/zymo",
+    			lInput="/home/sonhoanghguyen/Projects/scaffolding/zymo/assembly_graph_G.bam";
+    	lInput="/media/sonhoanghguyen/Maxtor/zymo/assembly_graph_P.bam";
+		binFile="/home/sonhoanghguyen/Projects/scaffolding/zymo/bin";	
+
+		met=true;
+//		useSPAdesPath=true;
+    	BDGraph.MIN_SUPPORT=5;
+    	
+//    	/*
+//    	 * MRSA day 0
+//    	 */
+//    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/S.aureus_day0/spades/assembly_graph.fastg",
+//    			output="/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/S.aureus_day0",
+//    			lInput="/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/S.aureus_day0/MRSA_Rapid_230916.fastq";  
     	/*******************************************************************************
     	 ****************************** Share code *************************************
     	 *******************************************************************************/

@@ -41,7 +41,7 @@ package org.rtassembly.npgraph;
  * Here it's going to be used for locating a bridge's components only.
  * The bridge anchor (first component) is used as root to calculate vectors for other components
  * The direction here refers to the strand when aligned to a read(+); 
- * which can be converted from a bidirected component by considerting an 'imaginary aligned read'
+ * which can be converted from a bidirected component by considering an 'imaginary aligned read'
  * E.g: 1-2+ spells an imaginary read. If we align node 1 and 2 to this read, the alignments will have
  * strand - and + respectively 
  */
