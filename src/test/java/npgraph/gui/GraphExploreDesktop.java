@@ -101,7 +101,7 @@ public class GraphExploreDesktop {
     	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/zymo/assembly_graph.fastg",
     			output="/home/sonhoanghguyen/Projects/scaffolding/zymo",
     			lInput="/home/sonhoanghguyen/Projects/scaffolding/zymo/assembly_graph_G.bam";
-    	lInput="/media/sonhoanghguyen/Maxtor/zymo/assembly_graph_P.bam";
+    	lInput="/media/sonhoanghguyen/Seagate Backup Plus Drive/Data/zymo/assembly_graph_P.bam";
 		binFile="/home/sonhoanghguyen/Projects/scaffolding/zymo/bin";	
 
 		met=true;
