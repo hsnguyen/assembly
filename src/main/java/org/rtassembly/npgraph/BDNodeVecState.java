@@ -10,31 +10,34 @@ import java.util.TreeSet;
  * although we can translate into appropriate info
  */
 public class BDNodeVecState implements Comparable<BDNodeVecState>{
-	BDNode node;
+	BDNode root, dest;
 	ScaffoldVector vector;
 	int nvsScore=Alignment.MIN_QUAL; //alignment score + number of occurences?
 	
-	public BDNodeVecState(BDNode node, ScaffoldVector vector){
-		this.node=node;
+	public BDNodeVecState(BDNode root, BDNode dest, ScaffoldVector vector){
+		this.root=root;
+		this.dest=dest;
 		this.vector=new ScaffoldVector(vector.getMagnitute(), vector.getDirection());
 	}
 	
-	public BDNodeVecState(BDNode node, int qual, ScaffoldVector vector){
-		this(node, vector);
+	public BDNodeVecState(BDNode root, BDNode dest, int qual, ScaffoldVector vector){
+		this(root, dest, vector);
 		nvsScore=qual;
 	}
-	public BDNodeVecState(Alignment alg, ScaffoldVector vector) {
-		this(alg.node, alg.quality, vector);
+	public BDNodeVecState(Alignment start, Alignment alg, ScaffoldVector vector) {
+		this(start.node, alg.node, alg.quality, vector);
 	}
 	//copy constructor
 	public BDNodeVecState(BDNodeVecState bdNodeVecState) {
-		this(bdNodeVecState.getNode(), bdNodeVecState.getScore(), bdNodeVecState.getVector());
+		this(bdNodeVecState.getRoot(), bdNodeVecState.getNode(), bdNodeVecState.getScore(), bdNodeVecState.getVector());
 	}
 
-	public BDNode getNode(){return node;}
+	public BDNode getNode(){return dest;}
+	public BDNode getRoot(){return root;}
 	public ScaffoldVector getVector(){return vector;}
 	
-	public void setNode(BDNode node){this.node=node;}
+	public void setNode(BDNode node){this.dest=node;}
+	public void setRoot(BDNode root){this.root=root;}
 	public void setVector(ScaffoldVector vector){this.vector=vector;}
 	
 	
@@ -52,7 +55,7 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 
 	@Override
 	public String toString(){
-		return node.getId() + ":" + vector.toString() + ":" + nvsScore;
+		return dest.getId() + ":" + vector.toString() + ":" + nvsScore;
 	}
 	
 	//compare in term of distance to the root node: for sortedset
@@ -65,7 +68,7 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 	}
     @Override
     public int hashCode() {
-    	String tmp=node.getId() + Math.signum(vector.direction);
+    	String tmp=dest.getId() + Math.signum(vector.direction);
         return tmp.hashCode();
     }
 
@@ -137,8 +140,11 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 			thisVector.setMagnitute( (int)(thisVector.getMagnitute()*this.nvsScore/(this.nvsScore+nv.nvsScore)+thatVector.getMagnitute()*nv.nvsScore/(this.nvsScore+nv.nvsScore)));
 		}
 		
-		//update coverage
-		this.nvsScore+=nv.nvsScore;
+		//update coverage, cap at 6000
+		nvsScore+=nv.nvsScore;
+		if(nvsScore>Alignment.GOOD_QUAL*BDGraph.MAX_LISTING)
+			nvsScore=Alignment.GOOD_QUAL*BDGraph.MAX_LISTING;
+		
 		System.out.println(this.toString());
 		return true;
 	}
@@ -229,8 +235,8 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 			
 			try{
 				//FIXME: check if scalex is not close to 1.0...
-				scale0=(as0[ii].getDistance()-as0[i].getDistance())*1.0/origStep;
-				scale1=(as0[ii].getDistance()-as0[i].getDistance())*1.0/(as1[jj].getDistance()-as1[j].getDistance());
+				scale0=(as0[ii].getDistance()-as0[i].getDistance())*1.0/(origStep==0?1.0:origStep);
+				scale1=(as0[ii].getDistance()-as0[i].getDistance())*1.0/(as1[jj].getDistance()==as1[j].getDistance()?1.0:as1[jj].getDistance()-as1[j].getDistance());
 				System.out.printf("scale0=%.2f scale1=%.2f\n", scale0,scale1);
 			}catch(ArithmeticException ae){
 				System.out.println("ArithmeticException occured! Use previous scale instead...");
@@ -273,6 +279,12 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 
 	//get absolute value of the relative distance (can be negative)
 	public int getDistance(){
-		return Math.abs(vector.relDistance(node));
+//		return Math.abs(vector.relDistance(dest));
+		if(root==dest) 
+			return 0;
+		else{
+			return vector.distance(root, dest)+ (int)root.getNumber("len");
+		}
+		
 	}
 }

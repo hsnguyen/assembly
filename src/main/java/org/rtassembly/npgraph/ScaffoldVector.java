@@ -97,16 +97,16 @@ public class ScaffoldVector{
 		return Math.max(fS - tE, tS - fE);
 	}
 
-	//Just interested in the relatively position of the end node
-	//For BDNodeVecState utilities
-	public int relDistance(BDNode fNode){
-		if (direction > 0){
-			return magnitude;
-		}else{
-			return magnitude - (int) fNode.getNumber("len");
-		}	
-
-	}
+//	//Just interested in the relatively position of the end node
+//	//For BDNodeVecState utilities
+//	public int relDistance(BDNode fNode){
+//		if (direction > 0){
+//			return magnitude;
+//		}else{
+//			return magnitude - (int) fNode.getNumber("len");
+//		}	
+//
+//	}
 	
 	/**
 	 * Compose two vectors: a -> b is v2, b -> c is v1. returned a -> c is v1 * v2

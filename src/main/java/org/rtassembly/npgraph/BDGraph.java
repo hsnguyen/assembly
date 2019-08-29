@@ -44,7 +44,8 @@ public class BDGraph extends MultiGraph{
 	public static final double ALPHA=.5; //coverage less than alpha*bin_cov will be considered noise
     public static final int D_LIMIT=5000; //distance bigger than this will be ignored
     public static int S_LIMIT=300;// maximum number of graph traversing steps
-    public static int MAX_LISTING=100; //maximum number of candidate DFS paths
+    public static int T_LIMIT=21588;// maximum time allowed to run DFS (milliseconds)
+    public static int MAX_LISTING=100; //maximum number of whatever paths
     
 	public static volatile int MIN_SUPPORT=3; //minimal support reads for bridging
 
@@ -562,6 +563,7 @@ public class BDGraph extends MultiGraph{
 			stack.push(new ArrayList<>(tmpList));
 			Stack<Double> nodeScores = new Stack<>();
 			double pathScore=0.0;
+			long startTime = System.currentTimeMillis();
 			while(true) {
 				curList=stack.peek();
 				if(curList.isEmpty()) {
@@ -605,15 +607,16 @@ public class BDGraph extends MultiGraph{
 				    		possiblePaths.add(tmpPath);
 				    	else{
 				    		int idx=0;
-				    		for(BDPath p:possiblePaths)
+				    		for(BDPath p:possiblePaths){
 				    			if(Math.abs(delta)>Math.abs(p.getDeviation()))
 				    				idx++;
 				    			else
 				    				break;
+				    		}
 				    		possiblePaths.add(idx,tmpPath);
 				    	}
 						
-						if(possiblePaths.size() > S_LIMIT) //not go too far
+						if(possiblePaths.size() > S_LIMIT || System.currentTimeMillis() > startTime+T_LIMIT) //not go too far
 							break;
 					}
 					/*
