@@ -238,28 +238,25 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 			scale1=(as0[ii].getDistance()-as0[i].getDistance())*1.0/(as1[jj].getDistance()-as1[j].getDistance());
 			System.out.printf("scale0=%.2f scale1=%.2f\n", scale0,scale1);
 
-			if(scale0<.5||scale0>2||scale1<.5||scale1>2) { //.5<scalex<2
-				System.out.println("...move to next matching point");
-				continue;
-			}
-			
-			//FIXME: change this!!!
-//			//calibrate the vectors from first list's in-between
-//			for(int i0=i+1;i0<ii;i0++){
-//				as0[i0].getVector().setMagnitute((int) (as0[i].getVector().getMagnitute() + 
-//										(as0[i0].getVector().getMagnitute() - prevOrigNVS.getVector().getMagnitute())*scale0));
-//			}
-//			//add vectors from second in-between for later use
-//			for(int j0=j+1;j0<jj;j0++){
-//				tmp = new BDNodeVecState(as1[j0]);
-//				tmp.vector.setMagnitute((int) (as0[i].getVector().getMagnitute() + 
-//										(as1[j0].getVector().getMagnitute() - as1[j].getVector().getMagnitute())*scale1));
-//				omittedNodes.add(tmp);
-//			}
-			
-			//move to next match coordinate
-			prevOrigNVS=curOrigNVS;
-			i=ii; j=jj;
+			if(Math.max(scale0, scale1) < BDGraph.A_TOL/1.0 && Math.min(scale0, scale1) > 0) { //constrain scalex		
+				//calibrate the vectors from first list's in-between
+				for(int i0=i+1;i0<ii;i0++){
+					as0[i0].getVector().setMagnitute((int) (as0[i].getVector().getMagnitute() + 
+											(as0[i0].getVector().getMagnitute() - prevOrigNVS.getVector().getMagnitute())*scale0));
+				}
+				//add vectors from second in-between for later use
+				for(int j0=j+1;j0<jj;j0++){
+					tmp = new BDNodeVecState(as1[j0]);
+					tmp.vector.setMagnitute((int) (as0[i].getVector().getMagnitute() + 
+											(as1[j0].getVector().getMagnitute() - as1[j].getVector().getMagnitute())*scale1));
+					omittedNodes.add(tmp);
+				}
+				
+				//move to next match coordinate
+				prevOrigNVS=curOrigNVS;
+				i=ii; j=jj;
+			}else
+				System.out.println("...moving to next match point!");
 		}
 		//nodes after the last match...scale=1.0
 		for(int i0=i+1;i0<as0.length;i0++)

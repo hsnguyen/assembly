@@ -69,6 +69,9 @@ public class GraphWatcher {
 	 */
 	synchronized void update(boolean lastTime) {
 		//cleaning...
+		if(BDGraph.isMetagenomics && !lastTime)
+			return;
+		
 		removeBadComponents();
 		cutEdges = new HashSet<BDEdge>();
 		//then set the cut edges: just for outputGraph stats (will reset after)
