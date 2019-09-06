@@ -16,7 +16,7 @@ public class NPGraphCmd extends CommandLine{
 	public NPGraphCmd(){
 		super();
 
-		addString("si", "", "Name of the short-read assembly file.");
+		addString("si", "", "Name of the short-read assembly file.",true);
 		addString("sf", "", "Format of the assembly input file. Accepted format are FASTG, GFA");
 		addString("li", "", "Name of the long-read data input file, - for stdin.");
 		addString("lf", "", "Format of the long-read data input file. This may be FASTQ/FASTA (MinION reads) or SAM/BAM (aligned with the assembly graph already)");

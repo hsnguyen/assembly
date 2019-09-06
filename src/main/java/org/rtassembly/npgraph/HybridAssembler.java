@@ -244,8 +244,14 @@ public class HybridAssembler {
 		return true;
     }	
 	
-	//Indexing reference, prepare for alignment...
+	//Indexing reference, prepare for alignment...r
 	public boolean prepareLongReadsProcess(){
+		//accept the case when no long read data is provided. Just output simplified assembly graph then.
+		if(getLongReadsInput().isEmpty()) {
+			LOG.info("No long read data is provided. Only output the simplified assembly graph and quit...");
+			return true;
+		}
+		
 		if(!getLongReadsInputFormat().equals("fasta/fastq") && !getLongReadsInputFormat().equals("sam/bam")){
 			setErrorLog("Please specify a correct format of long read data (FASTA/FASTQ or BAM/SAM)!");
 			return false;
@@ -364,8 +370,11 @@ public class HybridAssembler {
 	 */
 	public void assembly() 
 			throws IOException, InterruptedException{
-
-		LOG.info("Scaffolding ready at {}", new Date());
+		if(getLongReadsInput().isEmpty()) {
+			LOG.info("Scaffolding is ignored due to lack of long-read input!");
+			return;
+		}else
+			LOG.info("Scaffolding ready at {}", new Date());
 
 		SamReaderFactory.setDefaultValidationStringency(ValidationStringency.SILENT);
 		SamReader reader = null;
