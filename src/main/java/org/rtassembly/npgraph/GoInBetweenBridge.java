@@ -518,7 +518,7 @@ public class GoInBetweenBridge {
 
 						//Option 1: hide long-read consensus from the graph
 						BDNode n=new BDNode(graph, "000"+AlignedRead.PSEUDO_ID++);
-						Sequence seq=GraphUtil.consensusSequence(id, d, "kalign");
+						Sequence seq=GraphUtil.consensusSequence(id, d);
 						if(seq==null)
 							return;
 						n.setAttribute("seq", seq);

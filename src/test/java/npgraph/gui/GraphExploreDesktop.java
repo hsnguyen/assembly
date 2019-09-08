@@ -103,10 +103,9 @@ public class GraphExploreDesktop {
     			lInput="/home/sonhoanghguyen/Projects/scaffolding/zymo/assembly_graph_G.bam";
     	lInput="/media/sonhoanghguyen/Seagate Backup Plus Drive/Data/zymo/assembly_graph_P.bam";
 		binFile="/home/sonhoanghguyen/Projects/scaffolding/zymo/bin";	
-
+		
 		met=true;
 //		useSPAdesPath=true;
-    	BDGraph.MIN_SUPPORT=5;
     	
 //    	/*
 //    	 * MRSA day 0
@@ -126,8 +125,7 @@ public class GraphExploreDesktop {
 			hbAss.setBinReadsInput(binFile);
 		
 		hbAss.setAligner("minimap2");
-		hbAss.setAlignerPath("/home/sonhoanghguyen/workspace/minimap2");
-		
+//		hbAss.setMSA("none");
 		hbAss.prepareShortReadsProcess();
 		
     	BDGraph graph= hbAss.simGraph;

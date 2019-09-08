@@ -47,6 +47,7 @@ import org.graphstream.ui.javafx.FxGraphRenderer;
 import org.graphstream.ui.view.Viewer;
 import org.graphstream.ui.view.Viewer.CloseFramePolicy;
 import org.rtassembly.npgraph.Alignment;
+import org.rtassembly.npgraph.BDGraph;
 import org.rtassembly.npgraph.HybridAssembler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -344,7 +345,7 @@ public class NPGraphFX extends Application{
         buttonGraph.setPrefSize(100, 20);
         buttonGraph.setOnAction((event) -> {
     		if(!myass.prepareShortReadsProcess()) { //true if using SPAdes path (not necessary)
-    			FxDialogs.showWarning("Warning", myass.getErrorLog());
+    			FxDialogs.showWarning("Warning", myass.getCheckLog());
     			return;
     		}    		
         	if(graphCB.isSelected())
@@ -480,67 +481,65 @@ public class NPGraphFX extends Application{
     	GridPane.setConstraints(optLabel, 0,0,4,1);
     	optionPane.getChildren().add(optLabel);
     	
-    	final Label label= new Label("Parameters setting:");
-    	
-    	
-       	TextField algPathTF = new TextField("");
-       	algPathTF.setPromptText("PATH to the aligner binary...");       	
-       	algPathTF.textProperty().bindBidirectional(myass.alignerPathProperty());
-    	GridPane.setConstraints(algPathTF, 0,1,4,1);
-    	optionPane.getChildren().add(algPathTF);
-    	
+    	        	
     	ComboBox<String> algCombo=new ComboBox<String>();
     	algCombo.getItems().addAll("minimap2", "bwa");   
     	algCombo.valueProperty().bindBidirectional(myass.alignerProperty());
         GridPane.setConstraints(algCombo, 2, 0, 2, 1);
-        optionPane.getChildren().add(algCombo);
-         	
-
-    	Button algBrowseButton = new ImageButton("/folder.png");
-    	algBrowseButton.setPrefSize(10, 10);
-    	algBrowseButton.setOnAction((event) -> {    		
-    		DirectoryChooser chooser = new DirectoryChooser();
-    		chooser.setTitle("Path to folder containing the aligner");
-    		File defaultDirectory=new File(algPathTF.getText());
-    		if(defaultDirectory.isDirectory())
-    			chooser.setInitialDirectory(defaultDirectory);
-    		File selectedDirectory=chooser.showDialog(stage);
-    		if(selectedDirectory != null) {		   
-    			myass.setAlignerPath(selectedDirectory.getPath());
-    		}
-
-        });
-    	GridPane.setConstraints(algBrowseButton,4,1);
-    	optionPane.getChildren().add(algBrowseButton);
+        optionPane.getChildren().add(algCombo);         	
     	
-    	GridPane.setConstraints(label, 0,2,4,1);
-    	optionPane.getChildren().add(label);
     	
        	TextField algOptTF = new TextField("");
        	algOptTF.setPromptText("Enter options to aligner...");
        	algOptTF.textProperty().bindBidirectional(myass.alignerOptProperty());
-    	GridPane.setConstraints(algOptTF, 0,3,4,1);
+    	GridPane.setConstraints(algOptTF, 0,1,4,1);
     	optionPane.getChildren().add(algOptTF);
     	
     	
     	final Label labelQual = new Label("Must have quality greater than ");
-    	GridPane.setConstraints(labelQual, 0,4,3,1);
+    	GridPane.setConstraints(labelQual, 0,2,3,1);
     	optionPane.getChildren().add(labelQual);
     	
     	TextField minQualTF = new TextField("");
-    	minQualTF.setPromptText("min.");
+//    	minQualTF.setPromptText("min.");
     	minQualTF.setText(Integer.toString(Alignment.MIN_QUAL));
     	minQualTF.setOnKeyPressed(e -> {
             if (e.getCode() == KeyCode.ENTER)  {
                 buttonStart.requestFocus();
             }
     	});
-    	GridPane.setConstraints(minQualTF, 3,4);
+    	GridPane.setConstraints(minQualTF, 3,2);
     	optionPane.getChildren().add(minQualTF);
     	
-    	algPathTF.disableProperty().bind(algCombo.itemsProperty().asString().isEqualTo(""));
-    	algBrowseButton.disableProperty().bind(algCombo.itemsProperty().asString().isEqualTo(""));
+    	final Label consLabel = new Label("Consensus (optional):");
+    	consLabel.setFont(Font.font("Roman", FontWeight.BOLD, 12));
+    	consLabel.setStyle("-fx-underline:true");
+    	GridPane.setConstraints(consLabel, 0,4,4,1);
+    	optionPane.getChildren().add(consLabel);
     	
+    	
+    	ComboBox<String> consCombo=new ComboBox<String>();
+    	consCombo.getItems().addAll("kalign", "none");   
+    	consCombo.valueProperty().bindBidirectional(myass.msaProperty());
+        GridPane.setConstraints(consCombo, 2, 4, 2, 1);
+        optionPane.getChildren().add(consCombo); 
+        
+    	final Label labelMSA = new Label("Minium coverage for bridging ");
+    	GridPane.setConstraints(labelMSA, 0,5,3,1);
+    	optionPane.getChildren().add(labelMSA);
+    	
+    	TextField msaTF = new TextField("");
+    	msaTF.setText(Integer.toString(BDGraph.MIN_SUPPORT));
+    	msaTF.setOnKeyPressed(e -> {
+            if (e.getCode() == KeyCode.ENTER)  {
+                buttonStart.requestFocus();
+            }
+    	});
+    	GridPane.setConstraints(msaTF, 3,5);
+    	optionPane.getChildren().add(msaTF);
+    	
+    	
+           	    	
     	optionPane.disableProperty().bind(	longInputPane.disabledProperty()
     										.or(longInputFormatCombo.valueProperty().isEqualTo("sam/bam")));  
 		return optionPane;
@@ -556,10 +555,12 @@ public class NPGraphFX extends Application{
         buttonStart = new Button("Start", viewStart);
         buttonStart.setPrefSize(100, 20);
         buttonStart.setOnAction((event) -> {
-    		if(!myass.prepareLongReadsProcess()) {
-    			FxDialogs.showWarning("Warning", myass.getErrorLog());
+			String message=myass.getCheckLog();
+    		if(!myass.prepareLongReadsProcess()){
+    			FxDialogs.showError("Error", myass.getCheckLog());
     			return;
-    		}
+    		}else if(message!=null && !message.isEmpty())
+    			FxDialogs.showWarning("Warning", myass.getCheckLog());
 
         	myass.setReady(true);
         	

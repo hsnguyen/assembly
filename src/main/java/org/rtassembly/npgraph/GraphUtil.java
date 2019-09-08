@@ -698,38 +698,62 @@ public class GraphUtil {
 			"edge { fill-color: rgb(255,50,50); size: 2px; }" +
 			"edge.cut { fill-color: rgba(200,200,200,128); }";
     
-	//Adapt from japsa without need to output fasta input file
-	public static Sequence consensusSequence(String prefix, int distance, String msa) throws IOException, InterruptedException{
+	/* 
+	 * Adapt from japsa without need to output fasta input file
+	 */
+	public static Sequence consensusSequence(String prefix, int distance) throws IOException, InterruptedException{
+		Sequence consensus = null;	
+		String msa = BDGraph.MSA;
 		String 	faoFile = AlignedRead.tmpFolder+File.separator+prefix+"_"+msa+".fasta";
-		
 		File consFile = new File(faoFile);
 		if(!consFile.exists()){
 			String faiFile=AlignedRead.tmpFolder+File.separator+prefix+".fasta";
 			//1.0 Check faiFile?
 			FastaReader faiReader =  new FastaReader(faiFile);
-			int count=0;
-			while(faiReader.nextSequence(Alphabet.DNA5())!=null)
+			int count=0, minGap=Integer.MAX_VALUE;
+			Sequence seq=null;
+			while((seq=faiReader.nextSequence(Alphabet.DNA5()))!=null){
+				//if there is no MSA detected, output the sequence with the least non-Illumina bases
+				if(msa.isEmpty() || msa.startsWith("none")){
+					String[] toks=seq.getDesc().split("=");
+					try{
+						int curGap=Integer.parseInt(toks[1]);
+						if( curGap < minGap){
+							minGap=curGap;
+							consensus=seq;
+						}		
+					}catch(NumberFormatException e){
+						LOG.info("Pattern %s=%d not found in the header of input FASTA file {}", faiFile);
+						if(consensus==null || consensus.length() > seq.length())
+							consensus=seq;
+					}
+				}
 				count++;
+			}
 			
 			faiReader.close();
 			if(count<BDGraph.MIN_SUPPORT) //at least 3 of the good read count is required
 				return null;
 			
-			//2.0 Run multiple alignment
+			//2.0 Run multiple alignment. 
+			// For now, only kalign were chosen due to its speedy operation
 			String cmd  = "";
-			if (msa.startsWith("poa")){
-				String poaDir="/home/sonhoanghguyen/sw/poaV2/";//test
-				cmd = poaDir+"poa -read_fasta " + faiFile + " -clustal " + faoFile + " -hb " + poaDir+"blosum80.mat";
-			}else if (msa.startsWith("muscle")){
-				cmd = "muscle -in " + faiFile + " -out " + faoFile + " -maxiters 5 -quiet";				
-			}else if (msa.startsWith("clustal")) {
-				cmd = "clustalo --force -i " + faiFile + " -o " + faoFile;
-			}else if (msa.startsWith("kalign")){
+			if (msa.startsWith("kalign")){
 				cmd = "kalign -gpo 60 -gpe 10 -tgpe 0 -bonus 0 -q -i " + faiFile	+ " -o " + faoFile;
-			}else if (msa.startsWith("msaprobs")){
-				cmd = "msaprobs -o " + faoFile + " " + faiFile;
-			}else if (msa.startsWith("mafft")){
-				cmd = "mafft_wrapper.sh  " + faiFile + " " + faoFile;
+//			}else if (msa.startsWith("poa")){
+//				String poaDir="/home/sonhoanghguyen/sw/poaV2/";//test
+//				cmd = poaDir+"poa -read_fasta " + faiFile + " -clustal " + faoFile + " -hb " + poaDir+"blosum80.mat";
+//			}else if (msa.startsWith("muscle")){
+//				cmd = "muscle -in " + faiFile + " -out " + faoFile + " -maxiters 5 -quiet";				
+//			}else if (msa.startsWith("clustal")) {
+//				cmd = "clustalo --force -i " + faiFile + " -o " + faoFile;
+//			}else if (msa.startsWith("msaprobs")){
+//				cmd = "msaprobs -o " + faoFile + " " + faiFile;
+//			}else if (msa.startsWith("mafft")){
+//				cmd = "mafft_wrapper.sh  " + faiFile + " " + faoFile;
+			}else if(msa.isEmpty() || msa.startsWith("none")){
+				consensus.setName(prefix+"_consensus");
+				return consensus;
 			}else{
 				LOG.error("Unknown msa function " + msa);
 				return null;
@@ -740,27 +764,25 @@ public class GraphUtil {
 			process.waitFor();
 			LOG.info("Done " + cmd);
 		}
-		
-		Sequence consensus = null;
-		
-		if ("poa".equals(msa)){
-			SequenceBuilder sb = new SequenceBuilder(Alphabet.DNA(), (int) ((1+BDGraph.R_TOL)*distance)+2*BDGraph.getKmerSize());
-			BufferedReader bf =  FastaReader.openFile(faoFile);
-			String line = bf.readLine();
-			while ( (line = bf.readLine()) != null){
-				if (line.startsWith("CONSENS0")){
-					for (int i = 10;i < line.length();i++){
-						char c = line.charAt(i);
-						int base = DNA.DNA().char2int(c);
-						if (base >= 0 && base < 4)
-							sb.append((byte)base);
-					}//for							
-				}//if
-			}//while
-			sb.setName(prefix+"_consensus");
-			LOG.info(sb.getName() + "  " + sb.length());
-			return sb.toSequence();
-		}
+				
+//		if ("poa".equals(msa)){
+//			SequenceBuilder sb = new SequenceBuilder(Alphabet.DNA(), (int) ((1+BDGraph.R_TOL)*distance)+2*BDGraph.getKmerSize());
+//			BufferedReader bf =  FastaReader.openFile(faoFile);
+//			String line = bf.readLine();
+//			while ( (line = bf.readLine()) != null){
+//				if (line.startsWith("CONSENS0")){
+//					for (int i = 10;i < line.length();i++){
+//						char c = line.charAt(i);
+//						int base = DNA.DNA().char2int(c);
+//						if (base >= 0 && base < 4)
+//							sb.append((byte)base);
+//					}//for							
+//				}//if
+//			}//while
+//			sb.setName(prefix+"_consensus");
+//			LOG.info(sb.getName() + "  " + sb.length());
+//			return sb.toSequence();
+//		}
 
 		//3.0 Read in multiple alignment
 		ArrayList<Sequence> seqList = new ArrayList<Sequence>();

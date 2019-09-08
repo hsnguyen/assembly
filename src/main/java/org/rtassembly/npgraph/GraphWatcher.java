@@ -63,15 +63,10 @@ public class GraphWatcher {
 	
 	
 	/*
-	 * TODO: replace linearComponentsDecomposition() with this + real-time + threads...
-	 * Update the outputGraph to show statistics and current output
-	 * Should merge with updating the GUI (colors, labels...)???
+	 * FIXME: output graph updating is significantly slower as the graph getting more complex
 	 */
 	synchronized void update(boolean lastTime) {
 		//cleaning...
-		if(BDGraph.isMetagenomics && !lastTime)
-			return;
-		
 		removeBadComponents();
 		cutEdges = new HashSet<BDEdge>();
 		//then set the cut edges: just for outputGraph stats (will reset after)

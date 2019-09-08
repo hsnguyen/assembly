@@ -16,7 +16,7 @@ public class NPGraphCmd extends CommandLine{
 	public NPGraphCmd(){
 		super();
 
-		addString("si", "", "Name of the short-read assembly file.",true);
+		addString("si", "", "Name of the short-read assembly file.");
 		addString("sf", "", "Format of the assembly input file. Accepted format are FASTG, GFA");
 		addString("li", "", "Name of the long-read data input file, - for stdin.");
 		addString("lf", "", "Format of the long-read data input file. This may be FASTQ/FASTA (MinION reads) or SAM/BAM (aligned with the assembly graph already)");
@@ -25,8 +25,6 @@ public class NPGraphCmd extends CommandLine{
 		addString("sb", "", "Name of the metaBAT file for binning information (experimental).");
 
 		addString("aligner","","Aligner tool that will be used, either minimap2 or bwa");
-
-		addString("algPath","","Absolute path to the binary aligner file");
 		addString("algOpt", "", "Settings used by aligner to align long reads to the contigs");
 		
 		addBoolean("overwrite", true, "Whether to overwrite or reuse the intermediate file");
@@ -53,7 +51,6 @@ public class NPGraphCmd extends CommandLine{
 				outputDir = cmdLine.getStringVal("output"),
 				shortReadsBinInput = cmdLine.getStringVal("sb"),
 				alg=cmdLine.getStringVal("aligner"),
-				algPath = cmdLine.getStringVal("algPath"),
 				algOpt = cmdLine.getStringVal("algOpt");
 		boolean overwrite = cmdLine.getBooleanVal("overwrite"),
 				spaths = cmdLine.getBooleanVal("sp"),
@@ -88,8 +85,6 @@ public class NPGraphCmd extends CommandLine{
 		
 		if(alg!=null && !alg.isEmpty())
 			hbAss.setAligner(alg);
-		if(algPath!=null && !algPath.isEmpty())
-			hbAss.setAlignerPath(algPath);
 		if(algOpt!=null && !algOpt.isEmpty())
 			hbAss.setAlignerOpts(algOpt);
 		
@@ -109,7 +104,7 @@ public class NPGraphCmd extends CommandLine{
 					hbAss.postProcessGraph();
 				}
 				else{
-					System.err.println("Error with pre-processing step: \n" + hbAss.getErrorLog());
+					System.err.println("Error with pre-processing step: \n" + hbAss.getCheckLog());
 					System.exit(1);
 				}
 					
