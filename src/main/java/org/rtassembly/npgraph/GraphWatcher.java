@@ -38,7 +38,7 @@ public class GraphWatcher {
 		for (Iterator<ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
 			ConnectedComponent comp = compIter.next();		
 			AtomicDouble lengthWeightedCov = new AtomicDouble(0.0);
-			AtomicInteger length = new AtomicInteger(0);
+			AtomicInteger length = new AtomicInteger(1);
 			boolean protect=false;
 			for(Node n:comp.getNodeSet()){
 				if(SimpleBinner.getBinIfUnique(n)!=null){
@@ -47,14 +47,19 @@ public class GraphWatcher {
 				}
 				
 				int len = (int) (n.getNumber("len")-BDGraph.getKmerSize());
-				length.getAndAdd(len);
-				lengthWeightedCov.getAndAdd(n.getNumber("cov")*len);
+				double cov = n.getNumber("cov");
+				if(GraphUtil.approxCompare(cov, threshold) < 0 && len > SimpleBinner.ANCHOR_CTG_LEN){
+					length.getAndAdd(len);
+					lengthWeightedCov.getAndAdd(n.getNumber("cov")*len);
+				}
 			}
 			if(protect)
 				continue;
 			double 	aveCov=lengthWeightedCov.get()/length.get();
 			if(GraphUtil.approxCompare(aveCov, threshold) < 0 || length.get() < SimpleBinner.ANCHOR_CTG_LEN)
 				comp.nodes().forEach(n->removeNodes.add(n));
+			else
+				System.out.printf("Keep components with %d nodes, length=%d, cov=%.2f\n", comp.getNodeCount(), length.get(), aveCov);
 				
 		}
 		//Remove abundant components here
@@ -69,7 +74,7 @@ public class GraphWatcher {
 		//cleaning...
 		removeBadComponents();
 		cutEdges = new HashSet<BDEdge>();
-		//then set the cut edges: just for outputGraph stats (will reset after)
+		//then set the cut edges: just for outputGraph stats (will reset after). FIXME: need a Eulerian paths finding iff lastTime
 		inputGraph.nodes()
 		.forEach(n->{
 			if(n.getInDegree()>=2)
@@ -79,10 +84,6 @@ public class GraphWatcher {
 
 		});
 		
-		if(lastTime){
-			//TODO: only remove low cov edges+nodes
-			removeBadComponents();
-		}
 		
 		outputGraph=new BDGraph();
 		JapsaAnnotation annotation;

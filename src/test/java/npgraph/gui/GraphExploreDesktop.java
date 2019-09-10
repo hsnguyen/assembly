@@ -58,14 +58,14 @@ public class GraphExploreDesktop {
 ////    	String sample="E_coli_K-12_MG1655/";
 ////    	String sample="E_coli_O25b_H4-ST131/";
 ////    	String sample="Klebsiella_30660_NJST258_1/";
-//    	String sample="Klebsiella_MGH_78578/"; //SimpleBinner.ANCHOR_CTG_LEN=500
+////    	String sample="Klebsiella_MGH_78578/"; //SimpleBinner.ANCHOR_CTG_LEN=500
 ////    	String sample="Klebsiella_NTUH-K2044/";
 ////    	String sample="Mycobacterium_tuberculosis_H37Rv/";
 ////    	String sample="random_sequences_many_repeats/";
 ////    	String sample="random_sequences_no_repeats/";
 ////    	String sample="random_sequences_some_repeats/";
 ////    	String sample="Saccharomyces_cerevisiae_S288c/";
-////    	String sample="Shigella_dysenteriae_Sd197/"; //SimpleBinner.ANCHOR_CTG_LEN=2000
+//    	String sample="Shigella_dysenteriae_Sd197/"; //SimpleBinner.ANCHOR_CTG_LEN=2000
 ////    	String sample="Shigella_sonnei_53G/";
 ////    	String sample="Streptococcus_suis_BM407/";
 ////    	
@@ -90,26 +90,26 @@ public class GraphExploreDesktop {
     	 * Metagenomics data:
     	 */
     	//1. porecamp
-//    	String sass="metaSPAdes";
-////    	String sass="megaHIT";
-//    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/"+sass+"/assembly_graph.fastg",
-//    			output="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/",
-//    			lInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/"+sass+"/assembly_graph.sam";
-//		binFile="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/metabat/"+sass+"_contigs.bin";	
+    	String sass="metaSPAdes";
+//    	String sass="megaHIT";
+    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/"+sass+"/assembly_graph.fastg",
+    			output="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/",
+    			lInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/"+sass+"/assembly_graph.sam";
+		binFile="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/metabat/"+sass+"_contigs.bin";	
     	
-		//2.zymo
-    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/zymo/assembly_graph.fastg",
-    			output="/home/sonhoanghguyen/Projects/scaffolding/zymo",
-    			lInput="/home/sonhoanghguyen/Projects/scaffolding/zymo/assembly_graph_G.bam";
-    	lInput="/media/sonhoanghguyen/Seagate Backup Plus Drive/Data/zymo/assembly_graph_P.bam";
-		binFile="/home/sonhoanghguyen/Projects/scaffolding/zymo/bin";	
-		
+//		//2.zymo
+//    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/zymo/assembly_graph.fastg",
+//    			output="/home/sonhoanghguyen/Projects/scaffolding/zymo",
+//    			lInput="/home/sonhoanghguyen/Projects/scaffolding/zymo/assembly_graph_G.bam";
+//    	lInput="/media/sonhoanghguyen/Seagate Backup Plus Drive/Data/zymo/assembly_graph_P.bam";
+//		binFile="/home/sonhoanghguyen/Projects/scaffolding/zymo/bin";	
+//		
 		met=true;
-//		useSPAdesPath=true;
+////		useSPAdesPath=true;
     	
-//    	/*
-//    	 * MRSA day 0
-//    	 */
+    	/*
+    	 * MRSA day 0
+    	 */
 //    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/S.aureus_day0/spades/assembly_graph.fastg",
 //    			output="/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/S.aureus_day0",
 //    			lInput="/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/S.aureus_day0/MRSA_Rapid_230916.fastq";  
