@@ -28,8 +28,7 @@ import japsa.seq.SequenceOutputStream;
 
 
 public class BDGraph extends MultiGraph{
-	static boolean 	circular=true, // circular or linear preference for the output genome
-					isMetagenomics=false;
+	static boolean 	circular=true; // circular or linear preference for the output genome
 	static int KMER=127;
     static double RCOV=0.0;
     SimpleBinner binner;
@@ -38,7 +37,7 @@ public class BDGraph extends MultiGraph{
     public static final double R_TOL=.25;// relative tolerate: can be interpreted as long read error rate (10-25%)
     public static final int A_TOL=300;// absolute tolerate: can be interpreted as long read absolute error bases (100bp)
 
-    public static final int GOOD_SUPPORT=20; //number of minimum spanning reads for an affirmative bridge. TODO: reduce this to test
+    public static final int GOOD_SUPPORT=20; //number of minimum spanning reads for an affirmative long-reads-based bridge.
 	public static final double ALPHA=.5; //coverage less than alpha*bin_cov will be considered noise
     public static final int D_LIMIT=5000; //distance bigger than this will be ignored
     public static int S_LIMIT=300;// maximum number of graph traversing steps
@@ -240,10 +239,6 @@ public class BDGraph extends MultiGraph{
     	
     }
     
-//    synchronized public boolean isGoodBridge(BDEdgePrototype pEdge){
-//    	return 		(bridgesMap.get(pEdge.n0.toString())!=null && bridgesMap.get(pEdge.n0.toString()).getCompletionLevel()>=3)
-//				|| (bridgesMap.get(pEdge.n1.toString())!=null && bridgesMap.get(pEdge.n1.toString()).getCompletionLevel()>=3);
-//    }
     
     //Return bridge in the map (if any) that share the same bases (unique end) 
     synchronized public GoInBetweenBridge getBridgeFromMap(AlignedRead algRead){
@@ -502,22 +497,6 @@ public class BDGraph extends MultiGraph{
     		}
     	}
     }
-	//Remove nodes with degree <=1 and length || cov low
-    synchronized public void cleanInsignificantNodes(){
-		if(binner==null)
-			return;
-		List<Node> badNodes = nodes()
-						.filter(n->(binner.checkRemovableNode(n)))
-						.collect(Collectors.toList());
-		while(!badNodes.isEmpty()) {
-			Node node = badNodes.remove(0);
-			List<Node> neighbors = node.neighborNodes().collect(Collectors.toList());	
-			removeNode(node);
-			neighbors.stream()
-				.filter(n->(binner.checkRemovableNode(n)))
-				.forEach(n->{if(!badNodes.contains(n)) badNodes.add(n);});
-		}
-	}
 	
     
     //Depth First Search strategy

@@ -58,7 +58,7 @@ public class PopBin{
 		if(a==null||b==null)
 			return false;
 		else
-			return BDGraph.isMetagenomics||GraphUtil.approxCompare(a.estCov, b.estCov)==0;
+			return GraphUtil.approxCompare(a.estCov, b.estCov)==0;
 	} 
 
 	public static PopBin getDominateBin(PopBin a, PopBin b){

@@ -58,11 +58,6 @@ public class HybridAssembler {
 	public void setReady(boolean isReady) {ready=isReady;}
 	public boolean getReady() {return ready;}
 	
-	public void setMetagenomics(boolean isMetagenomics) {
-		BDGraph.isMetagenomics=isMetagenomics; 
-		if(isMetagenomics)
-			BDGraph.MIN_SUPPORT=Math.max(BDGraph.MIN_SUPPORT, 5); //increase lower bound for confident bridges
-	}
 	
 	public final void setOverwrite(boolean owr) {overwrite.set(owr);}
 	public final boolean getOverwrite() {return overwrite.get();}
@@ -91,7 +86,7 @@ public class HybridAssembler {
 	public final void setCheckLog(String log) {checkLog+="\n"+log;}
 	public final String getCheckLog() {return checkLog;}
 		
-	public final void setBinReadsInput(String brInput) {binReadsInput.set(brInput); setMetagenomics(true);}
+	public final void setBinReadsInput(String brInput) {binReadsInput.set(brInput);}
 	public final String getBinReadsInput() {return binReadsInput.get();}
 	public StringProperty binReadsInputProperty() {return binReadsInput;}
 	

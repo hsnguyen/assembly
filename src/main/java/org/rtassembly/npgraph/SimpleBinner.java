@@ -433,25 +433,25 @@ public class SimpleBinner {
 	static public boolean isPotentialAnchorNode(BDNode node){
 		return getBinIfUnique(node)!=null||(BDGraph.isSuspectedNode(node)&&node.getInDegree()<=1&&node.getOutDegree()<=1);
 	}
-	public boolean checkRemovableNode(Node node) {
-//		LOG.info("Checking node {}", node.getAttribute("name"));
-		if(node.getInDegree()*node.getOutDegree()!=0 || SimpleBinner.getBinIfUnique(node)!=null) {
-//			LOG.info("1 not removable!");
-			return false;
-		}
-		else if(node2BinMap.containsKey(node)) {
-			if(node2BinMap.get(node).getSum() != 0){
-//				LOG.info("2 not removable!");
-				return false;
-			}
-		}
-		else if(GraphUtil.approxCompare(node.getNumber("cov"),leastBin.estCov)>=0) {
-//			LOG.info("3 not removable!");
-			return false;
-		}
-//		LOG.info(" removable!");
-		return true;
-	}
+//	public boolean checkRemovableNode(Node node) {
+////		LOG.info("Checking node {}", node.getAttribute("name"));
+//		if(node.getInDegree()*node.getOutDegree()!=0 || SimpleBinner.getBinIfUnique(node)!=null) {
+////			LOG.info("1 not removable!");
+//			return false;
+//		}
+//		else if(node2BinMap.containsKey(node)) {
+//			if(node2BinMap.get(node).getSum() != 0){
+////				LOG.info("2 not removable!");
+//				return false;
+//			}
+//		}
+//		else if(GraphUtil.approxCompare(node.getNumber("cov"),leastBin.estCov)>=0) {
+////			LOG.info("3 not removable!");
+//			return false;
+//		}
+////		LOG.info(" removable!");
+//		return true;
+//	}
 	//Traversal along a unique path (unique ends) and return list of unique edges
 	//Must only be called from BDGraph.reduce()
 	synchronized public Set<Edge> walkAlongUniquePath(BDPath path) {
@@ -466,13 +466,6 @@ public class SimpleBinner {
 			System.err.println("Ignored: population bin of the path (either at ending node or global) is not known!");
 			return null;
 		}
-//		else if(uniqueBin!=startBin && uniqueBin!=endBin){//at least one end must agree with the wholepath bin
-//			System.err.println("Ignored: consensus bin must be one of the endings bin: " + uniqueBin.getId() + " != " + startBin.getId() + " or " + endBin.getId() );
-//			//clean from bin map here...
-//			node2BinMap.remove(path.getRoot());
-//			node2BinMap.remove(path.peekNode());
-//			return null;
-//		}
 		else if(!PopBin.isCloseBins(consensusBin,startBin)){
 			System.err.printf("Ignored: consensus bin %s doesn't agree with one of the endings bin %s at node %s\n", consensusBin, startBin, path.getRoot());
 			node2BinMap.remove(path.getRoot());
@@ -533,15 +526,6 @@ public class SimpleBinner {
 			
 //			LOG.info("--edge {} coverage:{} to {}",ep.getId(),ep.getNumber("cov"),ep.getNumber("cov") - aveCov);
 			ep.setAttribute("cov", ep.getNumber("cov")>aveCov?ep.getNumber("cov")-aveCov:0);	
-
-//			//Heuristic attempts:
-//			if(bcMinusOne!=null && bcMinusOne.values().stream().mapToInt(Integer::intValue).sum() == 0) {
-//				retval.add((BDEdge) ep);
-//			}
-//			
-////			if(ep.getNumber("cov") < 0  && !unresolvedEdges.contains(ep)) //plasmid coverage is different!!!
-//			if(ep.getNumber("cov") <= BPOP*0.5  && !edge2BinMap.containsKey(ep)) //plasmid coverage is different!!!
-//				retval.add((BDEdge) ep);
 			
 			bcMinusOne=null;
 			if(curNode!=path.getRoot() && curNode!=path.peekNode()) {
@@ -555,20 +539,11 @@ public class SimpleBinner {
 						nodeBinsCount=node2BinMap.get(curNode);
 						bcMinusOne=nodeBinsCount.substract(otherBin);
 						node2BinMap.replace(curNode, bcMinusOne);
-//						if(!bcMinusOne.isEmpty()) {
-//							node2BinMap.replace(curNode, bcMinusOne);
-//						}
-//						else {
-//							node2BinMap.remove(curNode);
-//						}
 					}
 					
 				}				
 				
 				curNode.setAttribute("cov", curNode.getNumber("cov")>aveCov?curNode.getNumber("cov")-aveCov:0);
-//				if(	(bcMinusOne!=null && bcMinusOne.values().stream().mapToInt(Integer::intValue).sum() == 0)
-//					|| curNode.getNumber("cov") < .1*aveCov) 
-//					curNode.edges().forEach(e->retval.add((BDEdge) e));
 				
 			}
 			
@@ -581,36 +556,7 @@ public class SimpleBinner {
 		return retval;
 	}
 	
-//	private boolean checkEdgeSafeToRemove(BDEdge edge) {
-//		boolean retval=true;
-//		BDNode 	n0=(BDNode) edge.getNode0(),
-//						n1=(BDNode) edge.getNode1();
-//		boolean dir0=edge.getDir0(),
-//				dir1=edge.getDir1();
-//		double remainCov=0.0;
-//		Optional<Double> tmp;
-//		System.out.printf("Checking edge " + edge.getId() + ": remainCov=");
-//		boolean onlyFlag=false;
-//		if(getUniqueBin(n0)==null && getUniqueBin(n1)==null){
-//			if((dir0?n0.getOutDegree():n0.getInDegree()) == 1){//the only in/out edge for n0
-//				tmp=(dir0?n0.enteringEdges():n0.leavingEdges()).map(e->(e.getNumber("cov"))).reduce(Double::sum);
-//				if(tmp.isPresent())
-//					remainCov+=tmp.get();
-//				onlyFlag=true;
-//			}
-//			if((dir1?n1.getOutDegree():n1.getInDegree()) == 1){//the only in/out edge for n1
-//				tmp=(dir1?n1.enteringEdges():n1.leavingEdges()).map(e->(e.getNumber("cov"))).reduce(Double::sum);
-//				if(tmp.isPresent())
-//					remainCov+=tmp.get();			
-//				onlyFlag=true;
-//			}
-//			if(onlyFlag && remainCov > edge.getNumber("cov"))
-//				retval=false;
-//		}
-//		System.out.println(remainCov + " => " + retval);
-//		return retval;
-//	}
-	
+
 	public String getBinsOfNode(Node node) {
 		String retval="[";
 		Multiplicity binCount=node2BinMap.get(node);
