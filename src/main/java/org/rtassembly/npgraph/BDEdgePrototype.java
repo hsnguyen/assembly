@@ -60,5 +60,11 @@ public class BDEdgePrototype{
 			retval+=",-";
 		return retval;
 	}
+	public String getEdgeID(){
+		if(n0==null||n1==null)
+			return "";
+		else
+			return BDEdge.createID(n0.getNode(), n1.getNode(), n0.getDir(), n1.getDir());
+	}
 }
 

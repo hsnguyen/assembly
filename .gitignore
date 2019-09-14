@@ -4,3 +4,5 @@ dependency-reduced-pom.xml
 .project
 .settings/
 bin/
+ext-src/
+mm2.err

@@ -3,6 +3,7 @@ package npgraph.gui;
 import java.io.IOException;
 
 import org.graphstream.graph.Node;
+import org.graphstream.ui.view.View;
 import org.graphstream.ui.view.Viewer;
 import org.rtassembly.npgraph.BDGraph;
 import org.rtassembly.npgraph.GraphUtil;
@@ -28,6 +29,7 @@ public class GraphExploreDesktop {
     	System.setProperty("org.graphstream.ui", "javafx");
     	//System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer"); 
     	String binFile="";
+    	boolean useSPAdesPath=false;
     	/*
     	 * npScarf data set
     	 */
@@ -63,11 +65,11 @@ public class GraphExploreDesktop {
 ////    	String sample="random_sequences_no_repeats/";
 ////    	String sample="random_sequences_some_repeats/";
 ////    	String sample="Saccharomyces_cerevisiae_S288c/";
-////    	String sample="Shigella_dysenteriae_Sd197/"; //SimpleBinner.ANCHOR_CTG_LEN=2000
+//    	String sample="Shigella_dysenteriae_Sd197/"; //SimpleBinner.ANCHOR_CTG_LEN=2000
 ////    	String sample="Shigella_sonnei_53G/";
-//    	String sample="Streptococcus_suis_BM407/";
-//    	
-//    	
+////    	String sample="Streptococcus_suis_BM407/";
+////    	
+////    	
 ////    	String quality="bad/";
 ////    	String quality="medium/";
 //    	String quality="good/";
@@ -85,39 +87,62 @@ public class GraphExploreDesktop {
 //    			lInput="";	
     	
     	/*
-    	 * Porecamp data:
+    	 * Metagenomics data:
     	 */
-    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/metaSPAdes/assembly_graph.fastg",
-    			output="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/",
-    			lInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/ont2fastg_mm2.sam";
-//		binFile="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/metabat/bin";	
+
+////    	//1. porecamp
+////    	String sass="metaSPAdes";
+//////    	String sass="megaHIT";
+////    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/"+sass+"/assembly_graph.fastg",
+////    			output="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/",
+////    			lInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/"+sass+"/assembly_graph.sam";
+////		binFile="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/metabat/"+sass+"_contigs.bin";	
+//    	
+//		//2.zymo
+//    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/zymo/assembly_graph.fastg",
+//    			output="/home/sonhoanghguyen/Projects/scaffolding/zymo",
+//    			lInput="/home/sonhoanghguyen/Projects/scaffolding/zymo/assembly_graph_G.bam";
+////    	lInput="/media/sonhoanghguyen/Seagate Backup Plus Drive/Data/zymo/assembly_graph_P.bam";
+//		binFile="/home/sonhoanghguyen/Projects/scaffolding/zymo/bin";	
+//		
+////		useSPAdesPath=true;
     	
-		
+    	/*
+    	 * MRSA day 0
+    	 */
+    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/S.aureus_day0/spades/assembly_graph.fastg",
+    			output="/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/S.aureus_day0",
+    			lInput="/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/S.aureus_day0/MRSA_Rapid_230916.fastq";  
     	/*******************************************************************************
     	 ****************************** Share code *************************************
     	 *******************************************************************************/
 		HybridAssembler hbAss = new HybridAssembler();
+		hbAss.setUseSPAdesPath(useSPAdesPath);
 		hbAss.setShortReadsInput(sInput);
 		hbAss.setPrefix(output);
 		if(!binFile.isEmpty())
 			hbAss.setBinReadsInput(binFile);
 		
+		hbAss.setAligner("minimap2");
+//		hbAss.setMSA("none");
 		hbAss.prepareShortReadsProcess();
 		
     	BDGraph graph= hbAss.simGraph;
     	
     	graph.setAttribute("ui.style", GraphUtil.styleSheet);
-
+    	graph.setAttribute("layout.force", .5);
+    	graph.setAttribute("layout.weight", .1);
         Viewer viewer=graph.display();
 //        HybridAssembler.promptEnterKey();
         System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
-                
+//        for (Node node : graph) {
+//            node.setAttribute("ui.label", node.getId());
+//        }        
         /*
          * Testing reduce function
          */
         try {
         	hbAss.setLongReadsInput(lInput);
-//        	hbAss.setLongReadsInputFormat("sam");
         	hbAss.prepareLongReadsProcess();
         	
         	hbAss.assembly();
@@ -127,15 +152,15 @@ public class GraphExploreDesktop {
 		}
         
         System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
-        
+                
 //        HybridAssembler.promptEnterKey();
         hbAss.postProcessGraph();
+        HybridAssembler.promptEnterKey();
+
         for (Node node : graph) {
             node.setAttribute("ui.label", node.getId());
         }
-//        HybridAssembler.promptEnterKey();
-//        viewer.disableAutoLayout();
-        
+        viewer.disableAutoLayout();
        
     }
     
