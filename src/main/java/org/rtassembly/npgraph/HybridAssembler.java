@@ -40,7 +40,7 @@ public class HybridAssembler {
     private BooleanProperty overwrite, useSPAdesPath;
     private StringProperty 	prefix,
     						aligner,
-    						alignerPath, 
+    						msa,
 							alignerOpt,
 							shortReadsInput, 
 							binReadsInput, 
@@ -50,7 +50,7 @@ public class HybridAssembler {
 	
 	Process alignmentProcess = null;
 	private boolean stop=false;
-	private String errorLog="";
+	private String checkLog="";
 	int currentReadCount = 0;
 	long currentBaseCount = 0;	
 	//Getters and Setters
@@ -58,10 +58,6 @@ public class HybridAssembler {
 	public void setReady(boolean isReady) {ready=isReady;}
 	public boolean getReady() {return ready;}
 	
-	public void setMetagenomics(boolean isMetagenomics) {
-		BDGraph.isMetagenomics=isMetagenomics; 
-//		BDGraph.MIN_SUPPORT=5; //increase lower bound for confident bridges
-	}
 	
 	public final void setOverwrite(boolean owr) {overwrite.set(owr);}
 	public final boolean getOverwrite() {return overwrite.get();}
@@ -79,20 +75,18 @@ public class HybridAssembler {
 	public final String getAligner() {return aligner.get();}
 	public StringProperty alignerProperty(){return aligner;}
 	
-	public final void setAlignerPath(String path) {alignerPath.set(path);}
-	public final String getAlignerPath() {return alignerPath.get();}
-	public StringProperty alignerPathProperty(){return alignerPath;}
-	
 	public final void setAlignerOpts(String setting) {alignerOpt.set(setting);}
 	public final String getAlignerOpts() {return alignerOpt.get();}
 	public StringProperty alignerOptProperty(){return alignerOpt;}
 	
-	public final void setErrorLog(String log) {errorLog=log;}
-	public final String getErrorLog() {return errorLog;}
+	public final void setMSA(String tool) {	msa.set(tool); BDGraph.MSA=tool;}
+	public final String getMSA() {return msa.get();}
+	public StringProperty msaProperty(){return msa;}
 	
-	public final String getFullPathOfAligner() {return getAlignerPath()+"/"+getAligner();}
-	
-	public final void setBinReadsInput(String brInput) {binReadsInput.set(brInput); setMetagenomics(true);}
+	public final void setCheckLog(String log) {checkLog+="\n"+log;}
+	public final String getCheckLog() {return checkLog;}
+		
+	public final void setBinReadsInput(String brInput) {binReadsInput.set(brInput);}
 	public final String getBinReadsInput() {return binReadsInput.get();}
 	public StringProperty binReadsInputProperty() {return binReadsInput;}
 	
@@ -143,8 +137,8 @@ public class HybridAssembler {
 		useSPAdesPath = new SimpleBooleanProperty(false);
 	    prefix = new SimpleStringProperty(System.getProperty("java.io.tmpdir"));
 	    aligner = new SimpleStringProperty("");
-		alignerPath = new SimpleStringProperty(""); 
 		alignerOpt = new SimpleStringProperty("");
+		msa = new SimpleStringProperty("kalign");
 		
 		shortReadsInput = new SimpleStringProperty(""); 
 		binReadsInput = new SimpleStringProperty(""); 
@@ -221,33 +215,39 @@ public class HybridAssembler {
 	
     private boolean checkFile(String _path) {
 		if (_path.equals("")){
-			setErrorLog("Empty file \"" + _path + "\"");
+			setCheckLog("Empty file \"" + _path + "\"");
 			return false;
 		}
 		File _file = new File(_path);
 		if (!_file.isFile()){
-			setErrorLog("File \"" + _path + "\" is not valid!");
+			setCheckLog("File \"" + _path + "\" is not valid!");
 			return false;
 		}
 		return true;
     }
     private boolean checkFolder(String _path) {
 		if (_path.equals("")){
-			setErrorLog("Empty directory \"" + _path + "\"");
+			setCheckLog("Empty directory \"" + _path + "\"");
 			return false;
 		}
 		File _file = new File(_path);
 		if (!_file.isDirectory()){
-			setErrorLog("Directory \"" + _path + "\" is not valid!");
+			setCheckLog("Directory \"" + _path + "\" is not valid!");
 			return false;
 		}
 		return true;
     }	
 	
-	//Indexing reference, prepare for alignment...
+	//Indexing reference, prepare for alignment...r
 	public boolean prepareLongReadsProcess(){
+		//accept the case when no long read data is provided. Just output simplified assembly graph then.
+		if(getLongReadsInput().isEmpty()) {
+			LOG.info("No long read data is provided. Only output the simplified assembly graph and stop!");
+			return true;
+		}
+		
 		if(!getLongReadsInputFormat().equals("fasta/fastq") && !getLongReadsInputFormat().equals("sam/bam")){
-			setErrorLog("Please specify a correct format of long read data (FASTA/FASTQ or BAM/SAM)!");
+			setCheckLog("Please specify a correct format of long read data (FASTA/FASTQ or BAM/SAM)!");
 			return false;
 		}
 		if(!getLongReadsInput().equals("-") && !checkFile(getLongReadsInput()))
@@ -259,7 +259,7 @@ public class HybridAssembler {
 			System.setProperty("usr.dir", getPrefix());			
 		}
 		catch(NullPointerException | IllegalArgumentException | SecurityException exception ){
-			setErrorLog("Fail to set working directory usr.dir to " + getPrefix());
+			setCheckLog("Fail to set working directory usr.dir to " + getPrefix());
 			return false;
 		}
 		
@@ -278,7 +278,7 @@ public class HybridAssembler {
   		}
 		
 		if(!tmpFolder.mkdir()){
-			setErrorLog("Cannot set temporary folder " + tmpFolder.getAbsolutePath());
+			setCheckLog("Cannot set temporary folder " + tmpFolder.getAbsolutePath());
 			return false;
 		}else{
 			AlignedRead.tmpFolder=tmpFolder.getAbsolutePath();
@@ -288,7 +288,7 @@ public class HybridAssembler {
         if(getLongReadsInputFormat().toLowerCase().startsWith("fast")) {
         	File indexFile=null;
         	ArrayList<String> idxCmd = new ArrayList<>();
-        	idxCmd.add(getFullPathOfAligner());
+        	idxCmd.add(getAligner());
         	if(getAligner().equals("minimap2")) { 	
 				indexFile=new File(getPrefix()+File.separator+"assembly_graph.mmi");												
 				if(!checkMinimap2()) 
@@ -304,7 +304,7 @@ public class HybridAssembler {
 				idxCmd.add("index");
 
         	}else {
-        		setErrorLog("Invalid aligner! Set to BWA or minimap2 please!");
+        		setCheckLog("Invalid aligner! Set to BWA or minimap2 please!");
         		return false;
         	}
 			idxCmd.add(getPrefix()+File.separator+"assembly_graph.fasta");
@@ -318,19 +318,28 @@ public class HybridAssembler {
 					indexProcess.waitFor();
 					
 				}catch (IOException | InterruptedException e){
-					setErrorLog("Issue when indexing the pre-assemblies: \n" + e.getMessage());
+					setCheckLog("Issue when indexing the pre-assemblies: \n" + e.getMessage());
 					return false;
 				}
 			}
 			
         }
+        
+        //check consensus tool
+        if(getMSA().equals("kalign")){
+        	if(!checkKalign()){
+        		setCheckLog("kalign not found: random pick for the bridging read instead of consensus!");
+        		setMSA("none");
+        	}
+        }
+        
         return true;
 	}
 	//Loading the graph, doing preprocessing
 	//binning, ...
 	public boolean prepareShortReadsProcess() {
 		if(!getShortReadsInputFormat().equals("fastg") && !getShortReadsInputFormat().equals("gfa")){
-			setErrorLog("Please specify a correct format of graph file!");
+			setCheckLog("Please specify a correct format of graph file!");
 			return false;
 		}
 			
@@ -347,7 +356,7 @@ public class HybridAssembler {
 				throw new IOException("Assembly graph file must have .gfa or .fastg extension!");
 			
 		}catch(IOException e) {
-			setErrorLog("Issue when loading pre-assembly: \n" + e.getMessage());
+			setCheckLog("Issue when loading pre-assembly: \n" + e.getMessage());
 			return false;
 		}
 		
@@ -364,8 +373,11 @@ public class HybridAssembler {
 	 */
 	public void assembly() 
 			throws IOException, InterruptedException{
-
-		LOG.info("Scaffolding ready at {}", new Date());
+		if(getLongReadsInput().isEmpty()) {
+			LOG.info("Scaffolding is ignored due to lack of long-read input!");
+			return;
+		}else
+			LOG.info("Scaffolding ready at {}", new Date());
 
 		SamReaderFactory.setDefaultValidationStringency(ValidationStringency.SILENT);
 		SamReader reader = null;
@@ -379,7 +391,7 @@ public class HybridAssembler {
 			LOG.info("Starting alignment by {} at {}", getAligner(), new Date());
 			ProcessBuilder pb = null;
 			List<String> command = new ArrayList<>();
-			command.add(getFullPathOfAligner());
+			command.add(getAligner());
 			if(getAligner().equals("minimap2")) {
 				command.add("-a");
 				command.addAll(Arrays.asList(getAlignerOpts().split("\\s")));
@@ -567,7 +579,7 @@ public class HybridAssembler {
     
     
     public boolean checkMinimap2() {    		
-		ProcessBuilder pb = new ProcessBuilder(getFullPathOfAligner(),"-V").redirectErrorStream(true);
+		ProcessBuilder pb = new ProcessBuilder(getAligner(),"-V").redirectErrorStream(true);
 		Process process;
 		try {
 			process = pb.start();
@@ -591,17 +603,17 @@ public class HybridAssembler {
 			bf.close();
 			
 			if (version.length() == 0){
-				setErrorLog("Command " + getFullPathOfAligner() + " -V doesn't give version info. Check version failed!");
+				setCheckLog("Command " + getAligner() + " -V failed!");
 				return false;
 			}else{
 				LOG.info("minimap version: " + version);
 				if (version.compareTo("2.0") < 0){
-					setErrorLog("Require minimap version 2 or above!");
+					setCheckLog("Require minimap version 2 or above!");
 					return false;
 				}
 			}
 		} catch (IOException e) {
-			setErrorLog("Error running: " + getFullPathOfAligner() + "\n" + e.getMessage());
+			setCheckLog("Error running: " + getAligner() + "\n" + e.getMessage());
 			return false;
 		}
 		
@@ -611,7 +623,7 @@ public class HybridAssembler {
     
     public boolean checkBWA() {    		
 		try{
-			ProcessBuilder pb = new ProcessBuilder(getFullPathOfAligner()).redirectErrorStream(true);
+			ProcessBuilder pb = new ProcessBuilder(getAligner()).redirectErrorStream(true);
 			Process process =  pb.start();
 			BufferedReader bf = SequenceReader.openInputStream(process.getInputStream());
 
@@ -633,18 +645,18 @@ public class HybridAssembler {
 			bf.close();
 			
 			if (version.length() == 0){
-				setErrorLog("Command " + getFullPathOfAligner() + " doesn't give version info. Check version failed!");
+				setCheckLog("Command " + getAligner() + " doesn't give version info. Check version failed!");
 				return false;
 			}else{
 				LOG.info("bwa version: " + version);
 				if (version.compareTo("0.7.11") < 0){
-					setErrorLog(" Require bwa of 0.7.11 or above");
+					setCheckLog(" Require bwa of 0.7.11 or above");
 					return false;
 				}
 			}
 
 		}catch (IOException e){
-			setErrorLog("Error running: " + getFullPathOfAligner() + "\n" + e.getMessage());
+			setCheckLog("Error running: " + getAligner() + "\n" + e.getMessage());
 			return false;
 		}
 		
@@ -652,6 +664,48 @@ public class HybridAssembler {
 			
     }
     
+    public boolean checkKalign() {    		
+		try{
+			ProcessBuilder pb = new ProcessBuilder(getMSA()).redirectErrorStream(true);
+			Process process =  pb.start();
+			BufferedReader bf = SequenceReader.openInputStream(process.getInputStream());
+
+
+			String line;
+			String version = "";
+			Pattern versionPattern = Pattern.compile("^Kalign version\\s(\\d+\\.\\d+).*");
+			Matcher matcher=versionPattern.matcher("");
+			
+			while ((line = bf.readLine())!=null){				
+				matcher.reset(line);
+				if (matcher.find()){
+				    version = matcher.group(1);
+				    break;//while
+				}
+				
+								
+			}	
+			bf.close();
+			
+			if (version.length() == 0){
+				setCheckLog("Command " + getMSA() + " doesn't give version info. Check version failed!");
+				return false;
+			}else{
+				LOG.info("kalign version: " + version);
+				if (version.compareTo("2.0") < 0){
+					setCheckLog(" Require kalign version 2 or above");
+					return false;
+				}
+			}
+
+		}catch (IOException e){
+			setCheckLog("Error running: " + getMSA() + "\n" + e.getMessage());
+			return false;
+		}
+		
+		return true;
+			
+    }
 
 	public static void main(String[] argv) throws IOException, InterruptedException{
 		HybridAssembler hbAss = new HybridAssembler();

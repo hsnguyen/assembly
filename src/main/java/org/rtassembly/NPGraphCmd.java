@@ -25,13 +25,10 @@ public class NPGraphCmd extends CommandLine{
 		addString("sb", "", "Name of the metaBAT file for binning information (experimental).");
 
 		addString("aligner","","Aligner tool that will be used, either minimap2 or bwa");
-
-		addString("algPath","","Absolute path to the binary aligner file");
 		addString("algOpt", "", "Settings used by aligner to align long reads to the contigs");
 		
 		addBoolean("overwrite", true, "Whether to overwrite or reuse the intermediate file");
 		addBoolean("sp", false, "Whether to use SPAdes contigs.paths for bridging.");
-		addBoolean("met", false, "Whether working with metagenomics.");
 		addInt("qual", 10, "Minimum quality of alignment to considered");
 		addInt("mcov", 3, "Minimum number of reads spanning a confident bridge");
 		addInt("slim", 300, "Maximum depth for searching path between 2 neighbors");
@@ -53,11 +50,9 @@ public class NPGraphCmd extends CommandLine{
 				outputDir = cmdLine.getStringVal("output"),
 				shortReadsBinInput = cmdLine.getStringVal("sb"),
 				alg=cmdLine.getStringVal("aligner"),
-				algPath = cmdLine.getStringVal("algPath"),
 				algOpt = cmdLine.getStringVal("algOpt");
 		boolean overwrite = cmdLine.getBooleanVal("overwrite"),
 				spaths = cmdLine.getBooleanVal("sp"),
-				metagenomics = cmdLine.getBooleanVal("met"),
 				gui = cmdLine.getBooleanVal("gui");
 			
 		Alignment.MIN_QUAL = cmdLine.getIntVal("qual");
@@ -88,14 +83,11 @@ public class NPGraphCmd extends CommandLine{
 		
 		if(alg!=null && !alg.isEmpty())
 			hbAss.setAligner(alg);
-		if(algPath!=null && !algPath.isEmpty())
-			hbAss.setAlignerPath(algPath);
 		if(algOpt!=null && !algOpt.isEmpty())
 			hbAss.setAlignerOpts(algOpt);
 		
 		hbAss.setOverwrite(overwrite);
 		hbAss.setUseSPAdesPath(spaths);
-		hbAss.setMetagenomics(metagenomics);
 		        
 		//4. Call the assembly function or invoke GUI to do so
         if(gui) {
@@ -109,7 +101,7 @@ public class NPGraphCmd extends CommandLine{
 					hbAss.postProcessGraph();
 				}
 				else{
-					System.err.println("Error with pre-processing step: \n" + hbAss.getErrorLog());
+					System.err.println("Error with pre-processing step: \n" + hbAss.getCheckLog());
 					System.exit(1);
 				}
 					

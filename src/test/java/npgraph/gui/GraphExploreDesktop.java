@@ -29,7 +29,7 @@ public class GraphExploreDesktop {
     	System.setProperty("org.graphstream.ui", "javafx");
     	//System.setProperty("org.graphstream.ui.renderer", "org.graphstream.ui.j2dviewer.J2DGraphRenderer"); 
     	String binFile="";
-    	boolean met=false, useSPAdesPath=false;
+    	boolean useSPAdesPath=false;
     	/*
     	 * npScarf data set
     	 */
@@ -58,14 +58,14 @@ public class GraphExploreDesktop {
 ////    	String sample="E_coli_K-12_MG1655/";
 ////    	String sample="E_coli_O25b_H4-ST131/";
 ////    	String sample="Klebsiella_30660_NJST258_1/";
-//    	String sample="Klebsiella_MGH_78578/"; //SimpleBinner.ANCHOR_CTG_LEN=500
+////    	String sample="Klebsiella_MGH_78578/"; //SimpleBinner.ANCHOR_CTG_LEN=500
 ////    	String sample="Klebsiella_NTUH-K2044/";
 ////    	String sample="Mycobacterium_tuberculosis_H37Rv/";
 ////    	String sample="random_sequences_many_repeats/";
 ////    	String sample="random_sequences_no_repeats/";
 ////    	String sample="random_sequences_some_repeats/";
 ////    	String sample="Saccharomyces_cerevisiae_S288c/";
-////    	String sample="Shigella_dysenteriae_Sd197/"; //SimpleBinner.ANCHOR_CTG_LEN=2000
+//    	String sample="Shigella_dysenteriae_Sd197/"; //SimpleBinner.ANCHOR_CTG_LEN=2000
 ////    	String sample="Shigella_sonnei_53G/";
 ////    	String sample="Streptococcus_suis_BM407/";
 ////    	
@@ -86,18 +86,25 @@ public class GraphExploreDesktop {
 //    			output="/home/sonhoanghguyen/Projects/scaffolding/npgraph/results_2/spades/citrobacter-freundii_CAV1374/",
 //    			lInput="";	
     	
-//    	/*
-//    	 * Porecamp data:
-//    	 */
-//    	String sass="metaSPAdes";
-////    	String sass="megaHIT";
-//    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/"+sass+"/assembly_graph.fastg",
-//    			output="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/",
-//    			lInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/"+sass+"/assembly_graph.sam";
-//		binFile="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/metabat/"+sass+"_contigs.bin";	
-//    	met=true;
-//		useSPAdesPath=true;
-//    	BDGraph.MIN_SUPPORT=5;
+    	/*
+    	 * Metagenomics data:
+    	 */
+////    	//1. porecamp
+////    	String sass="metaSPAdes";
+//////    	String sass="megaHIT";
+////    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/"+sass+"/assembly_graph.fastg",
+////    			output="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/",
+////    			lInput="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/"+sass+"/assembly_graph.sam";
+////		binFile="/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/metabat/"+sass+"_contigs.bin";	
+//    	
+//		//2.zymo
+//    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/zymo/assembly_graph.fastg",
+//    			output="/home/sonhoanghguyen/Projects/scaffolding/zymo",
+//    			lInput="/home/sonhoanghguyen/Projects/scaffolding/zymo/assembly_graph_G.bam";
+////    	lInput="/media/sonhoanghguyen/Seagate Backup Plus Drive/Data/zymo/assembly_graph_P.bam";
+//		binFile="/home/sonhoanghguyen/Projects/scaffolding/zymo/bin";	
+//		
+////		useSPAdesPath=true;
     	
     	/*
     	 * MRSA day 0
@@ -109,7 +116,6 @@ public class GraphExploreDesktop {
     	 ****************************** Share code *************************************
     	 *******************************************************************************/
 		HybridAssembler hbAss = new HybridAssembler();
-		hbAss.setMetagenomics(met);
 		hbAss.setUseSPAdesPath(useSPAdesPath);
 		hbAss.setShortReadsInput(sInput);
 		hbAss.setPrefix(output);
@@ -117,8 +123,7 @@ public class GraphExploreDesktop {
 			hbAss.setBinReadsInput(binFile);
 		
 		hbAss.setAligner("minimap2");
-		hbAss.setAlignerPath("/home/sonhoanghguyen/workspace/minimap2");
-		
+//		hbAss.setMSA("none");
 		hbAss.prepareShortReadsProcess();
 		
     	BDGraph graph= hbAss.simGraph;
@@ -151,9 +156,9 @@ public class GraphExploreDesktop {
         hbAss.postProcessGraph();
         HybridAssembler.promptEnterKey();
 
-//        for (Node node : graph) {
-//            node.setAttribute("ui.label", node.getId());
-//        }
+        for (Node node : graph) {
+            node.setAttribute("ui.label", node.getId());
+        }
         viewer.disableAutoLayout();
        
     }
