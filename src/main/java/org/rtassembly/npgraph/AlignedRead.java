@@ -188,7 +188,7 @@ public class AlignedRead{
 					end = getLastAlignment();
 		BDNode 	fromContig = start.node,
 				toContig = end.node;
-		int gap=0;
+		int noise=0;
 		if(		fromContig.getId().compareTo(toContig.getId()) > 0 
 			|| (fromContig==toContig && start.strand==false && end.strand==false)) //to agree with BDEdge.createID()
 		{
@@ -238,7 +238,7 @@ public class AlignedRead{
 				int newPosReadEnd = Math.min(posReadFinal, record.readAlignmentStart());
 				if (newPosReadEnd > posReadEnd){
 					seqBuilder.append(readSequence.subSequence(posReadEnd-1, newPosReadEnd-1)); //subsequence is 0-index
-					gap+=newPosReadEnd-posReadEnd;
+					noise+=newPosReadEnd-posReadEnd;
 					posReadEnd = newPosReadEnd;
 					
 				}
@@ -347,7 +347,9 @@ public class AlignedRead{
 		String fileName=tmpFolder+File.separator+key+".fasta";
 		try {
 			SequenceOutputStream out = new SequenceOutputStream(new FileOutputStream(fileName,true));
-			seqBuilder.toSequence().writeFasta(out);
+			Sequence seq=seqBuilder.toSequence();
+			seq.setDesc("noise="+noise);
+			seq.writeFasta(out);
 			out.close();
 			BDGraph.addBrg2ReadsNum(key);
 		} catch (IOException e) {
@@ -356,7 +358,7 @@ public class AlignedRead{
 			return -1;
 		}
 		
-		return gap;
+		return noise;
 	}
 	
 }

@@ -10,31 +10,34 @@ import java.util.TreeSet;
  * although we can translate into appropriate info
  */
 public class BDNodeVecState implements Comparable<BDNodeVecState>{
-	BDNode node;
+	BDNode root, dest;
 	ScaffoldVector vector;
 	int nvsScore=Alignment.MIN_QUAL; //alignment score + number of occurences?
 	
-	public BDNodeVecState(BDNode node, ScaffoldVector vector){
-		this.node=node;
+	public BDNodeVecState(BDNode root, BDNode dest, ScaffoldVector vector){
+		this.root=root;
+		this.dest=dest;
 		this.vector=new ScaffoldVector(vector.getMagnitute(), vector.getDirection());
 	}
 	
-	public BDNodeVecState(BDNode node, int qual, ScaffoldVector vector){
-		this(node, vector);
+	public BDNodeVecState(BDNode root, BDNode dest, int qual, ScaffoldVector vector){
+		this(root, dest, vector);
 		nvsScore=qual;
 	}
-	public BDNodeVecState(Alignment alg, ScaffoldVector vector) {
-		this(alg.node, alg.quality, vector);
+	public BDNodeVecState(Alignment start, Alignment alg, ScaffoldVector vector) {
+		this(start.node, alg.node, alg.quality, vector);
 	}
 	//copy constructor
 	public BDNodeVecState(BDNodeVecState bdNodeVecState) {
-		this(bdNodeVecState.getNode(), bdNodeVecState.getScore(), bdNodeVecState.getVector());
+		this(bdNodeVecState.getRoot(), bdNodeVecState.getNode(), bdNodeVecState.getScore(), bdNodeVecState.getVector());
 	}
 
-	public BDNode getNode(){return node;}
+	public BDNode getNode(){return dest;}
+	public BDNode getRoot(){return root;}
 	public ScaffoldVector getVector(){return vector;}
 	
-	public void setNode(BDNode node){this.node=node;}
+	public void setNode(BDNode node){this.dest=node;}
+	public void setRoot(BDNode root){this.root=root;}
 	public void setVector(ScaffoldVector vector){this.vector=vector;}
 	
 	
@@ -52,7 +55,7 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 
 	@Override
 	public String toString(){
-		return node.getId() + ":" + vector.toString() + ":" + nvsScore;
+		return dest.getId() + ":" + vector.toString() + ":" + nvsScore;
 	}
 	
 	//compare in term of distance to the root node: for sortedset
@@ -65,7 +68,7 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 	}
     @Override
     public int hashCode() {
-    	String tmp=node.getId() + Math.signum(vector.direction);
+    	String tmp=dest.getId() + Math.signum(vector.direction);
         return tmp.hashCode();
     }
 
@@ -124,18 +127,25 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 
 	//Merging 2 equal NodeVectors
 	public boolean merge(BDNodeVecState nv){
-		if(!this.approximate(nv))
+		System.out.printf("Merging vector %s with %s => ", this.toString(), nv.toString());
+		if(!this.approximate(nv)){
+			System.out.println("failed!");
 			return false;
+		}
 
 		ScaffoldVector 	thisVector=this.getVector(),
 						thatVector=nv.getVector();
-		//update the vector
+		//update the vector. Trick: careful with value out of int range (>2 billions)
 		if(!thisVector.isIdentity()){
-			thisVector.setMagnitute( (int)((thisVector.getMagnitute()*this.nvsScore+thatVector.getMagnitute()*nv.nvsScore)/(this.nvsScore+nv.nvsScore)));
+			thisVector.setMagnitute( (int)(thisVector.getMagnitute()*this.nvsScore/(this.nvsScore+nv.nvsScore)+thatVector.getMagnitute()*nv.nvsScore/(this.nvsScore+nv.nvsScore)));
 		}
 		
-		//update coverage
-		this.nvsScore+=nv.nvsScore;
+		//update coverage, cap at 6000
+		nvsScore+=nv.nvsScore;
+		if(nvsScore>Alignment.GOOD_QUAL*BDGraph.MAX_LISTING)
+			nvsScore=Alignment.GOOD_QUAL*BDGraph.MAX_LISTING;
+		
+		System.out.println(this.toString());
 		return true;
 	}
 	
@@ -211,7 +221,7 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 		}
 
 		
-		BDNodeVecState tmp=null, prevOrigNVS=as0[0]; 
+		BDNodeVecState tmp=null, prevOrigNVS=as0[0], curOrigNVS; 
 		double scale0=1.0, scale1=1.0;
 
 		as0[0].merge(as1[0]);
@@ -219,34 +229,34 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 		i=j=0;
 		for(int idx=0;idx<m0.size();idx++){
 			int ii=m0.get(idx), jj=m1.get(idx);
-
-			int origStep=as0[ii].getDistance()-prevOrigNVS.getDistance();
+			curOrigNVS=new BDNodeVecState(as0[ii]);//original ref NVS before merging
+			int origStep=curOrigNVS.getDistance()-prevOrigNVS.getDistance();
+			
 			as0[ii].merge(as1[jj]);
 			
-			try{
-				//FIXME: check if scalex is not close to 1.0...
-				scale0=(as0[ii].getDistance()-as0[i].getDistance())*1.0/origStep;
-				scale1=(as0[ii].getDistance()-as0[i].getDistance())*1.0/(as1[jj].getDistance()-as1[j].getDistance());
-				System.out.printf("scale0=%.2f scale1=%.2f\n", scale0,scale1);
-			}catch(ArithmeticException ae){
-				System.out.println("ArithmeticException occured! Use previous scale instead...");
-			}
-			//calibrate the vectors from first list's in-between
-			for(int i0=i+1;i0<ii;i0++){
-				as0[i0].getVector().setMagnitute((int) (as0[i].getVector().getMagnitute() + 
-										(as0[i0].getVector().getMagnitute() - prevOrigNVS.getVector().getMagnitute())*scale0));
-			}
-			//add vectors from second in-between for later use
-			for(int j0=j+1;j0<jj;j0++){
-				tmp = new BDNodeVecState(as1[j0]);
-				tmp.vector.setMagnitute((int) (as0[i].getVector().getMagnitute() + 
-										(as1[j0].getVector().getMagnitute() - as1[j].getVector().getMagnitute())*scale1));
-				omittedNodes.add(tmp);
-			}
-			
-			//move to next match coordinate
-			prevOrigNVS=new BDNodeVecState(as0[ii]);
-			i=ii; j=jj;
+			scale0=(as0[ii].getDistance()-as0[i].getDistance())*1.0/origStep;
+			scale1=(as0[ii].getDistance()-as0[i].getDistance())*1.0/(as1[jj].getDistance()-as1[j].getDistance());
+			System.out.printf("scale0=%.2f scale1=%.2f\n", scale0,scale1);
+
+			if(Math.max(scale0, scale1) < BDGraph.A_TOL/1.0 && Math.min(scale0, scale1) > 0) { //constrain scalex		
+				//calibrate the vectors from first list's in-between
+				for(int i0=i+1;i0<ii;i0++){
+					as0[i0].getVector().setMagnitute((int) (as0[i].getVector().getMagnitute() + 
+											(as0[i0].getVector().getMagnitute() - prevOrigNVS.getVector().getMagnitute())*scale0));
+				}
+				//add vectors from second in-between for later use
+				for(int j0=j+1;j0<jj;j0++){
+					tmp = new BDNodeVecState(as1[j0]);
+					tmp.vector.setMagnitute((int) (as0[i].getVector().getMagnitute() + 
+											(as1[j0].getVector().getMagnitute() - as1[j].getVector().getMagnitute())*scale1));
+					omittedNodes.add(tmp);
+				}
+				
+				//move to next match coordinate
+				prevOrigNVS=curOrigNVS;
+				i=ii; j=jj;
+			}else
+				System.out.println("...moving to next match point!");
 		}
 		//nodes after the last match...scale=1.0
 		for(int i0=i+1;i0<as0.length;i0++)
@@ -269,6 +279,12 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 
 	//get absolute value of the relative distance (can be negative)
 	public int getDistance(){
-		return Math.abs(vector.relDistance(node));
+//		return Math.abs(vector.relDistance(dest));
+		if(root==dest) 
+			return 0;
+		else{
+			return vector.distance(root, dest)+ (int)root.getNumber("len");
+		}
+		
 	}
 }

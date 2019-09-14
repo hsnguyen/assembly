@@ -41,7 +41,7 @@ package org.rtassembly.npgraph;
  * Here it's going to be used for locating a bridge's components only.
  * The bridge anchor (first component) is used as root to calculate vectors for other components
  * The direction here refers to the strand when aligned to a read(+); 
- * which can be converted from a bidirected component by considerting an 'imaginary aligned read'
+ * which can be converted from a bidirected component by considering an 'imaginary aligned read'
  * E.g: 1-2+ spells an imaginary read. If we align node 1 and 2 to this read, the alignments will have
  * strand - and + respectively 
  */
@@ -97,16 +97,16 @@ public class ScaffoldVector{
 		return Math.max(fS - tE, tS - fE);
 	}
 
-	//Just interested in the relatively position of the end node
-	//For BDNodeVecState utilities
-	public int relDistance(BDNode fNode){
-		if (direction > 0){
-			return magnitude;
-		}else{
-			return magnitude - (int) fNode.getNumber("len");
-		}	
-
-	}
+//	//Just interested in the relatively position of the end node
+//	//For BDNodeVecState utilities
+//	public int relDistance(BDNode fNode){
+//		if (direction > 0){
+//			return magnitude;
+//		}else{
+//			return magnitude - (int) fNode.getNumber("len");
+//		}	
+//
+//	}
 	
 	/**
 	 * Compose two vectors: a -> b is v2, b -> c is v1. returned a -> c is v1 * v2

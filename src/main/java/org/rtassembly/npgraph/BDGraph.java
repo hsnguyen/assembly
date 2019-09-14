@@ -28,8 +28,7 @@ import japsa.seq.SequenceOutputStream;
 
 
 public class BDGraph extends MultiGraph{
-	static boolean 	circular=true, // circular or linear preference for the output genome
-					isMetagenomics=false;
+	static boolean 	circular=true; // circular or linear preference for the output genome
 	static int KMER=127;
     static double RCOV=0.0;
     SimpleBinner binner;
@@ -38,15 +37,17 @@ public class BDGraph extends MultiGraph{
     public static final double R_TOL=.25;// relative tolerate: can be interpreted as long read error rate (10-25%)
     public static final int A_TOL=300;// absolute tolerate: can be interpreted as long read absolute error bases (100bp)
 
-    //these should be changed in another thread, e.g. settings from GUI
-	public static volatile double ILLUMINA_READ_LENGTH=300; //Illumina MiSeq
-    public static final int GOOD_SUPPORT=20; //number of minimum spanning reads for an affirmative bridge. TODO: reduce this to test
+    public static final int GOOD_SUPPORT=20; //number of minimum spanning reads for an affirmative long-reads-based bridge.
 	public static final double ALPHA=.5; //coverage less than alpha*bin_cov will be considered noise
     public static final int D_LIMIT=5000; //distance bigger than this will be ignored
     public static int S_LIMIT=300;// maximum number of graph traversing steps
-    public static int MAX_LISTING=100; //maximum number of candidate DFS paths
+    public static int T_LIMIT=21588;// maximum time allowed to run DFS (milliseconds)
+    public static int MAX_LISTING=100; //maximum number of whatever paths
     
+    //these should be changed in another thread, e.g. settings from GUI
+	public static volatile double ILLUMINA_READ_LENGTH=300; //Illumina MiSeq
 	public static volatile int MIN_SUPPORT=3; //minimal support reads for bridging
+	public static volatile String MSA="kalign"; //consensus tool
 
 	
     //provide mapping from unique directed node to its corresponding bridge
@@ -238,10 +239,6 @@ public class BDGraph extends MultiGraph{
     	
     }
     
-//    synchronized public boolean isGoodBridge(BDEdgePrototype pEdge){
-//    	return 		(bridgesMap.get(pEdge.n0.toString())!=null && bridgesMap.get(pEdge.n0.toString()).getCompletionLevel()>=3)
-//				|| (bridgesMap.get(pEdge.n1.toString())!=null && bridgesMap.get(pEdge.n1.toString()).getCompletionLevel()>=3);
-//    }
     
     //Return bridge in the map (if any) that share the same bases (unique end) 
     synchronized public GoInBetweenBridge getBridgeFromMap(AlignedRead algRead){
@@ -500,22 +497,6 @@ public class BDGraph extends MultiGraph{
     		}
     	}
     }
-	//Remove nodes with degree <=1 and length || cov low
-    synchronized public void cleanInsignificantNodes(){
-		if(binner==null)
-			return;
-		List<Node> badNodes = nodes()
-						.filter(n->(binner.checkRemovableNode(n)))
-						.collect(Collectors.toList());
-		while(!badNodes.isEmpty()) {
-			Node node = badNodes.remove(0);
-			List<Node> neighbors = node.neighborNodes().collect(Collectors.toList());	
-			removeNode(node);
-			neighbors.stream()
-				.filter(n->(binner.checkRemovableNode(n)))
-				.forEach(n->{if(!badNodes.contains(n)) badNodes.add(n);});
-		}
-	}
 	
     
     //Depth First Search strategy
@@ -562,6 +543,7 @@ public class BDGraph extends MultiGraph{
 			stack.push(new ArrayList<>(tmpList));
 			Stack<Double> nodeScores = new Stack<>();
 			double pathScore=0.0;
+			long startTime = System.currentTimeMillis();
 			while(true) {
 				curList=stack.peek();
 				if(curList.isEmpty()) {
@@ -605,15 +587,16 @@ public class BDGraph extends MultiGraph{
 				    		possiblePaths.add(tmpPath);
 				    	else{
 				    		int idx=0;
-				    		for(BDPath p:possiblePaths)
+				    		for(BDPath p:possiblePaths){
 				    			if(Math.abs(delta)>Math.abs(p.getDeviation()))
 				    				idx++;
 				    			else
 				    				break;
+				    		}
 				    		possiblePaths.add(idx,tmpPath);
 				    	}
 						
-						if(possiblePaths.size() > S_LIMIT) //not go too far
+						if(possiblePaths.size() > S_LIMIT || System.currentTimeMillis() > startTime+T_LIMIT) //not go too far
 							break;
 					}
 					/*
@@ -832,6 +815,7 @@ public class BDGraph extends MultiGraph{
 		if(storedBridge!=null) {
 			if(storedBridge.getCompletionLevel()==4){//important since it will ignore the wrong transformed unique nodes here!!!
 				System.out.println(storedBridge.getEndingsID() + ": already solved and reduced: ignore!");
+				return retval;
 			}else{
 				System.out.println(storedBridge.getEndingsID() + ": already built: fortify!");
 				//update available bridge using alignments

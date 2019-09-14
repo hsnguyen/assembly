@@ -5,15 +5,13 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.graphstream.algorithm.ConnectedComponents;
 import org.graphstream.algorithm.ConnectedComponents.ConnectedComponent;
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Node;
-
-import com.google.common.util.concurrent.AtomicDouble;
 
 import japsa.seq.JapsaAnnotation;
 import japsa.seq.Sequence;
@@ -25,66 +23,105 @@ public class GraphWatcher {
 	int numberOfComponents=0;
 	
 	public GraphWatcher(BDGraph graph) {
-		this.inputGraph=graph;
+		inputGraph=graph;
 		rtComponents = new ConnectedComponents();
 		rtComponents.init(graph);
 		rtComponents.setCutAttribute("cut");
 		numberOfComponents=rtComponents.getConnectedComponentsCount();
+		//initial cleaning
+		removeDeadEdges();
+		
 	}
-
+	
+	//Should be applied for a Collection of Edges, or subgraph instead of the whole graph???
+	synchronized void removeDeadEdges(){
+		Set<Edge> cleanedEdges = new HashSet<>();
+		while(true){
+			cleanedEdges.stream().forEach(e->inputGraph.removeEdge(e));
+			cleanedEdges.clear();
+			inputGraph.edges().filter(e->checkDeadEdges(e)).forEach(e->cleanedEdges.add(e));
+			if(cleanedEdges.isEmpty())
+				break;
+		}
+	}
+	
+	//check and remove edge if it lead to an insignificant component
+	synchronized private boolean checkDeadEdges(Edge e){
+		BDNode 	src=(BDNode) e.getNode0(), 
+				dst=(BDNode) e.getNode1();
+		if(src==dst)
+			return false;
+		boolean srcDir=((BDEdge)e).getDir0(),
+				dstDir=((BDEdge)e).getDir1();
+		e.setAttribute("cut");
+		if( numberOfComponents<rtComponents.getConnectedComponentsCount() 
+			&&
+			((srcDir?src.getOutDegree():src.getInDegree())>1 || (dstDir?dst.getOutDegree():dst.getInDegree())>1)
+			&&
+			(!isSignificantComponent(rtComponents.getConnectedComponentOf(dst))) || !isSignificantComponent(rtComponents.getConnectedComponentOf(src))
+			){
+				return true;
+		}
+		e.removeAttribute("cut");
+		return false;
+	}
+	
 	synchronized private void removeBadComponents() {
 		List<Node> 	removeNodes=new ArrayList<Node>();
-		double threshold=inputGraph.binner.leastBin.estCov; //lower-bound for coverage?!
 		for (Iterator<ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
 			ConnectedComponent comp = compIter.next();		
-			AtomicDouble lengthWeightedCov = new AtomicDouble(0.0);
-			AtomicInteger length = new AtomicInteger(0);
-			boolean protect=false;
-			for(Node n:comp.getNodeSet()){
-				if(SimpleBinner.getBinIfUnique(n)!=null){
-					protect=true;
-					break;
-				}
-				
-				int len = (int) (n.getNumber("len")-BDGraph.getKmerSize());
-				length.getAndAdd(len);
-				lengthWeightedCov.getAndAdd(n.getNumber("cov")*len);
-			}
-			if(protect)
-				continue;
-			double 	aveCov=lengthWeightedCov.get()/length.get();
-			if(GraphUtil.approxCompare(aveCov, threshold) < 0 || length.get() < SimpleBinner.ANCHOR_CTG_LEN)
-				comp.nodes().forEach(n->removeNodes.add(n));
-				
+			if(!isSignificantComponent(comp))
+				comp.nodes().forEach(n->removeNodes.add(n));			
 		}
 		//Remove abundant components here
 		removeNodes.stream().forEach(n->inputGraph.removeNode(n));
 	}
-	
-	
+	//FIXME: find most significant path and check if it cover >90%?
+	synchronized private boolean isSignificantComponent(ConnectedComponent comp){
+		int clen = 1, tlen=0;
+		double ccov = 0;
+		double threshold=inputGraph.binner.leastBin.estCov; //lower-bound for coverage?!
+		for(Node n:comp.getNodeSet()){
+			if(SimpleBinner.getBinIfUniqueNow(n)!=null)
+				return true;
+			
+			int len = (int) (n.getNumber("len")-BDGraph.getKmerSize());
+			double cov = n.getNumber("cov");
+			tlen+=len;
+			if(GraphUtil.isLikelyStillPresented(n)){
+				ccov+=cov*len;
+				clen+=len;
+			}
+			
+		}
+		double 	aveCov=ccov/tlen;
+		if(GraphUtil.approxCompare(aveCov, threshold) < 0 || clen < SimpleBinner.ANCHOR_CTG_LEN || comp.getEdgeCount() < 1 || clen < .5*tlen)
+			return false;
+		else{
+			System.out.printf("Keep non-unique components with cov=%.2f, clen=%d, tlen=%d\n", aveCov, clen, tlen);
+			return true;
+		}
+	}
 	/*
-	 * TODO: replace linearComponentsDecomposition() with this + real-time + threads...
-	 * Update the outputGraph to show statistics and current output
-	 * Should merge with updating the GUI (colors, labels...)???
+	 * FIXME: output graph updating is significantly slower as the graph getting more complex
 	 */
 	synchronized void update(boolean lastTime) {
 		//cleaning...
+		if(lastTime)
+			removeDeadEdges();
 		removeBadComponents();
+		
 		cutEdges = new HashSet<BDEdge>();
-		//then set the cut edges: just for outputGraph stats (will reset after)
+		//then set the cut edges: just for outputGraph stats (will reset after). FIXME: need a Eulerian paths finding iff lastTime
 		inputGraph.nodes()
 		.forEach(n->{
 			if(n.getInDegree()>=2)
-				n.enteringEdges().forEach(e->{if(lastTime) e.setAttribute("ui.hide");e.setAttribute("cut");cutEdges.add((BDEdge) e);});
+				n.enteringEdges().forEach(e->{e.setAttribute("cut");cutEdges.add((BDEdge) e);});
 			if(n.getOutDegree()>=2)
-				n.leavingEdges().forEach(e->{if(lastTime) e.setAttribute("ui.hide");e.setAttribute("cut");cutEdges.add((BDEdge) e);});
+				n.leavingEdges().forEach(e->{e.setAttribute("cut");cutEdges.add((BDEdge) e);});
 
 		});
 		
-		if(lastTime){
-			//TODO: only remove low cov edges+nodes
-			removeBadComponents();
-		}
 		
 		outputGraph=new BDGraph();
 		JapsaAnnotation annotation;
@@ -236,7 +273,6 @@ public class GraphWatcher {
 		if(lastTime)
 			System.out.println("FINISH!");
 		//reset the cutting attributes
-//		inputGraph.edges().filter(e->e.hasAttribute("cut")).forEach(e->{e.removeAttribute("cut"); e.removeAttribute("ui.hide");});
 		inputGraph.edges().filter(e->e.hasAttribute("cut")).forEach(e->{e.removeAttribute("cut");});
 
 	}

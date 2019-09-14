@@ -4,6 +4,8 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -39,6 +41,7 @@ public class GraphUtil {
 	 */
     //TODO: read from ABySS assembly graph (graph of final contigs, not like SPAdes)
 	public static volatile double DISTANCE_THRES=3.0; //i like number 3
+	public static HashMap<Node,Double> originalCoverageValues = new HashMap<>();
     
     public static void loadFromFASTG(String graphFileName, String binFileName, BDGraph graph, boolean spadesBridging) throws IOException{
         graph.setAutoCreate(true);
@@ -182,8 +185,7 @@ public class GraphUtil {
 		
 		graph.fixDeadEnds();
 		graph.binning(binFileName);
-		if(!BDGraph.isMetagenomics)
-			graph.cleanInsignificantNodes();
+
 		/*
 		 * 3. Now scan for the contigs.path file in SPAdes folder for the paths if specified
 		 */
@@ -365,8 +367,6 @@ public class GraphUtil {
 
 		graph.fixDeadEnds();
 		graph.binning(binFileName);
-		if(!BDGraph.isMetagenomics)
-			graph.cleanInsignificantNodes();
 		
 		/*
 		 * 3. Reduce the SPAdes path if specified
@@ -402,9 +402,17 @@ public class GraphUtil {
     public static void normalizedCoverage(Node node){
     	assert BDGraph.RCOV!=0 && node.hasAttribute("cov"):"Cannot normalize coverage of node " + node.getId();
     	node.setAttribute("cov", node.getNumber("cov")*100.0/BDGraph.RCOV);
+    	originalCoverageValues.put(node, node.getNumber("cov"));
     }
+    
+    //Get real value for output
     public static double getRealCoverage(double cov){
     	return cov*BDGraph.RCOV/100.0;
+    }
+    
+    //Check if a node has been likely used up its coverage. Return true iff its current coverage still suggest its residence somewhere.
+    public static boolean isLikelyStillPresented(Node node){
+    	return node.getNumber("cov") > originalCoverageValues.get(node)/3;
     }
     
     
@@ -450,7 +458,7 @@ public class GraphUtil {
 //		    		System.out.println("=> step="+value);
 		    		stepMap.put(e.getId(), value);
 				}
-				boolean isConverged=true, isZero=false;
+				boolean isConverged=true;
 				
 				edgesIterator=graph.edges().iterator();
 				while(edgesIterator.hasNext()) {
@@ -463,16 +471,11 @@ public class GraphUtil {
 					
 					if(curCov<=delta) {
 						LOG.warn("Edge " + e.getId() + " coverage is not positive : curCov=" + curCov + ", delta=" + delta);
-//						isZero=true;
 					}else
 						e.setAttribute("cov", curCov-delta);
 				}
-//				if(isZero)
-//					return;
-				if(isConverged || eIteCount >= maxIterations) {
-//					System.out.println("...edges coverage CONVERGED at iteration " + eIteCount + "th");
+				if(isConverged || eIteCount >= maxIterations)
 					break;
-				}
 			}
 			//2. Updating nodes' coverage: keep significant node info intact!
 			boolean isConverged=true;
@@ -696,66 +699,91 @@ public class GraphUtil {
 			"edge { fill-color: rgb(255,50,50); size: 2px; }" +
 			"edge.cut { fill-color: rgba(200,200,200,128); }";
     
-	//Adapt from japsa without need to output fasta input file
-	public static Sequence consensusSequence(String faiFile, int distance, String prefix, String msa) throws IOException, InterruptedException{
-		String faoFile = AlignedRead.tmpFolder+File.separator+prefix+"_"+msa+".fasta";
-		//1.0 Check faiFile?
-		FastaReader faiReader =  new FastaReader(faiFile);
-		int count=0;
-		while(faiReader.nextSequence(Alphabet.DNA5())!=null)
-			count++;
-		
-		faiReader.close();
-		if(count<BDGraph.MIN_SUPPORT) //at least 3 of the good read count is required
-			return null;
-		
-		Sequence consensus = null;
-		//2.0 Run multiple alignment
-		
-		String cmd  = "";
-		if (msa.startsWith("poa")){
-			String poaDir="/home/sonhoanghguyen/sw/poaV2/";//test
-			cmd = poaDir+"poa -read_fasta " + faiFile + " -clustal " + faoFile + " -hb " + poaDir+"blosum80.mat";
-		}else if (msa.startsWith("muscle")){
-			cmd = "muscle -in " + faiFile + " -out " + faoFile + " -maxiters 5 -quiet";				
-		}else if (msa.startsWith("clustal")) {
-			cmd = "clustalo --force -i " + faiFile + " -o " + faoFile;
-		}else if (msa.startsWith("kalign")){
-			cmd = "kalign -gpo 60 -gpe 10 -tgpe 0 -bonus 0 -q -i " + faiFile	+ " -o " + faoFile;
-		}else if (msa.startsWith("msaprobs")){
-			cmd = "msaprobs -o " + faoFile + " " + faiFile;
-		}else if (msa.startsWith("mafft")){
-			cmd = "mafft_wrapper.sh  " + faiFile + " " + faoFile;
-		}else{
-			LOG.error("Unknown msa function " + msa);
-			return null;
+	/* 
+	 * Adapt from japsa without need to output fasta input file
+	 */
+	public static Sequence consensusSequence(String prefix, int distance) throws IOException, InterruptedException{
+		Sequence consensus = null;	
+		String msa = BDGraph.MSA;
+		String 	faoFile = AlignedRead.tmpFolder+File.separator+prefix+"_"+msa+".fasta";
+		File consFile = new File(faoFile);
+		if(!consFile.exists()){
+			String faiFile=AlignedRead.tmpFolder+File.separator+prefix+".fasta";
+			//1.0 Check faiFile?
+			FastaReader faiReader =  new FastaReader(faiFile);
+			int count=0, minGap=Integer.MAX_VALUE;
+			Sequence seq=null;
+			while((seq=faiReader.nextSequence(Alphabet.DNA5()))!=null){
+				//if there is no MSA detected, output the sequence with the least non-Illumina bases
+				if(msa.isEmpty() || msa.startsWith("none")){
+					String[] toks=seq.getDesc().split("=");
+					try{
+						int curGap=Integer.parseInt(toks[1]);
+						if( curGap < minGap){
+							minGap=curGap;
+							consensus=seq;
+						}		
+					}catch(NumberFormatException e){
+						LOG.info("Pattern %s=%d not found in the header of input FASTA file {}", faiFile);
+						if(consensus==null || consensus.length() > seq.length())
+							consensus=seq;
+					}
+				}
+				count++;
+			}
+			
+			faiReader.close();
+			if(count<BDGraph.MIN_SUPPORT) //at least 3 of the good read count is required
+				return null;
+			
+			//2.0 Run multiple alignment. 
+			// For now, only kalign were chosen due to its speedy operation
+			String cmd  = "";
+			if (msa.startsWith("kalign")){
+				cmd = "kalign -gpo 60 -gpe 10 -tgpe 0 -bonus 0 -q -i " + faiFile	+ " -o " + faoFile;
+//			}else if (msa.startsWith("poa")){
+//				String poaDir="/home/sonhoanghguyen/sw/poaV2/";//test
+//				cmd = poaDir+"poa -read_fasta " + faiFile + " -clustal " + faoFile + " -hb " + poaDir+"blosum80.mat";
+//			}else if (msa.startsWith("muscle")){
+//				cmd = "muscle -in " + faiFile + " -out " + faoFile + " -maxiters 5 -quiet";				
+//			}else if (msa.startsWith("clustal")) {
+//				cmd = "clustalo --force -i " + faiFile + " -o " + faoFile;
+//			}else if (msa.startsWith("msaprobs")){
+//				cmd = "msaprobs -o " + faoFile + " " + faiFile;
+//			}else if (msa.startsWith("mafft")){
+//				cmd = "mafft_wrapper.sh  " + faiFile + " " + faoFile;
+			}else if(msa.isEmpty() || msa.startsWith("none")){
+				consensus.setName(prefix+"_consensus");
+				return consensus;
+			}else{
+				LOG.error("Unknown msa function " + msa);
+				return null;
+			}
+	
+			LOG.info("Running " + cmd);
+			Process process = Runtime.getRuntime().exec(cmd);
+			process.waitFor();
+			LOG.info("Done " + cmd);
 		}
-
-		LOG.info("Running " + cmd);
-		Process process = Runtime.getRuntime().exec(cmd);
-		process.waitFor();
-		LOG.info("Done " + cmd);
-		
-
-
-		if ("poa".equals(msa)){
-			SequenceBuilder sb = new SequenceBuilder(Alphabet.DNA(), (int) ((1+BDGraph.R_TOL)*distance)+2*BDGraph.getKmerSize());
-			BufferedReader bf =  FastaReader.openFile(faoFile);
-			String line = bf.readLine();
-			while ( (line = bf.readLine()) != null){
-				if (line.startsWith("CONSENS0")){
-					for (int i = 10;i < line.length();i++){
-						char c = line.charAt(i);
-						int base = DNA.DNA().char2int(c);
-						if (base >= 0 && base < 4)
-							sb.append((byte)base);
-					}//for							
-				}//if
-			}//while
-			sb.setName(prefix+"_consensus");
-			LOG.info(sb.getName() + "  " + sb.length());
-			return sb.toSequence();
-		}
+				
+//		if ("poa".equals(msa)){
+//			SequenceBuilder sb = new SequenceBuilder(Alphabet.DNA(), (int) ((1+BDGraph.R_TOL)*distance)+2*BDGraph.getKmerSize());
+//			BufferedReader bf =  FastaReader.openFile(faoFile);
+//			String line = bf.readLine();
+//			while ( (line = bf.readLine()) != null){
+//				if (line.startsWith("CONSENS0")){
+//					for (int i = 10;i < line.length();i++){
+//						char c = line.charAt(i);
+//						int base = DNA.DNA().char2int(c);
+//						if (base >= 0 && base < 4)
+//							sb.append((byte)base);
+//					}//for							
+//				}//if
+//			}//while
+//			sb.setName(prefix+"_consensus");
+//			LOG.info(sb.getName() + "  " + sb.length());
+//			return sb.toSequence();
+//		}
 
 		//3.0 Read in multiple alignment
 		ArrayList<Sequence> seqList = new ArrayList<Sequence>();
@@ -768,7 +796,7 @@ public class GraphUtil {
 			msaReader.close();
 		}
 
-		//4.0 get consensus and write to facFile				
+		//4.0 get consensus			
 		{
 			int [] coef = new int[seqList.size()];			
 			for (int y = 0; y < seqList.size(); y++){
