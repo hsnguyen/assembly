@@ -384,7 +384,8 @@ public class BDGraph extends MultiGraph{
     	unknownBinMap.remove(ko);
     	unknownBinMap.remove(ki);
     	node.setAttribute("unique", retval);
-    	System.out.println("FOUND NEW UNIQUE CONTIG BY LONG READS: ID=" + node.getId() + " degree= " + node.getDegree() + " out=" + co + " in=" + ci + " read count="+c);
+    	if(HybridAssembler.VERBOSE)
+    		LOG.info("FOUND NEW UNIQUE CONTIG BY LONG READS: ID=" + node.getId() + " degree= " + node.getDegree() + " out=" + co + " in=" + ci + " read count="+c);
     	return retval;
     }
     

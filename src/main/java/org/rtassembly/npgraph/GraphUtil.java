@@ -719,7 +719,8 @@ public class GraphUtil {
 							consensus=seq;
 						}		
 					}catch(NumberFormatException e){
-						LOG.info("Pattern %s=%d not found in the header of input FASTA file {}", faiFile);
+						if(HybridAssembler.VERBOSE)
+							LOG.info("Pattern %s=%d not found in the header of input FASTA file {}", faiFile);
 						if(consensus==null || consensus.length() > seq.length())
 							consensus=seq;
 					}
@@ -751,14 +752,16 @@ public class GraphUtil {
 				consensus.setName(prefix+"_consensus");
 				return consensus;
 			}else{
-				LOG.error("Unknown msa function " + msa);
+				if(HybridAssembler.VERBOSE)
+					LOG.info("Unknown msa function " + msa);
 				return null;
 			}
-	
-			LOG.info("Running " + cmd);
+			if(HybridAssembler.VERBOSE)
+				LOG.info("Running " + cmd);
 			Process process = Runtime.getRuntime().exec(cmd);
 			process.waitFor();
-			LOG.info("Done " + cmd);
+			if(HybridAssembler.VERBOSE)
+				LOG.info("Done " + cmd);
 		}
 				
 //		if ("poa".equals(msa)){
@@ -820,7 +823,8 @@ public class GraphUtil {
 				}//if
 			}//for x
 			sb.setName(prefix+"_consensus");
-			LOG.info(sb.getName() + "  " + sb.length());
+			if(HybridAssembler.VERBOSE)
+				LOG.info(sb.getName() + "  " + sb.length());
 			consensus = sb.toSequence();
 		}
 

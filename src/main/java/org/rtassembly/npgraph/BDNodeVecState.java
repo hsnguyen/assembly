@@ -179,6 +179,7 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 			scoreTab[0][i] = -as1[i].getDistance();
 			moveTab[0][i] = '_';
 		}
+		moveTab[0][0]='*';
 		int match, delete, insert;
 		for(int i=1; i<as0.length; i++){
 			for(int j=1; j<as1.length; j++){
@@ -207,7 +208,7 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 			for(int i=0; i<as0.length; i++){
 				nwTab+=as0[i].getNode().getId()+"\t";
 				for(int j=0; j<as1.length; j++)
-					nwTab+=moveTab[i][j]+scoreTab[i][j]+"\t";
+					nwTab+=moveTab[i][j]+"\t";
 				nwTab+="\n";
 			}
 			LOG.info(nwTab);
@@ -217,7 +218,7 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 		ArrayList<Integer> 	m0 = new ArrayList<>(),
 							m1 = new ArrayList<>();
 
-		while(i>=0 && j>=0){
+		while(i>=0 && j>=0 && i+j>0){
 			switch(moveTab[i][j]){
 				case '\\':
 					m0.add(0, i--);
