@@ -33,18 +33,18 @@ public class GraphExploreDesktop {
     	/*
     	 * npScarf data set
     	 */
-    	String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/";
-    	
-//    	String sample="EcK12S-careful";
-    	String sample="Kp2146-careful";
-//    	String sample="Kp13883-careful";
- 
-//    	String sample="W303-careful";
-//    	String sample="meta-careful";
-//    	String sample="cp_S5";
-    	String sInput=dataFolder+sample+"/assembly_graph.fastg",
-    			output=dataFolder+sample+"/",
-    			lInput=dataFolder+sample+"/assembly_graph.sam";
+//    	String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/data/spades_3.7/";
+//    	
+////    	String sample="EcK12S-careful";
+//    	String sample="Kp2146-careful";
+////    	String sample="Kp13883-careful";
+// 
+////    	String sample="W303-careful";
+////    	String sample="meta-careful";
+////    	String sample="cp_S5";
+//    	String sInput=dataFolder+sample+"/assembly_graph.fastg",
+//    			output=dataFolder+sample+"/",
+//    			lInput=dataFolder+sample+"/assembly_graph.sam";
     	
     	
     	
@@ -109,9 +109,9 @@ public class GraphExploreDesktop {
     	/*
     	 * MRSA day 0
     	 */
-//    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/S.aureus_day0/spades/assembly_graph.fastg",
-//    			output="/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/S.aureus_day0",
-//    			lInput="/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/S.aureus_day0/MRSA_Rapid_230916.fastq";  
+    	String 	sInput="/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/S.aureus_day0/spades/assembly_graph.fastg",
+    			output="/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/S.aureus_day0",
+    			lInput="/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/S.aureus_day0/MRSA_Rapid_230916.fastq";  
     	/*******************************************************************************
     	 ****************************** Share code *************************************
     	 *******************************************************************************/

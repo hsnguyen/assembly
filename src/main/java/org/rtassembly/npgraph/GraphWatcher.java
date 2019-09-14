@@ -7,7 +7,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.graphstream.algorithm.ConnectedComponents;
 import org.graphstream.algorithm.ConnectedComponents.ConnectedComponent;
@@ -108,6 +107,8 @@ public class GraphWatcher {
 	 */
 	synchronized void update(boolean lastTime) {
 		//cleaning...
+		if(lastTime)
+			removeDeadEdges();
 		removeBadComponents();
 		
 		cutEdges = new HashSet<BDEdge>();
@@ -115,9 +116,9 @@ public class GraphWatcher {
 		inputGraph.nodes()
 		.forEach(n->{
 			if(n.getInDegree()>=2)
-				n.enteringEdges().forEach(e->{if(lastTime) e.setAttribute("ui.hide");e.setAttribute("cut");cutEdges.add((BDEdge) e);});
+				n.enteringEdges().forEach(e->{e.setAttribute("cut");cutEdges.add((BDEdge) e);});
 			if(n.getOutDegree()>=2)
-				n.leavingEdges().forEach(e->{if(lastTime) e.setAttribute("ui.hide");e.setAttribute("cut");cutEdges.add((BDEdge) e);});
+				n.leavingEdges().forEach(e->{e.setAttribute("cut");cutEdges.add((BDEdge) e);});
 
 		});
 		
@@ -272,7 +273,6 @@ public class GraphWatcher {
 		if(lastTime)
 			System.out.println("FINISH!");
 		//reset the cutting attributes
-//		inputGraph.edges().filter(e->e.hasAttribute("cut")).forEach(e->{e.removeAttribute("cut"); e.removeAttribute("ui.hide");});
 		inputGraph.edges().filter(e->e.hasAttribute("cut")).forEach(e->{e.removeAttribute("cut");});
 
 	}
