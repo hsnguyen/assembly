@@ -9,6 +9,3 @@ src/test/
 src/main/java/org/rtassembly/App.java
 src/main/java/org/rtassembly/experiment/
 src/main/java/org/rtassembly/metagenome/
-src/main/java/org/rtassembly/NPScarfCmd.java
-src/main/java/org/rtassembly/npscarf/
-
