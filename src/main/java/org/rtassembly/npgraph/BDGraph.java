@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.Stack;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -22,6 +23,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.util.concurrent.AtomicDouble;
 
+import japsa.seq.Alphabet;
 import japsa.seq.JapsaAnnotation;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceOutputStream;
@@ -31,27 +33,35 @@ public class BDGraph extends MultiGraph{
     private static final Logger LOG = LoggerFactory.getLogger(BDGraph.class);
 
     static int KMER=127;
+	static boolean 	circular=true; // circular or linear preference for the output genome
     static double RCOV=0.0;
-	SimpleBinner binner;
+    SimpleBinner binner;
 
 	//not gonna change these parameters in other thread
-    public static final double R_TOL=.2;// relative tolerate: can be interpreted as long read error rate (10-25%)
+    public static final double R_TOL=.25;// relative tolerate: can be interpreted as long read error rate (10-25%)
     public static final int A_TOL=300;// absolute tolerate: can be interpreted as long read absolute error bases (100bp)
 
-    //these should be changed in another thread, e.g. settings from GUI
-	public static volatile double ILLUMINA_READ_LENGTH=300; //Illumina MiSeq
-    
+    public static final int GOOD_SUPPORT=20; //number of minimum spanning reads for an affirmative long-reads-based bridge.
 	public static final double ALPHA=.5; //coverage less than alpha*bin_cov will be considered noise
     public static final int D_LIMIT=5000; //distance bigger than this will be ignored
     public static int S_LIMIT=300;// maximum number of graph traversing steps
-    public static int MAX_PATHS=100; //maximum number of candidate DFS paths
+    public static int T_LIMIT=21588;// maximum time allowed to run DFS (milliseconds)
+    public static int MAX_LISTING=100; //maximum number of whatever paths
     
-	public static volatile int SAFE_COUNTS=3; //safe counts: use for confident estimation
+    //these should be changed in another thread, e.g. settings from GUI
+	public static volatile double ILLUMINA_READ_LENGTH=300; //Illumina MiSeq
+	public static volatile int MIN_SUPPORT=3; //minimal support reads for bridging
+	public static volatile String MSA="kalign"; //consensus tool
 
 	
     //provide mapping from unique directed node to its corresponding bridge
     //E.g: 103-: <103-82-> also 82+:<82+103+>
     private HashMap<String, GoInBetweenBridge> bridgesMap; 
+    private static HashMap<String, Integer> brg2ReadsNum=new HashMap<>();
+    //mapping long but unknown contigs to unique successors and predecessor 
+    //with number of supported reads
+    private static HashMap<String, Set<BDNodeState>> unknownBinMap=new HashMap<>();
+    
     // *** Constructors ***
 	/**
 	 * Creates an empty graph.
@@ -141,6 +151,14 @@ public class BDGraph extends MultiGraph{
 		return tmp;
 	}
 	
+	@Override
+	public Node removeNode(Node node){
+//		System.out.println("Remove node " + node.getAttribute("name"));
+		Node retval=super.removeNode(node);
+		//clear bridge map
+//		removeNodeFromBridgesMap(node);
+		return retval;
+	}
 	
 	public String printEdgesOfNode(BDNode node){
 		Stream<Edge> 	ins = getNode(node.getId()).enteringEdges(),
@@ -168,12 +186,21 @@ public class BDGraph extends MultiGraph{
     /**************************************************************************************************
      ********************** utility functions to serve the assembly algo ****************************** 
      * ***********************************************************************************************/
-
+    static public void addBrg2ReadsNum(String key){
+    	if(!brg2ReadsNum.containsKey(key))
+    		brg2ReadsNum.put(key, 1);
+    	else
+    		brg2ReadsNum.put(key, brg2ReadsNum.get(key)+1);
+    }
+    static public int getReadsNumOfBrg(String key){
+    	return brg2ReadsNum.containsKey(key)?brg2ReadsNum.get(key):0;
+    }
+    
     
     // when this unique node actually contained by a bridge
-    synchronized public void updateBridgesMap(Node unqNode, GoInBetweenBridge bidirectedBridge){
-    	bridgesMap.put(unqNode.getId()+"o", bidirectedBridge);
-    	bridgesMap.put(unqNode.getId()+"i", bidirectedBridge);
+    synchronized public void removeNodeFromBridgesMap(Node unqNode){
+    	bridgesMap.remove(unqNode.getId()+"o");
+    	bridgesMap.remove(unqNode.getId()+"i");
     }
     // when there is new unique bridge 
     synchronized protected void updateBridgesMap(GoInBetweenBridge bidirectedBridge) {
@@ -188,29 +215,15 @@ public class BDGraph extends MultiGraph{
 					end1=bidirectedBridge.pBridge.n1.toString();
 			GoInBetweenBridge 	brg0=bridgesMap.get(end0),		
 								brg1=bridgesMap.get(end1);
-			GoInBetweenBridge ultimateBridge=bidirectedBridge;
-			if(brg0!=null&&brg0!=bidirectedBridge) {
-				if(brg0.getCompletionLevel()>bidirectedBridge.getCompletionLevel()) {
-					brg0.merge(bidirectedBridge,true);
-					ultimateBridge=brg0;
-				}else {
-					bidirectedBridge.merge(brg0,true);
-					ultimateBridge=bidirectedBridge;
-				}
-			}
+			if(brg0!=null&&brg0!=bidirectedBridge) 
+				bidirectedBridge.merge(brg0,true);			
 			
-			if(brg1!=null&&brg1!=bidirectedBridge) {
-				if(brg1.getCompletionLevel()>bidirectedBridge.getCompletionLevel()) {
-					brg1.merge(bidirectedBridge,true);
-					ultimateBridge=brg1;
-				}else {
-					bidirectedBridge.merge(brg1,true);
-					ultimateBridge=bidirectedBridge;
-				}
-			}
+			if(brg1!=null&&brg1!=bidirectedBridge) 
+				bidirectedBridge.merge(brg1,true);
+
 			
-			bridgesMap.put(end0, ultimateBridge);
-    		bridgesMap.put(end1, ultimateBridge);
+			bridgesMap.put(end0, bidirectedBridge);
+    		bridgesMap.put(end1, bidirectedBridge);
 
 		}
 
@@ -236,7 +249,7 @@ public class BDGraph extends MultiGraph{
 	    	if(SimpleBinner.getBinIfUnique(endNode)!=null){
 	    		tmp=bridgesMap.get(endNode.getId()+(endNodeDir?"o":"i"));
 	    		if(tmp!=null){
-	    			if(retval==null||retval.getNumberOfAnchors()<tmp.getNumberOfAnchors())
+	    			if(retval==null||retval.getCompletionLevel()<tmp.getCompletionLevel())
 	    				retval=tmp;
 	    			
 	    		}
@@ -246,7 +259,135 @@ public class BDGraph extends MultiGraph{
     	
     	return retval;
     }
+    
+    synchronized public boolean isConflictBridge(BDEdgePrototype brg){
+    	GoInBetweenBridge 	brg0=bridgesMap.get(brg.n0.toString()),
+    						brg1=bridgesMap.get(brg.n1.toString());
+    	return (brg0!=null&&brg0.getCompletionLevel()>=3) || (brg1!=null&&brg1.getCompletionLevel()>=3);
+    }
 
+    /*****************************************************************
+     * Utility functions for real-time binning based on long reads
+     * for unknown long contigs from initial binning step (SimpleBinner or metabat)
+     *****************************************************************/
+    //check if node is significant but not enough evidence to assign uniqueness
+    public static boolean isSuspectedNode(BDNode node){
+    	return unknownBinMap.containsKey(node.getId()+"o")&&unknownBinMap.containsKey(node.getId()+"i");
+    }
+    public void addUnknownNodes(BDNode node){
+    	unknownBinMap.put(node.getId()+"o", new TreeSet<BDNodeState>());
+    	unknownBinMap.put(node.getId()+"i", new TreeSet<BDNodeState>());
+    }
+    
+    //add successors&predecessors of unknown nodes based on AlignedRead
+    //read must have either start or end as unique and no more
+    public void addReadsToUnknowMap(AlignedRead read){
+    	if(read.getEFlag() < 1)
+    		return;
+    	Alignment 	a0=read.getFirstAlignment(),
+    				a1=read.getLastAlignment();
+    	BDNodeState ns0=null,ns1=null;
+    	if(SimpleBinner.getBinIfUnique(a0.node)!=null)
+    		ns0=new BDNodeState(a0.node, a0.strand,1);
+    	if(SimpleBinner.getBinIfUnique(a1.node)!=null)
+    		ns1=new BDNodeState(a1.node, !a1.strand,1);
+    	
+    	for(Alignment alg:read.getAlignmentRecords()){
+    		if(SimpleBinner.getBinIfUnique(alg.node)!=null)
+    			continue;
+    		String key;
+    		if(ns0!=null){
+    			key=alg.node.getId()+(alg.strand?"i":"o");
+    			Set<BDNodeState> values=unknownBinMap.get(key);
+    			if(values!=null){
+    				Iterator<BDNodeState> iterator=values.iterator();
+    				boolean found=false;
+    				while(iterator.hasNext()){
+    					BDNodeState ns=iterator.next();
+    					if(ns.equals(ns0)){
+    						ns.weight++;
+    						found=true;
+    						break;
+    					}
+    				}
+    				if(!found)
+    					values.add(ns0);
+    			}
+    		}
+    		
+    		if(ns1!=null){
+      			key=alg.node.getId()+(alg.strand?"o":"i");
+    			Set<BDNodeState> values=unknownBinMap.get(key);
+    			if(values!=null){
+    				Iterator<BDNodeState> iterator=values.iterator();
+    				boolean found=false;
+    				while(iterator.hasNext()){
+    					BDNodeState ns=iterator.next();
+    					if(ns.equals(ns1)){
+    						ns.weight++;
+    						found=true;
+    						break;
+    					}
+    				}
+    				if(!found)
+    					values.add(ns1);
+    			}
+    		}
+    		
+    	}
+    	
+    }
+    
+    //get multiplicity after a while (20X???)...
+    //NOPE: can only know if unique or repetitive based on the previous&next unique nodes
+    synchronized public static PopBin getUniqueBinFromLongReads(BDNode node){
+    	String 	ko=node.getId()+"o",
+    			ki=node.getId()+"i";
+    	Set<BDNodeState> 	successors=unknownBinMap.get(ko),
+							predecessors=unknownBinMap.get(ki);
+    	int c=0, co=0, ci=0;
+
+    	if(successors==null && predecessors==null)
+    		return null;
+    	
+    	//FIXME: checking stats from GraphWatcher instead???
+    	if(successors!=null)
+    		c+=successors.stream().mapToInt(ns->ns.getWeight()).sum();
+    	if(predecessors!=null)
+    		c+=predecessors.stream().mapToInt(ns->ns.getWeight()).sum();
+    	
+    	if(c<GOOD_SUPPORT)//just need a number
+    		return null;
+    	
+    	//now validate successors and predecessors based on number of support reads
+    	PopBin retval=null;
+
+    	for(BDNodeState ns:successors){
+    		if(ns.getWeight()<.1*BDGraph.GOOD_SUPPORT)//less than 10% will be ignored
+    			continue;
+    		co++;
+    		if(co>1)
+    			return null;
+    		retval=SimpleBinner.getBinIfUnique(ns.getNode());//check??
+    	} 
+    	for(BDNodeState ns:predecessors){
+    		if(ns.getWeight()<.1*BDGraph.GOOD_SUPPORT)
+    			continue;
+    		ci++;
+    		if(ci>1)
+    			return null;
+    		if(retval!=null&&!PopBin.isCloseBins(retval, SimpleBinner.getBinIfUnique(ns.getNode())))
+				return null;
+    	} 
+    	
+    	//reove this from unknowmap
+    	unknownBinMap.remove(ko);
+    	unknownBinMap.remove(ki);
+    	node.setAttribute("unique", retval);
+    	if(HybridAssembler.VERBOSE)
+    		LOG.info("FOUND NEW UNIQUE CONTIG BY LONG READS: ID=" + node.getId() + " degree= " + node.getDegree() + " out=" + co + " in=" + ci + " read count="+c);
+    	return retval;
+    }
     
     //If the node was wrongly identified as unique before, do things...
 //    synchronized public void destroyFalseBridges(Node node){
@@ -287,51 +428,73 @@ public class BDGraph extends MultiGraph{
 //    	}
 //    		
 //    }
-
+    
     synchronized public void binning(String binFileName) {   		
     	binner=new SimpleBinner(this, binFileName);
     	binner.estimatePathsByCoverage();
     	initGraphComponents();
     }
-    
-	//Remove nodes with degree <=1 and length || cov low
-    synchronized public void cleanInsignificantNodes(){
-		if(binner==null)
-			return;
-		List<Node> badNodes = nodes()
-						.filter(n->(binner.checkRemovableNode(n)))
-						.collect(Collectors.toList());
-		while(!badNodes.isEmpty()) {
-			Node node = badNodes.remove(0);
-			List<Node> neighbors = node.neighborNodes().collect(Collectors.toList());	
 
-			removeNode(node);
-			if(HybridAssembler.VERBOSE)
-	    		LOG.info("Removing node " + node.getAttribute("name"));
-			neighbors.stream()
-				.filter(n->(binner.checkRemovableNode(n)))
-				.forEach(n->{if(!badNodes.contains(n)) badNodes.add(n);});
-		}
-	}
-	
-    synchronized ArrayList<BDPath> pathsFinding(Alignment from, Alignment to, boolean force){
-    	assert from.readID==to.readID && to.compareTo(from)>=0:"Illegal alignment pair to find path!"; 	
-    	int distance=to.readAlignmentStart()-from.readAlignmentEnd();
-    	BDNode srcNode = from.node,
-						dstNode = to.node;
-    	boolean srcDir = from.strand, dstDir = !to.strand;
-    	return DFSAllPaths(srcNode, dstNode, srcDir, dstDir, distance, force);
+    //Scanning for shorter overlaps (<k) in a DBG graph. Not making difference??! 
+    synchronized public void fixDeadEnds(){
+    	List<BDNodeState> weirdNodes = new ArrayList<>();
+    	for(Node node:this){
+
+    		if(node.getNumber("len") < SimpleBinner.UNIQUE_CTG_LEN)
+    			continue;
+    		
+    		double 	inCov=node.enteringEdges().map(e->e.getOpposite(node).getNumber("cov")).mapToDouble(Double::doubleValue).sum(),
+    				outCov=node.leavingEdges().map(e->e.getOpposite(node).getNumber("cov")).mapToDouble(Double::doubleValue).sum();
+    		double compare=GraphUtil.approxCompare(inCov, outCov);
+    		if(inCov*outCov==0){
+    			if(inCov==0)
+        			weirdNodes.add(new BDNodeState((BDNode) node, false));
+    			if(outCov==0)
+        			weirdNodes.add(new BDNodeState((BDNode) node, true));
+    		}else if(compare > 0)
+    			weirdNodes.add(new BDNodeState((BDNode) node, true));
+    		else if(compare < 0)
+    			weirdNodes.add(new BDNodeState((BDNode) node, false));
+			else
+				continue;
+    		
+    		if(HybridAssembler.VERBOSE)
+    			LOG.info("Found one weird node {} inCov={}/{}, outCov={}/{}",(String)node.getAttribute("name"), inCov, node.getInDegree(), outCov, node.getOutDegree());
+
+    	}
+    	BDNodeState n0,n1;
+    	Sequence seq0,seq1;
+    	for(int i=0;i<weirdNodes.size();i++){
+    		n0 = weirdNodes.get(i);
+    		seq0=(Sequence)(n0.getNode().getAttribute("seq"));
+    		if(!n0.getDir())
+    			seq0=Alphabet.DNA.complement(seq0);
+    		
+    		for(int j=i+1; j<weirdNodes.size();j++){
+    			n1 = weirdNodes.get(j);
+        		seq1=(Sequence)(n1.getNode().getAttribute("seq"));
+        		if(n1.getDir())
+        			seq1=Alphabet.DNA.complement(seq0);
+        		
+        		int overlap=GraphUtil.overlap(seq0,seq1);
+        		if(overlap > 55){
+        			BDEdge e=addEdge(n0.getNode(), n1.getNode(), n0.getDir(), n1.getDir());
+        			if(HybridAssembler.VERBOSE)
+            			LOG.info("...adding potential edge {} length={}", e.getId(), overlap);
+        		}
+    		}
+    	}
     }
+	
     
     //Depth First Search strategy
-	synchronized ArrayList<BDPath> DFSAllPaths(BDNode srcNode, BDNode dstNode, boolean srcDir, boolean dstDir, int distance, boolean force)
+	synchronized ArrayList<BDPath> DFSAllPaths(BDNode srcNode, BDNode dstNode, boolean srcDir, boolean dstDir, int distance)
 	{
-    	if(distance>BDGraph.D_LIMIT && !force)
-    		return null;
     	if(HybridAssembler.VERBOSE)
     		LOG.info("Looking for DFS path between {}{} to {}{} with distance={}",srcNode.getId(), srcDir?"o":"i", dstNode.getId(), dstDir?"o":"i" ,distance);
 		ArrayList<BDPath> possiblePaths = new ArrayList<BDPath>(), 
 									retval=new ArrayList<BDPath>();
+
 		//1. First build shortest tree from dstNode 		
 		HashMap<String,Integer> shortestMap = getShortestTreeFromNode(dstNode, dstDir, distance);
 		// The good thing is that we need only 1 temporary path variable
@@ -371,6 +534,7 @@ public class BDGraph extends MultiGraph{
 			stack.push(new ArrayList<>(tmpList));
 			Stack<Double> nodeScores = new Stack<>();
 			double pathScore=0.0;
+			long startTime = System.currentTimeMillis();
 			while(true) {
 				curList=stack.peek();
 				if(curList.isEmpty()) {
@@ -404,7 +568,6 @@ public class BDGraph extends MultiGraph{
 					//note that traversing direction (true: template, false: reverse complement) of destination node 
 					//is opposite its defined direction (true: outward, false:inward) 
 					if(to==dstNode && dir==dstDir && Math.abs(delta) < tolerance){ 
-//					if(to==dstNode && dir==dstDir){ 
 
 				    	BDPath 	tmpPath=new BDPath(path);
 				    	tmpPath.setDeviation(delta);
@@ -415,15 +578,16 @@ public class BDGraph extends MultiGraph{
 				    		possiblePaths.add(tmpPath);
 				    	else{
 				    		int idx=0;
-				    		for(BDPath p:possiblePaths)
+				    		for(BDPath p:possiblePaths){
 				    			if(Math.abs(delta)>Math.abs(p.getDeviation()))
 				    				idx++;
 				    			else
 				    				break;
+				    		}
 				    		possiblePaths.add(idx,tmpPath);
 				    	}
 						
-						if(possiblePaths.size() > S_LIMIT) //not go too far
+						if(possiblePaths.size() > S_LIMIT || System.currentTimeMillis() > startTime+T_LIMIT) //not go too far
 							break;
 					}
 					/*
@@ -457,25 +621,11 @@ public class BDGraph extends MultiGraph{
 		if(HybridAssembler.VERBOSE)
 			LOG.info("select from list of " + possiblePaths.size() + " DFS paths:");
 		
-		if(possiblePaths.isEmpty()){
-			if(SimpleBinner.getBinIfUnique(srcNode)!=null && SimpleBinner.getBinIfUnique(dstNode)!=null && srcNode.getDegree() == 1 && dstNode.getDegree()==1 && force){
-				//save the corresponding content of long reads to this edge
-				//TODO: save nanopore reads into this pseudo edge to run consensus later
-				BDEdge pseudoEdge = addEdge(srcNode, dstNode, srcDir, dstDir);
-				pseudoEdge.setAttribute("dist", distance);
-				path.add(pseudoEdge);
-				possiblePaths.add(path);
-				if(HybridAssembler.VERBOSE)
-		    		LOG.info("pseudo path from " + srcNode.getId() + " to " + dstNode.getId() + " distance=" + distance);
-				
-				return possiblePaths;
-    		}else
-    			return null;
-
-		}
+		if(possiblePaths.isEmpty())
+			return null;
 		
 		double closestDist=Math.abs(possiblePaths.get(0).getDeviation());
-		int keepMax = MAX_PATHS;//only keep this many possible paths 
+		int keepMax = MAX_LISTING;//only keep this many possible paths 
 		for(int i=0;i<possiblePaths.size();i++){
 			BDPath p = possiblePaths.get(i);
 			if(Math.abs(p.getDeviation())>closestDist+Math.abs(distance+getKmerSize())*R_TOL || i>=keepMax)
@@ -486,7 +636,6 @@ public class BDGraph extends MultiGraph{
 
 		}
 		
-		//TODO: reduce the number of returned paths here (calculate edit distance with nanopore read: dynamic programming?)
 		return retval;
 	}    
 	
@@ -630,7 +779,7 @@ public class BDGraph extends MultiGraph{
  	    	
   			
     		if(curBin!=null){
-    			if(curBin.isCloseTo(prevUnqBin))
+    			if(PopBin.isCloseBins(curBin, prevUnqBin))
     				flag+=2;
     			else if(prevUnqBin!=null)
     				continue;
@@ -638,7 +787,7 @@ public class BDGraph extends MultiGraph{
     			curBuildingBlocks.setEFlag(flag);
     			////////////////////////////////////////////////////////////////////////////////////
     			
-    			retrievedPaths.addAll(buildBridge(curBuildingBlocks, curBin));
+    			retrievedPaths.addAll(buildBridge(curBuildingBlocks, PopBin.getDominateBin(curBin,prevUnqBin)));
     			   					
     			////////////////////////////////////////////////////////////////////////////////////
     			//start new building block
@@ -653,7 +802,7 @@ public class BDGraph extends MultiGraph{
  	    
  	    if(curBuildingBlocks.alignments.size() > 1){
  	    	curBuildingBlocks.setEFlag(1);
- 	    	retrievedPaths.addAll(buildBridge(curBuildingBlocks, prevUnqBin));
+ 	    	retrievedPaths.addAll(buildBridge(curBuildingBlocks, PopBin.getDominateBin(curBin,prevUnqBin)));
  	    }
 
  	    return retrievedPaths;
@@ -662,14 +811,18 @@ public class BDGraph extends MultiGraph{
     
     private List<BDPath> buildBridge(AlignedRead read, PopBin bin){
     	List<BDPath> retval=new ArrayList<BDPath>();
-		GoInBetweenBridge 	storedBridge=getBridgeFromMap(read);
+
+		GoInBetweenBridge 	storedBridge=getBridgeFromMap(read), reversedBridge;
 		if(HybridAssembler.VERBOSE) 
 			LOG.info("+++{} <=> {}\n", read.getEndingsID(), storedBridge==null?"null":storedBridge.getEndingsID());
-		
+		//long read give info about unique successor and predecessor
+		addReadsToUnknowMap(read);
 		if(storedBridge!=null) {
 			if(storedBridge.getCompletionLevel()==4){//important since it will ignore the wrong transformed unique nodes here!!!
 				if(HybridAssembler.VERBOSE) 
 					LOG.info(storedBridge.getEndingsID() + ": already solved and reduced: ignore!");
+				return retval;
+
 			}else{
 				if(HybridAssembler.VERBOSE) 
 					LOG.info(storedBridge.getEndingsID() + ": already built: fortify!");
@@ -690,40 +843,38 @@ public class BDGraph extends MultiGraph{
 				}
 				if(storedBridge.getCompletionLevel()==4 || (state&0b01)>0 || extend)
 					retval.addAll(storedBridge.scanForNewUniquePaths());
-				
-//    			if(storedBridge.getCompletionLevel()==4){
-//    				System.out.printf("=> final path: %s\n ", storedBridge.getAllPossiblePaths());
-//    				retval.addAll(chopPathAtAnchors(storedBridge.getBestPath(storedBridge.steps.start.getNode(), storedBridge.steps.end.getNode())));
-//    			}
 					
-//				//also update the reversed bridge: important e.g. Acinetobacter_AB30. WHY??? (already updated and merged 2 homo bridges)
+//				//also update the reversed bridge: important e.g. Shigella_dysenteriae_Sd197. WHY??? (already updated and merged 2 homo bridges)
 				if(read.getEFlag()==3) {
 					read.reverse();
-					GoInBetweenBridge anotherBridge = getBridgeFromMap(read);
-					if(anotherBridge!=storedBridge) {
-						byte anotherState=anotherBridge.merge(read, true);
+					reversedBridge = getBridgeFromMap(read);
+					if(reversedBridge!=storedBridge) {
+						byte anotherState=reversedBridge.merge(read, true);
 						if((anotherState&0b10)>0)//number of anchors has changed after merging
-							updateBridgesMap(anotherBridge);											
+							updateBridgesMap(reversedBridge);											
 						
-						if(anotherBridge.getCompletionLevel()==4 || (anotherState&0b01)>0)
-							retval.addAll(anotherBridge.scanForNewUniquePaths());
-//						if(anotherBridge.getCompletionLevel()==4){
-//							System.out.printf("=> final path: %s\n ", anotherBridge.getAllPossiblePaths());
-//							retval.addAll(chopPathAtAnchors(anotherBridge.getBestPath(anotherBridge.steps.start.getNode(), anotherBridge.steps.end.getNode())));
-//						}
+						if(reversedBridge.getCompletionLevel()==4 || (anotherState&0b01)>0)
+							retval.addAll(reversedBridge.scanForNewUniquePaths());
+
 					}
+
 				}
+
 			}			
 			
 
 		}else{
 			storedBridge=new GoInBetweenBridge(this,read, bin);
 			updateBridgesMap(storedBridge);		
-// 			if(storedBridge.getCompletionLevel()==4){
-// 				System.out.printf("=> final path: %s\n ", storedBridge.getAllPossiblePaths());
-// 				retval.addAll(storedBridge.getBestPath(storedBridge.steps.start.getNode(), storedBridge.steps.end.getNode()).chopPathAtAnchors());
-// 			}
+			
+			read.reverse();
+			reversedBridge = new GoInBetweenBridge(this,read, bin);
+			updateBridgesMap(reversedBridge);
+			
 		}
+		
+		//finally save the inbetween sequence for later consensus call
+		GraphUtil.saveReadToDisk(read);
 		
 		return retval;
     }
@@ -744,8 +895,7 @@ public class BDGraph extends MultiGraph{
 
 
     	Set<Edge> 	potentialRemovedEdges = binner.walkAlongUniquePath(path);
-		HashMap<PopBin, Integer> oneBin = new HashMap<>();
-		oneBin.put(path.getConsensusUniqueBinOfPath(), 1);
+		Multiplicity oneBin = new Multiplicity(path.getConsensusUniqueBinOfPath(), 1);
     	
     	if(potentialRemovedEdges!=null && potentialRemovedEdges.size()>1){
 	    	//remove appropriate edges
@@ -767,7 +917,7 @@ public class BDGraph extends MultiGraph{
     			LOG.info("ADDING EDGE " + reducedEdge.getId()+ " from " + reducedEdge.getNode0().getGraph().getId() + "-" + reducedEdge.getNode1().getGraph().getId());
 
 			if(reducedEdge!=null){
-				if(path.getEdgeCount()>1)
+				if(path.getPrimitivePath().getEdgeCount()>1)
 					reducedEdge.setAttribute("path", path);
 				binner.edge2BinMap.put(reducedEdge, oneBin);
 			}
@@ -776,8 +926,7 @@ public class BDGraph extends MultiGraph{
 	    	return true;
     	}else {
     		if(HybridAssembler.VERBOSE)
-    			LOG.info("Path {} has not reduced!", path.getId());
-
+    			LOG.info("Path {} doesn't need to be reduced!", path.getId());
     		return false;
     	}
 
@@ -792,7 +941,7 @@ public class BDGraph extends MultiGraph{
     	else if(HybridAssembler.VERBOSE)
     		LOG.info("Input SPAdes path: " + path.getId());
     	//loop over the edges of path (like spelling())
-    	for(BDPath p:chopPathAtAnchors(path)){
+    	for(BDPath p:getNewSubPathsToReduce(path)){
     		if(reduceUniquePath(p))
     			retval=true;
     	}
@@ -802,8 +951,9 @@ public class BDGraph extends MultiGraph{
 
     
 	//Only call for the final reduce path with 2 unique ends: if path containing other unique nodes than 2 ends then we have list of paths to reduce
-    //exclude already-reduced path (by looking for corresponding reduce edge)
-	synchronized public ArrayList<BDPath> chopPathAtAnchors(BDPath path){
+    //Exclude already-reduced path (reduced edges would have composite "path" attribute,
+    //but consensus pseudo edge is special case)
+	synchronized public ArrayList<BDPath> getNewSubPathsToReduce(BDPath path){
 		ArrayList<BDPath> retval=new ArrayList<>();
 		if(path!=null){
 			BDPath curPath = new BDPath(path.getRoot(), path.getConsensusUniqueBinOfPath());
@@ -816,7 +966,7 @@ public class BDGraph extends MultiGraph{
 					id=curPath.getEndingID();
 					if(id!=null){
 						Edge rdEdge = getEdge(id);
-						if(rdEdge==null || !rdEdge.hasAttribute("path"))
+						if(rdEdge==null || !rdEdge.hasAttribute("path") || rdEdge.hasAttribute("consensus"))
 							retval.add(curPath);		
 					}
 					curPath=new BDPath(nextNode, path.getConsensusUniqueBinOfPath());
@@ -892,28 +1042,13 @@ public class BDGraph extends MultiGraph{
     	}
     	
     	for (Node node : this) {		
-    		/*
-    		 * Re-assign colors based on coverage/length
-    		 */
-    		Sequence seq = (Sequence) node.getAttribute("seq");
-    		double lengthScale = 1+(Math.log10(seq.length())-2)/3.5; //100->330,000
-          
-			if(lengthScale<1) lengthScale=1;
-			else if(lengthScale>2) lengthScale=2;
-	          
 			String color="rgb(255,255,255)";
 			PopBin bin=SimpleBinner.getBinIfUnique(node);
 			if(bin!=null){
 				color=bin2color.get(bin.getId());
 			}
 			
-			
-//			node.setAttribute("ui.label", node.getId());
-			node.setAttribute("ui.style", "	size: " + lengthScale + "gu;" +
-        		  						"	fill-color: "+color+";" +
-        		  			            " 	stroke-mode: plain;" +
-        		  			            "	stroke-color: black;" +
-        		  			            "	stroke-width: 2px;");
+			((BDNode)node).setGUI(color, "circle");
     	}
 
     }
@@ -979,7 +1114,7 @@ public class BDGraph extends MultiGraph{
 	    //Print S (Segment)
 	    for(Node node:this){
 	    	Sequence seq=(Sequence) node.getAttribute("seq");
-	    	int kmer_count=(int)(GraphUtil.getRealCoverage(node.getNumber("cov"))*(BDGraph.ILLUMINA_READ_LENGTH-BDGraph.getKmerSize()+1)/BDGraph.ILLUMINA_READ_LENGTH);
+	    	int kmer_count=(int)(GraphUtil.getRealCoverage(node.getNumber("cov"))*(BDGraph.ILLUMINA_READ_LENGTH-BDGraph.getKmerSize())/BDGraph.ILLUMINA_READ_LENGTH);
 	    	printWriter.printf("S\t%s\t%s\tKC:i:%d\n", node.getId(), seq.toString(),kmer_count);
 	    	addedNodes.add(node.getId());
 	    }	    
@@ -1007,7 +1142,7 @@ public class BDGraph extends MultiGraph{
 		    		addedNodes.add(nextID);
 		    		
 		    		Sequence seq=(Sequence) nextNode.getAttribute("seq");
-			    	int kmer_count=(int)(GraphUtil.getRealCoverage(nextNode.getNumber("cov"))*(BDGraph.ILLUMINA_READ_LENGTH-BDGraph.getKmerSize()+1)/BDGraph.ILLUMINA_READ_LENGTH);
+			    	int kmer_count=(int)(GraphUtil.getRealCoverage(nextNode.getNumber("cov"))*(BDGraph.ILLUMINA_READ_LENGTH-BDGraph.getKmerSize())/BDGraph.ILLUMINA_READ_LENGTH);
 			    	printWriter.printf("S\t%s\t%s\tKC:i:%d\n", nextID, seq.toString(),kmer_count);
 
 	    		}

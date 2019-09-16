@@ -4,9 +4,13 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.lang.ProcessBuilder.Redirect;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Scanner;
 import java.util.regex.Matcher;
@@ -36,7 +40,7 @@ public class HybridAssembler {
     private BooleanProperty overwrite, useSPAdesPath;
     private StringProperty 	prefix,
     						aligner,
-    						alignerPath, 
+    						msa,
 							alignerOpt,
 							shortReadsInput, 
 							binReadsInput, 
@@ -46,13 +50,14 @@ public class HybridAssembler {
 	
 	Process alignmentProcess = null;
 	private boolean stop=false;
-	private String errorLog="";
+	private String checkLog="";
 	int currentReadCount = 0;
 	long currentBaseCount = 0;	
 	//Getters and Setters
 	//==============================================================================================//
 	public void setReady(boolean isReady) {ready=isReady;}
 	public boolean getReady() {return ready;}
+	
 	
 	public final void setOverwrite(boolean owr) {overwrite.set(owr);}
 	public final boolean getOverwrite() {return overwrite.get();}
@@ -70,19 +75,17 @@ public class HybridAssembler {
 	public final String getAligner() {return aligner.get();}
 	public StringProperty alignerProperty(){return aligner;}
 	
-	public final void setAlignerPath(String path) {alignerPath.set(path);}
-	public final String getAlignerPath() {return alignerPath.get();}
-	public StringProperty alignerPathProperty(){return alignerPath;}
-	
 	public final void setAlignerOpts(String setting) {alignerOpt.set(setting);}
 	public final String getAlignerOpts() {return alignerOpt.get();}
 	public StringProperty alignerOptProperty(){return alignerOpt;}
 	
-	public final void setErrorLog(String log) {errorLog=log;}
-	public final String getErrorLog() {return errorLog;}
+	public final void setMSA(String tool) {	msa.set(tool); BDGraph.MSA=tool;}
+	public final String getMSA() {return msa.get();}
+	public StringProperty msaProperty(){return msa;}
 	
-	public final String getFullPathOfAligner() {return getAlignerPath()+"/"+getAligner();}
-	
+	public final void setCheckLog(String log) {checkLog+="\n"+log;}
+	public final String getCheckLog() {return checkLog;}
+		
 	public final void setBinReadsInput(String brInput) {binReadsInput.set(brInput);}
 	public final String getBinReadsInput() {return binReadsInput.get();}
 	public StringProperty binReadsInputProperty() {return binReadsInput;}
@@ -132,10 +135,10 @@ public class HybridAssembler {
 		
 		overwrite = new SimpleBooleanProperty(true);
 		useSPAdesPath = new SimpleBooleanProperty(false);
-	    prefix = new SimpleStringProperty("/tmp/");
+	    prefix = new SimpleStringProperty(System.getProperty("java.io.tmpdir"));
 	    aligner = new SimpleStringProperty("");
-		alignerPath = new SimpleStringProperty(""); 
 		alignerOpt = new SimpleStringProperty("");
+		msa = new SimpleStringProperty("kalign");
 		
 		shortReadsInput = new SimpleStringProperty(""); 
 		binReadsInput = new SimpleStringProperty(""); 
@@ -212,33 +215,39 @@ public class HybridAssembler {
 	
     private boolean checkFile(String _path) {
 		if (_path.equals("")){
-			setErrorLog("Empty file \"" + _path + "\"");
+			setCheckLog("Empty file \"" + _path + "\"");
 			return false;
 		}
 		File _file = new File(_path);
 		if (!_file.isFile()){
-			setErrorLog("File \"" + _path + "\" is not valid!");
+			setCheckLog("File \"" + _path + "\" is not valid!");
 			return false;
 		}
 		return true;
     }
     private boolean checkFolder(String _path) {
 		if (_path.equals("")){
-			setErrorLog("Empty directory \"" + _path + "\"");
+			setCheckLog("Empty directory \"" + _path + "\"");
 			return false;
 		}
 		File _file = new File(_path);
 		if (!_file.isDirectory()){
-			setErrorLog("Directory \"" + _path + "\" is not valid!");
+			setCheckLog("Directory \"" + _path + "\" is not valid!");
 			return false;
 		}
 		return true;
     }	
 	
-	//Indexing reference, prepare for alignment...
+	//Indexing reference, prepare for alignment...r
 	public boolean prepareLongReadsProcess(){
+		//accept the case when no long read data is provided. Just output simplified assembly graph then.
+		if(getLongReadsInput().isEmpty()) {
+			LOG.info("No long read data is provided. Only output the simplified assembly graph and stop!");
+			return true;
+		}
+		
 		if(!getLongReadsInputFormat().equals("fasta/fastq") && !getLongReadsInputFormat().equals("sam/bam")){
-			setErrorLog("Please specify a correct format of long read data (FASTA/FASTQ or BAM/SAM)!");
+			setCheckLog("Please specify a correct format of long read data (FASTA/FASTQ or BAM/SAM)!");
 			return false;
 		}
 		if(!getLongReadsInput().equals("-") && !checkFile(getLongReadsInput()))
@@ -247,60 +256,90 @@ public class HybridAssembler {
 		if(!checkFolder(getPrefix()))
 			return false;
 		try{
-			System.setProperty("usr.dir", getPrefix());
+			System.setProperty("usr.dir", getPrefix());			
 		}
 		catch(NullPointerException | IllegalArgumentException | SecurityException exception ){
-			setErrorLog("Fail to set working directory usr.dir to " + getPrefix());
+			setCheckLog("Fail to set working directory usr.dir to " + getPrefix());
 			return false;
+		}
+		
+		//create temporary folder to store bridging reads
+		File tmpFolder=new File(getPrefix()+File.separator+"npGraph_tmp");
+		if(tmpFolder.exists()){
+		  try {
+			Files.walk(tmpFolder.toPath())
+			    .sorted(Comparator.reverseOrder())
+			    .map(Path::toFile)
+			    .forEach(File::delete);
+			} catch (IOException e) {
+				LOG.info("Cannot remove existed temporary folder {}!", tmpFolder.getPath());
+				e.printStackTrace();
+			}
+  		}
+		
+		if(!tmpFolder.mkdir()){
+			setCheckLog("Cannot set temporary folder " + tmpFolder.getAbsolutePath());
+			return false;
+		}else{
+			AlignedRead.tmpFolder=tmpFolder.getAbsolutePath();
 		}
 		
 		//if long reads data not given in SAM/BAM, need to invoke minimap2
         if(getLongReadsInputFormat().toLowerCase().startsWith("fast")) {
         	File indexFile=null;
         	ArrayList<String> idxCmd = new ArrayList<>();
-        	idxCmd.add(getFullPathOfAligner());
+        	idxCmd.add(getAligner());
         	if(getAligner().equals("minimap2")) { 	
-				indexFile=new File(getPrefix()+"/assembly_graph.mmi");												
+				indexFile=new File(getPrefix()+File.separator+"assembly_graph.mmi");												
 				if(!checkMinimap2()) 
 						return false;
 				idxCmd.addAll(Arrays.asList(getAlignerOpts().split("\\s")));
 				idxCmd.add("-d");
-				idxCmd.add(getPrefix()+"/assembly_graph.mmi");
+				idxCmd.add(getPrefix()+File.separator+"assembly_graph.mmi");
 														
         	}else if(getAligner().equals("bwa")) {
-				indexFile=new File(getPrefix()+"/assembly_graph.fasta.bwt");
+				indexFile=new File(getPrefix()+File.separator+"assembly_graph.fasta.bwt");
 				if(!checkBWA()) 
 						return false;
 				idxCmd.add("index");
 
         	}else {
-        		setErrorLog("Invalid aligner! Set to BWA or minimap2 please!");
+        		setCheckLog("Invalid aligner! Set to BWA or minimap2 please!");
         		return false;
         	}
-			idxCmd.add(getPrefix()+"/assembly_graph.fasta");
+			idxCmd.add(getPrefix()+File.separator+"assembly_graph.fasta");
 
 			if(getOverwrite() || !indexFile.exists()) {						
 				try{
-					simGraph.outputFASTA(getPrefix()+"/assembly_graph.fasta");
+					simGraph.outputFASTA(getPrefix()+File.separator+"assembly_graph.fasta");
 					
 					ProcessBuilder pb = new ProcessBuilder(idxCmd);
 					Process indexProcess =  pb.start();
 					indexProcess.waitFor();
 					
 				}catch (IOException | InterruptedException e){
-					setErrorLog("Issue when indexing the pre-assemblies: \n" + e.getMessage());
+					setCheckLog("Issue when indexing the pre-assemblies: \n" + e.getMessage());
 					return false;
 				}
 			}
 			
         }
+        
+        //check consensus tool
+        if(getMSA().equals("kalign")){
+        	if(!checkKalign()){
+        		setCheckLog("kalign not found: random pick for the bridging read instead of consensus!");
+        		setMSA("none");
+        	}
+        }
+        
         return true;
 	}
 	//Loading the graph, doing preprocessing
 	//binning, ...
 	public boolean prepareShortReadsProcess() {
 		if(!getShortReadsInputFormat().equals("fastg") && !getShortReadsInputFormat().equals("gfa")){
-			setErrorLog("Please specify a correct format of graph file!");
+			setCheckLog("Please specify a correct format of graph file!");
 			return false;
 		}
 			
@@ -316,9 +355,8 @@ public class HybridAssembler {
 			else 				
 				throw new IOException("Assembly graph file must have .gfa or .fastg extension!");
 			
-			GraphUtil.fixDeadEnds(simGraph);
 		}catch(IOException e) {
-			setErrorLog("Issue when loading pre-assembly: \n" + e.getMessage());
+			setCheckLog("Issue when loading pre-assembly: \n" + e.getMessage());
 			return false;
 		}
 		
@@ -334,8 +372,11 @@ public class HybridAssembler {
 	 */
 	public void assembly() 
 			throws IOException, InterruptedException{
-
-		LOG.info("Scaffolding ready at {}", new Date());
+		if(getLongReadsInput().isEmpty()) {
+			LOG.info("Scaffolding is ignored due to lack of long-read input!");
+			return;
+		}else
+			LOG.info("Scaffolding ready at {}", new Date());
 
 		SamReaderFactory.setDefaultValidationStringency(ValidationStringency.SILENT);
 		SamReader reader = null;
@@ -349,19 +390,19 @@ public class HybridAssembler {
 			LOG.info("Starting alignment by {} at {}", getAligner(), new Date());
 			ProcessBuilder pb = null;
 			List<String> command = new ArrayList<>();
-			command.add(getFullPathOfAligner());
+			command.add(getAligner());
 			if(getAligner().equals("minimap2")) {
 				command.add("-a");
 				command.addAll(Arrays.asList(getAlignerOpts().split("\\s")));
 				command.add("-K20000");
-				command.add(getPrefix()+"/assembly_graph.mmi");
+				command.add(getPrefix()+File.separator+"assembly_graph.mmi");
 				command.add(getLongReadsInput());
 			}
 			else if(getAligner().equals("bwa")) {
 				command.add("mem");
 				command.addAll(Arrays.asList(getAlignerOpts().split("\\s")));
 				command.add("-K20000");
-				command.add(getPrefix()+"/assembly_graph.fasta");
+				command.add(getPrefix()+File.separator+"assembly_graph.fasta");
 				command.add(getLongReadsInput());
 			}
 			
@@ -371,8 +412,7 @@ public class HybridAssembler {
 				pb = new ProcessBuilder(command);
 			}
 
-//			alignmentProcess  = pb.redirectError(ProcessBuilder.Redirect.to(new File("/dev/null"))).start();
-			alignmentProcess  = pb.redirectError(ProcessBuilder.Redirect.to(new File(getPrefix()+"/alignment.log"))).start();
+			alignmentProcess  = pb.redirectError(ProcessBuilder.Redirect.to(new File(getPrefix()+File.separator+"alignment.log"))).start();
 
 			LOG.info("{} started!", getAligner());			
 
@@ -382,70 +422,62 @@ public class HybridAssembler {
 		SAMRecordIterator iter = reader.iterator();
 
 		String readID = "";
-		Sequence nnpRead = null;
+		Sequence read = null;
 		ArrayList<Alignment> samList =  new ArrayList<Alignment>();// alignment record of the same read;	
-		SAMRecord rec=null;
+		SAMRecord curRecord=null;
 		while (iter.hasNext()) {
 			if(getStopSignal())
 				break;
 			
 			try {
-				rec = iter.next();
+				curRecord = iter.next();
 			}catch(Exception e) {
 				if(HybridAssembler.VERBOSE) {
-					LOG.warn("Ignore one faulty SAM record: \n {}", e.getMessage());
+					LOG.info("Ignore one faulty SAM record: \n {}", e.getMessage());
 					e.printStackTrace();
-				}
-					
+				}		
 				continue;
 			}
 			
-			if (rec.getReadUnmappedFlag() || rec.getMappingQuality() < Alignment.MIN_QUAL){		
-				if (!readID.equals(rec.getReadName())){
-					readID = rec.getReadName();
-					synchronized(this){
-						currentReadCount ++;
-						currentBaseCount += rec.getReadLength();
-					}
+			if (curRecord.getReadUnmappedFlag() || curRecord.getMappingQuality() < Alignment.MIN_QUAL){		
+				if(HybridAssembler.VERBOSE) 
+					LOG.info("Ignore one unmapped or low-quality map record!");
+				if (!readID.equals(curRecord.getReadName())){
+					update(read, samList, curRecord);
+					samList = new ArrayList<Alignment>();
+					read = GraphUtil.getQueryReadFromSAMRecord(curRecord);
+					readID = curRecord.getReadName();
 				}
 				continue;		
 			}
 			
-			String refName = rec.getReferenceName();
+			String refName = curRecord.getReferenceName();
 			String refID = refName.split("_").length > 1 ? refName.split("_")[1]:refName;
 			
+			//check if this node still in. FIXME: do not remove nodes for metagenomics' graph?
 			if (simGraph.getNode(refID)==null) {
 				if(HybridAssembler.VERBOSE)
-					LOG.info("Node {} not found from the graph: ignored!", refID);
+					LOG.info("Ignore record with reference {} not found (removed) from the graph!", refID);
+				if (!readID.equals(curRecord.getReadName())){
+					update(read, samList, curRecord);
+					samList = new ArrayList<Alignment>();
+					read = GraphUtil.getQueryReadFromSAMRecord(curRecord);
+					readID = curRecord.getReadName();
+				}
 				continue;
 			}
-			Alignment myRec = new Alignment(rec, (BDNode) simGraph.getNode(refID)); 
+			Alignment curAlignment = new Alignment(curRecord, (BDNode) simGraph.getNode(refID)); 
 
 			//////////////////////////////////////////////////////////////////
 			
-			if (!readID.equals("") && !readID.equals(myRec.readID)) {	
-//				synchronized(simGraph) { uncomment if below replacement failed!
-				synchronized(this) {
-					currentReadCount ++;
-					currentBaseCount += rec.getReadLength();
-					
-					List<BDPath> paths=simGraph.uniqueBridgesFinding(nnpRead, samList);
-					if(paths!=null){	
-						for(BDPath path:paths) 
-						{
-							//path here is already unique! (2 unique ending nodes)
-					    	if(simGraph.reduceUniquePath(path)) {
-					    		observer.update(false);					    		
-					    		System.out.printf("Input stats: read count=%d base count=%d\n", currentReadCount, currentBaseCount);
-					    	}
-						}
-					}
-				}
+			if (!readID.equals("") && !readID.equals(curRecord.getReadName())) {	
+				update(read, samList, curRecord);
 				samList = new ArrayList<Alignment>();
-				nnpRead = new Sequence(Alphabet.DNA5(), rec.getReadString(), "R" + readID);
+				read = GraphUtil.getQueryReadFromSAMRecord(curRecord);
+				readID = curRecord.getReadName();
+
 			}	
-			readID = myRec.readID;
-			samList.add(myRec); 
+			samList.add(curAlignment); 
 		}// while
 		iter.close();
 		reader.close();
@@ -453,44 +485,91 @@ public class HybridAssembler {
 		terminateAlignmentProcess();	
 
 	}
-			
+	//update when SAMRecord of another read coming in
+	synchronized void update(Sequence nnpRead, ArrayList<Alignment> alignments, SAMRecord curRecord){
+		currentReadCount ++;
+		currentBaseCount += curRecord.getReadLength();
+		if(alignments.isEmpty())
+			return;
+		List<BDPath> paths=simGraph.uniqueBridgesFinding(nnpRead, alignments);
+		if(paths!=null){	
+			for(BDPath path:paths) 
+			{
+				//path here is already unique! (2 unique ending nodes)
+		    	if(simGraph.reduceUniquePath(path)) {
+		    		observer.update(false);		
+		    		System.out.printf("Input stats: read count=%d base count=%d\n", currentReadCount, currentBaseCount);
+		    	}
+			}
+		}
+	} 		
+	
 	public void terminateAlignmentProcess() {
  		if (alignmentProcess != null){
  			alignmentProcess.destroy();
  		}		
  	}
-
 	
+	
+	//last attempt to connect bridges, being greedy now
 	public void postProcessGraph() throws IOException{
-		//Take the current best path among the candidate of a bridge and connect the bridge(greedy)
-		for(GoInBetweenBridge brg:simGraph.getUnsolvedBridges()){
-			if(HybridAssembler.VERBOSE)
-				LOG.info("Last attempt on incomplete bridge {} : anchors={} \n {}", brg.getEndingsID(), brg.getNumberOfAnchors(), brg.getAllPossiblePaths());
-			
-			if(brg.getCompletionLevel()>=3) 
-				simGraph.chopPathAtAnchors(brg.getBestPath(brg.pBridge.getNode0(),brg.pBridge.getNode1())).stream().forEach(p->simGraph.reduceUniquePath(p));
-			else{
-				brg.scanForAnEnd(true);
-				//selective connecting
-				brg.steps.connectBridgeSteps(true);
-				//return appropriate path
-				if(brg.segments!=null)
-					simGraph.chopPathAtAnchors(brg.getBestPath(brg.steps.start.getNode(),brg.steps.end.getNode())).stream().forEach(p->simGraph.reduceUniquePath(p));
-				else if(HybridAssembler.VERBOSE)
-					LOG.info("Last attempt failed");
+		HashSet<GoInBetweenBridge> 		unsolved=simGraph.getUnsolvedBridges(),
+										solved=new HashSet<>();
+		while(true){
+			boolean changed=false;
+			for(GoInBetweenBridge brg:unsolved){
+				if(HybridAssembler.VERBOSE)
+					LOG.info("Last attempt on incomplete bridge %s : anchors=%d \n %s", brg.getEndingsID(), brg.getNumberOfAnchors(), brg.getAllPossiblePaths());
+				//Take the current best path among the candidate of a bridge and connect the bridge(greedy)
+				if(brg.getCompletionLevel()>=3){ 
+					simGraph.getNewSubPathsToReduce(brg.getBestPath(brg.pBridge.getNode0(),brg.pBridge.getNode1())).stream().forEach(p->simGraph.reduceUniquePath(p));
+					solved.add(brg);
+					changed=true;
+				}else{
+					brg.scanForAnEnd(true);	
+					changed=brg.steps.connectBridgeSteps(true);
+					
+					//return appropriate path
+					if(changed){
+						simGraph.getNewSubPathsToReduce(brg.getBestPath(brg.steps.start.getNode(),brg.steps.end.getNode())).stream().forEach(p->simGraph.reduceUniquePath(p));
+						solved.add(brg);
+					}
+					else if(HybridAssembler.VERBOSE)
+						LOG.info("Last attempt failed \n");
+				}
+	
 			}
-
-
+			if(solved.isEmpty()&&!changed)
+				break;
+			else{
+				unsolved.removeAll(solved);
+				solved.clear();
+			}
+				
 		}
-		
         //update for the last time
         observer.update(true);
 		System.out.printf("Input stats: read count=%d base count=%d\n", currentReadCount, currentBaseCount);
 		
-		observer.outputFASTA(getPrefix()+"/npgraph_assembly.fasta");
-		observer.outputJAPSA(getPrefix()+"/npgraph_assembly.japsa");
-		observer.outputGFA(getPrefix()+"/npgraph_assembly.gfa");
+		observer.outputFASTA(getPrefix()+File.separator+"npgraph_assembly.fasta");
+		observer.outputJAPSA(getPrefix()+File.separator+"npgraph_assembly.japsa");
+		observer.outputGFA(getPrefix()+File.separator+"npgraph_assembly.gfa");
 
+		
+		//delete temporary files
+//		File tmpFolder=new File(getPrefix()+File.separator+"npGraph_tmp");
+//		if(tmpFolder.exists()){
+//		  try {
+//			Files.walk(tmpFolder.toPath())
+//			    .sorted(Comparator.reverseOrder())
+//			    .map(Path::toFile)
+//			    .forEach(File::delete);
+//			} catch (IOException e) {
+//				LOG.info("Cannot remove existed temporary folder {}!", tmpFolder.getPath());
+//				e.printStackTrace();
+//			}
+//  		}
+		
 	}
 	
 
@@ -505,7 +584,7 @@ public class HybridAssembler {
     
     
     public boolean checkMinimap2() {    		
-		ProcessBuilder pb = new ProcessBuilder(getFullPathOfAligner(),"-V").redirectErrorStream(true);
+		ProcessBuilder pb = new ProcessBuilder(getAligner(),"-V").redirectErrorStream(true);
 		Process process;
 		try {
 			process = pb.start();
@@ -529,17 +608,17 @@ public class HybridAssembler {
 			bf.close();
 			
 			if (version.length() == 0){
-				setErrorLog("Command " + getFullPathOfAligner() + " -V doesn't give version info. Check version failed!");
+				setCheckLog("Command " + getAligner() + " -V failed!");
 				return false;
 			}else{
 				LOG.info("minimap version: " + version);
 				if (version.compareTo("2.0") < 0){
-					setErrorLog("Require minimap version 2 or above!");
+					setCheckLog("Require minimap version 2 or above!");
 					return false;
 				}
 			}
 		} catch (IOException e) {
-			setErrorLog("Error running: " + getFullPathOfAligner() + "\n" + e.getMessage());
+			setCheckLog("Error running: " + getAligner() + "\n" + e.getMessage());
 			return false;
 		}
 		
@@ -549,7 +628,7 @@ public class HybridAssembler {
     
     public boolean checkBWA() {    		
 		try{
-			ProcessBuilder pb = new ProcessBuilder(getFullPathOfAligner()).redirectErrorStream(true);
+			ProcessBuilder pb = new ProcessBuilder(getAligner()).redirectErrorStream(true);
 			Process process =  pb.start();
 			BufferedReader bf = SequenceReader.openInputStream(process.getInputStream());
 
@@ -571,18 +650,61 @@ public class HybridAssembler {
 			bf.close();
 			
 			if (version.length() == 0){
-				setErrorLog("Command " + getFullPathOfAligner() + " doesn't give version info. Check version failed!");
+				setCheckLog("Command " + getAligner() + " doesn't give version info. Check version failed!");
 				return false;
 			}else{
 				LOG.info("bwa version: " + version);
 				if (version.compareTo("0.7.11") < 0){
-					setErrorLog(" Require bwa of 0.7.11 or above");
+					setCheckLog(" Require bwa of 0.7.11 or above");
 					return false;
 				}
 			}
 
 		}catch (IOException e){
-			setErrorLog("Error running: " + getFullPathOfAligner() + "\n" + e.getMessage());
+			setCheckLog("Error running: " + getAligner() + "\n" + e.getMessage());
+			return false;
+		}
+		
+		return true;
+			
+    }
+    
+    public boolean checkKalign() {    		
+		try{
+			ProcessBuilder pb = new ProcessBuilder(getMSA()).redirectErrorStream(true);
+			Process process =  pb.start();
+			BufferedReader bf = SequenceReader.openInputStream(process.getInputStream());
+
+
+			String line;
+			String version = "";
+			Pattern versionPattern = Pattern.compile("^Kalign version\\s(\\d+\\.\\d+).*");
+			Matcher matcher=versionPattern.matcher("");
+			
+			while ((line = bf.readLine())!=null){				
+				matcher.reset(line);
+				if (matcher.find()){
+				    version = matcher.group(1);
+				    break;//while
+				}
+				
+								
+			}	
+			bf.close();
+			
+			if (version.length() == 0){
+				setCheckLog("Command " + getMSA() + " doesn't give version info. Check version failed!");
+				return false;
+			}else{
+				LOG.info("kalign version: " + version);
+				if (version.compareTo("2.0") < 0){
+					setCheckLog(" Require kalign version 2 or above");
+					return false;
+				}
+			}
+
+		}catch (IOException e){
+			setCheckLog("Error running: " + getMSA() + "\n" + e.getMessage());
 			return false;
 		}
 		

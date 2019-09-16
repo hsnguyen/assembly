@@ -28,8 +28,6 @@ public class NPGraphCmd extends CommandLine{
 		addString("sb", "", "Name of the metaBAT file for binning information (experimental).");
 
 		addString("aligner","","Aligner tool that will be used, either minimap2 or bwa");
-
-		addString("algPath","","Absolute path to the binary aligner file");
 		addString("algOpt", "", "Settings used by aligner to align long reads to the contigs");
 		
 		addBoolean("overwrite", true, "Whether to overwrite or reuse the intermediate file");
@@ -55,7 +53,6 @@ public class NPGraphCmd extends CommandLine{
 				outputDir = cmdLine.getStringVal("output"),
 				shortReadsBinInput = cmdLine.getStringVal("sb"),
 				alg=cmdLine.getStringVal("aligner"),
-				algPath = cmdLine.getStringVal("algPath"),
 				algOpt = cmdLine.getStringVal("algOpt");
 		boolean overwrite = cmdLine.getBooleanVal("overwrite"),
 				spaths = cmdLine.getBooleanVal("sp"),
@@ -63,8 +60,7 @@ public class NPGraphCmd extends CommandLine{
 			
 		Alignment.MIN_QUAL = cmdLine.getIntVal("qual");
 		HybridAssembler.VERBOSE=cmdLine.getBooleanVal("verbose");
-
-		BDGraph.SAFE_COUNTS=cmdLine.getIntVal("mcov");
+		BDGraph.MIN_SUPPORT=cmdLine.getIntVal("mcov");
 		BDGraph.S_LIMIT=cmdLine.getIntVal("slim");
 		//Default output dir 
 		if(outputDir == null) {
@@ -91,8 +87,6 @@ public class NPGraphCmd extends CommandLine{
 		
 		if(alg!=null && !alg.isEmpty())
 			hbAss.setAligner(alg);
-		if(algPath!=null && !algPath.isEmpty())
-			hbAss.setAlignerPath(algPath);
 		if(algOpt!=null && !algOpt.isEmpty())
 			hbAss.setAlignerOpts(algOpt);
 		
@@ -111,7 +105,7 @@ public class NPGraphCmd extends CommandLine{
 					hbAss.postProcessGraph();
 				}
 				else{
-					LOG.error("Error with pre-processing step: \n" + hbAss.getErrorLog());
+					LOG.error("Error with pre-processing step: \n" + hbAss.getCheckLog());
 					System.exit(1);
 				}
 					
