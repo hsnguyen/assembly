@@ -360,7 +360,6 @@ public class HybridAssembler {
 			return false;
 		}
 		
-		simGraph.makeAPSPMap();
 		simGraph.updateStats();
 		observer = new GraphWatcher(simGraph);
 		return true;
@@ -433,12 +432,16 @@ public class HybridAssembler {
 			try {
 				curRecord = iter.next();
 			}catch(Exception e) {
-				LOG.warn("Ignore one faulty SAM record: \n {}", e.getMessage());
+				if(HybridAssembler.VERBOSE) {
+					LOG.info("Ignore one faulty SAM record: \n {}", e.getMessage());
+					e.printStackTrace();
+				}		
 				continue;
 			}
 			
 			if (curRecord.getReadUnmappedFlag() || curRecord.getMappingQuality() < Alignment.MIN_QUAL){		
-				LOG.info("Ignore one unmapped or low-quality map record!");
+				if(HybridAssembler.VERBOSE) 
+					LOG.info("Ignore one unmapped or low-quality map record!");
 				if (!readID.equals(curRecord.getReadName())){
 					update(read, samList, curRecord);
 					samList = new ArrayList<Alignment>();
@@ -453,7 +456,8 @@ public class HybridAssembler {
 			
 			//check if this node still in. FIXME: do not remove nodes for metagenomics' graph?
 			if (simGraph.getNode(refID)==null) {
-				LOG.info("Ignore record with reference {} not found (removed) from the graph!", refID);
+				if(HybridAssembler.VERBOSE)
+					LOG.info("Ignore record with reference {} not found (removed) from the graph!", refID);
 				if (!readID.equals(curRecord.getReadName())){
 					update(read, samList, curRecord);
 					samList = new ArrayList<Alignment>();
@@ -477,9 +481,9 @@ public class HybridAssembler {
 		}// while
 		iter.close();
 		reader.close();
-		
+
 		terminateAlignmentProcess();	
-		
+
 	}
 	//update when SAMRecord of another read coming in
 	synchronized void update(Sequence nnpRead, ArrayList<Alignment> alignments, SAMRecord curRecord){
@@ -514,7 +518,8 @@ public class HybridAssembler {
 		while(true){
 			boolean changed=false;
 			for(GoInBetweenBridge brg:unsolved){
-				System.out.printf("Last attempt on incomplete bridge %s : anchors=%d \n %s \n", brg.getEndingsID(), brg.getNumberOfAnchors(), brg.getAllPossiblePaths());
+				if(HybridAssembler.VERBOSE)
+					LOG.info("Last attempt on incomplete bridge %s : anchors=%d \n %s", brg.getEndingsID(), brg.getNumberOfAnchors(), brg.getAllPossiblePaths());
 				//Take the current best path among the candidate of a bridge and connect the bridge(greedy)
 				if(brg.getCompletionLevel()>=3){ 
 					simGraph.getNewSubPathsToReduce(brg.getBestPath(brg.pBridge.getNode0(),brg.pBridge.getNode1())).stream().forEach(p->simGraph.reduceUniquePath(p));
@@ -529,8 +534,8 @@ public class HybridAssembler {
 						simGraph.getNewSubPathsToReduce(brg.getBestPath(brg.steps.start.getNode(),brg.steps.end.getNode())).stream().forEach(p->simGraph.reduceUniquePath(p));
 						solved.add(brg);
 					}
-					else
-						System.out.printf("Last attempt failed \n");
+					else if(HybridAssembler.VERBOSE)
+						LOG.info("Last attempt failed \n");
 				}
 	
 			}
@@ -572,7 +577,7 @@ public class HybridAssembler {
     
     @SuppressWarnings("resource")
 	public static void promptEnterKey(){
-    	   System.out.println("Press \"ENTER\" to continue...");
+    	   LOG.info("Press \"ENTER\" to continue...");
     	   Scanner scanner = new Scanner(System.in);
     	   scanner.nextLine();
     	}
