@@ -137,10 +137,10 @@ public class GraphExploreDesktop {
         Viewer viewer=graph.display();
 //        HybridAssembler.promptEnterKey();
         System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
-        for (Node node : graph) {
-            node.setAttribute("ui.label", node.getId());
-        }        
-        HybridAssembler.promptEnterKey();
+//        for (Node node : graph) {
+//            node.setAttribute("ui.label", node.getId());
+//        }        
+//        HybridAssembler.promptEnterKey();
 
         /*
          * Testing reduce function
