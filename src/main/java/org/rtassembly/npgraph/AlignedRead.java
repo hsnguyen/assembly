@@ -46,8 +46,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 public class AlignedRead{
+	private static final Logger LOG = LoggerFactory.getLogger(AlignedRead.class);
+
 	public static int PSEUDO_ID=1;
 	public static String tmpFolder=System.getProperty("usr.dir")+File.separator+"npGraph_tmp"; //folder to save spanning reads of the bridge
 	//The query long read sequence
@@ -339,7 +344,8 @@ public class AlignedRead{
 		
 		//seqBuilder.toSequence();
 		String key=getEndingsID();
-		System.out.printf("Save read %s to bridge %s: %s -> %s\n", readSequence.getName(), key,
+		if(HybridAssembler.VERBOSE)
+			LOG.info("Save read %s to bridge %s: %s -> %s", readSequence.getName(), key,
 																	fromContig.getId() + (start.strand?"+":"-"),
 																	toContig.getId() + (end.strand?"+":"-")
 																	);

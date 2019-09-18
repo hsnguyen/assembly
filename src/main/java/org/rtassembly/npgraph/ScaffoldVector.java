@@ -91,9 +91,6 @@ public class ScaffoldVector{
 			fE = magnitude;
 			fS = magnitude - (int) fNode.getNumber("len");
 		}		
-		//System.out.printf("tS=%d tE=%d fS=%d fE=%d fS-tE=%d tS-fE = %d ret=%d\n",tS, tE, fE, fE, fS-tE,tS-fE,Math.max(fS - tE, tS - fE));
-		
-		//FIXME: not handle the case that contig A contain contigB and via verse		
 		return Math.max(fS - tE, tS - fE);
 	}
 

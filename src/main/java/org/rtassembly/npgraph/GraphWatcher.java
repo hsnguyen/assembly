@@ -1,6 +1,7 @@
 package org.rtassembly.npgraph;
 
 import java.io.IOException;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -124,9 +125,10 @@ public class GraphWatcher {
 		
 		
 		outputGraph=new BDGraph();
-		JapsaAnnotation annotation;
+		JapsaAnnotation annotation=null;
 		BDPath repPath=null; //representative path of a component
-		System.out.println("Another round of updating connected components: " + rtComponents.getConnectedComponentsCount());
+		System.out.println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+		System.out.println("Current time: " + LocalTime.now());
 
 		for (Iterator<ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
 			ConnectedComponent comp = compIter.next();
@@ -156,7 +158,6 @@ public class GraphWatcher {
 					 if(((BDEdge) edge).getNodeDirection((BDNode)curNode)!=null)
 						 curDir=!((BDEdge) edge).getNodeDirection((BDNode)curNode);
 					 ways = (curDir?curNode.leavingEdges():curNode.enteringEdges()).filter(e->!e.hasAttribute("cut")).collect(Collectors.toList());
-
 				 }
 				 
 				 //if linear: reverse
@@ -174,13 +175,14 @@ public class GraphWatcher {
 						 if(((BDEdge) edge).getNodeDirection((BDNode)curNode)!=null)
 							 curDir=!((BDEdge) edge).getNodeDirection((BDNode)curNode);
 						 ways = (curDir?curNode.leavingEdges():curNode.enteringEdges()).filter(e->!e.hasAttribute("cut")).collect(Collectors.toList());
-
 					 }
 				 }
 				 
 			 }
 			 //now we have repPath
-			 annotation = new JapsaAnnotation();
+			 if(lastTime){
+				 annotation = new JapsaAnnotation();
+			 }
 			 Sequence seq=repPath.spelling(annotation);
 			 double cov=GraphUtil.getRealCoverage(repPath.averageCov());
 			 Node n=outputGraph.addNode(Integer.toString(comp.id));
@@ -190,11 +192,13 @@ public class GraphWatcher {
 			 n.setAttribute("cov",cov);
 			 n.setAttribute("path", repPath);
 			 
-			 annotation.setSequence(seq);
 			 if(isCircular){
 				 n.setAttribute("circular");
 			 }
-			 n.setAttribute("annotation", annotation);
+			 if(lastTime){
+				 annotation.setSequence(seq);
+				 n.setAttribute("annotation", annotation);
+			 }
 //			 System.out.println("\n" + seq.getName() + ":" + repPath.getId() + "\n=> "+ repPath.getPrimitivePath().getId());
 
 		}
@@ -225,39 +229,42 @@ public class GraphWatcher {
 					BDPath trimedPath=path.trimEndingNodes();
 					if(trimedPath!=null){
 						//Add the "middle" node
-						 annotation = new JapsaAnnotation();
-						 Sequence seq=trimedPath.spelling(annotation);
-						 double cov=GraphUtil.getRealCoverage(trimedPath.averageCov());
-						 int id=0;
-						 while(outputGraph.getNode(Integer.toString(++id))!=null);
-						 Node n=outputGraph.addNode(Integer.toString(id));
-						 seq.setName("Contig_"+id+"_linear_length_"+seq.length()+"_cov_"+cov);
-						 n.setAttribute("seq", seq);
-						 n.setAttribute("len", seq.length());
-						 n.setAttribute("cov",cov);
-						 n.setAttribute("path", trimedPath);
-						 annotation.setSequence(seq);
-						 n.setAttribute("annotation", annotation);
-						 //Add 2 edges
-						 Boolean dd0=((BDEdge)path.getEdgePath().get(0)).getNodeDirection(trimedPath.getFirstNode()), 
-								 dd1=((BDEdge)path.peekEdge()).getNodeDirection(trimedPath.getLastNode());
-						 if(dd0==null)
-							 dd0=!path.getFirstNodeDirection();
-						 if(dd1==null)
-							 dd1=!path.getLastNodeDirection();
+						if(lastTime)
+							annotation = new JapsaAnnotation();
+						Sequence seq=trimedPath.spelling(annotation);
+						double cov=GraphUtil.getRealCoverage(trimedPath.averageCov());
+						int id=0;
+						while(outputGraph.getNode(Integer.toString(++id))!=null);
+						Node n=outputGraph.addNode(Integer.toString(id));
+						seq.setName("Contig_"+id+"_linear_length_"+seq.length()+"_cov_"+cov);
+						n.setAttribute("seq", seq);
+						n.setAttribute("len", seq.length());
+						n.setAttribute("cov",cov);
+						n.setAttribute("path", trimedPath);
+						if(lastTime){
+							annotation.setSequence(seq);
+							n.setAttribute("annotation", annotation);
+						}
+						//Add 2 edges
+						Boolean dd0=((BDEdge)path.getEdgePath().get(0)).getNodeDirection(trimedPath.getFirstNode()), 
+								dd1=((BDEdge)path.peekEdge()).getNodeDirection(trimedPath.getLastNode());
+						if(dd0==null)
+							dd0=!path.getFirstNodeDirection();
+						if(dd1==null)
+							dd1=!path.getLastNodeDirection();
 						 
-						 //if trimedPath has more than 1 nodes and has been merged into one
-						 if(trimedPath.getNodeCount()>1){
-							 if(trimedPath.getRoot()==path.getNodePath().get(1)){
-								 dd0=false;
-								 dd1=true;
-							 }else{
-								 dd0=true;
-								 dd1=false;
-							 }
-						 }
-						 outputGraph.addEdge((BDNode)nn0, (BDNode)n , d0, dd0);
-						 outputGraph.addEdge((BDNode)n, (BDNode)nn1 , dd1, d1);
+						//if trimedPath has more than 1 nodes and has been merged into one
+						if(trimedPath.getNodeCount()>1){
+							if(trimedPath.getRoot()==path.getNodePath().get(1)){
+								dd0=false;
+								dd1=true;
+							}else{
+								dd0=true;
+								dd1=false;
+							}
+						}
+						outputGraph.addEdge((BDNode)nn0, (BDNode)n , d0, dd0);
+						outputGraph.addEdge((BDNode)n, (BDNode)nn1 , dd1, d1);
 					}
 						
 				}else{
