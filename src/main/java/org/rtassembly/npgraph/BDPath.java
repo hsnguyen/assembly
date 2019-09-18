@@ -16,15 +16,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class BDPath extends Path{
+    private static final Logger LOG = LoggerFactory.getLogger(BDPath.class);
+
 	private int diff; //deviation from path to aligned read (now just length): the more the worse
 	private double pathEstats=0.0; //sum of estats of inbetween nodes
     private long len=0;
     private PopBin uniqueBin;//the unique population bin that this path belongs to (can only be set from outside)
     @Override
     public void add(Edge edge) {
-    	Node lastNode = edge.getOpposite(peekNode()); 
+    	Node lastNode = edge.getOpposite(peekNode());
+    	//score calculation is expensive for long path!
     	pathEstats+=getExtendLikelihood(lastNode);
-    	len+=((long)lastNode.getNumber("len"))+((BDEdge)edge).getLength();
+    	len+=((long)lastNode.getNumber("len"))+ ((BDEdge)edge).getLength();
     	super.add(edge);  	
     }
     @Override
@@ -67,8 +70,8 @@ public class BDPath extends Path{
 		String curID = comps[0], nextID;
 		boolean curDir = curID.contains("+")?true:false,
 				nextDir;
-		BDNode curNode = (BDNode) graph.getNode(curID.substring(0,curID.length()-1)),
-						nextNode;
+		BDNode 	curNode = (BDNode) graph.getNode(curID.substring(0,curID.length()-1)),
+				nextNode;
 		if(curNode==null){
 			System.out.printf("Node %s already removed from graph! Stop reading path here!\n",curID.substring(0,curID.length()-1));
 			return;
@@ -99,7 +102,8 @@ public class BDPath extends Path{
 				curDir=nextDir;
 				curNode=nextNode;
 			}else{
-				System.err.println("Graph " + graph.getId() + " doesn't contain " + edgeID);
+				if(HybridAssembler.VERBOSE)
+					LOG.error("Graph " + graph.getId() + " doesn't contain " + edgeID);
 				break;
 			}
 		}
@@ -154,6 +158,7 @@ public class BDPath extends Path{
 		return "path:(" + getId() + ")";
 	}
 	//Get the norm path of edges and nodes from a recursive path 
+	//Do not calculate Estats here: very expensive for whole long path
 	public BDPath getPrimitivePath() {	
 		BDNode curNode = (BDNode) getRoot(), nextNode=null;
 		BDPath retval = new BDPath(curNode);		
@@ -183,9 +188,11 @@ public class BDPath extends Path{
 		BDNode curNode = (BDNode) realPath.getRoot();
 		Sequence curSeq = (Sequence) curNode.getAttribute("seq");
 		if(realPath.getEdgeCount()==0){
-			feature=new JapsaFeature(1, curSeq.length(),"CONTIG",curSeq.getName(),'+',"");
-			feature.addDesc(curSeq.getName()+"+[1->"+curSeq.length()+"]");
-			annotation.add(feature);
+			if(annotation!=null){
+				feature=new JapsaFeature(1, curSeq.length(),"CONTIG",curSeq.getName(),'+',"");
+				feature.addDesc(curSeq.getName()+"+[1->"+curSeq.length()+"]");
+				annotation.add(feature);
+			}
 			return curSeq;
 		}
 		
@@ -196,9 +203,12 @@ public class BDPath extends Path{
 		//If path is circular: don't need to duplicate the closing node
 		if(realPath.getFirstNode()!=realPath.getLastNode()){ //linear
 			seq.append(curSeq);
-			feature=new JapsaFeature(1, curSeq.length(),"CONTIG",(String)curNode.getAttribute("name"),curDir?'+':'-',"");
-			feature.addDesc((String)curNode.getAttribute("name")+(curDir?"+":"-")+"[1->"+curSeq.length()+"]");
-			annotation.add(feature);
+			if(annotation!=null){
+				feature=new JapsaFeature(1, curSeq.length(),"CONTIG",(String)curNode.getAttribute("name"),curDir?'+':'-',"");
+				feature.addDesc((String)curNode.getAttribute("name")+(curDir?"+":"-")+"[1->"+curSeq.length()+"]");
+				annotation.add(feature);
+
+			}
 		}
 		BDNode nextNode=null;
 		for(Edge e:realPath.getEdgePath()){
@@ -211,11 +221,13 @@ public class BDPath extends Path{
 			curSeq = curDir?curSeq:Alphabet.DNA.complement(curSeq);
 			
 			int overlap=((BDEdge) e).getLength();
-			feature=new JapsaFeature(seq.length()+1, seq.length()+overlap+curSeq.length(),"CONTIG",(String)nextNode.getAttribute("name"),curDir?'+':'-',"");
-			feature.addDesc((String)nextNode.getAttribute("name")+(curDir?"+":"-")+"["+ (seq.length()+overlap+1) +"->"+(seq.length()+overlap+curSeq.length())+"]");
-			feature.setScore(overlap);
-			annotation.add(feature);
+			if(annotation!=null){
+				feature=new JapsaFeature(seq.length()+1, seq.length()+overlap+curSeq.length(),"CONTIG",(String)nextNode.getAttribute("name"),curDir?'+':'-',"");
+				feature.addDesc((String)nextNode.getAttribute("name")+(curDir?"+":"-")+"["+ (seq.length()+overlap+1) +"->"+(seq.length()+overlap+curSeq.length())+"]");
+				feature.setScore(overlap);
+				annotation.add(feature);
 
+			}
 			//if length of edge > 0: should add NNNN...NN to seq (in case there are gaps in NGS assembly graph)
 			if(overlap < 0){
 				seq.append(curSeq.subSequence(-overlap, curSeq.length())); 
@@ -224,7 +236,10 @@ public class BDPath extends Path{
 				String filler=new String(new char[overlap]).replace("\0", "N");
 				Sequence fillerSeq=new Sequence(Alphabet.DNA5(), filler, "gap");
 				seq.append(fillerSeq.concatenate(curSeq));				
-				System.out.printf("Edge %s has length=%d > 0: filled with Ns\n", e.getId(), overlap);
+
+				if(HybridAssembler.VERBOSE)
+					LOG.error("Edge {} has length={} > 0: filled with Ns", e.getId(), overlap);
+
 
 			}
 			curNode=nextNode;
@@ -260,15 +275,19 @@ public class BDPath extends Path{
 			return new BDPath(newPath);
 		
 		if(newPath.getRoot() != peekNode()){
-			System.err.printf("Cannot join path %s to path %s with disagreed first node: %s != %s\n", newPath.getId(), this.getId(), newPath.getRoot().getId() ,peekNode().getId());
+			if(HybridAssembler.VERBOSE)
+				LOG.error("Cannot join path {} to path {} with disagreed first node: {} != {}", newPath.getId(), this.getId(), newPath.getRoot().getId() ,peekNode().getId());
+
 			return null;
 		}
+
 		if(newPath.getNodeCount() > 1 && this.getNodeCount() > 1 && newPath.getFirstNodeDirection()==getLastNodeDirection()){
-			System.err.println("Conflict direction from the first node " + newPath.getRoot().getId());
+			if(HybridAssembler.VERBOSE)
+				LOG.error("Conflict direction from the first node " + newPath.getRoot().getId());
+
 			return null;
 		}
 		BDPath retval=new BDPath(this);
-		//TODO: need a way to check coverage consistent (or make change less significant bin?)			
 		for(Edge e:newPath.getEdgePath()){
 			retval.add(e);
 		}
@@ -288,10 +307,6 @@ public class BDPath extends Path{
 	//set path score actively
 	public void setPathEstats(double pathAstat) {
 		this.pathEstats=pathAstat;
-	}
-	
-	public void updatePathEstats(double nodeAstat){
-		this.pathEstats+=nodeAstat;
 	}
 	
 	public double getPathEstats() {	
@@ -323,7 +338,8 @@ public class BDPath extends Path{
 		}else if(from==peekNode()){
 			ref=this.reverse();
 		}else{
-			System.out.printf("Node %s couldn't be found as one of the tips in path %s!\n", from.getId(), getId());
+			if(HybridAssembler.VERBOSE)
+				LOG.warn("Node {} couldn't be found as one of the end node in path {}!", from.getId(), getId());
 			return retval;
 		}
 		int curDistance=0;
@@ -338,18 +354,16 @@ public class BDPath extends Path{
 					dirOfTo=!((BDEdge) e).getNodeDirection((BDNode) curNode);
 				if((dirOfFrom == dirOfTo) == direction){
 					if(Math.abs(curDistance-distance) < BDGraph.A_TOL || GraphUtil.approxCompare(curDistance, distance)==0){
-//						System.out.printf("|-> agree distance between node %s, node %s: %d and given distance %d\n",
-//								from.getId(), to.getId(), curDistance, distance);
+						if(HybridAssembler.VERBOSE)
+							LOG.info("|-> agree distance between node {}, node {}: {} and given distance {}",
+								from.getId(), to.getId(), curDistance, distance);
 						if(Math.abs(retval) > Math.abs(curDistance-distance))
 							retval=curDistance-distance;
 					}
-//					else
-//						System.out.printf("!-> inconsistence distance between node %s, node %s: %d and given distance %d\n",
-//								from.getId(), to.getId(), curDistance, distance);
-				}else
-					System.out.printf("!-> inconsistence direction between node %s (%s), node %s (%s) and given orientation: %s\n",
-										from.getId(), dirOfFrom?"+":"-", to.getId(), dirOfTo?"+":"-", direction?"same":"opposite" );
 
+				}else if(HybridAssembler.VERBOSE)
+					LOG.info("!-> inconsistence direction between node {} ({}), node {} ({}) and given orientation: {}",
+										from.getId(), dirOfFrom?"+":"-", to.getId(), dirOfTo?"+":"-", direction?"same":"opposite" );
 			}
 			curDistance+=curNode.getNumber("len");
 		}

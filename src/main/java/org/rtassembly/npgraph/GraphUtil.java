@@ -4,8 +4,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -31,7 +29,6 @@ import japsa.seq.FastaReader;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceBuilder;
 import japsa.seq.SequenceReader;
-import japsa.seq.Alphabet.DNA;
 
 public class GraphUtil {
 
@@ -172,7 +169,8 @@ public class GraphUtil {
 			astats*=Math.log10(Math.E);
 			node.setAttribute("astats", astats);
 			normalizedCoverage(node);
-			LOG.info("{} Normalized coverage = {} Length = {} \nA-stats = {}", node.getAttribute("name"), node.getNumber("cov"), node.getNumber("len"), astats);
+			if(HybridAssembler.VERBOSE)
+				LOG.info("{} Normalized coverage = {} Length = {} \nA-stats = {}", node.getAttribute("name"), node.getNumber("cov"), node.getNumber("len"), astats);
 		}
 		
 		LOG.info("No of nodes= {} No of edges = {} Estimated avg. read coverage = {} (normalized to 100.0) Total contigs length = {}", graph.getNodeCount(), graph.getEdgeCount(), BDGraph.RCOV, totContigsLen );
@@ -275,7 +273,7 @@ public class GraphUtil {
 					break;
 				case "L"://links
 					BDNode 	n0=(BDNode) graph.getNode(gfaFields[1]),
-									n1=(BDNode) graph.getNode(gfaFields[3]);
+							n1=(BDNode) graph.getNode(gfaFields[3]);
 					boolean dir0=gfaFields[2].equals("+")?true:false,
 							dir1=gfaFields[4].equals("+")?false:true;
 					graph.addEdge(n0, n1, dir0, dir1);
@@ -356,7 +354,8 @@ public class GraphUtil {
 			astats*=Math.log10(Math.E);
 			node.setAttribute("astats", astats);
 			normalizedCoverage(node);
-			LOG.info("{} Normalized coverage = {} Length = {} A-stats = {}", node.getAttribute("name"), node.getNumber("cov"), node.getNumber("len"), astats );
+			if(HybridAssembler.VERBOSE)		
+				LOG.info("{} Normalized coverage = {} Length = {} A-stats = {}", node.getAttribute("name"), node.getNumber("cov"), node.getNumber("len"), astats );
 		}
 		
 		LOG.info("No of nodes= {} No of edges = {} Estimated avg. read coverage = {} (normalized to 100.0) Total contigs length = {}", graph.getNodeCount(), graph.getEdgeCount(), BDGraph.RCOV, totContigsLen );
@@ -377,7 +376,7 @@ public class GraphUtil {
 		}
     }
     
-    
+   
     public static int overlap(Sequence s0, Sequence s1){
     	int retval;
     	for(retval=BDGraph.getKmerSize() ; retval>0; retval--){
@@ -442,20 +441,16 @@ public class GraphUtil {
 		    			tmp=e0.getNumber("cov");
 		    			sum0+=Double.isNaN(tmp)?1.0:tmp;
 		    			deg0++;
-//		    			System.out.printf("\tedge %s cov=%.2f sum0=%.2f\n",e0.getId(),tmp,sum0);
 		    		}
 		    		while(ite1.hasNext()) {
 		    			Edge e1=ite1.next();
 		    			tmp=e1.getNumber("cov");		    			
 		    			sum1+=Double.isNaN(tmp)?1.0:tmp;
 		    			deg1++;
-//		    			System.out.printf("\tedge %s cov=%.2f sum1=%.2f\n",e1.getId(),tmp,sum1);
-
 		    		}	    		
 		    		//gamma_ij=1/*(len_i+len_j) -> failed!
 		    		//gamma_ij=1/2*(len_i+len_j) -> small enough! (explanation???)
 		    		double value=.5*(n0.getNumber("len")*(sum0-n0.getNumber("cov"))/(deg0*deg0) + n1.getNumber("len")*(sum1-n1.getNumber("cov"))/(deg1*deg1))/(n0.getNumber("len")+n1.getNumber("len"));
-//		    		System.out.println("=> step="+value);
 		    		stepMap.put(e.getId(), value);
 				}
 				boolean isConverged=true;
@@ -469,11 +464,12 @@ public class GraphUtil {
 						isConverged=false;
 					}
 					
-					if(curCov<=delta) {
+					if(curCov<=delta && HybridAssembler.VERBOSE)
 						LOG.warn("Edge " + e.getId() + " coverage is not positive : curCov=" + curCov + ", delta=" + delta);
-					}else
+					else
 						e.setAttribute("cov", curCov-delta);
 				}
+
 				if(isConverged || eIteCount >= maxIterations)
 					break;
 			}
@@ -503,8 +499,6 @@ public class GraphUtil {
 				n.setAttribute("cov", newCovEst);
 			}
 			if(isConverged || nIteCount >= maxIterations) {
-//				System.out.println("Node coverage CONVERGED at iteration " + nIteCount + "th");
-//				System.out.println("======================================================");
 				break;
 			}
 			
@@ -635,8 +629,9 @@ public class GraphUtil {
 				n.setAttribute("cov", newCovEst);
 			}
 			if(isConverged || nIteCount >= 10) {
-				System.out.println("STOP at iteration " + nIteCount + "th");
-				System.out.println("======================================================");
+				if(HybridAssembler.VERBOSE) 				
+					LOG.info("STOP at iteration " + nIteCount + "th");
+				
 				break;
 			}
 			
@@ -724,7 +719,8 @@ public class GraphUtil {
 							consensus=seq;
 						}		
 					}catch(NumberFormatException e){
-						LOG.info("Pattern %s=%d not found in the header of input FASTA file {}", faiFile);
+						if(HybridAssembler.VERBOSE)
+							LOG.info("Pattern %s=%d not found in the header of input FASTA file {}", faiFile);
 						if(consensus==null || consensus.length() > seq.length())
 							consensus=seq;
 					}
@@ -756,14 +752,16 @@ public class GraphUtil {
 				consensus.setName(prefix+"_consensus");
 				return consensus;
 			}else{
-				LOG.error("Unknown msa function " + msa);
+				if(HybridAssembler.VERBOSE)
+					LOG.info("Unknown msa function " + msa);
 				return null;
 			}
-	
-			LOG.info("Running " + cmd);
+			if(HybridAssembler.VERBOSE)
+				LOG.info("Running " + cmd);
 			Process process = Runtime.getRuntime().exec(cmd);
 			process.waitFor();
-			LOG.info("Done " + cmd);
+			if(HybridAssembler.VERBOSE)
+				LOG.info("Done " + cmd);
 		}
 				
 //		if ("poa".equals(msa)){
@@ -825,7 +823,8 @@ public class GraphUtil {
 				}//if
 			}//for x
 			sb.setName(prefix+"_consensus");
-			LOG.info(sb.getName() + "  " + sb.length());
+			if(HybridAssembler.VERBOSE)
+				LOG.info(sb.getName() + "  " + sb.length());
 			consensus = sb.toSequence();
 		}
 

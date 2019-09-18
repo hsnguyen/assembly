@@ -4,12 +4,17 @@ import java.util.ArrayList;
 import java.util.Objects;
 import java.util.TreeSet;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /*
  * Class represent a node together with its vector in relative to another root node.
  * Note: the direction here refers to the one of a ScaffoldVector, not bidirected-graph direction (in/out), neither sequence sense/antisense (+/-)
  * although we can translate into appropriate info
  */
 public class BDNodeVecState implements Comparable<BDNodeVecState>{
+    private static final Logger LOG = LoggerFactory.getLogger(BDNodeVecState.class);
+
 	BDNode root, dest;
 	ScaffoldVector vector;
 	int nvsScore=Alignment.MIN_QUAL; //alignment score + number of occurences?
@@ -127,9 +132,11 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 
 	//Merging 2 equal NodeVectors
 	public boolean merge(BDNodeVecState nv){
-		System.out.printf("Merging vector %s with %s => ", this.toString(), nv.toString());
+		if(HybridAssembler.VERBOSE)
+			LOG.info("Merging vector {} with {}: ", this.toString(), nv.toString());
 		if(!this.approximate(nv)){
-			System.out.println("failed!");
+			if(HybridAssembler.VERBOSE)
+				LOG.info("...merging failed!");
 			return false;
 		}
 
@@ -145,13 +152,15 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 		if(nvsScore>Alignment.GOOD_QUAL*BDGraph.MAX_LISTING)
 			nvsScore=Alignment.GOOD_QUAL*BDGraph.MAX_LISTING;
 		
-		System.out.println(this.toString());
+		if(HybridAssembler.VERBOSE)
+			LOG.info(this.toString());
 		return true;
 	}
 	
 	/*
 	 * Needleman-Wunsch algorithm to return consensus steps
 	 * by aligning two step-lists with identical first element
+	 * 
 	 */
 	public static void NWAlignment(TreeSet<BDNodeVecState> s0, TreeSet<BDNodeVecState> s1){
 		assert s0.first().equals(s1.first()):"First alignment must agree!";
@@ -170,6 +179,7 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 			scoreTab[0][i] = -as1[i].getDistance();
 			moveTab[0][i] = '_';
 		}
+		moveTab[0][0]='*';
 		int match, delete, insert;
 		for(int i=1; i<as0.length; i++){
 			for(int j=1; j<as1.length; j++){
@@ -189,23 +199,26 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 			}
 		}
 		
-		System.out.println("Needleman-Wunch table: ");
-		for(int i=0; i<as1.length; i++)
-			System.out.printf("\t%s", as1[i].getNode().getId());
-		System.out.println();
-		for(int i=0; i<as0.length; i++){
-			System.out.printf("%s\t", as0[i].getNode().getId());
-			for(int j=0; j<as1.length; j++){
-				System.out.printf("%s%d\t", moveTab[i][j], scoreTab[i][j]);
+		//To print out table:
+		if(HybridAssembler.VERBOSE){
+			String nwTab="Needleman-Wunch table:\n";
+			for(int i=0; i<as1.length; i++)
+				nwTab+="\t" + as1[i].getNode().getId();
+			nwTab+="\n";
+			for(int i=0; i<as0.length; i++){
+				nwTab+=as0[i].getNode().getId()+"\t";
+				for(int j=0; j<as1.length; j++)
+					nwTab+=moveTab[i][j]+"\t";
+				nwTab+="\n";
 			}
-			System.out.println();
+			LOG.info(nwTab);
 		}
 		
 		int i=as0.length-1, j=as1.length-1;
 		ArrayList<Integer> 	m0 = new ArrayList<>(),
 							m1 = new ArrayList<>();
 
-		while(i>=0 && j>=0){
+		while(i>=0 && j>=0 && i+j>0){
 			switch(moveTab[i][j]){
 				case '\\':
 					m0.add(0, i--);
@@ -232,11 +245,13 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 			curOrigNVS=new BDNodeVecState(as0[ii]);//original ref NVS before merging
 			int origStep=curOrigNVS.getDistance()-prevOrigNVS.getDistance();
 			
-			as0[ii].merge(as1[jj]);
-			
+
+			as0[ii].merge(as1[jj]);		
 			scale0=(as0[ii].getDistance()-as0[i].getDistance())*1.0/origStep;
 			scale1=(as0[ii].getDistance()-as0[i].getDistance())*1.0/(as1[jj].getDistance()-as1[j].getDistance());
-			System.out.printf("scale0=%.2f scale1=%.2f\n", scale0,scale1);
+			
+			if(HybridAssembler.VERBOSE)
+				LOG.info("scale0={} scale1={}\n", scale0,scale1);
 
 			if(Math.max(scale0, scale1) < BDGraph.A_TOL/1.0 && Math.min(scale0, scale1) > 0) { //constrain scalex		
 				//calibrate the vectors from first list's in-between
@@ -255,8 +270,8 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 				//move to next match coordinate
 				prevOrigNVS=curOrigNVS;
 				i=ii; j=jj;
-			}else
-				System.out.println("...moving to next match point!");
+			}else if(HybridAssembler.VERBOSE)
+				LOG.info("...moving to next match point!");
 		}
 		//nodes after the last match...scale=1.0
 		for(int i0=i+1;i0<as0.length;i0++)
@@ -271,10 +286,7 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 		
 		//add all new nodes
 		s0.addAll(omittedNodes);
-		
-		System.out.println("After NW merging: ");
-		for(BDNodeVecState nv:s0)
-			System.out.println(nv);
+
 	}
 
 	//get absolute value of the relative distance (can be negative)
