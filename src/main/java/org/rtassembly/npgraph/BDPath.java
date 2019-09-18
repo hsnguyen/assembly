@@ -70,8 +70,8 @@ public class BDPath extends Path{
 		String curID = comps[0], nextID;
 		boolean curDir = curID.contains("+")?true:false,
 				nextDir;
-		BDNode curNode = (BDNode) graph.getNode(curID.substring(0,curID.length()-1)),
-						nextNode;
+		BDNode 	curNode = (BDNode) graph.getNode(curID.substring(0,curID.length()-1)),
+				nextNode;
 		if(curNode==null){
 			System.out.printf("Node %s already removed from graph! Stop reading path here!\n",curID.substring(0,curID.length()-1));
 			return;
