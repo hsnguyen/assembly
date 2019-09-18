@@ -273,7 +273,7 @@ public class GraphUtil {
 					break;
 				case "L"://links
 					BDNode 	n0=(BDNode) graph.getNode(gfaFields[1]),
-									n1=(BDNode) graph.getNode(gfaFields[3]);
+							n1=(BDNode) graph.getNode(gfaFields[3]);
 					boolean dir0=gfaFields[2].equals("+")?true:false,
 							dir1=gfaFields[4].equals("+")?false:true;
 					graph.addEdge(n0, n1, dir0, dir1);
