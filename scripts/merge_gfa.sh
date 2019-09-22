@@ -4,13 +4,13 @@ if [ "$#" -lt 1 ]; then
 else
 	SDIR=`dirname $0`
 	FDIR=`dirname $1`
-	ncount=0
-	fcount=0
+	ncount=0 ##contigs count
+	fcount=0 ##file count
 	for gfa in "$@"
 	do
 		fcount=$((fcount + 1))
 		awk -v id="$ncount" -f ${SDIR}/gfa_reindex.awk ${gfa} > ${FDIR}/reindexed_${fcount}.gfa
-		sline=`cat reindexed_${gfa}|awk '/^S/{count++}END{print count}'`
+		sline=`cat reindexed_${FDIR}/reindexed_${fcount}.gfa|awk '/^S/{count++}END{print count}'`
 		ncount=$((ncount + sline))
 	done	
 	#concatenate all reindexed gfa files together
