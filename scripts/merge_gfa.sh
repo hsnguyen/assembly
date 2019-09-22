@@ -10,7 +10,7 @@ else
 	do
 		fcount=$((fcount + 1))
 		awk -v id="$ncount" -f ${SDIR}/gfa_reindex.awk ${gfa} > ${FDIR}/reindexed_${fcount}.gfa
-		sline=`cat reindexed_${FDIR}/reindexed_${fcount}.gfa|awk '/^S/{count++}END{print count}'`
+		sline=`cat ${FDIR}/reindexed_${fcount}.gfa|awk '/^S/{count++}END{print count}'`
 		ncount=$((ncount + sline))
 	done	
 	#concatenate all reindexed gfa files together
