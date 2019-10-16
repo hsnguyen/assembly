@@ -196,7 +196,7 @@ public class BDPath extends Path{
 			return curSeq;
 		}
 		
-		SequenceBuilder seq = new SequenceBuilder(Alphabet.DNA5(), 1024*1024, toString());
+		SequenceBuilder seq = new SequenceBuilder(Alphabet.DNA(), 1024*1024, toString());
 		seq.setDesc(realPath.toString());
 		boolean curDir=realPath.getFirstNodeDirection();
 		curSeq = curDir?curSeq:Alphabet.DNA.complement(curSeq);

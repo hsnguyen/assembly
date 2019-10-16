@@ -4,6 +4,9 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -251,7 +254,7 @@ public class GraphUtil {
 				case "S"://segment
 					String 	nodeID=gfaFields[1].trim();
 					assert gfaFields.length>3 && gfaFields[2].trim().length()>1:"Invalid GFA v1 file!";
-					seq = new Sequence(Alphabet.DNA5(), gfaFields[2], nodeID);
+					seq = new Sequence(Alphabet.DNA(), gfaFields[2], nodeID);
 					AbstractNode node = (AbstractNode) graph.addNode(nodeID); //or get the existing node prototype created below (to set the attributes)
 					node.setAttribute("name", "Contig_"+nodeID);
 					seq.setName("Contig_"+nodeID);
@@ -705,12 +708,15 @@ public class GraphUtil {
 		if(!consFile.exists()){
 			String faiFile=AlignedRead.tmpFolder+File.separator+prefix+".fasta";
 			//1.0 Check faiFile?
+			if(!Files.isReadable(Paths.get(faiFile))){
+				return null;
+			}
 			FastaReader faiReader =  new FastaReader(faiFile);
 			int count=0, minGap=Integer.MAX_VALUE;
 			Sequence seq=null;
-			while((seq=faiReader.nextSequence(Alphabet.DNA5()))!=null){
-				//if there is no MSA detected, output the sequence with the least non-Illumina bases
-				if(msa.isEmpty() || msa.startsWith("none")){
+			while((seq=faiReader.nextSequence(Alphabet.DNA()))!=null){
+				//if there is no valid MSA detected, output the sequence with the least non-Illumina bases
+				if(!msa.startsWith("kalign")){
 					String[] toks=seq.getDesc().split("=");
 					try{
 						int curGap=Integer.parseInt(toks[1]);
@@ -735,33 +741,37 @@ public class GraphUtil {
 			//2.0 Run multiple alignment. 
 			// For now, only kalign were chosen due to its speedy operation
 			String cmd  = "";
-			if (msa.startsWith("kalign")){
+//			if (msa.startsWith("kalign3"))
+//				cmd = "kalign -i " + faiFile+ " -o " + faoFile;
+			if (msa.startsWith("kalign"))
 				cmd = "kalign -gpo 60 -gpe 10 -tgpe 0 -bonus 0 -q -i " + faiFile	+ " -o " + faoFile;
-//			}else if (msa.startsWith("poa")){
-//				String poaDir="/home/sonhoanghguyen/sw/poaV2/";//test
-//				cmd = poaDir+"poa -read_fasta " + faiFile + " -clustal " + faoFile + " -hb " + poaDir+"blosum80.mat";
-//			}else if (msa.startsWith("muscle")){
+//			else if (msa.startsWith("poa"))
+//				cmd = "poa -read_fasta " + faiFile + " -clustal " + faoFile + " -hb blosum80.mat";
+//			else if (msa.startsWith("muscle"))
 //				cmd = "muscle -in " + faiFile + " -out " + faoFile + " -maxiters 5 -quiet";				
-//			}else if (msa.startsWith("clustal")) {
+//			else if (msa.startsWith("clustal")) 
 //				cmd = "clustalo --force -i " + faiFile + " -o " + faoFile;
-//			}else if (msa.startsWith("msaprobs")){
+//			else if (msa.startsWith("msaprobs"))
 //				cmd = "msaprobs -o " + faoFile + " " + faiFile;
-//			}else if (msa.startsWith("mafft")){
+//			else if (msa.startsWith("mafft"))
 //				cmd = "mafft_wrapper.sh  " + faiFile + " " + faoFile;
-			}else if(msa.isEmpty() || msa.startsWith("none")){
-				consensus.setName(prefix+"_consensus");
-				return consensus;
-			}else{
+			else{
 				if(HybridAssembler.VERBOSE)
-					LOG.info("Unknown msa function " + msa);
-				return null;
+					LOG.info("Unknown msa function {}, pick the best read as consensus!", msa);
+				consensus.setName(prefix+"_consensus");
+				Files.deleteIfExists(Paths.get(faiFile));
+				Files.deleteIfExists(Paths.get(faoFile));
+				return consensus;
 			}
+			
 			if(HybridAssembler.VERBOSE)
 				LOG.info("Running " + cmd);
 			Process process = Runtime.getRuntime().exec(cmd);
 			process.waitFor();
 			if(HybridAssembler.VERBOSE)
 				LOG.info("Done " + cmd);
+			Files.deleteIfExists(Paths.get(faiFile));
+
 		}
 				
 //		if ("poa".equals(msa)){
@@ -827,7 +837,8 @@ public class GraphUtil {
 				LOG.info(sb.getName() + "  " + sb.length());
 			consensus = sb.toSequence();
 		}
-
+		
+		Files.deleteIfExists(Paths.get(faoFile));
 		return consensus;
 	}
 	
@@ -848,7 +859,7 @@ public class GraphUtil {
 	 * Note that read sequence from SAMRecord could be reverse-complemented
 	 */
 	public static Sequence getQueryReadFromSAMRecord(SAMRecord sam){
-		Sequence retval = new Sequence(Alphabet.DNA5(), sam.getReadString(), sam.getReadName());
+		Sequence retval = new Sequence(Alphabet.DNA(), sam.getReadString(), sam.getReadName());
 		if(sam.getReadNegativeStrandFlag())
 			retval=Alphabet.DNA.complement(retval);
 		
