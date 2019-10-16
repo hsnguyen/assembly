@@ -216,7 +216,7 @@ public class AlignedRead{
 			flank0=Alphabet.DNA.complement(flank0);
 		}
 		
-		SequenceBuilder seqBuilder = new SequenceBuilder(Alphabet.DNA5(), 1024*1024,  readSequence.getName());
+		SequenceBuilder seqBuilder = new SequenceBuilder(Alphabet.DNA(), 1024*1024,  readSequence.getName());
 		seqBuilder.append(flank0);
 		
 		//2. Filling the sequence in-between
@@ -342,7 +342,7 @@ public class AlignedRead{
 			seqBuilder.append(flank1);
 		}
 		
-		//seqBuilder.toSequence();
+		
 		String key=getEndingsID();
 		if(HybridAssembler.VERBOSE)
 			LOG.info("Save read %s to bridge %s: %s -> %s", readSequence.getName(), key,

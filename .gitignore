@@ -1,8 +1,11 @@
-/target/
+target/
 dependency-reduced-pom.xml
 .classpath
 .project
 .settings/
 bin/
 extSource/
-mm2.err
+src/test/
+src/main/java/org/rtassembly/App.java
+src/main/java/org/rtassembly/experiment/
+src/main/java/org/rtassembly/metagenome/
