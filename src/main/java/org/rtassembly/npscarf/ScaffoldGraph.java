@@ -425,7 +425,7 @@ public abstract class ScaffoldGraph{
 
 				samList = new ArrayList<AlignmentRecord>();
 				readID = myRec.readID;	
-				readFilling = new ReadFilling(new Sequence(Alphabet.DNA5(), rec.getReadString(), "R" + readID), samList);	
+				readFilling = new ReadFilling(new Sequence(Alphabet.DNA(), rec.getReadString(), "R" + readID), samList);	
 			}			
 			samList.add(myRec);
 

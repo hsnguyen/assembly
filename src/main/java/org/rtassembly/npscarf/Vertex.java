@@ -31,7 +31,7 @@ public class Vertex {
     	this.fullName=name;
         this.label=getID(name);
         this.neighborhood = new ArrayList<Edge>();
-        this.seq=new Sequence(Alphabet.DNA5(), 0);
+        this.seq=new Sequence(Alphabet.DNA(), 0);
     }
     
     public Vertex(String name, Sequence seq){

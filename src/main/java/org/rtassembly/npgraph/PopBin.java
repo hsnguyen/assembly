@@ -16,6 +16,7 @@ public class PopBin{
 	public PopBin() {
 		binID=lastID++;
 		coreNodes = new ArrayList<Node>();
+		estCov=estLen=0;
 	
 	}
 	//this constructor for reading from file with assigned binID
