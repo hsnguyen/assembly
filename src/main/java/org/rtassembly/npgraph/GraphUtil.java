@@ -700,7 +700,7 @@ public class GraphUtil {
 	/* 
 	 * Adapt from japsa without need to output fasta input file
 	 */
-	public static Sequence consensusSequence(String prefix, int distance) throws IOException, InterruptedException{
+	public static Sequence consensusSequence(String prefix) throws IOException, InterruptedException{
 		Sequence consensus = null;	
 		String msa = BDGraph.MSA;
 		String 	faoFile = AlignedRead.tmpFolder+File.separator+prefix+"_"+msa+".fasta";
@@ -741,8 +741,7 @@ public class GraphUtil {
 			//2.0 Run multiple alignment. 
 			// For now, only kalign were chosen due to its speedy operation
 			String cmd  = "";
-//			if (msa.startsWith("kalign3"))
-//				cmd = "kalign -i " + faiFile+ " -o " + faoFile;
+
 			if (msa.startsWith("kalign"))
 				cmd = "kalign -gpo 60 -gpe 10 -tgpe 0 -bonus 0 -q -i " + faiFile	+ " -o " + faoFile;
 //			else if (msa.startsWith("poa"))
@@ -774,24 +773,7 @@ public class GraphUtil {
 
 		}
 				
-//		if ("poa".equals(msa)){
-//			SequenceBuilder sb = new SequenceBuilder(Alphabet.DNA(), (int) ((1+BDGraph.R_TOL)*distance)+2*BDGraph.getKmerSize());
-//			BufferedReader bf =  FastaReader.openFile(faoFile);
-//			String line = bf.readLine();
-//			while ( (line = bf.readLine()) != null){
-//				if (line.startsWith("CONSENS0")){
-//					for (int i = 10;i < line.length();i++){
-//						char c = line.charAt(i);
-//						int base = DNA.DNA().char2int(c);
-//						if (base >= 0 && base < 4)
-//							sb.append((byte)base);
-//					}//for							
-//				}//if
-//			}//while
-//			sb.setName(prefix+"_consensus");
-//			LOG.info(sb.getName() + "  " + sb.length());
-//			return sb.toSequence();
-//		}
+
 
 		//3.0 Read in multiple alignment
 		ArrayList<Sequence> seqList = new ArrayList<Sequence>();
