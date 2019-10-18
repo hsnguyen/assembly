@@ -79,7 +79,7 @@ public class HybridAssembler {
 	public final String getAlignerOpts() {return alignerOpt.get();}
 	public StringProperty alignerOptProperty(){return alignerOpt;}
 	
-	public final void setMSA(String tool) {	msa.set(tool); BDGraph.MSA=tool;}
+	public final void setMSA(String tool) {	msa.set(tool);}
 	public final String getMSA() {return msa.get();}
 	public StringProperty msaProperty(){return msa;}
 	
@@ -326,12 +326,13 @@ public class HybridAssembler {
         }
         
         //check consensus tool
-        if(getMSA().equals("kalign")){
-        	if(!checkKalign()){
-        		setCheckLog("kalign not found: random pick for the bridging read instead of consensus!");
-        		setMSA("none");
-        	}
-        }
+    	if(!checkMSA()){
+    		setCheckLog("WARNING: MSA tools not found!");
+    		setMSA("none");
+    	}else{
+    		simGraph.consensus.setConsensusMSA(getMSA());
+    	}
+        
         
         return true;
 	}
@@ -669,47 +670,31 @@ public class HybridAssembler {
 			
     }
     
-    public boolean checkKalign() {    		
+    public boolean checkMSA() {    		
 		try{
+			
 			ProcessBuilder pb = new ProcessBuilder(getMSA()).redirectErrorStream(true);
 			Process process =  pb.start();
 			BufferedReader bf = SequenceReader.openInputStream(process.getInputStream());
 
 
 			String line;
-			String version = "";
-			Pattern versionPattern = Pattern.compile("^Kalign version\\s(\\d+\\.\\d+).*");
-			Matcher matcher=versionPattern.matcher("");
 			
 			while ((line = bf.readLine())!=null){				
-				matcher.reset(line);
-				if (matcher.find()){
-				    version = matcher.group(1);
-				    break;//while
+				if (line.toLowerCase().contains("usage:")){ // kalign, kalign3, poa, spoa all print out "Usage:" if run without parameter
+					bf.close();
+				    return true;
 				}
-				
-								
 			}	
 			bf.close();
-			
-			if (version.length() == 0){
-				setCheckLog("Command " + getMSA() + " doesn't give version info. Check version failed!");
-				return false;
-			}else{
-				LOG.info("kalign version: " + version);
-				if (version.compareTo("2.0") < 0){
-					setCheckLog(" Require kalign version 2 or above");
-					return false;
-				}
-			}
+			setCheckLog("Command: " + getMSA() + " not found!");
+			return false;
 
 		}catch (IOException e){
 			setCheckLog("Error running: " + getMSA() + "\n" + e.getMessage());
 			return false;
 		}
-		
-		return true;
-			
+					
     }
 
 	public static void main(String[] argv) throws IOException, InterruptedException{

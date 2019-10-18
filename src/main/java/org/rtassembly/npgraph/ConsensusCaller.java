@@ -1,166 +1,86 @@
 package org.rtassembly.npgraph;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import japsa.bio.np.ErrorCorrection;
 import japsa.seq.Alphabet;
-import japsa.seq.FastaReader;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceBuilder;
-import japsa.seq.SequenceOutputStream;
-import japsa.seq.SequenceReader;
+
 //Module for consensus bridging of contigs when they're not connected in the assembly graph
 public class ConsensusCaller {
 	private static final Logger LOG = LoggerFactory.getLogger(ConsensusCaller.class);
 	
-	HashMap<String, List<Sequence>> bridgingReads;
-
+	volatile HashMap<String, List<Sequence>> bridgingReads;
+	volatile HashMap<String, Sequence> consensusReads;
+	String msa;
 	ConsensusCaller(){
+		consensusReads = new HashMap<String, Sequence>();
 		bridgingReads = new HashMap<String, List<Sequence>>();
+		msa="kalign"; //default because of popularity, recommended one is spoa
 	}
-	/* 
-	 * Adapt from japsa without need to output fasta input file
-	 */
-	public Sequence consensusSequence(String prefix) throws IOException, InterruptedException{
-		Sequence consensus = null;	
-		String msa = BDGraph.MSA;
-		String 	faoFile = AlignedRead.tmpFolder+File.separator+prefix+"_"+msa+".fasta";
-		File consFile = new File(faoFile);
-		if(!consFile.exists()){
-			String faiFile=AlignedRead.tmpFolder+File.separator+prefix+".fasta";
-			//1.0 Check faiFile?
-			if(!Files.isReadable(Paths.get(faiFile))){
-				return null;
-			}
-			FastaReader faiReader =  new FastaReader(faiFile);
-			int count=0, minGap=Integer.MAX_VALUE;
-			Sequence seq=null;
-			while((seq=faiReader.nextSequence(Alphabet.DNA()))!=null){
-				//if there is no valid MSA detected, output the sequence with the least non-Illumina bases
-				if(!msa.startsWith("kalign")){
-					String[] toks=seq.getDesc().split("=");
-					try{
-						int curGap=Integer.parseInt(toks[1]);
-						if( curGap < minGap){
-							minGap=curGap;
-							consensus=seq;
-						}		
-					}catch(NumberFormatException e){
-						if(HybridAssembler.VERBOSE)
-							LOG.info("Pattern %s=%d not found in the header of input FASTA file {}", faiFile);
-						if(consensus==null || consensus.length() > seq.length())
-							consensus=seq;
-					}
-				}
-				count++;
-			}
-			
-			faiReader.close();
-			if(count<BDGraph.MIN_SUPPORT) //at least 3 of the good read count is required
-				return null;
-			
-			//2.0 Run multiple alignment. 
-			// For now, only kalign were chosen due to its speedy operation
-			String cmd  = "";
-
-			if (msa.startsWith("kalign"))
-				cmd = "kalign -gpo 60 -gpe 10 -tgpe 0 -bonus 0 -q -i " + faiFile	+ " -o " + faoFile;
-//			else if (msa.startsWith("poa"))
-//				cmd = "poa -read_fasta " + faiFile + " -clustal " + faoFile + " -hb blosum80.mat";
-//			else if (msa.startsWith("muscle"))
-//				cmd = "muscle -in " + faiFile + " -out " + faoFile + " -maxiters 5 -quiet";				
-//			else if (msa.startsWith("clustal")) 
-//				cmd = "clustalo --force -i " + faiFile + " -o " + faoFile;
-//			else if (msa.startsWith("msaprobs"))
-//				cmd = "msaprobs -o " + faoFile + " " + faiFile;
-//			else if (msa.startsWith("mafft"))
-//				cmd = "mafft_wrapper.sh  " + faiFile + " " + faoFile;
-			else{
-				if(HybridAssembler.VERBOSE)
-					LOG.info("Unknown msa function {}, pick the best read as consensus!", msa);
-				consensus.setName(prefix+"_consensus");
-				Files.deleteIfExists(Paths.get(faiFile));
-				Files.deleteIfExists(Paths.get(faoFile));
-				return consensus;
-			}
-			
-			if(HybridAssembler.VERBOSE)
-				LOG.info("Running " + cmd);
-			Process process = Runtime.getRuntime().exec(cmd);
-			process.waitFor();
-			if(HybridAssembler.VERBOSE)
-				LOG.info("Done " + cmd);
-			Files.deleteIfExists(Paths.get(faiFile));
-
-		}
-				
-
-
-		//3.0 Read in multiple alignment
-		ArrayList<Sequence> seqList = new ArrayList<Sequence>();
-		{
-			SequenceReader msaReader = FastaReader.getReader(faoFile);
-			Sequence nSeq = null;
-			while ((nSeq = msaReader.nextSequence(Alphabet.DNA())) != null) {
-				seqList.add(nSeq);						
-			}
-			msaReader.close();
-		}
-
-		//4.0 get consensus			
-		{
-			int [] coef = new int[seqList.size()];			
-			for (int y = 0; y < seqList.size(); y++){
-				coef[y] = 1;				
-			}
-			//TODO: combine error profiles?? 
-			int [] counts = new int[6];
-
-			SequenceBuilder sb = new SequenceBuilder(Alphabet.DNA(), seqList.get(0).length());
-			for (int x = 0; x < seqList.get(0).length();x++){		
-				Arrays.fill(counts, 0);
-				for (int y = 0; y < seqList.size(); y++){					
-					byte base = seqList.get(y).getBase(x);
-					if (base >= 6) 
-						counts[4] += coef[y];//N
-					else
-						counts[base] += coef[y];
-				}//for y
-				int maxIdx = 0;
-				for (int y = 1; y < counts.length; y++){
-					if (counts[y] > counts[maxIdx])
-						maxIdx = y;					
-				}//for y
-				if (maxIdx < Alphabet.DNA.GAP){//not a gap
-					sb.append((byte)maxIdx);
-				}//if
-			}//for x
-			sb.setName(prefix+"_consensus");
-			if(HybridAssembler.VERBOSE)
-				LOG.info(sb.getName() + "  " + sb.length());
-			consensus = sb.toSequence();
-		}
-		
-		Files.deleteIfExists(Paths.get(faoFile));
-		return consensus;
+	ConsensusCaller(String msa){
+		this();
+		this.msa=msa;
 	}
-	
-	
-	//no check: use with care
-	public void saveReadToDisk(AlignedRead read){
-		if(BDGraph.getReadsNumOfBrg(read.getEndingsID())>=BDGraph.MAX_LISTING)
+	public void setConsensusMSA(String msa){
+		msa=msa.toLowerCase().trim();
+		if(msa.startsWith("spoa"))
+			msa="spoa";
+		else if(msa.startsWith("poa"))
+			msa="poa";
+		else if(msa.startsWith("kalign3"))
+			msa="kalign3";
+		else if(msa.startsWith("kalign"))
+			msa="kalign";
+		else
+			msa="none";
+
+	}
+	public String getConsensusMSA(){return msa;}
+	public void addBridgingRead(String id, Sequence seq){
+		//no need to add more reads if consensus sequence is already determined
+		if(consensusReads.containsKey(id))
 			return;
+		else if(!bridgingReads.containsKey(id))
+			bridgingReads.put(id, new ArrayList<Sequence>());
 		
+		getBridgingReadList(id).add(seq);
+		if(getBridgingReadsNumber(id) >= BDGraph.GOOD_SUPPORT)
+			setConsensusSequence(id);
+	}
+	public List<Sequence> getBridgingReadList(String id){
+		return bridgingReads.get(id);
+	}
+	public int getBridgingReadsNumber(String id){
+		return getBridgingReadList(id)==null?-1:getBridgingReadList(id).size();
+	}
+	public Sequence getConsensus(String id, boolean force){
+		if(force && getBridgingReadsNumber(id)>=BDGraph.MIN_SUPPORT)
+			setConsensusSequence(id); //do it even the lack not enough bridging reads 
+		
+		return consensusReads.get(id);
+	}
+	private synchronized void setConsensusSequence(String id){
+		Sequence consensus=null;
+		try {
+			consensus=ErrorCorrection.consensusSequence(getBridgingReadList(id), AlignedRead.tmpFolder+File.separator+id, msa);
+		} catch (Exception e) {
+			LOG.warn("Error with consensus calling:\n {} Pick first read for the consensus of bridge {}", e.getMessage(), id);
+			consensus=getBridgingReadList(id).get(0);
+		}
+		consensusReads.put(id, consensus);
+		bridgingReads.remove(id); //don't need anymore, release the entry to free (not much) memory!
+		
+	}
+	
+	//TODO: when to save (important) and what to save!!!
+	public void saveBridgingReadsFromAlignments(AlignedRead read){
 		if(read.getEFlag()>=3)
 			saveCorrectedSequenceInBetween(read);
 		else
@@ -170,12 +90,11 @@ public class ConsensusCaller {
 	//Save the long read sequence between 2 unique nodes' alignments: start and end 
 	//with the aligned parts are replaced by corresponding reference parts (of Illumina data)
 	//return length of non-Illumina bases from the success written sequence
-	public int saveCorrectedSequenceInBetween(AlignedRead read){
+	private void saveCorrectedSequenceInBetween(AlignedRead read){
 		Alignment 	start = read.getFirstAlignment(), 
 					end = read.getLastAlignment();
 		BDNode 	fromContig = start.node,
 				toContig = end.node;
-		int noise=0;
 		if(		fromContig.getId().compareTo(toContig.getId()) > 0 
 			|| (fromContig==toContig && start.strand==false && end.strand==false)) //to agree with BDEdge.createID()
 		{
@@ -186,7 +105,6 @@ public class ConsensusCaller {
 			toContig = end.node;
 			
 		}
-//		sortAlignment();
 		//1. Appending k-flanking sequence from the start node
 		Sequence flank0=((Sequence)fromContig.getAttribute("seq"))
 						.subSequence(	(int)fromContig.getNumber("len")-BDGraph.getKmerSize(), 
@@ -202,17 +120,11 @@ public class ConsensusCaller {
 		seqBuilder.append(flank0);
 		
 		//2. Filling the sequence in-between
-//		int posReadEnd   = start.readAlignmentEnd();
-//		int posReadFinal = end.readAlignmentStart();// I need as far as posReadFinal
-		//extrapolating...
 		int posReadEnd = start.getReadPositionAtReferencePosition(start.strand?(int)fromContig.getNumber("len"):1);
 		int posReadFinal = end.getReadPositionAtReferencePosition(end.strand?1:(int)toContig.getNumber("len"));
 		
 		for (Alignment record:read.alignments){
 			BDNode contig = record.node;
-//			System.out.println("Current alignment record: " + record.toString());
-//			System.out.println("posReadEnd=" + posReadEnd + " posReadFinal=" + posReadFinal);
-//			System.out.println("Read " + readSequence.getName() + " length=" + readSequence.length());
 			if (posReadEnd >= posReadFinal)
 				break; 
 
@@ -225,7 +137,6 @@ public class ConsensusCaller {
 				int newPosReadEnd = Math.min(posReadFinal, record.readAlignmentStart());
 				if (newPosReadEnd > posReadEnd){
 					seqBuilder.append(read.readSequence.subSequence(posReadEnd-1, newPosReadEnd-1)); //subsequence is 0-index
-					noise+=newPosReadEnd-posReadEnd;
 					posReadEnd = newPosReadEnd;
 					
 				}
@@ -266,8 +177,7 @@ public class ConsensusCaller {
 				
 					seqBuilder.append(Alphabet.DNA.complement(((Sequence)contig.getAttribute("seq")).subSequence(refRight-1, refLeft-1)));
 				}
-			}//FIXME: scan for overlap between suggested references instead of blindly go based on alignments
-			else{//Now get information on the contig from start
+			}else{//Now get information on the contig from start
 				if (contig == toContig)
 					break;
 				if (record.strand){
@@ -313,7 +223,6 @@ public class ConsensusCaller {
 										(int)toContig.getNumber("len"));
 				flank1=Alphabet.DNA.complement(flank1);
 		}
-		//TODO: double-check this case
 		if(posReadEnd>posReadFinal){
 			//scan for overlap
 			int overlap=GraphUtil.overlap(flank0, flank1);
@@ -331,21 +240,7 @@ public class ConsensusCaller {
 																	fromContig.getId() + (start.strand?"+":"-"),
 																	toContig.getId() + (end.strand?"+":"-")
 																	);
-
-		String fileName=AlignedRead.tmpFolder+File.separator+key+".fasta";
-		try {
-			SequenceOutputStream out = new SequenceOutputStream(new FileOutputStream(fileName,true));
-			Sequence seq=seqBuilder.toSequence();
-			seq.setDesc("noise="+noise);
-			seq.writeFasta(out);
-			out.close();
-			BDGraph.addBrg2ReadsNum(key);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return -1;
-		}
-		
-		return noise;
+		Sequence seq=seqBuilder.toSequence();
+		addBridgingRead(key, seq);
 	}
 }

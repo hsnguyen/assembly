@@ -29,7 +29,8 @@ public class NPGraphCmd extends CommandLine{
 
 		addString("aligner","","Aligner tool that will be used, either minimap2 or bwa");
 		addString("algOpt", "", "Settings used by aligner to align long reads to the contigs");
-		
+		addString("msa","","MSA tools for consensus. Options include spoa, kalign3 (fast); kalign2, poa (slow).");
+
 		addBoolean("overwrite", true, "Whether to overwrite or reuse the intermediate file");
 		addBoolean("sp", false, "Whether to use SPAdes contigs.paths for bridging.");
 		addInt("qual", 10, "Minimum quality of alignment to considered");
@@ -53,7 +54,8 @@ public class NPGraphCmd extends CommandLine{
 				outputDir = cmdLine.getStringVal("output"),
 				shortReadsBinInput = cmdLine.getStringVal("sb"),
 				alg=cmdLine.getStringVal("aligner"),
-				algOpt = cmdLine.getStringVal("algOpt");
+				algOpt = cmdLine.getStringVal("algOpt"),
+				msa = cmdLine.getStringVal("msa");
 		boolean overwrite = cmdLine.getBooleanVal("overwrite"),
 				spaths = cmdLine.getBooleanVal("sp"),
 				gui = cmdLine.getBooleanVal("gui");
@@ -89,6 +91,9 @@ public class NPGraphCmd extends CommandLine{
 			hbAss.setAligner(alg);
 		if(algOpt!=null && !algOpt.isEmpty())
 			hbAss.setAlignerOpts(algOpt);
+		
+		if(msa!=null && !msa.isEmpty())
+			hbAss.setMSA(msa);
 		
 		hbAss.setOverwrite(overwrite);
 		hbAss.setUseSPAdesPath(spaths);

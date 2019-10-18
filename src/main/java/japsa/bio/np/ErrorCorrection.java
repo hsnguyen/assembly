@@ -316,8 +316,8 @@ public class ErrorCorrection {
 				
 				consensus = getConsensus(seqList);
 				
-				Files.deleteIfExists(Paths.get(faiFile));
-				Files.deleteIfExists(Paths.get(faoFile));
+//				Files.deleteIfExists(Paths.get(faiFile));
+//				Files.deleteIfExists(Paths.get(faoFile));
 			}
 		}
 		return consensus;
