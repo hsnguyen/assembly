@@ -283,7 +283,7 @@ public class NSDFChopper {
     	/******************************************
     	 * 1. Calculate NSDF by FFT
     	 *****************************************/
-        double [] data = null;
+        double [] data = new double[signal.length];
         
         normalized(signal, data);       
         
