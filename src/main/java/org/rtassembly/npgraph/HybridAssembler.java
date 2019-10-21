@@ -675,8 +675,8 @@ public class HybridAssembler {
     public boolean checkMSA() {    		
 		try{	
 			String[] cmd;
-			if(getMSA().startsWith("kalign"))
-				cmd=new String[]{getMSA(),"-h"}; //important, as kalign acted weird without this
+			if(getMSA().startsWith("kalign")) //maybe kalign3
+				cmd=new String[]{"kalign","-h"}; //important, as kalign acted weird without this
 			else
 				cmd=new String[]{getMSA()};
 			
