@@ -126,7 +126,7 @@ public class GraphExploreDesktop {
 			hbAss.setBinReadsInput(binFile);
 		
 		hbAss.setAligner("minimap2");
-		hbAss.setMSA("spoa");
+		hbAss.setMSA("kalign3"); //out of memory with reads > 18kbp
 		hbAss.prepareShortReadsProcess();
 		
     	BDGraph graph= hbAss.simGraph;

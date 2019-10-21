@@ -327,12 +327,13 @@ public class HybridAssembler {
         
         //check consensus tool
     	if(!checkMSA()){
-    		setCheckLog("WARNING: MSA tools not found!");
+    		setCheckLog("WARNING: MSA tool (" + getMSA() + ") not found!");
     		setMSA("none");
-    		if(VERBOSE)
+    		if(HybridAssembler.VERBOSE)
     			LOG.info("WARNING: MSA tools not found!");
-    	}else if(VERBOSE)
+    	}else if(HybridAssembler.VERBOSE)
     		LOG.info("MSA for consensus calling is set to {}", getMSA());
+    	
 		simGraph.consensus.setConsensusMSA(getMSA());
     	
         return true;
@@ -672,24 +673,26 @@ public class HybridAssembler {
     }
     
     public boolean checkMSA() {    		
-		try{
+		try{	
+			String[] cmd;
+			if(getMSA().startsWith("kalign"))
+				cmd=new String[]{getMSA(),"-h"}; //important, as kalign acted weird without this
+			else
+				cmd=new String[]{getMSA()};
 			
-			ProcessBuilder pb = new ProcessBuilder(getMSA()).redirectErrorStream(true);
+			ProcessBuilder pb = new ProcessBuilder(cmd).redirectErrorStream(true);
 			Process process =  pb.start();
 			BufferedReader bf = SequenceReader.openInputStream(process.getInputStream());
-
-
 			String line;
-			
+			boolean found=false;
 			while ((line = bf.readLine())!=null){				
 				if (line.toLowerCase().contains("usage:")){ // kalign, kalign3, poa, spoa all print out "Usage:" if run without parameter
-					bf.close();
-				    return true;
+					found=true;
+					break;
 				}
 			}	
 			bf.close();
-			setCheckLog("Command: " + getMSA() + " not found!");
-			return false;
+			return found;
 
 		}catch (IOException e){
 			setCheckLog("Error running: " + getMSA() + "\n" + e.getMessage());

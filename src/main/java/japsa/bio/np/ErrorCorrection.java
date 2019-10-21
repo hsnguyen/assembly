@@ -219,10 +219,12 @@ public class ErrorCorrection {
     	SequenceBuilder sb = new SequenceBuilder(Alphabet.DNA(), seql);
 		BufferedReader bf =  FastaReader.openFile(faoFile);
 		String line = bf.readLine();
+		//First line must start with Consensus
+		if (!line.startsWith("Consensus")){
+			LOG.info("spoa failed: {}",line);
+			return null;	
+		}
 		while ( (line = bf.readLine()) != null){
-			if (line.startsWith("Consensus")){
-				continue;						
-			}//if
 			sb.append(new Sequence(Alphabet.DNA(), line, "consensus"));
 		}//while
 		sb.setName("consensus");
@@ -287,7 +289,7 @@ public class ErrorCorrection {
 		if (readList != null && readList.size() > 0){
 			if (readList.size() == 1){
 				readList.get(0).setName("consensus");
-				consensus = readList.get(0);
+				return readList.get(0);
 			}else{
 				
 				String faiFile = prefix + "_ai.fasta";//name of fasta files of reads mapped to the gene				
@@ -304,22 +306,27 @@ public class ErrorCorrection {
 				}
 				
 				if ("poa".equals(msa))
-					return readPOAOutput(faoFile, readList.get(0).length());	
+					consensus=readPOAOutput(faoFile, readList.get(0).length());	
 				else if("spoa".equals(msa)){
-					return readSPOAOutput(faoFile, readList.get(0).length());
+					consensus=readSPOAOutput(faoFile, readList.get(0).length());
+				}else{
+					//3.0 Read in multiple alignment
+					ArrayList<Sequence> seqList = readMultipleAlignment(faoFile);
+					//4.0 get consensus and write to facFile	
+					
+					consensus = getConsensus(seqList);
 				}
-				
-
-				//3.0 Read in multiple alignment
-				ArrayList<Sequence> seqList = readMultipleAlignment(faoFile);
-				//4.0 get consensus and write to facFile	
-				
-				consensus = getConsensus(seqList);
 				
 //				Files.deleteIfExists(Paths.get(faiFile));
 //				Files.deleteIfExists(Paths.get(faoFile));
 			}
 		}
+		
+		if(consensus==null){
+			LOG.info("Consensus is pick randomly from the list!");
+			consensus=readList.get(0);
+		}
+		
 		return consensus;
 	}
 }
