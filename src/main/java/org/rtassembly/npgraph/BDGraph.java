@@ -634,7 +634,7 @@ public class BDGraph extends MultiGraph{
      * Get a map showing shortest distances from surrounding nodes to a *rootNode* expanding to a *direction*, within a *distance*
      * based on Dijkstra algorithm
      */
-    public HashMap<String, Integer> getShortestTreeFromNode(BDNode rootNode, boolean expDir, int distance){
+    public static HashMap<String, Integer> getShortestTreeFromNode(BDNode rootNode, boolean expDir, int distance){
 		PriorityQueue<BDNodeState> pq = new PriorityQueue<>();
 		HashMap<String,Integer> retval = new HashMap<>();
 		
@@ -862,8 +862,7 @@ public class BDGraph extends MultiGraph{
 			updateBridgesMap(reversedBridge);
 			
 		}
-		//TODO: when to save (important) and what to save!!!
-//		consensus.saveBridgingReadsFromAlignments(read);
+		consensus.saveBridgingReadsFromAlignments(read);
 		
 		return retval;
     }

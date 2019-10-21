@@ -131,7 +131,6 @@ public class NSDFChopper {
 	}
     
 	private void normalized(short[] input, double [] output){
-//		output = new double[input.length];
         SummaryStatistics stats=new SummaryStatistics();
         for (int j=0;j<input.length;j++) {
             output[j] = (double)input[j];

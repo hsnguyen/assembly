@@ -3,7 +3,9 @@ package org.rtassembly.npgraph;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,25 +20,27 @@ public class ConsensusCaller {
 	
 	volatile HashMap<String, List<Sequence>> bridgingReads;
 	volatile HashMap<String, Sequence> consensusReads;
+	private Set<String> connectedPairs; //save connected node pairs in the assembly graph so that we don't need to save the in-betwwen long-read
 	String msa;
 	ConsensusCaller(){
 		consensusReads = new HashMap<String, Sequence>();
 		bridgingReads = new HashMap<String, List<Sequence>>();
+		connectedPairs = new HashSet<>();
 		msa="kalign"; //default because of popularity, recommended one is spoa
 	}
 	ConsensusCaller(String msa){
 		this();
 		this.msa=msa;
 	}
-	public void setConsensusMSA(String msa){
-		msa=msa.toLowerCase().trim();
-		if(msa.startsWith("spoa"))
+	public void setConsensusMSA(String aligner){
+		aligner=aligner.toLowerCase().trim();
+		if(aligner.startsWith("spoa"))
 			msa="spoa";
-		else if(msa.startsWith("poa"))
+		else if(aligner.startsWith("poa"))
 			msa="poa";
-		else if(msa.startsWith("kalign3"))
+		else if(aligner.startsWith("kalign3"))
 			msa="kalign3";
-		else if(msa.startsWith("kalign"))
+		else if(aligner.startsWith("kalign"))
 			msa="kalign";
 		else
 			msa="none";
@@ -69,7 +73,8 @@ public class ConsensusCaller {
 	private synchronized void setConsensusSequence(String id){
 		Sequence consensus=null;
 		try {
-			consensus=ErrorCorrection.consensusSequence(getBridgingReadList(id), AlignedRead.tmpFolder+File.separator+id, msa);
+			ErrorCorrection.msa=msa;
+			consensus=ErrorCorrection.consensusSequence(getBridgingReadList(id), AlignedRead.tmpFolder+File.separator+id);
 		} catch (Exception e) {
 			LOG.warn("Error with consensus calling:\n {} Pick first read for the consensus of bridge {}", e.getMessage(), id);
 			consensus=getBridgingReadList(id).get(0);
@@ -81,10 +86,19 @@ public class ConsensusCaller {
 	
 	//TODO: when to save (important) and what to save!!!
 	public void saveBridgingReadsFromAlignments(AlignedRead read){
-		if(read.getEFlag()>=3)
-			saveCorrectedSequenceInBetween(read);
-		else
-			read.splitAtPotentialAnchors().forEach(r->saveCorrectedSequenceInBetween(r));
+		for(AlignedRead r:read.splitAtPotentialAnchors()){
+			String id=r.getEndingsID();
+			if(consensusReads.containsKey(id) || connectedPairs.contains(id))
+				continue;
+			Alignment first=r.getFirstAlignment(), last=r.getLastAlignment();
+			HashMap<String,Integer> shortestMap = BDGraph.getShortestTreeFromNode(last.node, !last.strand, Math.abs(last.readStart-first.readEnd));
+			String key=first.node.getId()+ (first.strand?"o":"i");
+			if(shortestMap.containsKey(key))
+				connectedPairs.add(id);
+			else{
+				saveCorrectedSequenceInBetween(r);
+			}
+		}
 			
 	}
 	//Save the long read sequence between 2 unique nodes' alignments: start and end 
@@ -236,7 +250,7 @@ public class ConsensusCaller {
 		
 		String key=read.getEndingsID();
 		if(HybridAssembler.VERBOSE)
-			LOG.info("Save read %s to bridge %s: %s -> %s", read.readSequence.getName(), key,
+			LOG.info("Save read {} to bridge {}: {} -> {}", read.readSequence.getName(), key,
 																	fromContig.getId() + (start.strand?"+":"-"),
 																	toContig.getId() + (end.strand?"+":"-")
 																	);

@@ -98,9 +98,9 @@ public class ErrorCorrection {
 		return score;		
 	}
 
-    public static Sequence consensusSequence(List<Sequence> readList, String prefix, String msa) throws IOException, InterruptedException{
+    public static Sequence consensusSequence(List<Sequence> readList, String prefix) throws IOException, InterruptedException{
     	if (readList != null && readList.size() > 0)
-    		return consensusSequence(readList, readList.size(), prefix, msa);
+    		return consensusSequence(readList, readList.size(), prefix);
     	else
     		return null;
     	
@@ -281,7 +281,7 @@ public class ErrorCorrection {
 		return consensus;
     }
     
-	public static Sequence consensusSequence(List<Sequence> readList, int max, String prefix, String msa) throws IOException, InterruptedException{
+	public static Sequence consensusSequence(List<Sequence> readList, int max, String prefix) throws IOException, InterruptedException{
 		//String faiFile = prefix + "_" + this.currentReadCount;
 		Sequence consensus = null;
 		if (readList != null && readList.size() > 0){

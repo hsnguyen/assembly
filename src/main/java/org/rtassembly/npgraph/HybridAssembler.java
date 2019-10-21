@@ -329,11 +329,12 @@ public class HybridAssembler {
     	if(!checkMSA()){
     		setCheckLog("WARNING: MSA tools not found!");
     		setMSA("none");
-    	}else{
-    		simGraph.consensus.setConsensusMSA(getMSA());
-    	}
-        
-        
+    		if(VERBOSE)
+    			LOG.info("WARNING: MSA tools not found!");
+    	}else if(VERBOSE)
+    		LOG.info("MSA for consensus calling is set to {}", getMSA());
+		simGraph.consensus.setConsensusMSA(getMSA());
+    	
         return true;
 	}
 	//Loading the graph, doing preprocessing
