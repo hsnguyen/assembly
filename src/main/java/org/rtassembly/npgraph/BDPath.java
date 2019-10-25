@@ -234,7 +234,7 @@ public class BDPath extends Path{
 			}
 			else {
 				String filler=new String(new char[overlap]).replace("\0", "N");
-				Sequence fillerSeq=new Sequence(Alphabet.DNA5(), filler, "gap");
+				Sequence fillerSeq=new Sequence(Alphabet.DNA(), filler, "gap");
 				seq.append(fillerSeq.concatenate(curSeq));				
 
 				if(HybridAssembler.VERBOSE)

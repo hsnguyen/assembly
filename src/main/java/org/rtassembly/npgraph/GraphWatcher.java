@@ -99,7 +99,7 @@ public class GraphWatcher {
 		if(GraphUtil.approxCompare(aveCov, threshold) < 0 || clen < SimpleBinner.ANCHOR_CTG_LEN || comp.getEdgeCount() < 1 || clen < .5*tlen)
 			return false;
 		else{
-			System.out.printf("Keep non-unique components with cov=%.2f, clen=%d, tlen=%d\n", aveCov, clen, tlen);
+//			System.out.printf("Keep non-unique components with cov=%.2f, clen=%d, tlen=%d\n", aveCov, clen, tlen);
 			return true;
 		}
 	}

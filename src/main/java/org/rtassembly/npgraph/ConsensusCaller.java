@@ -74,9 +74,11 @@ public class ConsensusCaller {
 		Sequence consensus=null;
 		try {
 			ErrorCorrection.msa=msa;
+			ErrorCorrection.VERBOSE=HybridAssembler.VERBOSE;
 			consensus=ErrorCorrection.consensusSequence(getBridgingReadList(id), AlignedRead.tmpFolder+File.separator+id);
 		} catch (Exception e) {
-			LOG.warn("Error with consensus calling:\n {} Pick first read for the consensus of bridge {}", e.getMessage(), id);
+			if(HybridAssembler.VERBOSE)
+				LOG.warn("Error with consensus calling:\n {} Pick first read for the consensus of bridge {}", e.getMessage(), id);
 			consensus=getBridgingReadList(id).get(0);
 		}
 		consensusReads.put(id, consensus);
