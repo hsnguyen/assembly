@@ -18,6 +18,7 @@ import japsa.seq.JapsaAnnotation;
 import japsa.seq.Sequence;
 
 public class GraphWatcher {
+	public static boolean KEEP=false; //whether or not keeping the low-coverage nodes
 	BDGraph inputGraph, outputGraph;
 	ConnectedComponents rtComponents;
 	HashSet<BDEdge> cutEdges;
@@ -81,7 +82,7 @@ public class GraphWatcher {
 	synchronized private boolean isSignificantComponent(ConnectedComponent comp){
 		int clen = 1, tlen=0;
 		double ccov = 0;
-		double threshold=inputGraph.binner.leastBin.estCov; //lower-bound for coverage?!
+		double threshold=KEEP?0:inputGraph.binner.leastBin.estCov; //lower-bound for coverage?!
 		for(Node n:comp.getNodeSet()){
 			if(SimpleBinner.getBinIfUniqueNow(n)!=null)
 				return true;
@@ -96,10 +97,10 @@ public class GraphWatcher {
 			
 		}
 		double 	aveCov=ccov/tlen;
-		if(GraphUtil.approxCompare(aveCov, threshold) < 0 || clen < SimpleBinner.ANCHOR_CTG_LEN || comp.getEdgeCount() < 1 || clen < .5*tlen)
+		if(GraphUtil.approxCompare(aveCov, threshold) < 0 || clen < Math.max(SimpleBinner.ANCHOR_CTG_LEN,.5*tlen) || (!KEEP&&comp.getEdgeCount() < 1))
 			return false;
 		else{
-			System.out.printf("Keep non-unique components with cov=%.2f, clen=%d, tlen=%d\n", aveCov, clen, tlen);
+//			System.out.printf("Keep non-unique components with cov=%.2f, clen=%d, tlen=%d\n", aveCov, clen, tlen);
 			return true;
 		}
 	}

@@ -520,7 +520,7 @@ public class NPGraphFX extends Application{
     	
     	
     	ComboBox<String> consCombo=new ComboBox<String>();
-    	consCombo.getItems().addAll("kalign", "none");   
+    	consCombo.getItems().addAll("spoa","kalign","kalign3","poa","none");   
     	consCombo.valueProperty().bindBidirectional(myass.msaProperty());
         GridPane.setConstraints(consCombo, 2, 4, 2, 1);
         optionPane.getChildren().add(consCombo); 

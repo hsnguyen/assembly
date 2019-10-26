@@ -516,24 +516,19 @@ public class GoInBetweenBridge {
 			//call consensus when time come!
 			if(	(connectedPaths==null || connectedPaths.isEmpty())){				
 				//TODO: more anchors connecting!!! Here just connect unique dead-end unique nodes
-				if(	(BDGraph.getReadsNumOfBrg(pSegment.getEdgeID()) >= BDGraph.GOOD_SUPPORT || greedy)
-					&& PopBin.isCloseBins(SimpleBinner.getBinIfUnique(srcNode), SimpleBinner.getBinIfUnique(dstNode)) 
+				if(	PopBin.isCloseBins(SimpleBinner.getBinIfUnique(srcNode), SimpleBinner.getBinIfUnique(dstNode)) 
 					&& !graph.isConflictBridge(pSegment))
 				{					
 					connectedPaths=new ArrayList<>();
 					BDPath path = new BDPath(srcNode);
 					String id = BDEdge.createID(srcNode, dstNode, dir1, dir2);				
 					try{
-						System.out.printf("Consensus calling with: numberOfFullReads=%d\n\tNode 0: bin=%s; degree=%d\n\tNode 1: bin=%s; degree=%d\n",
-								BDGraph.getReadsNumOfBrg(pSegment.getEdgeID()),
-								SimpleBinner.getBinIfUnique(srcNode), srcNode.getDegree(),
-								SimpleBinner.getBinIfUnique(dstNode), dstNode.getDegree());
-
 						//Option 1: hide long-read consensus from the graph
 						BDNode n=new BDNode(graph, "000"+AlignedRead.PSEUDO_ID++);
-						Sequence seq=GraphUtil.consensusSequence(id, d);
+						Sequence seq=graph.consensus.getConsensus(id, greedy);
 						if(seq==null)
 							return;
+						
 						n.setAttribute("seq", seq);
 						n.setAttribute("len", seq.length());
 						n.setAttribute("cov",SimpleBinner.getBinIfUnique(srcNode).estCov);
