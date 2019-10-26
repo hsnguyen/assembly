@@ -94,7 +94,7 @@ public class ReferenceBasedChopper {
 				//re-initialize
 				alignmentList = new ArrayList<AlignmentRecord>();
 				readID = algRec.readID;	
-				fullSeq=new FastqSequence(Alphabet.DNA5(), samRecord);
+				fullSeq=new FastqSequence(Alphabet.DNA(), samRecord);
 //				fullSeq.print(fout);
 				allLength.add(fullSeq.length());
 			}
@@ -135,7 +135,7 @@ public class ReferenceBasedChopper {
 			return 0;
 		System.out.println("===========================================================");
 
-		Sequence motif = new Sequence(Alphabet.DNA5(), "TGGTATCAGAGC", "template");
+		Sequence motif = new Sequence(Alphabet.DNA(), "TGGTATCAGAGC", "template");
 		NKDFChopper scanner = new NKDFChopper(motif);
 				
 		int[] 	start = new int[records.size()], 

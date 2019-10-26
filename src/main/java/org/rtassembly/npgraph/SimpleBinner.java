@@ -21,7 +21,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Sets;
 
 public class SimpleBinner {
     private static final Logger LOG = LoggerFactory.getLogger(SimpleBinner.class);
@@ -391,7 +390,9 @@ public class SimpleBinner {
 		
 		//3.3 Assign unique nodes here: need more tricks
 		for(Node node:graph) {
-			if(	node2BinMap.containsKey(node) && node.getNumber("len") > ANCHOR_CTG_LEN ){ 
+			if(node.getNumber("len") < ANCHOR_CTG_LEN)
+				continue;
+			if(	node2BinMap.containsKey(node)){ 
 				Multiplicity bc = node2BinMap.get(node);
 				if(Math.max(node.getInDegree(), node.getOutDegree()) <= 1){ //not true if e.g. sequencing errors inside unique contig
 					Set<PopBin> counts = bc.getBinsSet();
@@ -403,9 +404,7 @@ public class SimpleBinner {
 					if(bc.getSum() > 3)
 						node2BinMap.remove(node);
 				}
-			}else if(node.getNumber("len") > TRANSFORMED_ANCHOR_CTG_LEN //big unbinned nodes
-					&& Math.max(node.getInDegree(), node.getOutDegree()) <= 1 //to investigate unique nodes only
-					)
+			}else if(Math.max(node.getInDegree(), node.getOutDegree()) <= 1) //to investigate unique nodes only
 				graph.addUnknownNodes((BDNode) node);
 		}
 		

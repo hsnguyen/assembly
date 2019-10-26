@@ -4,11 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.regex.Matcher;
@@ -30,7 +26,6 @@ import htsjdk.samtools.SAMRecord;
 import japsa.seq.Alphabet;
 import japsa.seq.FastaReader;
 import japsa.seq.Sequence;
-import japsa.seq.SequenceBuilder;
 import japsa.seq.SequenceReader;
 
 public class GraphUtil {
@@ -696,164 +691,6 @@ public class GraphUtil {
 			"node { size: 7px; fill-color: rgb(150,150,150); }" +
 			"edge { fill-color: rgb(255,50,50); size: 2px; }" +
 			"edge.cut { fill-color: rgba(200,200,200,128); }";
-    
-	/* 
-	 * Adapt from japsa without need to output fasta input file
-	 */
-	public static Sequence consensusSequence(String prefix, int distance) throws IOException, InterruptedException{
-		Sequence consensus = null;	
-		String msa = BDGraph.MSA;
-		String 	faoFile = AlignedRead.tmpFolder+File.separator+prefix+"_"+msa+".fasta";
-		File consFile = new File(faoFile);
-		if(!consFile.exists()){
-			String faiFile=AlignedRead.tmpFolder+File.separator+prefix+".fasta";
-			//1.0 Check faiFile?
-			if(!Files.isReadable(Paths.get(faiFile))){
-				return null;
-			}
-			FastaReader faiReader =  new FastaReader(faiFile);
-			int count=0, minGap=Integer.MAX_VALUE;
-			Sequence seq=null;
-			while((seq=faiReader.nextSequence(Alphabet.DNA()))!=null){
-				//if there is no valid MSA detected, output the sequence with the least non-Illumina bases
-				if(!msa.startsWith("kalign")){
-					String[] toks=seq.getDesc().split("=");
-					try{
-						int curGap=Integer.parseInt(toks[1]);
-						if( curGap < minGap){
-							minGap=curGap;
-							consensus=seq;
-						}		
-					}catch(NumberFormatException e){
-						if(HybridAssembler.VERBOSE)
-							LOG.info("Pattern %s=%d not found in the header of input FASTA file {}", faiFile);
-						if(consensus==null || consensus.length() > seq.length())
-							consensus=seq;
-					}
-				}
-				count++;
-			}
-			
-			faiReader.close();
-			if(count<BDGraph.MIN_SUPPORT) //at least 3 of the good read count is required
-				return null;
-			
-			//2.0 Run multiple alignment. 
-			// For now, only kalign were chosen due to its speedy operation
-			String cmd  = "";
-//			if (msa.startsWith("kalign3"))
-//				cmd = "kalign -i " + faiFile+ " -o " + faoFile;
-			if (msa.startsWith("kalign"))
-				cmd = "kalign -gpo 60 -gpe 10 -tgpe 0 -bonus 0 -q -i " + faiFile	+ " -o " + faoFile;
-//			else if (msa.startsWith("poa"))
-//				cmd = "poa -read_fasta " + faiFile + " -clustal " + faoFile + " -hb blosum80.mat";
-//			else if (msa.startsWith("muscle"))
-//				cmd = "muscle -in " + faiFile + " -out " + faoFile + " -maxiters 5 -quiet";				
-//			else if (msa.startsWith("clustal")) 
-//				cmd = "clustalo --force -i " + faiFile + " -o " + faoFile;
-//			else if (msa.startsWith("msaprobs"))
-//				cmd = "msaprobs -o " + faoFile + " " + faiFile;
-//			else if (msa.startsWith("mafft"))
-//				cmd = "mafft_wrapper.sh  " + faiFile + " " + faoFile;
-			else{
-				if(HybridAssembler.VERBOSE)
-					LOG.info("Unknown msa function {}, pick the best read as consensus!", msa);
-				consensus.setName(prefix+"_consensus");
-				Files.deleteIfExists(Paths.get(faiFile));
-				Files.deleteIfExists(Paths.get(faoFile));
-				return consensus;
-			}
-			
-			if(HybridAssembler.VERBOSE)
-				LOG.info("Running " + cmd);
-			Process process = Runtime.getRuntime().exec(cmd);
-			process.waitFor();
-			if(HybridAssembler.VERBOSE)
-				LOG.info("Done " + cmd);
-			Files.deleteIfExists(Paths.get(faiFile));
-
-		}
-				
-//		if ("poa".equals(msa)){
-//			SequenceBuilder sb = new SequenceBuilder(Alphabet.DNA(), (int) ((1+BDGraph.R_TOL)*distance)+2*BDGraph.getKmerSize());
-//			BufferedReader bf =  FastaReader.openFile(faoFile);
-//			String line = bf.readLine();
-//			while ( (line = bf.readLine()) != null){
-//				if (line.startsWith("CONSENS0")){
-//					for (int i = 10;i < line.length();i++){
-//						char c = line.charAt(i);
-//						int base = DNA.DNA().char2int(c);
-//						if (base >= 0 && base < 4)
-//							sb.append((byte)base);
-//					}//for							
-//				}//if
-//			}//while
-//			sb.setName(prefix+"_consensus");
-//			LOG.info(sb.getName() + "  " + sb.length());
-//			return sb.toSequence();
-//		}
-
-		//3.0 Read in multiple alignment
-		ArrayList<Sequence> seqList = new ArrayList<Sequence>();
-		{
-			SequenceReader msaReader = FastaReader.getReader(faoFile);
-			Sequence nSeq = null;
-			while ((nSeq = msaReader.nextSequence(Alphabet.DNA())) != null) {
-				seqList.add(nSeq);						
-			}
-			msaReader.close();
-		}
-
-		//4.0 get consensus			
-		{
-			int [] coef = new int[seqList.size()];			
-			for (int y = 0; y < seqList.size(); y++){
-				coef[y] = 1;				
-			}
-			//TODO: combine error profiles?? 
-			int [] counts = new int[6];
-
-			SequenceBuilder sb = new SequenceBuilder(Alphabet.DNA(), seqList.get(0).length());
-			for (int x = 0; x < seqList.get(0).length();x++){		
-				Arrays.fill(counts, 0);
-				for (int y = 0; y < seqList.size(); y++){					
-					byte base = seqList.get(y).getBase(x);
-					if (base >= 6) 
-						counts[4] += coef[y];//N
-					else
-						counts[base] += coef[y];
-				}//for y
-				int maxIdx = 0;
-				for (int y = 1; y < counts.length; y++){
-					if (counts[y] > counts[maxIdx])
-						maxIdx = y;					
-				}//for y
-				if (maxIdx < Alphabet.DNA.GAP){//not a gap
-					sb.append((byte)maxIdx);
-				}//if
-			}//for x
-			sb.setName(prefix+"_consensus");
-			if(HybridAssembler.VERBOSE)
-				LOG.info(sb.getName() + "  " + sb.length());
-			consensus = sb.toSequence();
-		}
-		
-		Files.deleteIfExists(Paths.get(faoFile));
-		return consensus;
-	}
-	
-	
-	//no check: use with care
-	public static void saveReadToDisk(AlignedRead read){
-		if(BDGraph.getReadsNumOfBrg(read.getEndingsID())>=BDGraph.MAX_LISTING)
-			return;
-		
-		if(read.getEFlag()>=3)
-			read.saveCorrectedSequenceInBetween();
-		else
-			read.splitAtPotentialAnchors().forEach(r->r.saveCorrectedSequenceInBetween());
-			
-	}
 	
 	/*
 	 * Note that read sequence from SAMRecord could be reverse-complemented
