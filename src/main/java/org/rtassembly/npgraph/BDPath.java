@@ -229,7 +229,7 @@ public class BDPath extends Path{
 
 			}
 			//if length of edge > 0: should add NNNN...NN to seq (in case there are gaps in NGS assembly graph)
-			if(overlap < 0){
+			if(overlap <= 0){
 				seq.append(curSeq.subSequence(-overlap, curSeq.length())); 
 			}
 			else {
@@ -238,7 +238,7 @@ public class BDPath extends Path{
 				seq.append(fillerSeq.concatenate(curSeq));				
 
 				if(HybridAssembler.VERBOSE)
-					LOG.error("Edge {} has length={} > 0: filled with Ns", e.getId(), overlap);
+					LOG.info("Edge {} has length={} > 0: filled with Ns", e.getId(), overlap);
 
 
 			}

@@ -7,7 +7,9 @@ import org.graphstream.ui.view.View;
 import org.graphstream.ui.view.Viewer;
 import org.rtassembly.npgraph.BDGraph;
 import org.rtassembly.npgraph.GraphUtil;
+import org.rtassembly.npgraph.GraphWatcher;
 import org.rtassembly.npgraph.HybridAssembler;
+import org.rtassembly.npgraph.SimpleBinner;
 
 public class GraphExploreDesktop {
 
@@ -113,7 +115,6 @@ public class GraphExploreDesktop {
     	/*******************************************************************************
     	 ****************************** Share code *************************************
     	 *******************************************************************************/
-    	
     	HybridAssembler.VERBOSE=true;
 		HybridAssembler hbAss = new HybridAssembler();
 		hbAss.setUseSPAdesPath(useSPAdesPath);
