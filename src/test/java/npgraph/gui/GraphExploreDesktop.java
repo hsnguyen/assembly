@@ -115,7 +115,7 @@ public class GraphExploreDesktop {
     	/*******************************************************************************
     	 ****************************** Share code *************************************
     	 *******************************************************************************/
-    	HybridAssembler.VERBOSE=true;
+//    	HybridAssembler.VERBOSE=true;
 		HybridAssembler hbAss = new HybridAssembler();
 		hbAss.setUseSPAdesPath(useSPAdesPath);
 		
