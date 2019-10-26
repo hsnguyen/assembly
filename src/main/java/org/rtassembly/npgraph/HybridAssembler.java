@@ -25,7 +25,6 @@ import htsjdk.samtools.SamInputResource;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
-import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceReader;
 import javafx.beans.property.StringProperty;
@@ -79,7 +78,7 @@ public class HybridAssembler {
 	public final String getAlignerOpts() {return alignerOpt.get();}
 	public StringProperty alignerOptProperty(){return alignerOpt;}
 	
-	public final void setMSA(String tool) {	msa.set(tool); BDGraph.MSA=tool;}
+	public final void setMSA(String tool) {	msa.set(tool);}
 	public final String getMSA() {return msa.get();}
 	public StringProperty msaProperty(){return msa;}
 	
@@ -326,13 +325,16 @@ public class HybridAssembler {
         }
         
         //check consensus tool
-        if(getMSA().equals("kalign")){
-        	if(!checkKalign()){
-        		setCheckLog("kalign not found: random pick for the bridging read instead of consensus!");
-        		setMSA("none");
-        	}
-        }
-        
+    	if(!checkMSA()){
+    		setCheckLog("WARNING: MSA tool (" + getMSA() + ") not found!");
+    		setMSA("none");
+    		if(HybridAssembler.VERBOSE)
+    			LOG.info("WARNING: MSA tools not found!");
+    	}else if(HybridAssembler.VERBOSE)
+    		LOG.info("MSA for consensus calling is set to {}", getMSA());
+    	
+		simGraph.consensus.setConsensusMSA(getMSA());
+    	
         return true;
 	}
 	//Loading the graph, doing preprocessing
@@ -669,47 +671,33 @@ public class HybridAssembler {
 			
     }
     
-    public boolean checkKalign() {    		
-		try{
-			ProcessBuilder pb = new ProcessBuilder(getMSA()).redirectErrorStream(true);
+    public boolean checkMSA() {    		
+		try{	
+			String[] cmd;
+			if(getMSA().startsWith("kalign")) //maybe kalign3
+				cmd=new String[]{"kalign","-h"}; //important, as kalign acted weird without this
+			else
+				cmd=new String[]{getMSA()};
+			
+			ProcessBuilder pb = new ProcessBuilder(cmd).redirectErrorStream(true);
 			Process process =  pb.start();
 			BufferedReader bf = SequenceReader.openInputStream(process.getInputStream());
-
-
 			String line;
-			String version = "";
-			Pattern versionPattern = Pattern.compile("^Kalign version\\s(\\d+\\.\\d+).*");
-			Matcher matcher=versionPattern.matcher("");
-			
+			boolean found=false;
 			while ((line = bf.readLine())!=null){				
-				matcher.reset(line);
-				if (matcher.find()){
-				    version = matcher.group(1);
-				    break;//while
+				if (line.toLowerCase().contains("usage:")){ // kalign, kalign3, poa, spoa all print out "Usage:" if run without parameter
+					found=true;
+					break;
 				}
-				
-								
 			}	
 			bf.close();
-			
-			if (version.length() == 0){
-				setCheckLog("Command " + getMSA() + " doesn't give version info. Check version failed!");
-				return false;
-			}else{
-				LOG.info("kalign version: " + version);
-				if (version.compareTo("2.0") < 0){
-					setCheckLog(" Require kalign version 2 or above");
-					return false;
-				}
-			}
+			return found;
 
 		}catch (IOException e){
 			setCheckLog("Error running: " + getMSA() + "\n" + e.getMessage());
 			return false;
 		}
-		
-		return true;
-			
+					
     }
 
 	public static void main(String[] argv) throws IOException, InterruptedException{

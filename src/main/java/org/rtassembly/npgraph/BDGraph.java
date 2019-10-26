@@ -36,7 +36,6 @@ public class BDGraph extends MultiGraph{
 	static boolean 	circular=true; // circular or linear preference for the output genome
     static double RCOV=0.0;
     SimpleBinner binner;
-
 	//not gonna change these parameters in other thread
     public static final double R_TOL=.25;// relative tolerate: can be interpreted as long read error rate (10-25%)
     public static final int A_TOL=300;// absolute tolerate: can be interpreted as long read absolute error bases (100bp)
@@ -51,13 +50,13 @@ public class BDGraph extends MultiGraph{
     //these should be changed in another thread, e.g. settings from GUI
 	public static volatile double ILLUMINA_READ_LENGTH=300; //Illumina MiSeq
 	public static volatile int MIN_SUPPORT=3; //minimal support reads for bridging
-	public static volatile String MSA="kalign"; //consensus tool
 
 	
     //provide mapping from unique directed node to its corresponding bridge
     //E.g: 103-: <103-82-> also 82+:<82+103+>
     private HashMap<String, GoInBetweenBridge> bridgesMap; 
-    private static HashMap<String, Integer> brg2ReadsNum=new HashMap<>();
+    ConsensusCaller consensus;
+
     //mapping long but unknown contigs to unique successors and predecessor 
     //with number of supported reads
     private static HashMap<String, Set<BDNodeState>> unknownBinMap=new HashMap<>();
@@ -90,6 +89,7 @@ public class BDGraph extends MultiGraph{
 		super(id, strictChecking, autoCreate);
 		
 		bridgesMap=new HashMap<String, GoInBetweenBridge>(initialNodeCapacity*2);
+		consensus = new ConsensusCaller();
 //		adjacencyMap=new HashMap<Node, Set<Node>>();
 		// All we need to do is to change the node & edge factory
 		setNodeFactory(new NodeFactory<BDNode>() {
@@ -139,11 +139,11 @@ public class BDGraph extends MultiGraph{
 	 *            Unique identifier of the graph.
 	 */
 	public BDGraph(String id) {
-		this(id, true, false, 1000, 10000);
+		this(id, true, false, 10000, 10000);
 	}
 	
     public BDGraph(){
-    	this("Assembly graph",true,false, 1000, 10000);
+    	this("Assembly graph",true,false, 10000, 10000);
     }
 	
 	protected BDEdge addEdge(AbstractNode src, AbstractNode dst, boolean dir0, boolean dir1){
@@ -185,17 +185,7 @@ public class BDGraph extends MultiGraph{
     
     /**************************************************************************************************
      ********************** utility functions to serve the assembly algo ****************************** 
-     * ***********************************************************************************************/
-    static public void addBrg2ReadsNum(String key){
-    	if(!brg2ReadsNum.containsKey(key))
-    		brg2ReadsNum.put(key, 1);
-    	else
-    		brg2ReadsNum.put(key, brg2ReadsNum.get(key)+1);
-    }
-    static public int getReadsNumOfBrg(String key){
-    	return brg2ReadsNum.containsKey(key)?brg2ReadsNum.get(key):0;
-    }
-    
+     * ***********************************************************************************************/   
     
     // when this unique node actually contained by a bridge
     synchronized public void removeNodeFromBridgesMap(Node unqNode){
@@ -644,7 +634,7 @@ public class BDGraph extends MultiGraph{
      * Get a map showing shortest distances from surrounding nodes to a *rootNode* expanding to a *direction*, within a *distance*
      * based on Dijkstra algorithm
      */
-    public HashMap<String, Integer> getShortestTreeFromNode(BDNode rootNode, boolean expDir, int distance){
+    public static HashMap<String, Integer> getShortestTreeFromNode(BDNode rootNode, boolean expDir, int distance){
 		PriorityQueue<BDNodeState> pq = new PriorityQueue<>();
 		HashMap<String,Integer> retval = new HashMap<>();
 		
@@ -872,9 +862,7 @@ public class BDGraph extends MultiGraph{
 			updateBridgesMap(reversedBridge);
 			
 		}
-		
-		//finally save the inbetween sequence for later consensus call
-		GraphUtil.saveReadToDisk(read);
+		consensus.saveBridgingReadsFromAlignments(read);
 		
 		return retval;
     }

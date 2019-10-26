@@ -114,7 +114,12 @@ public class NSDFChopper {
 		return chopper;
 	}
 	public String getName(){return name;}
-	
+	String getChopCoords(){
+		String retval="[";
+		for(int i:chopper)
+			retval+=i+" ";
+		return retval+"]";
+	}
     private double sqr(double x) {
         return x * x;
     }
@@ -126,7 +131,6 @@ public class NSDFChopper {
 	}
     
 	private void normalized(short[] input, double [] output){
-		output = new double[input.length];
         SummaryStatistics stats=new SummaryStatistics();
         for (int j=0;j<input.length;j++) {
             output[j] = (double)input[j];
@@ -283,7 +287,7 @@ public class NSDFChopper {
     	/******************************************
     	 * 1. Calculate NSDF by FFT
     	 *****************************************/
-        double [] data = null;
+        double [] data = new double[signal.length];
         
         normalized(signal, data);       
         
@@ -307,8 +311,10 @@ public class NSDFChopper {
 //        LOG.info("Done peak picking in {} secs", (System.currentTimeMillis()-curTime)/1000);
         if(chopper==null||chopper.isEmpty())
         	LOG.info("Processing read {} length={}: not a concatemer!", name, signal.length);
-        else
-        	LOG.info("Processing read {} length={}: {}-concatemers!",name, signal.length,chopper.size());
+        else{
+        	LOG.info("Processing read {} length={}: {}-concatemers => {}",name, signal.length,chopper.size(),getChopCoords());
+        	
+        }
         
     }
     
