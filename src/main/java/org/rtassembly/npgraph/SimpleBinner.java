@@ -218,7 +218,7 @@ public class SimpleBinner {
 			if(	n.getNumber("len") >= UNIQUE_CTG_LEN 
 				&& Math.max(n.getInDegree(), n.getOutDegree()) <= 1
 				){
-				points.add(new DoublePoint(new double[]{n.getNumber("cov"), new Double(n.getId())}));
+				points.add(new DoublePoint(new double[]{n.getNumber("cov"), Double.valueOf(n.getId())}));
 			}
 		}
 		DBSCANClusterer dbscan = new DBSCANClusterer(GraphUtil.DISTANCE_THRES, 0, (a,b)->GraphUtil.metric(a[0], b[0]));

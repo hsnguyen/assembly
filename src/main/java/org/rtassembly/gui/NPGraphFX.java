@@ -40,7 +40,6 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 
-import org.graphstream.graph.Node;
 import org.graphstream.stream.thread.ThreadProxyPipe;
 import org.graphstream.ui.fx_viewer.FxDefaultView;
 import org.graphstream.ui.fx_viewer.FxViewer;
@@ -90,12 +89,11 @@ import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.stage.Stage;
 
 
-@SuppressWarnings("restriction")
 public class NPGraphFX extends Application{
     private static final Logger LOG = LoggerFactory.getLogger(NPGraphFX.class);
 
 	static HybridAssembler myass = new HybridAssembler();
-	static Viewer graphViewer;
+//	static Viewer graphViewer;
 	
 	public static void setAssembler(HybridAssembler ass){
 		myass = ass;
@@ -288,7 +286,8 @@ public class NPGraphFX extends Application{
     	//inputPane.setGridLinesVisible(true);
 
     	CheckBox binCB = new CheckBox("Use external binning information");
-    	binCB.setSelected(false);
+    	binCB.setSelected(!myass.getBinReadsInput().isEmpty());
+    	binCB.selectedProperty().addListener((obser,oldV,newV)->{if(!newV) myass.setBinReadsInput("");});
     	GridPane.setConstraints(binCB, 0,2,4,1);
     	inputPane.getChildren().add(binCB);
     	
@@ -836,7 +835,6 @@ public class NPGraphFX extends Application{
 ////		//desktop IMB
 ////		hbAss.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/EcK12S-careful/assembly_graph.gfa");
 ////		hbAss.setLongReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/Eck12_ONT.fasta");
-////		hbAss.setAlignerPath("/home/sonhoanghguyen/.usr/local/bin/"); 
 
 		NPGraphFX.setAssembler(hbAss);
 		Application.launch(NPGraphFX.class,args);
