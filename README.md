@@ -4,9 +4,7 @@ This Java project aims to develop tools for streaming assembly. In particular, a
 ## Quick installation guide
 ### Requirements
 * Linux operating system; not tested for Mac, Window. 
-* The project has been developed with *Oracle Java 1.8.0_144* that enables lambda expression and JavaFX included, so similar or later JVM version is expected to build & run the tool properly. 
-
-If JavaFX is not found from your compiler (e.g. OpenJDK or Oracle Java later version that might not include it in the future), you need to download jfxrt.jar and specify it from POM. So it's better to have Java 8 with JavaFX bundled.
+* Java 11+.
 * For *npGraph* ,if the pipeline requires an aligner (e.g. raw sequences in FASTA/FASTQ are provided instead of SAM/BAM), [minimap2](https://github.com/lh3/minimap2) (recommended) or [bwa](https://github.com/lh3/bwa) (later than 0.7.11) must be included.
 
 ### Install
