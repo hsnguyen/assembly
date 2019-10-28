@@ -72,7 +72,7 @@ public class NPGraphCmd extends CommandLine{
 		SimpleBinner.UNIQUE_CTG_LEN=cmdLine.getIntVal("unique");
 		GraphWatcher.KEEP=cmdLine.getBooleanVal("keep");
 		BDGraph.MIN_SUPPORT=cmdLine.getIntVal("mcov");
-		BDGraph.S_LIMIT=cmdLine.getIntVal("slim");
+		BDGraph.S_LIMIT=cmdLine.getIntVal("depth");
 		//Default output dir 
 		if(outputDir == null) {
 			outputDir = new File(shortReadsInput).getAbsoluteFile().getParent();
