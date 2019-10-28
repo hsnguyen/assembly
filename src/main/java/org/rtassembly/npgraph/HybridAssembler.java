@@ -31,7 +31,6 @@ import javafx.beans.property.StringProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
-@SuppressWarnings("restriction")
 public class HybridAssembler {
     private static final Logger LOG = LoggerFactory.getLogger(HybridAssembler.class);
 	//setting parameter for the GUI
@@ -515,6 +514,7 @@ public class HybridAssembler {
 	
 	//last attempt to connect bridges, being greedy now
 	public void postProcessGraph() throws IOException{
+		System.out.printf("Post-processing the graph by greedy path-finding algorithm. Please wait...\n");
 		HashSet<GoInBetweenBridge> 		unsolved=simGraph.getUnsolvedBridges(),
 										solved=new HashSet<>();
 		while(true){
