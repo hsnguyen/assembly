@@ -17,12 +17,23 @@ After cloning the project, the tool is included and can be built with maven2 by 
 to generate a JAR file containing application modules (target/assembly-x.x.x-SNAPSHOT.jar).
 
 Or you can download directly the JAR file from a release version without having to compile the source.
-
+### Docker
+User can build an image from the Dockerfile that also includes [bwa](https://github.com/lh3/bwa), [minimap2](https://github.com/lh3/minimap2) for aligners and [kalign3](https://github.com/TimoLassmann/kalign), [spoa](https://github.com/rvaser/spoa) for MSA-based consensus calling.
+```
+docker build -t japsa .
+```
+and then run the container (*npGraph* with GUI, *minimap2* and *kalign v3* by default)
+```
+docker run --rm -it -e DISPLAY -v $HOME/.Xauthority:/home/developer/.Xauthority -v <local_data_folder>:/data --net=host japsa
+```
+or overide the default parameters
+```
+docker run --rm -it -v <local_data_folder>:/data japsa org.rtassembly.NPGraphCmd ...
+```
 ## Modules
 For now two modules are on development:
 * [*npGraph*](docs/npgraph.md): streaming hybrid assembly using Nanopore data
 * [*npSignal*](docs/npsignal.md): using signal processing to detect concatemeric reads for viral genomes.
 
-More to come in the future. Please support.
 ## License
 Similar to [Japsa](https://github.com/mdcao/japsa) project, tools included in this repo is available under BSD-like license.
