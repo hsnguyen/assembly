@@ -49,8 +49,10 @@ RUN make
 RUN cp bin/spoa /build/bin/
 #NPGRAPH
 WORKDIR /build/app
-COPY . .
-RUN mvn clean package
+ADD pom.xml .
+RUN ["/usr/local/bin/mvn-entrypoint.sh", "mvn", "verify", "clean", "--fail-never"]
+ADD . .
+RUN ["mvn", "package"]
 RUN cp -p target/assembly-0.1.1-SNAPSHOT.jar /build/bin/
 #
 # Package stage
@@ -60,4 +62,5 @@ RUN apt-get update && apt-get install libgtk-3-0 libglu1-mesa -y && apt-get upda
 
 COPY --from=build /build/bin /usr/local/bin
 EXPOSE 8080
-ENTRYPOINT ["java","-cp","/usr/local/bin/assembly-0.1.1-SNAPSHOT.jar","org.rtassembly.NPGraphCmd","--msa","kalign3","--aligner","minimap2","--gui"]
+ENTRYPOINT ["java","-cp","/usr/local/bin/assembly-0.1.1-SNAPSHOT.jar"]
+CMD ["org.rtassembly.NPGraphCmd","--msa=kalign3","--aligner=minimap2","--gui"]
