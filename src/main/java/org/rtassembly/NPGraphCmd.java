@@ -14,8 +14,6 @@ import japsa.util.CommandLine;
 import javafx.application.Application;
 
 
-
-@SuppressWarnings("restriction")
 public class NPGraphCmd extends CommandLine{
     private static final Logger LOG = LoggerFactory.getLogger(NPGraphCmd.class);
 	public NPGraphCmd(){
@@ -111,8 +109,10 @@ public class NPGraphCmd extends CommandLine{
         if(gui) {
 			NPGraphFX.setAssembler(hbAss);
 			Application.launch(NPGraphFX.class,args);
+        }else if(shortReadsInput.isEmpty()) {
+			System.out.println(cmdLine.usageString());			
+			System.exit(-1);
         }else {
-	        
 			try {
 				if(hbAss.prepareShortReadsProcess() &&	hbAss.prepareLongReadsProcess()) {
 					hbAss.assembly();
