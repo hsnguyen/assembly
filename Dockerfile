@@ -7,16 +7,16 @@ FROM maven:3.6.0-jdk-11-slim AS build
 ENV DEBIAN_FRONTEND noninteractive
 
 # Install dependencies
-RUN apt-get update && \
-    apt-get install --yes git \
-    python3 \
-    python3-pkg-resources \
-    build-essential \
+RUN	apt-get update && \
+	apt-get install -y --no-install-recommends apt-utils && \
+  	apt-get install --yes git \
+	python3 \
+	python3-pkg-resources \
+	build-essential \
 	gcc-multilib \
-	apt-utils \
 	dh-autoreconf \
 	cmake \
-    zlib1g-dev 
+	zlib1g-dev 
 #Minimap2
 WORKDIR /build
 RUN git clone https://github.com/lh3/minimap2.git 
