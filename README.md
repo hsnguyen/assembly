@@ -5,7 +5,7 @@ This Java project aims to develop tools for streaming assembly, as an extension 
 ### Requirements
 * Linux operating system; not tested for Mac, Window. 
 * Java 11+.
-* For *npGraph* ,if the pipeline requires an aligner (e.g. raw sequences in FASTA/FASTQ are provided instead of SAM/BAM), [minimap2](https://github.com/lh3/minimap2) (recommended) or [bwa](https://github.com/lh3/bwa) (later than 0.7.11) must be included.
+* For [*npGraph*](docs/npgraph.md) ,if the pipeline requires an aligner (e.g. raw sequences in FASTA/FASTQ are provided instead of SAM/BAM), [minimap2](https://github.com/lh3/minimap2) (recommended) or [bwa](https://github.com/lh3/bwa) (later than 0.7.11) must be included.
 
 ### Install by maven
 After cloning the project, the tool can be built with maven2 (3.6.0) by following command:
@@ -27,13 +27,13 @@ The image is also made available on DockerHub as well
 docker pull nguyenhoangson/npgraph
 ```
 
-After having the docker image, one can run *npGraph* with GUI, *minimap2* and *kalign v3* by default
+After having the docker image, one can run [*npGraph*](docs/npgraph.md) with GUI, *minimap2* and *kalign v3* by default
 ```
 docker run --rm -it -e DISPLAY -v $HOME/.Xauthority:/home/developer/.Xauthority -v <local_data_folder>:/data --net=host npgraph
 ```
-You might need to run ```xhost +``` to disable X server access control on your local machine before running *npGraph* with GUI by above command.
+You might need to run ```xhost +``` to disable X server access control on your local machine before running [*npGraph*](docs/npgraph.md) with GUI by above command.
 
-If you want to disable GUI mode, overide the default executable behaviour, or invoke another module than *npGraph* then provide appropriate parameters, e.g.
+If you want to disable GUI mode, overide the default executable behaviour, or invoke another module than [*npGraph*](docs/npgraph.md) then provide appropriate parameters, e.g.
 ```
 docker run --rm -it -v <local_data_folder>:/data npgraph org.rtassembly.NPGraphCmd ...
 ```
