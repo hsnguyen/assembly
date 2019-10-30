@@ -1,5 +1,5 @@
 # A Java project for streaming assembly methods using Nanopore data
-This Java project aims to develop tools for streaming assembly, as an extension of [Japsa](https://github.com/mdcao/npScarf). In particular, assembly pipeline was migrated here from its code base in [Japsa](https://github.com/mdcao/npScarf) for more convenient developing and maintaining the modules. 
+This Java project aims to develop tools for streaming assembly, as an extension of [Japsa](https://github.com/mdcao/npScarf). In particular, assembly pipeline had been migrated here from its code base in [Japsa](https://github.com/mdcao/npScarf) for more convenient developing and maintaining the modules. In the future, the project might include additional analysis pipelines for Nanopore data as well.
 
 ## Quick installation guide
 ### Requirements
