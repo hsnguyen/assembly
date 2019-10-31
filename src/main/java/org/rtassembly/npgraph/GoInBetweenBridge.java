@@ -526,12 +526,12 @@ public class GoInBetweenBridge {
 						//Option 1: hide long-read consensus from the graph
 						BDNode n=new BDNode(graph, "000"+AlignedRead.PSEUDO_ID++);
 						Sequence seq=graph.consensus.getConsensus(id, greedy);
-						if(seq==null)
+						if(seq==null||seq.length()<BDGraph.getKmerSize())
 							return;
 						
 						n.setAttribute("seq", seq);
 						n.setAttribute("len", seq.length());
-						n.setAttribute("cov",SimpleBinner.getBinIfUnique(srcNode).estCov);
+						n.setAttribute("cov",Math.min(srcNode.getNumber("cov"), dstNode.getNumber("cov")));
 						boolean disagreement=srcNode.getId().compareTo(dstNode.getId()) > 0 
 								|| (srcNode==dstNode && dir1==false && dir2==true);
 						BDEdge 	e0=new BDEdge(srcNode, n, dir1, disagreement),
