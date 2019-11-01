@@ -526,12 +526,13 @@ public class GoInBetweenBridge {
 						//Option 1: hide long-read consensus from the graph
 						BDNode n=new BDNode(graph, "000"+AlignedRead.PSEUDO_ID++);
 						Sequence seq=graph.consensus.getConsensus(id, greedy);
-						if(seq==null)
+						//FIXME: review this case!
+						if(seq==null||seq.length()<=BDGraph.getKmerSize())
 							return;
 						
 						n.setAttribute("seq", seq);
 						n.setAttribute("len", seq.length());
-						n.setAttribute("cov",SimpleBinner.getBinIfUnique(srcNode).estCov);
+						n.setAttribute("cov",Math.min(srcNode.getNumber("cov"), dstNode.getNumber("cov")));
 						boolean disagreement=srcNode.getId().compareTo(dstNode.getId()) > 0 
 								|| (srcNode==dstNode && dir1==false && dir2==true);
 						BDEdge 	e0=new BDEdge(srcNode, n, dir1, disagreement),
@@ -543,24 +544,6 @@ public class GoInBetweenBridge {
 						pseudoEdge.setAttribute("path", p);
 						pseudoEdge.setAttribute("consensus");
 						path.add(pseudoEdge);
-
-//							//Option 2: or using this to create&display a "pseudo node"
-//							BDNode n=(BDNode) graph.addNode("000"+AlignedRead.PSEUDO_ID++);
-//							Sequence seq=GraphUtil.consensusSequence(AlignedRead.tmpFolder+File.separator+id+".fasta", distance, id, "poa");
-//							if(seq==null)
-//								return null;
-//							n.setAttribute("seq", seq);
-//							n.setAttribute("len", seq.length());
-//							n.setAttribute("cov",SimpleBinner.getBinIfUnique(srcNode).estCov);
-//							n.setGUI("red", "diamond");
-//							n.setAttribute("unique", SimpleBinner.getBinIfUnique(srcNode));
-//							boolean disagreement=srcNode.getId().compareTo(dstNode.getId()) > 0 
-//									|| (srcNode==dstNode && srcDir==false && dstDir==true);
-//							Edge 	e0=addEdge(srcNode, n, srcDir, disagreement),
-//									e1=addEdge(n,dstNode,!disagreement,dstDir);	
-	//
-//							path.add(e0);
-//							path.add(e1);
 						
 						connectedPaths.add(path);
 					}catch(Exception e){

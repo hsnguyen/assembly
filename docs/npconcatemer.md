@@ -1,9 +1,9 @@
-# *npSignal* - Rapid method to detect RCA concatemeric signal from viral genomes using Nanopore reads.
+# *npConcatemer* - Rapid method to detect RCA concatemeric signal from viral genomes using Nanopore reads.
 
 ## Introduction
 Small genomes (around ten kilobase pairs), such as viral or bacterial plasmid, can be deep sequenced by using MinION and Rolling Circle Amplification (RCA). In which, concatemeric molecules generated from RCA can be sequenced directly by the thumbnail sequencer without using restriction enzymes to physically divide them into monomers.
 
-*npSignal* is a tool to assist computational analysis on the MinION data of concatemeric long reads in an attempt to produce viral genome assembly in an efficient way.
+*npConcatemer* is a tool to assist computational analysis on the MinION data of concatemeric long reads in an attempt to produce viral genome assembly in an efficient way.
 
 More details to come...
 
