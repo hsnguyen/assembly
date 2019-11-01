@@ -31,7 +31,7 @@ docker run --rm -it -v <local_data_folder>:/data japsa org.rtassembly.NPGraphCmd
 ## Modules
 For now two modules are on development:
 * [*npGraph*](docs/npgraph.md): streaming hybrid assembly using Nanopore data
-* [*npSignal*](docs/npsignal.md): using signal processing to detect concatemeric reads for viral genomes.
+* [*npConcatemer*](docs/npconcatemer.md): using signal processing to detect concatemeric reads for viral genomes.
 
 ## License
 Similar to [Japsa](https://github.com/mdcao/japsa) project, tools included in this repo is available under BSD-like license.

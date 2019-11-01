@@ -33,9 +33,9 @@ Options:
                   (default='')
   --aligner=s     Aligner tool that will be used, either minimap2 or bwa
                   (default='')
-  --algPath=s     Absolute path to the binary aligner file
-                  (default='')
   --algOpt=s      Settings used by aligner to align long reads to the contigs
+                  (default='')
+  --msa=s         MSA tools for consensus. Options include spoa, kalign3 (fast); kalign2, poa (slow).
                   (default='')
   --overwrite     Whether to overwrite or reuse the intermediate file
                   (default='true')
@@ -45,16 +45,20 @@ Options:
                   (default='10')
   --mcov=i        Minimum number of reads spanning a confident bridge
                   (default='3')
-  --slim=i        Maximum depth for searching path between 2 neighbors
+  --depth=i       Maximum depth for searching path between 2 neighbors
                   (default='300')
+  --anchor=i      Minimum length for being considered as an anchor contig.
+                  (default='1000')
+  --unique=i      Minimum length for being assumed a unique contig.
+                  (default='10000')
   --gui           Whether using GUI or not.
+                  (default='false')
+  --keep          Whether to keep extremely-low-coveraged contigs.
                   (default='false')
   --verbose       For debugging.
                   (default='false')
   --help          Display this usage and exit
                   (default='false')
-
-
 
 ```
 
