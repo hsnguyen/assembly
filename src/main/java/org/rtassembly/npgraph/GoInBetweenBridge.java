@@ -527,7 +527,7 @@ public class GoInBetweenBridge {
 						BDNode n=new BDNode(graph, "000"+AlignedRead.PSEUDO_ID++);
 						Sequence seq=graph.consensus.getConsensus(id, greedy);
 						//FIXME: review this case!
-						if(seq==null||seq.length()<=BDGraph.getKmerSize())
+						if(seq==null||seq.length()<Math.min(BDGraph.getKmerSize(),100))//ignore empty or too short sequences 
 							return;
 						
 						n.setAttribute("seq", seq);
