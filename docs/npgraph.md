@@ -83,6 +83,7 @@ More features would be added later to the GUI but it's not the focus of this pro
 All settings from the GUI can be set beforehand via commandline interface.
 Without using GUI, the mandatory inputs are assembly graph file (*-si*) and long-read data (*-li*).
 The assembly graph must be output from SPAdes in either FASTG or GFA format (normally *assembly_graph.fastg* or *assembly_graph.gfa*).
+From new version of SPAdes, the output GFA file is *assembly_graph_with_scaffolds.gfa* which includes SPAdes path finding and scaffolding results. Sometimes, this might give additional mis-assemblies so the original graph of the building-block contigs (fastg file) is preferred.
 
 The long-read data will be used for bridging and can be given as DNA sequences (FASTA/FASTQ format, possible .gz) or alignment records (SAM/BAM) as mentioned above. *npGraph* will try to guess the format of the inputs based on the extensions, but sometimes you'll have to specify it yourself (e.g. when "-" is provided to read from *stdin*). 
 If the sequences are given, then it's mandatory to have either minimap2 (recommended) or BWA-MEM installed in your system to do the alignment between long reads and the pre-assemblies. 
