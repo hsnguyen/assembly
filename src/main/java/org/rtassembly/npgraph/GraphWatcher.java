@@ -311,6 +311,14 @@ public class GraphWatcher {
 		}
 		System.out.println();
 		
+//		for(PopBin bb:binn50.keySet()) {
+//			List<Integer> lengths=binn50.get(bb);
+//			System.out.printf("%d (%d): ", bb.getId(), lengths.size());
+//			for(int i:lengths)
+//				System.out.printf("%d, ",i);
+//			System.out.println();			
+//		}
+			
 		if(lastTime)
 			System.out.println("FINISH!");
 		//reset the cutting attributes

@@ -443,7 +443,7 @@ public class SimpleBinner {
 	static public PopBin getBinOfPath(BDPath path) {
 		PopBin retval=null;
 		HashMap<PopBin, Integer> b2l = new HashMap<>();
-		BDNode curNode = (BDNode) path.getRoot(), nextNode=null;
+		BDNode curNode = (BDNode) path.getRoot();
 		for(Edge e:path.getEdgePath()) {
 			PopBin curBin=getBinIfUniqueNow(curNode);
 			if(curBin!=null) {
@@ -452,9 +452,10 @@ public class SimpleBinner {
 				else
 					b2l.put(curBin, b2l.get(curBin) + (int) curNode.getNumber("length"));
 			}
-			curNode=nextNode;
+			curNode=(BDNode) e.getOpposite(curNode);
 		}
-		retval=b2l.entrySet().stream().max((entry1, entry2) -> entry1.getValue() > entry2.getValue() ? 1 : -1).get().getKey();
+		if(b2l.size()>0)
+			retval=b2l.entrySet().stream().max((entry1, entry2) -> entry1.getValue() > entry2.getValue() ? 1 : -1).get().getKey();
 		
 		return retval;
 	}

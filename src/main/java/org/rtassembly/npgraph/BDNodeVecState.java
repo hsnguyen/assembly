@@ -169,6 +169,9 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 		
 		BDNodeVecState[] 	as0=s0.toArray( new BDNodeVecState[s0.size()]),
 							as1=s1.toArray( new BDNodeVecState[s1.size()]);
+		if(as0.length*as1.length==0)
+			return;
+		
 		int[][] scoreTab = new int[as0.length][as1.length];
 		char[][] moveTab = new char[as0.length][as1.length];
 		for(int i=0; i<as0.length; i++){
