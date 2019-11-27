@@ -985,7 +985,7 @@ public class BDGraph extends MultiGraph{
 		numOfCircularCtgs=0;
 		maxl=0;
 		int [] lengths = new int[numOfCtgs];
-		double sum = 0;		
+//		double sum = 0;		
     	for (Node node : this) {
     		/*
     		 * Re-calculate stats
@@ -997,28 +997,31 @@ public class BDGraph extends MultiGraph{
 				numOfCircularCtgs++;
 			
 			lengths[count++]=nlen; 
-			sum+=nlen;	
+//			sum+=nlen;	
     	}
     	
     	/*
     	 * Calculate N50, N75
     	 */
-		Arrays.sort(lengths);
-
-		int i50 = lengths.length,
-			i75 = lengths.length;
-		double contains = 0;
-		while (true){
-			if(contains < .5*sum)
-				i50 --;
-			if(contains < .75*sum) {
-				i75--;
-			}else
-				break;
-			contains += lengths[i75];
-		}
-		n50=lengths[i50];
-		n75=lengths[i75];
+//		Arrays.sort(lengths);
+//
+//		int i50 = lengths.length,
+//			i75 = lengths.length;
+//		double contains = 0;
+//		while (true){
+//			if(contains < .5*sum)
+//				i50 --;
+//			if(contains < .75*sum) {
+//				i75--;
+//			}else
+//				break;
+//			contains += lengths[i75];
+//		}
+//		n50=lengths[i50];
+//		n75=lengths[i75];
+		
+		n50=GraphUtil.getNStats(.5, lengths);
+		n75=GraphUtil.getNStats(.75, lengths);
     }
     
     private void initGraphComponents() {	
@@ -1099,11 +1102,11 @@ public class BDGraph extends MultiGraph{
 	    );
 	    
 	    Set<String> addedNodes = new HashSet<String>();
-	    //Print S (Segment)
+	    //Print S (Segment) with kmer count (KC) and bin (BI)
 	    for(Node node:this){
 	    	Sequence seq=(Sequence) node.getAttribute("seq");
 	    	int kmer_count=(int)(GraphUtil.getRealCoverage(node.getNumber("cov"))*(BDGraph.ILLUMINA_READ_LENGTH-BDGraph.getKmerSize())/BDGraph.ILLUMINA_READ_LENGTH);
-	    	printWriter.printf("S\t%s\t%s\tKC:i:%d\n", node.getId(), seq.toString(),kmer_count);
+	    	printWriter.printf("S\t%s\t%s\tKC:i:%d\tBI:i:%d\n", node.getId(), seq.toString(),kmer_count, node.getAttribute("bin")==null?0:((PopBin)node.getAttribute("bin")).getId());
 	    	addedNodes.add(node.getId());
 	    }	    
 	    for(Edge ce:compositeEdges){
@@ -1131,7 +1134,8 @@ public class BDGraph extends MultiGraph{
 		    		
 		    		Sequence seq=(Sequence) nextNode.getAttribute("seq");
 			    	int kmer_count=(int)(GraphUtil.getRealCoverage(nextNode.getNumber("cov"))*(BDGraph.ILLUMINA_READ_LENGTH-BDGraph.getKmerSize())/BDGraph.ILLUMINA_READ_LENGTH);
-			    	printWriter.printf("S\t%s\t%s\tKC:i:%d\n", nextID, seq.toString(),kmer_count);
+			    	printWriter.printf("S\t%s\t%s\tKC:i:%d\tBI:i:%d\n", nextID, seq.toString(),kmer_count, nextNode.getAttribute("bin")==null?0:((PopBin)nextNode.getAttribute("bin")).getId());
+
 
 	    		}
 		    	

@@ -3,6 +3,7 @@ package org.rtassembly.npgraph;
 import java.io.IOException;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -131,6 +132,9 @@ public class GraphWatcher {
 		System.out.println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
 		System.out.println("Current time: " + LocalTime.now());
 
+		HashMap<PopBin, List<Integer>> binn50 = new HashMap<>();
+		PopBin b=null;
+		
 		for (Iterator<ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
 			ConnectedComponent comp = compIter.next();
 //			System.out.printf("... id=%s edges=%d nodes=%d \n", comp.id, comp.getEdgeCount(), comp.getNodeCount());
@@ -185,6 +189,7 @@ public class GraphWatcher {
 				 annotation = new JapsaAnnotation();
 			 }
 			 Sequence seq=repPath.spelling(annotation);
+			 
 			 double cov=GraphUtil.getRealCoverage(repPath.averageCov());
 			 Node n=outputGraph.addNode(Integer.toString(comp.id));
 			 seq.setName("Contig_"+comp.id+"_"+(isCircular?"circular":"linear")+"_length_"+seq.length()+"_cov_"+cov);
@@ -192,6 +197,16 @@ public class GraphWatcher {
 			 n.setAttribute("len", seq.length());
 			 n.setAttribute("cov",cov);
 			 n.setAttribute("path", repPath);
+			 
+			 b=SimpleBinner.getBinOfPath(repPath);
+			 if(b!=null) {
+				 n.setAttribute("bin", b);
+				 if(!binn50.containsKey(b))
+					 binn50.put(b, new ArrayList<Integer>());
+				 else
+					 binn50.get(b).add(seq.length());
+			 }
+			 
 			 
 			 if(isCircular){
 				 n.setAttribute("circular");
@@ -242,6 +257,15 @@ public class GraphWatcher {
 						n.setAttribute("len", seq.length());
 						n.setAttribute("cov",cov);
 						n.setAttribute("path", trimedPath);
+						b=SimpleBinner.getBinOfPath(repPath);
+						if(b!=null) {
+							n.setAttribute("bin", b);
+							if(!binn50.containsKey(b))
+								binn50.put(b, new ArrayList<Integer>());
+							else
+								binn50.get(b).add(seq.length());
+						}
+						 
 						if(lastTime){
 							annotation.setSequence(seq);
 							n.setAttribute("annotation", annotation);
@@ -277,7 +301,16 @@ public class GraphWatcher {
 			}
 		}
 		outputGraph.updateStats();
-		System.out.printf("Output stats: %d sequences (%d circular) N50=%d N75=%d Max=%d\n", getNumberOfSequences(), getNumberOfCircularSequences(), getN50(), getN75(), getLongestContig());
+		System.out.printf("Output stats: %d sequences (%d circular) N50=%d N75=%d Max=%d ", getNumberOfSequences(), getNumberOfCircularSequences(), getN50(), getN75(), getLongestContig());
+		for(PopBin bb:binn50.keySet()) {
+			List<Integer> lengths=binn50.get(bb);
+			
+			if(lengths!=null && lengths.size()>0)
+				System.out.printf("%s.N50=%d ", bb.getId(), GraphUtil.getNStats(.5, lengths.stream().mapToInt(i -> i).toArray()));
+			
+		}
+		System.out.println();
+		
 		if(lastTime)
 			System.out.println("FINISH!");
 		//reset the cutting attributes

@@ -439,8 +439,26 @@ public class SimpleBinner {
 		return retval;
 		  
 	}
+	//return representative bin from walking a path
+	static public PopBin getBinOfPath(BDPath path) {
+		PopBin retval=null;
+		HashMap<PopBin, Integer> b2l = new HashMap<>();
+		BDNode curNode = (BDNode) path.getRoot(), nextNode=null;
+		for(Edge e:path.getEdgePath()) {
+			PopBin curBin=getBinIfUniqueNow(curNode);
+			if(curBin!=null) {
+				if(!b2l.containsKey(curBin))
+					b2l.put(curBin, (int) curNode.getNumber("length"));
+				else
+					b2l.put(curBin, b2l.get(curBin) + (int) curNode.getNumber("length"));
+			}
+			curNode=nextNode;
+		}
+		retval=b2l.entrySet().stream().max((entry1, entry2) -> entry1.getValue() > entry2.getValue() ? 1 : -1).get().getKey();
+		
+		return retval;
+	}
 	
-
 	static public boolean isPotentialAnchorNode(BDNode node){
 		return getBinIfUnique(node)!=null||(BDGraph.isSuspectedNode(node)&&node.getInDegree()<=1&&node.getOutDegree()<=1);
 	}

@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.regex.Matcher;
@@ -702,4 +703,18 @@ public class GraphUtil {
 		
 		return retval;
 	}
+	// Get Nxx from an array
+	public static int getNStats(double nxx, int[] list) {
+		Arrays.sort(list);
+		double contains = 0;
+		int i = list.length, sum=Arrays.stream(list).sum();
+		while (true){
+			if(contains < nxx*sum)
+				i --;
+			else
+				break;
+			contains += list[i];
+		}
+		return list[i];
+	} 
 }
