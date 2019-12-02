@@ -555,7 +555,8 @@ public class HybridAssembler {
 		
 		observer.outputFASTA(getPrefix()+File.separator+"npgraph_assembly.fasta");
 		observer.outputJAPSA(getPrefix()+File.separator+"npgraph_assembly.japsa");
-		observer.outputGFA(getPrefix()+File.separator+"npgraph_assembly.gfa");
+		observer.outputAssGFA(getPrefix()+File.separator+"npgraph_assembly.gfa");
+		observer.outputOrigGFA(getPrefix()+File.separator+"npgraph_components.gfa");
 
 		
 		//delete temporary files

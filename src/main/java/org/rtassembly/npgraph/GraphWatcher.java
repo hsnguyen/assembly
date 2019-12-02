@@ -341,7 +341,10 @@ public class GraphWatcher {
 	synchronized public int getNumberOfCircularSequences() {
 		return outputGraph==null?inputGraph.numOfCircularCtgs:outputGraph.numOfCircularCtgs;
 	}
-	synchronized public void outputGFA(String fileName) throws IOException{
+	synchronized public void outputAssGFA(String fileName) throws IOException{
+		outputGraph.outputGFA(fileName);
+	}
+	synchronized public void outputOrigGFA(String fileName) throws IOException{
 		inputGraph.outputGFA(fileName);
 	}
 	synchronized public void outputFASTA(String fileName) throws IOException {
