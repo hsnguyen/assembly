@@ -510,7 +510,7 @@ public class GoInBetweenBridge {
 			pSegment = new BDEdgePrototype(srcNode,dstNode,dir1,dir2);
 			startNV = nv1; endNV = nv2;
 			int d = ScaffoldVector.composition(nv2.getVector(), ScaffoldVector.reverse(nv1.getVector())).distance(srcNode, dstNode);
-			if(d<=(greedy?10:1)*BDGraph.D_LIMIT) //greedy search will tolerate 10 times longer gap
+			if(d<=(greedy?3:1)*BDGraph.D_LIMIT) //greedy search will tolerate 3 times longer gap
 	    		connectedPaths = graph.DFSAllPaths(srcNode, dstNode, dir1, dir2, d);
 
 			//call consensus when time come!

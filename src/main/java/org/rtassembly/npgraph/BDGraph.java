@@ -44,7 +44,7 @@ public class BDGraph extends MultiGraph{
 	public static final double ALPHA=.5; //coverage less than alpha*bin_cov will be considered noise
     public static final int D_LIMIT=5000; //distance bigger than this will be ignored
     public static int S_LIMIT=300;// maximum number of graph traversing steps
-    public static int T_LIMIT=21588;// maximum time allowed to run DFS (milliseconds)
+    public static int T_LIMIT=2188;// maximum time allowed to run DFS (milliseconds)
     public static int MAX_LISTING=100; //maximum number of whatever paths
     
     //these should be changed in another thread, e.g. settings from GUI
