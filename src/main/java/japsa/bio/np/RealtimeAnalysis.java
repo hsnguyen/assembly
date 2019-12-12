@@ -40,7 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Real time analysis in a thread that runs in parallel with the thread conecting
+ * Real time analysis in a thread that runs in parallel with the thread connecting
  * data.
  *  
  * @author minhduc

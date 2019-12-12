@@ -148,8 +148,9 @@ public class Alignment implements Comparable<Alignment> {
 		
 		int overhangTolerance = (int) Math.min(BDGraph.A_TOL, BDGraph.R_TOL*node.getNumber("len"));
 		if (
-				(readLeft < overhangTolerance || refLeft < overhangTolerance) &&
-				(readRight  < overhangTolerance || refRight < overhangTolerance)
+				(readLeft < overhangTolerance || refLeft < overhangTolerance)
+				 && (readRight  < overhangTolerance || refRight < overhangTolerance)
+				 && Math.min(refLeft,refRight) < overhangTolerance
 			)
 			goodMargin=true;
 		

@@ -182,8 +182,9 @@ public class ErrorCorrection {
 			}else if (msa.startsWith("mafft")){
 				cmd = new String[]{"mafft_wrapper.sh", faiFile, faoFile};
 			}else{
-				LOG.error("Unknown msa function " + msa);
-				throw new InterruptedException("Unknown msa function " + msa);
+				LOG.warn("MSA tool {} is not support!",msa);
+				msa="none";
+				throw new InterruptedException("MSA tool: " + msa);
 			}
 
 			if(VERBOSE)
@@ -294,7 +295,7 @@ public class ErrorCorrection {
 		//String faiFile = prefix + "_" + this.currentReadCount;
 		Sequence consensus = null;
 		if (readList != null && readList.size() > 0){
-			if (readList.size() == 1){
+			if (readList.size() == 1||"none".equals(msa)){
 				readList.get(0).setName("consensus");
 				return readList.get(0);
 			}else{
@@ -309,7 +310,10 @@ public class ErrorCorrection {
 				try{
 					runMultipleAlignment(faiFile, faoFile);
 				}catch(InterruptedException exc){
-					return null;
+					if(VERBOSE)
+						LOG.warn("Consensus is pick randomly from the list!");
+					readList.get(0).setName("consensus");
+					return readList.get(0);
 				}
 				
 				if ("poa".equals(msa))
@@ -327,12 +331,12 @@ public class ErrorCorrection {
 //				Files.deleteIfExists(Paths.get(faiFile));
 //				Files.deleteIfExists(Paths.get(faoFile));
 			}
-		}
-		
-		if(consensus==null){
-			if(VERBOSE)
-				LOG.info("Consensus is pick randomly from the list!");
-			consensus=readList.get(0);
+			
+			if(consensus==null){
+				if(VERBOSE)
+					LOG.info("Consensus is pick randomly from the list!");
+				consensus=readList.get(0);
+			}
 		}
 		
 		return consensus;

@@ -16,6 +16,10 @@ import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.rtassembly.npscarf.Contig;
+import org.rtassembly.npscarf.ContigBridge;
+import org.rtassembly.npscarf.RealtimeScaffolding;
+import org.rtassembly.npscarf.ScaffoldGraph;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,7 +29,9 @@ import htsjdk.samtools.SamInputResource;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
+import japsa.bio.np.RealtimeAnalysis;
 import japsa.seq.Sequence;
+import japsa.seq.SequenceOutputStream;
 import japsa.seq.SequenceReader;
 import javafx.beans.property.StringProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -521,7 +527,7 @@ public class HybridAssembler {
 			boolean changed=false;
 			for(GoInBetweenBridge brg:unsolved){
 				if(HybridAssembler.VERBOSE)
-					LOG.info("Last attempt on incomplete bridge %s : anchors=%d \n %s", brg.getEndingsID(), brg.getNumberOfAnchors(), brg.getAllPossiblePaths());
+					LOG.info("Last attempt on incomplete bridge {} : anchors={} \n {}", brg.getEndingsID(), brg.getNumberOfAnchors(), brg.getAllPossiblePaths());
 				//Take the current best path among the candidate of a bridge and connect the bridge(greedy)
 				if(brg.getCompletionLevel()>=3){ 
 					simGraph.getNewSubPathsToReduce(brg.getBestPath(brg.pBridge.getNode0(),brg.pBridge.getNode1())).stream().forEach(p->simGraph.reduceUniquePath(p));
@@ -700,7 +706,7 @@ public class HybridAssembler {
 		}
 					
     }
-
+	
 	public static void main(String[] argv) throws IOException, InterruptedException{
 		HybridAssembler hbAss = new HybridAssembler();
 		
