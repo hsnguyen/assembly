@@ -16,6 +16,7 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.graphstream.algorithm.ConnectedComponents;
 import org.graphstream.graph.*;
 import org.graphstream.graph.implementations.*;
 import org.slf4j.Logger;

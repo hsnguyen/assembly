@@ -7,7 +7,7 @@ import org.graphstream.ui.view.View;
 import org.graphstream.ui.view.Viewer;
 import org.rtassembly.npgraph.BDGraph;
 import org.rtassembly.npgraph.GraphUtil;
-import org.rtassembly.npgraph.GraphWatcher;
+import org.rtassembly.npgraph.RealtimeGraphWatcher;
 import org.rtassembly.npgraph.HybridAssembler;
 import org.rtassembly.npgraph.SimpleBinner;
 
@@ -159,7 +159,7 @@ public class GraphExploreDesktop {
         System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
                 
 //        HybridAssembler.promptEnterKey();
-        hbAss.postProcessGraph();
+//        hbAss.postProcessGraph();
         HybridAssembler.promptEnterKey();
 
         for (Node node : graph) {

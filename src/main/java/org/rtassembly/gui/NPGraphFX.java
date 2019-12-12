@@ -163,7 +163,7 @@ public class NPGraphFX extends Application{
 //    				updateData();
     				try{
     					myass.assembly();
-    					myass.postProcessGraph();
+//    					myass.postProcessGraph();
     				}catch (Exception e){
     					System.err.println(e.getMessage());
     					e.printStackTrace();

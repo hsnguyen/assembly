@@ -126,10 +126,10 @@ public class HybridAssembler {
 	//===============================================================================================//
 	
 	//Operational variables
-//	final BDGraph origGraph;
-	public BDGraph simGraph; //original and simplified graph should be separated, no???
-	public GraphWatcher observer;
+	public volatile BDGraph simGraph; //original and simplified graph should be separated, no???
+	public RealtimeGraphWatcher observer;
 	public static boolean VERBOSE=false;
+	
 	public HybridAssembler(){
 //		origGraph=new BDGraph("batch");
 		simGraph=new BDGraph("real");
@@ -368,7 +368,7 @@ public class HybridAssembler {
 		}
 		
 		simGraph.updateStats();
-		observer = new GraphWatcher(simGraph);
+		observer = new RealtimeGraphWatcher(this);
 		return true;
 	}
 
@@ -379,6 +379,9 @@ public class HybridAssembler {
 	 */
 	public void assembly() 
 			throws IOException, InterruptedException{
+		observer.setReadPeriod(100);
+		observer.setTimePeriod(((int)Math.log10(simGraph.getNodeCount())-1) * 1000);
+
 		if(getLongReadsInput().isEmpty()) {
 			LOG.info("Scaffolding is ignored due to lack of long-read input!");
 			return;
@@ -432,6 +435,10 @@ public class HybridAssembler {
 		Sequence read = null;
 		ArrayList<Alignment> samList =  new ArrayList<Alignment>();// alignment record of the same read;	
 		SAMRecord curRecord=null;
+		
+		Thread thread = new Thread(observer);
+		thread.start();	
+		
 		while (iter.hasNext()) {
 			if(getStopSignal())
 				break;
@@ -486,6 +493,8 @@ public class HybridAssembler {
 			}	
 			samList.add(curAlignment); 
 		}// while
+		observer.stopWaiting();
+		thread.join();
 		iter.close();
 		reader.close();
 
@@ -499,16 +508,8 @@ public class HybridAssembler {
 		if(alignments.isEmpty())
 			return;
 		List<BDPath> paths=simGraph.uniqueBridgesFinding(nnpRead, alignments);
-		if(paths!=null){	
-			for(BDPath path:paths) 
-			{
-				//path here is already unique! (2 unique ending nodes)
-		    	if(simGraph.reduceUniquePath(path)) {
-		    		observer.update(false);		
-		    		System.out.printf("Input stats: read count=%d base count=%d\n", currentReadCount, currentBaseCount);
-		    	}
-			}
-		}
+		if(paths!=null)
+		    paths.stream().forEach(p->simGraph.reduceUniquePath(p));
 	} 		
 	
 	public void terminateAlignmentProcess() {
@@ -518,7 +519,8 @@ public class HybridAssembler {
  	}
 	
 	
-	//last attempt to connect bridges, being greedy now
+	@Deprecated
+	//last attempt to connect bridges greedily. Now move to RealtimeGraphWatcher
 	public void postProcessGraph() throws IOException{
 		System.out.printf("Post-processing the graph by greedy path-finding algorithm. Please wait...\n");
 		HashSet<GoInBetweenBridge> 		unsolved=simGraph.getUnsolvedBridges(),
@@ -580,8 +582,6 @@ public class HybridAssembler {
 //  		}
 		
 	}
-	
-
 
     
     @SuppressWarnings("resource")

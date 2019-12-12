@@ -1,5 +1,6 @@
 package org.rtassembly.npgraph;
 
+import java.io.File;
 import java.io.IOException;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -14,21 +15,27 @@ import org.graphstream.algorithm.ConnectedComponents;
 import org.graphstream.algorithm.ConnectedComponents.ConnectedComponent;
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Node;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import japsa.bio.np.RealtimeAnalysis;
 import japsa.seq.JapsaAnnotation;
 import japsa.seq.Sequence;
 
-public class GraphWatcher {
+public class RealtimeGraphWatcher extends RealtimeAnalysis{
+    private static final Logger LOG = LoggerFactory.getLogger(RealtimeGraphWatcher.class);
+
 	public static boolean KEEP=false; //whether or not keeping the low-coverage nodes
-	BDGraph inputGraph, outputGraph;
+	BDGraph outputGraph;
 	ConnectedComponents rtComponents;
 	HashSet<BDEdge> cutEdges;
 	int numberOfComponents=0;
+	HybridAssembler hAss;
 	
-	public GraphWatcher(BDGraph graph) {
-		inputGraph=graph;
+	public RealtimeGraphWatcher(HybridAssembler hAss) {
+		this.hAss=hAss;
 		rtComponents = new ConnectedComponents();
-		rtComponents.init(graph);
+		rtComponents.init(hAss.simGraph);
 		rtComponents.setCutAttribute("cut");
 		numberOfComponents=rtComponents.getConnectedComponentsCount();
 		//initial cleaning
@@ -37,12 +44,12 @@ public class GraphWatcher {
 	}
 	
 	//Should be applied for a Collection of Edges, or subgraph instead of the whole graph???
-	synchronized void removeDeadEdges(){
+	synchronized private void removeDeadEdges(){
 		Set<Edge> cleanedEdges = new HashSet<>();
 		while(true){
-			cleanedEdges.stream().forEach(e->inputGraph.removeEdge(e));
+			cleanedEdges.stream().forEach(e->hAss.simGraph.removeEdge(e));
 			cleanedEdges.clear();
-			inputGraph.edges().filter(e->checkDeadEdges(e)).forEach(e->cleanedEdges.add(e));
+			hAss.simGraph.edges().filter(e->checkDeadEdges(e)).forEach(e->cleanedEdges.add(e));
 			if(cleanedEdges.isEmpty())
 				break;
 		}
@@ -77,13 +84,13 @@ public class GraphWatcher {
 				comp.nodes().forEach(n->removeNodes.add(n));			
 		}
 		//Remove abundant components here
-		removeNodes.stream().forEach(n->inputGraph.removeNode(n));
+		removeNodes.stream().forEach(n->hAss.simGraph.removeNode(n));
 	}
 	//FIXME: find most significant path and check if it cover >90%?
 	synchronized private boolean isSignificantComponent(ConnectedComponent comp){
 		int clen = 1, tlen=0;
 		double ccov = 0;
-		double threshold=KEEP?0:inputGraph.binner.leastBin.estCov; //lower-bound for coverage?!
+		double threshold=KEEP?0:hAss.simGraph.binner.leastBin.estCov; //lower-bound for coverage?!
 		for(Node n:comp.getNodeSet()){
 			if(SimpleBinner.getBinIfUniqueNow(n)!=null)
 				return true;
@@ -116,7 +123,7 @@ public class GraphWatcher {
 		
 		cutEdges = new HashSet<BDEdge>();
 		//then set the cut edges: just for outputGraph stats (will reset after). FIXME: need a Eulerian paths finding iff lastTime
-		inputGraph.nodes()
+		hAss.simGraph.nodes()
 		.forEach(n->{
 			if(n.getInDegree()>=2)
 				n.enteringEdges().forEach(e->{e.setAttribute("cut");cutEdges.add((BDEdge) e);});
@@ -301,7 +308,8 @@ public class GraphWatcher {
 			}
 		}
 		outputGraph.updateStats();
-		System.out.printf("Output stats: %d sequences (%d circular) N50=%d N75=%d Max=%d ", getNumberOfSequences(), getNumberOfCircularSequences(), getN50(), getN75(), getLongestContig());
+		System.out.printf("Input: read count=%d base count=%d\n", hAss.currentReadCount, hAss.currentBaseCount);
+		System.out.printf("Output: %d sequences (%d circular) N50=%d N75=%d Max=%d ", getNumberOfSequences(), getNumberOfCircularSequences(), getN50(), getN75(), getLongestContig());
 		for(PopBin bb:binn50.keySet()) {
 			List<Integer> lengths=binn50.get(bb);
 			
@@ -322,35 +330,97 @@ public class GraphWatcher {
 		if(lastTime)
 			System.out.println("FINISH!");
 		//reset the cutting attributes
-		inputGraph.edges().filter(e->e.hasAttribute("cut")).forEach(e->{e.removeAttribute("cut");});
+		hAss.simGraph.edges().filter(e->e.hasAttribute("cut")).forEach(e->{e.removeAttribute("cut");});
 
 	}
 	
 	synchronized public int getN50() {
-		return outputGraph==null?inputGraph.n50:outputGraph.n50;
+		return outputGraph==null?hAss.simGraph.n50:outputGraph.n50;
 	}
 	synchronized public int getN75() {
-		return outputGraph==null?inputGraph.n75:outputGraph.n75;
+		return outputGraph==null?hAss.simGraph.n75:outputGraph.n75;
 	}
 	synchronized public int getLongestContig() {
-		return outputGraph==null?inputGraph.maxl:outputGraph.maxl;
+		return outputGraph==null?hAss.simGraph.maxl:outputGraph.maxl;
 	}
 	synchronized public int getNumberOfSequences() {
-		return outputGraph==null?inputGraph.numOfCtgs:outputGraph.numOfCtgs;
+		return outputGraph==null?hAss.simGraph.numOfCtgs:outputGraph.numOfCtgs;
 	}
 	synchronized public int getNumberOfCircularSequences() {
-		return outputGraph==null?inputGraph.numOfCircularCtgs:outputGraph.numOfCircularCtgs;
+		return outputGraph==null?hAss.simGraph.numOfCircularCtgs:outputGraph.numOfCircularCtgs;
 	}
 	synchronized public void outputAssGFA(String fileName) throws IOException{
 		outputGraph.outputGFA(fileName);
 	}
 	synchronized public void outputOrigGFA(String fileName) throws IOException{
-		inputGraph.outputGFA(fileName);
+		hAss.simGraph.outputGFA(fileName);
 	}
 	synchronized public void outputFASTA(String fileName) throws IOException {
 		outputGraph.outputFASTA(fileName);
 	}
 	synchronized public void outputJAPSA(String fileName) throws IOException {
 		outputGraph.outputJAPSA(fileName);
+	}
+
+	@Override
+	protected void close() {
+		// TODO Auto-generated method stub
+		System.out.printf("Post-processing the graph by greedy path-finding algorithm. Please wait...\n");
+		HashSet<GoInBetweenBridge> 		unsolved=hAss.simGraph.getUnsolvedBridges(),
+										solved=new HashSet<>();
+		while(true){
+			boolean changed=false;
+			for(GoInBetweenBridge brg:unsolved){
+				if(HybridAssembler.VERBOSE)
+					LOG.info("Last attempt on incomplete bridge {} : anchors={} \n {}", brg.getEndingsID(), brg.getNumberOfAnchors(), brg.getAllPossiblePaths());
+				//Take the current best path among the candidate of a bridge and connect the bridge(greedy)
+				if(brg.getCompletionLevel()>=3){ 
+					hAss.simGraph.getNewSubPathsToReduce(brg.getBestPath(brg.pBridge.getNode0(),brg.pBridge.getNode1())).stream().forEach(p->hAss.simGraph.reduceUniquePath(p));
+					solved.add(brg);
+					changed=true;
+				}else{
+					brg.scanForAnEnd(true);	
+					changed=brg.steps.connectBridgeSteps(true);
+					
+					//return appropriate path
+					if(changed){
+						hAss.simGraph.getNewSubPathsToReduce(brg.getBestPath(brg.steps.start.getNode(),brg.steps.end.getNode())).stream().forEach(p->hAss.simGraph.reduceUniquePath(p));
+						solved.add(brg);
+					}
+					else if(HybridAssembler.VERBOSE)
+						LOG.info("Last attempt failed \n");
+				}
+	
+			}
+			if(solved.isEmpty()&&!changed)
+				break;
+			else{
+				unsolved.removeAll(solved);
+				solved.clear();
+			}
+				
+		}
+        //update for the last time
+        update(true);		
+		try {
+			outputFASTA(hAss.getPrefix()+File.separator+"npgraph_assembly.fasta");
+			outputJAPSA(hAss.getPrefix()+File.separator+"npgraph_assembly.japsa");
+			outputAssGFA(hAss.getPrefix()+File.separator+"npgraph_assembly.gfa");
+			outputOrigGFA(hAss.getPrefix()+File.separator+"npgraph_components.gfa");
+		}catch(IOException e) {
+			LOG.error("Could not output assembly results: {}", e.getMessage());
+		}
+	}
+
+	@Override
+	protected void analysis() {
+		// TODO Auto-generated method stub
+		update(false);
+	}
+
+	@Override
+	protected int getCurrentRead() {
+		// TODO Auto-generated method stub
+		return hAss.currentReadCount;
 	}
 }

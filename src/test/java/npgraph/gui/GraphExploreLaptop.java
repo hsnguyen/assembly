@@ -110,7 +110,7 @@ public class GraphExploreLaptop {
         System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
         
 //        HybridAssembler.promptEnterKey();
-        hbAss.postProcessGraph();
+//        hbAss.postProcessGraph();
   
 //        for (Node node : graph) {
 //            node.setAttribute("ui.label", node.getId());

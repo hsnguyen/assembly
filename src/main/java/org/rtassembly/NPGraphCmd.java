@@ -4,7 +4,7 @@ import java.io.IOException;
 import org.rtassembly.gui.NPGraphFX;
 import org.rtassembly.npgraph.Alignment;
 import org.rtassembly.npgraph.BDGraph;
-import org.rtassembly.npgraph.GraphWatcher;
+import org.rtassembly.npgraph.RealtimeGraphWatcher;
 import org.rtassembly.npgraph.HybridAssembler;
 import org.rtassembly.npgraph.SimpleBinner;
 import org.slf4j.Logger;
@@ -68,7 +68,7 @@ public class NPGraphCmd extends CommandLine{
 		HybridAssembler.VERBOSE=cmdLine.getBooleanVal("verbose");
 		SimpleBinner.ANCHOR_CTG_LEN=cmdLine.getIntVal("anchor");
 		SimpleBinner.UNIQUE_CTG_LEN=cmdLine.getIntVal("unique");
-		GraphWatcher.KEEP=cmdLine.getBooleanVal("keep");
+		RealtimeGraphWatcher.KEEP=cmdLine.getBooleanVal("keep");
 		BDGraph.MIN_SUPPORT=cmdLine.getIntVal("mcov");
 		BDGraph.S_LIMIT=cmdLine.getIntVal("depth");
 		//Default output dir 
@@ -116,7 +116,7 @@ public class NPGraphCmd extends CommandLine{
 			try {
 				if(hbAss.prepareShortReadsProcess() &&	hbAss.prepareLongReadsProcess()) {
 					hbAss.assembly();
-					hbAss.postProcessGraph();
+//					hbAss.postProcessGraph();
 				}
 				else{
 					LOG.error("Error with pre-processing step: \n" + hbAss.getCheckLog());
