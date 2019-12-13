@@ -39,7 +39,9 @@ public class NPGraphCmd extends CommandLine{
 		addInt("depth", 300, "Maximum depth for searching path between 2 neighbors");
 		addInt("anchor", 1000, "Minimum length for being considered as an anchor contig.");
 		addInt("unique", 10000, "Minimum length for being assumed a unique contig.");
-
+		addInt("time", 0, "Time interval to considered for real-time assembly.");
+		addInt("read", 0, "Read interval to considered for real-time assembly.");
+		
 		addBoolean("gui", false, "Whether using GUI or not.");
 		addBoolean("keep", false, "Whether to keep extremely-low-coveraged contigs.");
 		addBoolean("verbose", false, "For debugging.");
@@ -71,6 +73,9 @@ public class NPGraphCmd extends CommandLine{
 		RealtimeGraphWatcher.KEEP=cmdLine.getBooleanVal("keep");
 		BDGraph.MIN_SUPPORT=cmdLine.getIntVal("mcov");
 		BDGraph.S_LIMIT=cmdLine.getIntVal("depth");
+		RealtimeGraphWatcher.R_INTERVAL=cmdLine.getIntVal("read");
+		RealtimeGraphWatcher.T_INTERVAL=cmdLine.getIntVal("time");
+
 		//Default output dir 
 		if(outputDir == null) {
 			outputDir = new File(shortReadsInput).getAbsoluteFile().getParent();

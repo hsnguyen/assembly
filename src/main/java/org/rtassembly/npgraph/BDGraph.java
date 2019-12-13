@@ -874,10 +874,10 @@ public class BDGraph extends MultiGraph{
      * @param path: unique path to simplify the graph (from origGraph)
      */
     //This assuming path is surely unique!!!
-    public boolean reduceUniquePath(BDPath path){
+    public void reduceUniquePath(BDPath path){
     	//do nothing if the path has only one node
     	if(path==null||path.getEdgeCount()<1)
-    		return false;
+    		return;
 
     	else if(HybridAssembler.VERBOSE) 
     			LOG.info("Reducing path: " + path.getId());
@@ -912,29 +912,23 @@ public class BDGraph extends MultiGraph{
 			}
 			if(HybridAssembler.VERBOSE)
 				LOG.info("after adding: \n\t" + printEdgesOfNode((BDNode) reducedEdge.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) reducedEdge.getNode1()));
-	    	return true;
-    	}else {
-    		if(HybridAssembler.VERBOSE)
+	    	
+			notifyChanges();
+    	}else if(HybridAssembler.VERBOSE)
     			LOG.info("Path {} doesn't need to be reduced!", path.getId());
-    		return false;
-    	}
+   
 
     }
     
     // old reducing. Now use for SPAdes paths only
-    public boolean reduceFromSPAdesPath(BDPath path){
-    	boolean retval=false;
+    public void reduceFromSPAdesPath(BDPath path){
     	//do nothing if the path has only one node
     	if(path==null || path.getEdgeCount()<1)
-    		return retval;
+    		return;
     	else if(HybridAssembler.VERBOSE)
     		LOG.info("Input SPAdes path: " + path.getId());
     	//loop over the edges of path (like spelling())
-    	for(BDPath p:getNewSubPathsToReduce(path)){
-    		if(reduceUniquePath(p))
-    			retval=true;
-    	}
-    	return retval;
+    	getNewSubPathsToReduce(path).stream().forEach(p->reduceUniquePath(p));
 
     }
 
@@ -980,49 +974,62 @@ public class BDGraph extends MultiGraph{
      **********************************************************************/
     int n50, n75, maxl; //in Kbp
     int numOfCtgs, numOfCircularCtgs;
-    public synchronized void updateStats() {
-    	numOfCtgs=getNodeCount();
-		int count=0;
-		numOfCircularCtgs=0;
-		maxl=0;
-		int [] lengths = new int[numOfCtgs];
-//		double sum = 0;		
-    	for (Node node : this) {
-    		/*
-    		 * Re-calculate stats
-    		 */
-			int nlen=(int)node.getNumber("len"); 
-			if(maxl < nlen)
-				maxl=nlen;
-			if(node.hasAttribute("circular"))
-				numOfCircularCtgs++;
+    volatile private boolean changed=true; //init as true for the initial cleaning
+    public synchronized void notifyChanges() {
+    	changed=true;
+    }
+    public synchronized boolean checkForChangesAndReset() {
+    	boolean retval=changed;
+    	changed=false;
+    	return retval;
+    }
+    
+    public void updateStats() {
+    	synchronized(this) {
+	    	numOfCtgs=getNodeCount();
+			int count=0;
+			int nc=0,
+				ml=0;
+			int [] lengths = new int[numOfCtgs];
+	//		double sum = 0;		
+	    	for (Node node : this) {
+	    		/*
+	    		 * Re-calculate stats
+	    		 */
+				int nlen=(int)node.getNumber("len"); 
+				if(ml < nlen)
+					ml=nlen;
+				if(node.hasAttribute("circular"))
+					nc++;
+				
+				lengths[count++]=nlen; 
+	//			sum+=nlen;	
+	    	}
+	    	maxl=ml;
+	    	numOfCircularCtgs=nc;
+	    	/*
+	    	 * Calculate N50, N75
+	    	 */
+	//		Arrays.sort(lengths);
+	//
+	//		int i50 = lengths.length,
+	//			i75 = lengths.length;
+	//		double contains = 0;
+	//		while (true){
+	//			if(contains < .5*sum)
+	//				i50 --;
+	//			if(contains < .75*sum) {
+	//				i75--;
+	//			}else
+	//				break;
+	//			contains += lengths[i75];
+	//		}
+	//		n50=lengths[i50];
+	//		n75=lengths[i75];
 			
-			lengths[count++]=nlen; 
-//			sum+=nlen;	
+			n50=GraphUtil.getNStats(.5, lengths);
+			n75=GraphUtil.getNStats(.75, lengths);
     	}
-    	
-    	/*
-    	 * Calculate N50, N75
-    	 */
-//		Arrays.sort(lengths);
-//
-//		int i50 = lengths.length,
-//			i75 = lengths.length;
-//		double contains = 0;
-//		while (true){
-//			if(contains < .5*sum)
-//				i50 --;
-//			if(contains < .75*sum) {
-//				i75--;
-//			}else
-//				break;
-//			contains += lengths[i75];
-//		}
-//		n50=lengths[i50];
-//		n75=lengths[i75];
-		
-		n50=GraphUtil.getNStats(.5, lengths);
-		n75=GraphUtil.getNStats(.75, lengths);
     }
     
     private void initGraphComponents() {	

@@ -87,7 +87,7 @@ public class HybridAssembler {
 	public final String getMSA() {return msa.get();}
 	public StringProperty msaProperty(){return msa;}
 	
-	public final void setCheckLog(String log) {checkLog+="\n"+log;}
+	public final void setCheckLog(String log) {checkLog=(log==null?null:checkLog+"\n"+log);}
 	public final String getCheckLog() {return checkLog;}
 		
 	public final void setBinReadsInput(String brInput) {binReadsInput.set(brInput);}
@@ -379,8 +379,12 @@ public class HybridAssembler {
 	 */
 	public void assembly() 
 			throws IOException, InterruptedException{
-		observer.setReadPeriod(100);
-		observer.setTimePeriod(((int)Math.log10(simGraph.getNodeCount())-1) * 1000);
+		int timeInterval=(int) (Math.round(Math.log10(simGraph.getNodeCount()))-1); //estimated interval time based on graph complexity
+		timeInterval=(timeInterval>1?timeInterval:1)*10;
+		int readInterval=100;
+		
+		observer.setReadPeriod(RealtimeGraphWatcher.R_INTERVAL!=0?RealtimeGraphWatcher.R_INTERVAL:readInterval);
+		observer.setTimePeriod((RealtimeGraphWatcher.T_INTERVAL!=0?RealtimeGraphWatcher.T_INTERVAL:timeInterval) * 1000);
 
 		if(getLongReadsInput().isEmpty()) {
 			LOG.info("Scaffolding is ignored due to lack of long-read input!");
