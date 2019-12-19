@@ -34,8 +34,10 @@ public class BDGraph extends MultiGraph{
     private static final Logger LOG = LoggerFactory.getLogger(BDGraph.class);
 
     static int KMER=127;
-	static boolean 	circular=true; // circular or linear preference for the output genome
-    static double RCOV=0.0;
+	static boolean 	IS_CIRCULAR=true, // circular or linear preference for the output genome
+			 		IS_COMPLEX=false; // how big and complicated this graph is
+	static double RCOV=0.0;
+
     SimpleBinner binner;
 	//not gonna change these parameters in other thread
     public static final double R_TOL=.25;// relative tolerate: can be interpreted as long read error rate (10-25%)
@@ -55,7 +57,7 @@ public class BDGraph extends MultiGraph{
 	
     //provide mapping from unique directed node to its corresponding bridge
     //E.g: 103-: <103-82-> also 82+:<82+103+>
-    private HashMap<String, GoInBetweenBridge> bridgesMap; 
+    public static HashMap<String, GoInBetweenBridge> bridgesMap; 
     ConsensusCaller consensus;
 
     //mapping long but unknown contigs to unique successors and predecessor 
@@ -1080,9 +1082,13 @@ public class BDGraph extends MultiGraph{
 //			if( (node.getDegree()==0 && (seq.length() < SimpleBinner.ANCHOR_CTG_LEN)) 
 //				|| node.getNumber("cov") < 10.0 )	//not display <10% abundance pops
 //				continue;
-			seq.writeFasta(out);
+			if(seq!=null)
+				seq.writeFasta(out);
+			else if(HybridAssembler.VERBOSE) {
+				LOG.error("Cannot read sequence from node {}!", node.getId());
+				break;
+			}
 		}
-		
 		out.close();
 	}
 	public void outputJAPSA(String fileName) throws IOException {
@@ -1090,7 +1096,13 @@ public class BDGraph extends MultiGraph{
 		JapsaAnnotation annotation;
 		for(Node node:this) {
 			annotation=(JapsaAnnotation) node.getAttribute("annotation");
-			annotation.write(out);
+			if(annotation!=null)
+				annotation.write(out);
+			else if(HybridAssembler.VERBOSE) {
+				LOG.error("Cannot read annotation from node {}!", node.getId());
+				break;
+			}
+
 		}	
 		out.close();
 	}

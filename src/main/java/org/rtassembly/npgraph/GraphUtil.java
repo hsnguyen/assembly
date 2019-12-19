@@ -173,14 +173,15 @@ public class GraphUtil {
 		}
 		
 		LOG.info("No of nodes= {} No of edges = {} Estimated avg. read coverage = {} (normalized to 100.0) Total contigs length = {}", graph.getNodeCount(), graph.getEdgeCount(), BDGraph.RCOV, totContigsLen );
-		
+		if(graph.getNodeCount()>10000 || graph.getEdgeCount()>10000)
+			BDGraph.IS_COMPLEX=true;
 		
 		/*
 		 * 2. Use a binner to estimate graph multiplicity
 		 */
 //		graph.nodes().filter(n->n.getNumber("cov") < .2*BDGraph.RCOV).forEach(n->{n.edges().forEach(e->graph.removeEdge(e));});
-		
-		graph.fixDeadEnds();
+		if(!BDGraph.IS_COMPLEX)
+			graph.fixDeadEnds();
 		graph.binning(binFileName);
 
 		/*
@@ -359,11 +360,13 @@ public class GraphUtil {
 		
 		LOG.info("No of nodes= {} No of edges = {} Estimated avg. read coverage = {} (normalized to 100.0) Total contigs length = {}", graph.getNodeCount(), graph.getEdgeCount(), BDGraph.RCOV, totContigsLen );
 		
+		if(graph.getNodeCount()>10000 || graph.getEdgeCount()>10000)
+			BDGraph.IS_COMPLEX=true;
 		/*
 		 * 2. Binning the graph
 		 */
-
-		graph.fixDeadEnds();
+		if(!BDGraph.IS_COMPLEX)
+			graph.fixDeadEnds();
 		graph.binning(binFileName);
 		
 		/*
@@ -415,7 +418,7 @@ public class GraphUtil {
     
     
 	public static void gradientDescent(BDGraph graph) {
-		int 	maxIterations=21, 
+		int 	maxIterations=(BDGraph.IS_COMPLEX?5:21), 
 				eIteCount=0, nIteCount=0;
 		double epsilon=.01;
 		while(true) {

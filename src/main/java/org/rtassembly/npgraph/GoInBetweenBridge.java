@@ -849,10 +849,19 @@ public class GoInBetweenBridge {
 		}
 		
 		boolean connectable(){
-			if(!isIdentifiable())
-				return false;
+			boolean retval=false;
+			if(isIdentifiable() && start.qc()) {
+				if(end.qc())
+					retval=true;			
+				else if(start.getScore() >= BDGraph.GOOD_SUPPORT*Alignment.GOOD_QUAL) {
+					GoInBetweenBridge brg=BDGraph.bridgesMap.get(end.dest.getId()+(end.getDirection(pBridge.getDir0())?"o":"i"));
+					if(brg.getCompletionLevel()<3 && brg.steps.end.dest.getId().equals(start.dest.getId()))
+						retval=true;
+				}
+
+			}
 			
-			return start.qc() && end.qc();
+			return retval;
 		}
 
 		public void setNodes(TreeSet<BDNodeVecState> nodes){
