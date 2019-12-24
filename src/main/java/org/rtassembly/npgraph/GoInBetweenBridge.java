@@ -856,7 +856,8 @@ public class GoInBetweenBridge {
 					retval=true;			
 				else if(start.getScore() >= BDGraph.GOOD_SUPPORT*Alignment.GOOD_QUAL) {
 					GoInBetweenBridge brg=BDGraph.bridgesMap.get(end.dest.getId()+(end.getDirection(pBridge.getDir0())?"o":"i"));
-					if(brg!=null && brg.getCompletionLevel()<3 && brg.steps.end.dest.getId().equals(start.dest.getId()))
+
+					if(brg!=null && brg.steps!=null && brg.steps.isIdentifiable() && brg.steps.end.dest.getId().equals(start.dest.getId()))
 						retval=true;
 				}
 
