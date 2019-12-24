@@ -57,7 +57,7 @@ public class BDGraph extends MultiGraph{
 	
     //provide mapping from unique directed node to its corresponding bridge
     //E.g: 103-: <103-82-> also 82+:<82+103+>
-    public static HashMap<String, GoInBetweenBridge> bridgesMap; 
+    final static HashMap<String, GoInBetweenBridge> bridgesMap=new HashMap<String, GoInBetweenBridge>();
     ConsensusCaller consensus;
 
     //mapping long but unknown contigs to unique successors and predecessor 
@@ -91,7 +91,6 @@ public class BDGraph extends MultiGraph{
 			int initialNodeCapacity, int initialEdgeCapacity) {
 		super(id, strictChecking, autoCreate);
 		
-		bridgesMap=new HashMap<String, GoInBetweenBridge>(initialNodeCapacity*2);
 		consensus = new ConsensusCaller();
 //		adjacencyMap=new HashMap<Node, Set<Node>>();
 		// All we need to do is to change the node & edge factory
@@ -107,15 +106,6 @@ public class BDGraph extends MultiGraph{
 			}
 		});
 		
-	}
-	public HashSet<GoInBetweenBridge> getUnsolvedBridges(){
-		HashSet<GoInBetweenBridge> retval = new HashSet<GoInBetweenBridge>();
-		for(GoInBetweenBridge brg:bridgesMap.values()){
-			if(brg.getCompletionLevel()<4)
-				retval.add(brg);
-		}
-		
-		return retval;
 	}
 
 	/**
@@ -189,7 +179,16 @@ public class BDGraph extends MultiGraph{
     /**************************************************************************************************
      ********************** utility functions to serve the assembly algo ****************************** 
      * ***********************************************************************************************/   
-    
+	synchronized public HashSet<GoInBetweenBridge> getUnsolvedBridges(){
+		HashSet<GoInBetweenBridge> retval = new HashSet<GoInBetweenBridge>();
+		for(GoInBetweenBridge brg:bridgesMap.values()){
+			if(brg.getCompletionLevel()<4)
+				retval.add(brg);
+		}
+		
+		return retval;
+	}
+	
     // when this unique node actually contained by a bridge
     synchronized public void removeNodeFromBridgesMap(Node unqNode){
     	bridgesMap.remove(unqNode.getId()+"o");
@@ -804,7 +803,7 @@ public class BDGraph extends MultiGraph{
     
     private List<BDPath> buildBridge(AlignedRead read, PopBin bin){
     	List<BDPath> retval=new ArrayList<BDPath>();
-
+    	boolean complete=false;
 		GoInBetweenBridge 	storedBridge=getBridgeFromMap(read), reversedBridge;
 		if(HybridAssembler.VERBOSE) 
 			LOG.info("+++{} <=> {}\n", read.getEndingsID(), storedBridge==null?"null":storedBridge.getEndingsID());
@@ -834,8 +833,11 @@ public class BDGraph extends MultiGraph{
 						extend=storedBridge.steps.connectBridgeSteps(false);
 					}					
 				}
-				if(storedBridge.getCompletionLevel()==4 || (state&0b01)>0 || extend)
+				
+				if(storedBridge.getCompletionLevel()==4 || (state&0b01)>0 || extend) {
 					retval.addAll(storedBridge.scanForNewUniquePaths());
+					complete=true;
+				}
 					
 //				//also update the reversed bridge: important e.g. Shigella_dysenteriae_Sd197. WHY??? (already updated and merged 2 homo bridges)
 				if(read.getEFlag()==3) {
@@ -846,8 +848,10 @@ public class BDGraph extends MultiGraph{
 						if((anotherState&0b10)>0)//number of anchors has changed after merging
 							updateBridgesMap(reversedBridge);											
 						
-						if(reversedBridge.getCompletionLevel()==4 || (anotherState&0b01)>0)
+						if(reversedBridge.getCompletionLevel()==4 || (anotherState&0b01)>0) {
 							retval.addAll(reversedBridge.scanForNewUniquePaths());
+							complete=true;
+						}
 
 					}
 
@@ -865,7 +869,11 @@ public class BDGraph extends MultiGraph{
 			updateBridgesMap(reversedBridge);
 			
 		}
-		consensus.saveBridgingReadsFromAlignments(read);
+		
+		if(complete) 
+			consensus.bridgingReads.remove(read.getEndingsID());	
+		else	
+			consensus.saveBridgingReadsFromAlignments(read);
 		
 		return retval;
     }

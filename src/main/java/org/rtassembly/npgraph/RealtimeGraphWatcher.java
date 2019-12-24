@@ -407,7 +407,7 @@ public class RealtimeGraphWatcher extends RealtimeAnalysis{
 				if(HybridAssembler.VERBOSE)
 					LOG.info("Last attempt on incomplete bridge {} : anchors={} \n {}", brg.getEndingsID(), brg.getNumberOfAnchors(), brg.getAllPossiblePaths());
 				//Take the current best path among the candidate of a bridge and connect the bridge(greedy)
-				if(brg.getCompletionLevel()>=3){ 
+				if(brg.getCompletionLevel()==3){ 
 					hAss.simGraph.getNewSubPathsToReduce(brg.getBestPath(brg.pBridge.getNode0(),brg.pBridge.getNode1())).stream().forEach(p->hAss.simGraph.reduceUniquePath(p));
 					solved.add(brg);
 					changed=true;

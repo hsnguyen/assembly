@@ -278,18 +278,19 @@ public class GoInBetweenBridge {
 		ScaffoldVector rev=ScaffoldVector.reverse(steps.end.getVector());//anchors number = 2 so there exist end node
 		BDNodeVecState tmp = null;
 		
-		//need to do this to re-sort the changed elements
-		for(BDNodeVecState nv:steps.subSet(steps.start, steps.end)) {
-			nv.setVector(ScaffoldVector.composition(nv.getVector(), rev));
-			nv.setRoot(steps.end.getNode());
-			if(nv.getVector().isIdentity() || (nv.getVector().getMagnitute()-BDGraph.A_TOL)*direction>0)
-				reversedSet.add(nv);
-
-		}
 		//re-assign start and end
 		tmp=steps.start;
 		steps.start=steps.end;
 		steps.end=tmp;
+		
+		//need to do this to re-sort the changed elements
+		for(BDNodeVecState nv:steps.nodes) {
+			nv.setVector(ScaffoldVector.composition(nv.getVector(), rev));
+			nv.setRoot(steps.start.getNode());
+			if(nv.getVector().isIdentity() || (nv.getVector().getMagnitute()-BDGraph.A_TOL)*direction>0)
+				reversedSet.add(nv);
+
+		}
 		
 		steps.nodes=reversedSet;
 		
@@ -855,7 +856,7 @@ public class GoInBetweenBridge {
 					retval=true;			
 				else if(start.getScore() >= BDGraph.GOOD_SUPPORT*Alignment.GOOD_QUAL) {
 					GoInBetweenBridge brg=BDGraph.bridgesMap.get(end.dest.getId()+(end.getDirection(pBridge.getDir0())?"o":"i"));
-					if(brg.getCompletionLevel()<3 && brg.steps.end.dest.getId().equals(start.dest.getId()))
+					if(brg!=null && brg.getCompletionLevel()<3 && brg.steps.end.dest.getId().equals(start.dest.getId()))
 						retval=true;
 				}
 
