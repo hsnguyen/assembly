@@ -397,44 +397,6 @@ public class RealtimeGraphWatcher extends RealtimeAnalysis{
 
 	@Override
 	protected void close() {
-		// TODO Auto-generated method stub
-		System.out.printf("Post-processing the graph by greedy path-finding algorithm. Please wait...\n");
-		HashSet<GoInBetweenBridge> 		unsolved=hAss.simGraph.getUnsolvedBridges(),
-										solved=new HashSet<>();
-		while(true){
-			boolean changed=false;
-			for(GoInBetweenBridge brg:unsolved){
-				if(HybridAssembler.VERBOSE)
-					LOG.info("Last attempt on incomplete bridge {} : anchors={} \n {}", brg.getEndingsID(), brg.getNumberOfAnchors(), brg.getAllPossiblePaths());
-				//Take the current best path among the candidate of a bridge and connect the bridge(greedy)
-				if(brg.getCompletionLevel()==3){ 
-					hAss.simGraph.getNewSubPathsToReduce(brg.getBestPath(brg.pBridge.getNode0(),brg.pBridge.getNode1())).stream().forEach(p->hAss.simGraph.reduceUniquePath(p));
-					solved.add(brg);
-					changed=true;
-				}else{
-					brg.scanForAnEnd(true);	
-					changed=brg.steps.connectBridgeSteps(true);
-					
-					//return appropriate path
-					if(changed){
-						hAss.simGraph.getNewSubPathsToReduce(brg.getBestPath(brg.steps.start.getNode(),brg.steps.end.getNode())).stream().forEach(p->hAss.simGraph.reduceUniquePath(p));
-						solved.add(brg);
-					}
-					else if(HybridAssembler.VERBOSE)
-						LOG.info("Last attempt failed \n");
-				}
-	
-			}
-			if(solved.isEmpty()&&!changed)
-				break;
-			else{
-				unsolved.removeAll(solved);
-				solved.clear();
-			}
-				
-		}
-        //update for the last time
-        update(true);		
 		try {
 			outputFASTA(hAss.getPrefix()+File.separator+"npgraph_assembly.fasta");
 			outputJAPSA(hAss.getPrefix()+File.separator+"npgraph_assembly.japsa");
@@ -448,7 +410,47 @@ public class RealtimeGraphWatcher extends RealtimeAnalysis{
 	@Override
 	protected void analysis() {
 		// TODO Auto-generated method stub
-		update(false);
+		if(waiting)
+			update(false);
+		else {
+			System.out.printf("Post-processing the graph by greedy path-finding algorithm. Please wait...\n");
+			HashSet<GoInBetweenBridge> 		unsolved=hAss.simGraph.getUnsolvedBridges(),
+											solved=new HashSet<>();
+			while(true){
+				boolean changed=false;
+				for(GoInBetweenBridge brg:unsolved){
+					if(HybridAssembler.VERBOSE)
+						LOG.info("Last attempt on incomplete bridge {} : anchors={} \n {}", brg.getEndingsID(), brg.getNumberOfAnchors(), brg.getAllPossiblePaths());
+					//Take the current best path among the candidate of a bridge and connect the bridge(greedy)
+					if(brg.getCompletionLevel()==3){ 
+						hAss.simGraph.getNewSubPathsToReduce(brg.getBestPath(brg.pBridge.getNode0(),brg.pBridge.getNode1())).stream().forEach(p->hAss.simGraph.reduceUniquePath(p));
+						solved.add(brg);
+						changed=true;
+					}else{
+						brg.scanForAnEnd(true);	
+						changed=brg.steps.connectBridgeSteps(true);
+						
+						//return appropriate path
+						if(changed){
+							hAss.simGraph.getNewSubPathsToReduce(brg.getBestPath(brg.steps.start.getNode(),brg.steps.end.getNode())).stream().forEach(p->hAss.simGraph.reduceUniquePath(p));
+							solved.add(brg);
+						}
+						else if(HybridAssembler.VERBOSE)
+							LOG.info("Last attempt failed \n");
+					}
+		
+				}
+				if(solved.isEmpty()&&!changed)
+					break;
+				else{
+					unsolved.removeAll(solved);
+					solved.clear();
+				}
+					
+			}
+	        //update for the last time
+	        update(true);	
+		}
 	}
 
 	@Override

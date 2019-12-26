@@ -57,7 +57,7 @@ public abstract class RealtimeAnalysis implements Runnable {
 	protected RealtimeAnalysis(){
 	}
 
-	private boolean waiting = true;
+	protected boolean waiting = true;
 
 	protected Long lastTime = 0L;//The last time an analysis is done
 	protected Long startTime;

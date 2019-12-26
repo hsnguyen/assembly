@@ -454,7 +454,8 @@ public class HybridAssembler {
 					LOG.info("Ignore one faulty SAM record: \n {}", e.getMessage());
 					e.printStackTrace();
 				}		
-				continue;
+//				continue;
+				break;
 			}
 			
 			if (curRecord.getReadUnmappedFlag() || curRecord.getMappingQuality() < Alignment.MIN_QUAL){		
