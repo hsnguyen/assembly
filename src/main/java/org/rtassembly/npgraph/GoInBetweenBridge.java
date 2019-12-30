@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.TreeSet;
@@ -318,7 +319,7 @@ public class GoInBetweenBridge {
 				retval += "()";
 			else
 				for(BDPath path:seg.connectedPaths)
-					retval+="( "+path.getId()+  ": deviation=" + path.getDeviation() + " score=" + path.getPathEstats() + " )";
+					retval+="( "+path.getId()+  ": deviation=" + path.getDeviation() + " likelihood=" + path.getPathEstats() + " )";
 			retval+="\n";
 		}
 		retval+="}";
@@ -625,13 +626,36 @@ public class GoInBetweenBridge {
 		
 			return retval;
 		}
+		//remove low-scored paths
 		//return true iff there is only one candidate left <=> result found!
 		public boolean removeUnlikelyPaths(){
 			if(connectedPaths==null || connectedPaths.isEmpty())
 				return false;
-			connectedPaths.sort((a,b)->Integer.compare(Math.abs(a.getDeviation()), Math.abs(b.getDeviation())));
-			int bestDiff = 	connectedPaths.get(0).getDeviation();
-			connectedPaths.removeIf(p->(Math.abs(p.getDeviation()) > Math.abs(bestDiff)+BDGraph.A_TOL));
+//			connectedPaths.sort((a,b)->Integer.compare(Math.abs(a.getDeviation()), Math.abs(b.getDeviation())));
+//			int bestDiff = 	connectedPaths.get(0).getDeviation();
+			try {
+				Integer bestDiff = connectedPaths
+									.stream()
+									.mapToInt(p->Math.abs(p.getDeviation()))
+									.min().orElseThrow(NoSuchElementException::new);
+				
+				//if sufficient coverage, keep the best & remove the rest
+				if(steps.start.qc() + steps.end.qc()>2) {
+					connectedPaths.removeIf(p->(Math.abs(p.getDeviation()) > Math.abs(bestDiff)));
+					Double bestLikelihood = connectedPaths
+											.stream()
+											.mapToDouble(p->p.getPathEstats())
+											.max().orElseThrow(NoSuchElementException::new);
+					connectedPaths.removeIf(p->(p.getPathEstats() < bestLikelihood));
+	
+				} else
+					connectedPaths.removeIf(p->(Math.abs(p.getDeviation()) > Math.abs(bestDiff)+BDGraph.A_TOL));
+			}catch(NoSuchElementException e) {
+				LOG.info("Path ranking error!");
+				return false;
+			}
+				
+				
 			if(connectedPaths.size()==1)
 				return true;
 			else 
@@ -702,7 +726,7 @@ public class GoInBetweenBridge {
 
 			}
 			//update the pBridge accordingly
-			if(end!=null && end.qc()) {
+			if(end!=null && end.qc()>0) {
 				pBridge=new BDEdgePrototype(firstAlg.node, end.getNode(), firstAlg.strand, end.getDirection(firstAlg.strand));//getDirection doesn't work with self-vector
 			}else if(pBridge==null)
 				pBridge=new BDEdgePrototype(firstAlg.node, firstAlg.strand);
@@ -851,8 +875,8 @@ public class GoInBetweenBridge {
 		
 		boolean connectable(){
 			boolean retval=false;
-			if(isIdentifiable() && start.qc()) {
-				if(end.qc())
+			if(isIdentifiable() && start.qc()>0) {
+				if(end.qc()>0)
 					retval=true;			
 				else if(start.getScore() >= BDGraph.GOOD_SUPPORT*Alignment.GOOD_QUAL) {
 					GoInBetweenBridge brg=BDGraph.bridgesMap.get(end.dest.getId()+(end.getDirection(pBridge.getDir0())?"o":"i"));

@@ -624,7 +624,7 @@ public class BDGraph extends MultiGraph{
 				break;
 			retval.add(p);
 			if(HybridAssembler.VERBOSE)
-	    		LOG.info("Hit added: {} deviation={}; depth={}; likelihood score={}", p.getId(), p.getDeviation(), p.size(), p.getPathEstats());
+	    		LOG.info("Hit added: {} deviation={}; depth={}; likelihood={}", p.getId(), p.getDeviation(), p.size(), p.getPathEstats());
 
 		}
 		
