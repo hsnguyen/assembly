@@ -28,10 +28,10 @@ public class RealtimeGraphWatcher extends RealtimeAnalysis{
 	public static boolean KEEP=false; //whether or not keeping the low-coverage nodes
 	public static int R_INTERVAL=0, T_INTERVAL=0;
 	BDGraph outputGraph;
-	volatile ConnectedComponents rtComponents;
+	final ConnectedComponents rtComponents;
 	HashSet<BDEdge> cutEdges;
 	int numberOfComponents=0;
-	volatile HybridAssembler hAss;
+	final HybridAssembler hAss;
 	HashMap<PopBin, List<Integer>> binn50;
 	
 	public RealtimeGraphWatcher(HybridAssembler hAss) {
@@ -84,15 +84,17 @@ public class RealtimeGraphWatcher extends RealtimeAnalysis{
 	}
 	
 	private void removeBadComponents() {
-		synchronized(rtComponents) {
-			List<Node> 	removeNodes=new ArrayList<Node>();
-			for (Iterator<ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
-				ConnectedComponent comp = compIter.next();		
-				if(!isSignificantComponent(comp))
-					comp.nodes().forEach(n->removeNodes.add(n));			
-			}
-			//Remove abundant components here
-			removeNodes.stream().forEach(n->hAss.simGraph.removeNode(n));
+		synchronized(hAss.simGraph) {
+//		synchronized(rtComponents) {
+				List<Node> 	removeNodes=new ArrayList<Node>();
+				for (Iterator<ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
+					ConnectedComponent comp = compIter.next();		
+					if(!isSignificantComponent(comp))
+						comp.nodes().forEach(n->removeNodes.add(n));			
+				}
+				//Remove abundant components here
+				removeNodes.stream().forEach(n->hAss.simGraph.removeNode(n));
+//		}
 		}
 	}
 	//FIXME: find most significant path and check if it cover >90%?
