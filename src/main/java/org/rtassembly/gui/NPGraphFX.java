@@ -758,8 +758,8 @@ public class NPGraphFX extends Application{
 	                dataN50.add(myass.observer.getN50()/1000); //because unit is Kbp
 	                dataN75.add(myass.observer.getN75()/1000); //because unit is Kbp
 	                dataMax.add(myass.observer.getLongestContig()/1000); //because unit is Kbp
-	                dataNumCtgs.add(myass.observer.getNumberOfSequences()/1000); //because unit is Kbp
-	                dataNumCircularCtgs.add(myass.observer.getNumberOfCircularSequences()/1000); //because unit is Kbp
+	                dataNumCtgs.add(myass.observer.getNumberOfSequences());
+	                dataNumCircularCtgs.add(myass.observer.getNumberOfCircularSequences());
             	}
                 Thread.sleep(500);
                 if(executor!=null && !executor.isShutdown())
