@@ -761,8 +761,8 @@ public class GoInBetweenBridge {
 		
 
 		private ArrayList<BridgeSegment> greedyConnect(HashMap<String, ArrayList<BridgeSegment>> memory, BDNodeVecState left, BDNodeVecState right, boolean greedy){
-			if(HybridAssembler.VERBOSE)
-				LOG.info("\nConnecting " + left + " to " + right + "...");
+//			if(HybridAssembler.VERBOSE)
+//				LOG.info("\nConnecting " + left + " to " + right + "...");
 			if(left==right)
 				return null;
 			String pairKey=left.toString()+right.toString();
@@ -774,8 +774,8 @@ public class GoInBetweenBridge {
 				else
 					retval=new ArrayList<>(memory.get(pairKey));
 				
-				if(HybridAssembler.VERBOSE)
-					LOG.info("\nConnecting " + left + " to " + right + ": " + (retval==null?"unreachable!":retval.size()+"-reachable!"));
+//				if(HybridAssembler.VERBOSE)
+//					LOG.info("\nConnecting " + left + " to " + right + ": " + (retval==null?"unreachable!":retval.size()+"-reachable!"));
 				return retval;
 			}
 			
@@ -784,8 +784,8 @@ public class GoInBetweenBridge {
 			ArrayList<BridgeSegment> lBridge, rBridge;
 			while(!inBetween.isEmpty()){
 				BDNodeVecState mid=inBetween.poll();
-				if(HybridAssembler.VERBOSE)
-					LOG.info("..cut at mid="+mid.toString());
+//				if(HybridAssembler.VERBOSE)
+//					LOG.info("..cut at mid="+mid.toString());
 				
 				lBridge = greedyConnect(memory, left, mid, greedy);
 				if(lBridge==null||lBridge.isEmpty()){

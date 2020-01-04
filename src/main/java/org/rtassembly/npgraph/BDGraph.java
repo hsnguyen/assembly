@@ -141,6 +141,8 @@ public class BDGraph extends MultiGraph{
 	
 	protected BDEdge addEdge(AbstractNode src, AbstractNode dst, boolean dir0, boolean dir1){
 		BDEdge tmp = (BDEdge) addEdge(BDEdge.createID(src, dst, dir0, dir1), src, dst);
+		if(HybridAssembler.VERBOSE)
+			LOG.info("Graph{} : edge {} added successfully!", getId(), tmp.getId());
 		return tmp;
 	}
 	

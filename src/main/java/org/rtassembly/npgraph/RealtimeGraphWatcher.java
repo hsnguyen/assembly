@@ -324,24 +324,7 @@ public class RealtimeGraphWatcher extends RealtimeAnalysis{
 				outputGraph.updateStats();
 			}
 			
-			System.out.printf("Input: read count=%d base count=%d\n", hAss.currentReadCount, hAss.currentBaseCount);
-			System.out.printf("Output: %d sequences (%d circular) N50=%d N75=%d Max=%d ", getNumberOfSequences(), getNumberOfCircularSequences(), getN50(), getN75(), getLongestContig());
-			for(PopBin bb:binn50.keySet()) {
-				List<Integer> lengths=binn50.get(bb);
-				
-				if(lengths!=null && lengths.size()>0)
-					System.out.printf("%s.N50=%d ", bb.getId(), GraphUtil.getNStats(.5, lengths.stream().mapToInt(i -> i).toArray()));
-				
-			}
-			System.out.println();
-			
-	//		for(PopBin bb:binn50.keySet()) {
-	//			List<Integer> lengths=binn50.get(bb);
-	//			System.out.printf("%d (%d): ", bb.getId(), lengths.size());
-	//			for(int i:lengths)
-	//				System.out.printf("%d, ",i);
-	//			System.out.println();			
-	//		}
+			printCurrentStats();
 				
 			if(lastTime)
 				System.out.println("FINISH!");
@@ -349,6 +332,26 @@ public class RealtimeGraphWatcher extends RealtimeAnalysis{
 			hAss.simGraph.edges().filter(e->e.hasAttribute("cut")).forEach(e->{e.removeAttribute("cut");});
 
 		}
+	}
+	
+	private void printCurrentStats() {
+		System.out.printf("Input: read count=%d base count=%d\n", hAss.currentReadCount, hAss.currentBaseCount);
+		System.out.printf("Output: %d sequences (%d circular) N50=%d N75=%d Max=%d ", getNumberOfSequences(), getNumberOfCircularSequences(), getN50(), getN75(), getLongestContig());
+		for(PopBin bb:binn50.keySet()) {
+			List<Integer> lengths=binn50.get(bb);
+			
+			if(lengths!=null && lengths.size()>0)
+				System.out.printf("%s.N50=%d ", bb.getId(), GraphUtil.getNStats(.5, lengths.stream().mapToInt(i -> i).toArray()));
+			
+		}
+		System.out.println();
+		//		for(PopBin bb:binn50.keySet()) {
+		//			List<Integer> lengths=binn50.get(bb);
+		//			System.out.printf("%d (%d): ", bb.getId(), lengths.size());
+		//			for(int i:lengths)
+		//				System.out.printf("%d, ",i);
+		//			System.out.println();			
+		//		}
 	}
 	
 	public int getN50() {
