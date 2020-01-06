@@ -99,28 +99,30 @@ public class RealtimeGraphWatcher extends RealtimeAnalysis{
 	}
 	//FIXME: find most significant path and check if it cover >90%?
 	private boolean isSignificantComponent(ConnectedComponent comp){
-		int clen = 1, tlen=0;
-		double ccov = 0;
-		double threshold=KEEP?0:hAss.simGraph.binner.leastBin.estCov; //lower-bound for coverage?!
-		for(Node n:comp.getNodeSet()){
-			if(SimpleBinner.getBinIfUniqueNow(n)!=null)
-				return true;
-			
-			int len = (int) (n.getNumber("len")-BDGraph.getKmerSize());
-			double cov = n.getNumber("cov");
-			tlen+=len;
-			if(GraphUtil.isLikelyStillPresented(n)){
-				ccov+=cov*len;
-				clen+=len;
+		synchronized(comp) {
+			int clen = 1, tlen=0;
+			double ccov = 0;
+			double threshold=KEEP?0:hAss.simGraph.binner.leastBin.estCov; //lower-bound for coverage?!
+			for(Node n:comp.getNodeSet()){
+				if(SimpleBinner.getBinIfUniqueNow(n)!=null)
+					return true;
+				
+				int len = (int) (n.getNumber("len")-BDGraph.getKmerSize());
+				double cov = n.getNumber("cov");
+				tlen+=len;
+				if(GraphUtil.isLikelyStillPresented(n)){
+					ccov+=cov*len;
+					clen+=len;
+				}
+				
 			}
-			
-		}
-		double 	aveCov=ccov/tlen;
-		if(GraphUtil.approxCompare(aveCov, threshold) < 0 || clen < Math.max(SimpleBinner.ANCHOR_CTG_LEN,.5*tlen) || (!KEEP&&comp.getEdgeCount() < 1))
-			return false;
-		else{
-//			System.out.printf("Keep non-unique components with cov=%.2f, clen=%d, tlen=%d\n", aveCov, clen, tlen);
-			return true;
+			double 	aveCov=ccov/tlen;
+			if(GraphUtil.approxCompare(aveCov, threshold) < 0 || clen < Math.max(SimpleBinner.ANCHOR_CTG_LEN,.5*tlen) || (!KEEP&&comp.getEdgeCount() < 1))
+				return false;
+			else{
+	//			System.out.printf("Keep non-unique components with cov=%.2f, clen=%d, tlen=%d\n", aveCov, clen, tlen);
+				return true;
+			}
 		}
 	}
 	/*

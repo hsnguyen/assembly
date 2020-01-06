@@ -472,7 +472,7 @@ public class GoInBetweenBridge {
 			
 			PopBin b=SimpleBinner.getBinIfUniqueNow(tmp.dest);
 			if(PopBin.isCloseBins(b,bin)){
-				if(steps.end==null || greedy || steps.end.nvsScore < tmp.nvsScore){
+				if(steps.end==null || greedy || tmp.qc()>0){
 					if(steps.end!=tmp){
 						steps.end=tmp;
 						if(HybridAssembler.VERBOSE)
