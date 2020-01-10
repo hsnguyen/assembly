@@ -43,7 +43,6 @@ public class BDGraph extends MultiGraph{
     public static final double R_TOL=.25;// relative tolerate: can be interpreted as long read error rate (10-25%)
     public static final int A_TOL=300;// absolute tolerate: can be interpreted as long read absolute error bases (100bp)
 
-    public static final int GOOD_SUPPORT=20; //number of minimum spanning reads for an affirmative long-reads-based bridge.
 	public static final double ALPHA=.5; //coverage less than alpha*bin_cov will be considered noise
     public static final int D_LIMIT=5000; //distance bigger than this will be ignored
     public static int S_LIMIT=300;// maximum number of graph traversing steps
@@ -51,8 +50,9 @@ public class BDGraph extends MultiGraph{
     public static int MAX_LISTING=100; //maximum number of whatever paths
     
     //these should be changed in another thread, e.g. settings from GUI
-	public static volatile double ILLUMINA_READ_LENGTH=300; //Illumina MiSeq
-	public static volatile int MIN_SUPPORT=3; //minimal support reads for bridging
+	public static double ILLUMINA_READ_LENGTH=300; //Illumina MiSeq
+	public static int MIN_SUPPORT=3; //minimal support reads for bridging
+    public static int GOOD_SUPPORT=20; //number of minimum spanning reads for an affirmative long-reads-based bridge.
 
 	
     //provide mapping from unique directed node to its corresponding bridge

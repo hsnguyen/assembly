@@ -35,10 +35,11 @@ public class NPGraphCmd extends CommandLine{
 		
 		//Algorithm-wise
 		addInt("qual", 10, "Minimum quality of alignment to considered");
-		addInt("mcov", 3, "Minimum number of reads spanning a confident bridge");
-		addInt("depth", 300, "Maximum depth for searching path between 2 neighbors");
-		addInt("anchor", 1000, "Minimum length for being considered as an anchor contig.");
-		addInt("unique", 10000, "Minimum length for being assumed a unique contig.");
+		addInt("mincov", 3, "Minimum number of reads spanning a confident bridge");
+		addInt("maxcov", 20, "Cut-off number of reads spanning a confident bridge");
+		addInt("depth", 300, "Limit depth for searching path between 2 neighbors");
+		addInt("anchor", 1000, "Lowerbound of an anchor contig's length.");
+		addInt("unique", 10000, "Lowerbound of a unique contig's length.");
 		addInt("time", 0, "Time interval to considered for real-time assembly.");
 		addInt("read", 0, "Read interval to considered for real-time assembly.");
 		
@@ -71,7 +72,8 @@ public class NPGraphCmd extends CommandLine{
 		SimpleBinner.ANCHOR_CTG_LEN=cmdLine.getIntVal("anchor");
 		SimpleBinner.UNIQUE_CTG_LEN=cmdLine.getIntVal("unique");
 		RealtimeGraphWatcher.KEEP=cmdLine.getBooleanVal("keep");
-		BDGraph.MIN_SUPPORT=cmdLine.getIntVal("mcov");
+		BDGraph.MIN_SUPPORT=cmdLine.getIntVal("min");
+		BDGraph.GOOD_SUPPORT=cmdLine.getIntVal("max");
 		BDGraph.S_LIMIT=cmdLine.getIntVal("depth");
 		RealtimeGraphWatcher.R_INTERVAL=cmdLine.getIntVal("read");
 		RealtimeGraphWatcher.T_INTERVAL=cmdLine.getIntVal("time");
