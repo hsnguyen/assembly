@@ -55,8 +55,10 @@ public class ConsensusCaller {
 			bridgingReads.put(id, new ArrayList<Sequence>());
 		
 		getBridgingReadList(id).add(seq);
-		if(getBridgingReadsNumber(id) >= BDGraph.GOOD_SUPPORT)
+		if(getBridgingReadsNumber(id) >= BDGraph.GOOD_SUPPORT) {
+			//TODO: check sequences length
 			setConsensusSequence(id);
+		}
 	}
 	public List<Sequence> getBridgingReadList(String id){
 		return bridgingReads.get(id);
@@ -70,7 +72,31 @@ public class ConsensusCaller {
 		
 		return consensusReads.get(id);
 	}
-	private synchronized void setConsensusSequence(String id){
+	
+	//Scan the list and check for the length consistency & remove the odd-one out
+	//If none is removed -> good, return 1
+	//If several are removed -> return 0
+	//If more than 20% are removed -> bad list, return -1 and not to considered for consensus calling 
+	private int scanElementReads(String id) {
+		if(!bridgingReads.containsKey(id))
+			return -1;
+		int size=bridgingReads.get(id).size();
+		double average=bridgingReads.get(id).stream().mapToInt(Sequence::length).average().getAsDouble();
+		bridgingReads.get(id).removeIf(s->GraphUtil.approxCompare(average, s.length())!=0);
+		if(bridgingReads.size()==0)
+			return -1;
+		else if(bridgingReads.size()==size)
+			return 1;
+		else if(bridgingReads.size() > (1-BDGraph.R_TOL*size))
+			return 0;
+		else {
+			bridgingReads.remove(id);
+			return -1;
+		}
+		
+	}
+	
+	private void setConsensusSequence(String id){
 		Sequence consensus=null;
 		try {
 			ErrorCorrection.msa=msa;

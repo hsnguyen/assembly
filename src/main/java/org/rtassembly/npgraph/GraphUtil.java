@@ -706,6 +706,22 @@ public class GraphUtil {
 		
 		return retval;
 	}
+	/*
+	 * Return sequence of Ns with predefined length
+	 */
+	public static Sequence getNSequence(String id, int length) {
+		Alphabet dna = Alphabet.DNA();
+		int nIndex=dna.char2int('N');
+//		System.out.println("Convert " + nIndex + " == " +(byte)nIndex);
+		if(nIndex < 0)
+			return null;
+		else{
+			byte[] byteSeq = new byte[length];
+			Arrays.fill(byteSeq, (byte)nIndex);
+			return new Sequence(dna, byteSeq, id);
+		}
+	}
+	
 	// Get Nxx from an array
 	public static int getNStats(double nxx, int[] list) {
 		Arrays.sort(list);

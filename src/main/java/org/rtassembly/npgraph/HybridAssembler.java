@@ -2,7 +2,9 @@ package org.rtassembly.npgraph;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.lang.ProcessBuilder.Redirect;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,6 +32,7 @@ import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import japsa.bio.np.RealtimeAnalysis;
+import japsa.seq.PAFRecord;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceOutputStream;
 import japsa.seq.SequenceReader;
@@ -117,6 +120,8 @@ public class HybridAssembler {
 			longReadsInputFormat.set("fasta/fastq");
 		else if(lrInputFormat.contains("sam") || lrInputFormat.contains("bam"))
 			longReadsInputFormat.set("sam/bam");
+		else //PAF?
+			longReadsInputFormat.set(lrInputFormat.toLowerCase());
 	}
 	public final String getLongReadsInputFormat() {return longReadsInputFormat.get();}
 	public StringProperty longReadsInputFormatProperty() {return longReadsInputFormat;}
@@ -206,9 +211,9 @@ public class HybridAssembler {
         aligner.addListener( (observable, oldValue, newValue) ->
         	{
 				String aligner=(String)observable.getValue();
-				if(aligner.toLowerCase().equals("minimap2"))
+				if(aligner.toLowerCase().endsWith("minimap2"))
 					setAlignerOpts("-t4 -k15 -w5");
-				else if (aligner.toLowerCase().equals("bwa"))
+				else if (aligner.toLowerCase().endsWith("bwa"))
 					setAlignerOpts("-t4 -k11 -W20 -r10 -A1 -B1 -O1 -E1 -L0 -a -Y");			
 			}	 
 
@@ -289,11 +294,11 @@ public class HybridAssembler {
 		}
 		
 		//if long reads data not given in SAM/BAM, need to invoke minimap2
-        if(getLongReadsInputFormat().toLowerCase().startsWith("fast")) {
+        if(getLongReadsInputFormat().contains("fast")) {
         	File indexFile=null;
         	ArrayList<String> idxCmd = new ArrayList<>();
         	idxCmd.add(getAligner());
-        	if(getAligner().equals("minimap2")) { 	
+        	if(getAligner().endsWith("minimap2")) { 	
 				indexFile=new File(getPrefix()+File.separator+"assembly_graph.mmi");												
 				if(!checkMinimap2()) 
 						return false;
@@ -301,7 +306,7 @@ public class HybridAssembler {
 				idxCmd.add("-d");
 				idxCmd.add(getPrefix()+File.separator+"assembly_graph.mmi");
 														
-        	}else if(getAligner().equals("bwa")) {
+        	}else if(getAligner().endsWith("bwa")) {
 				indexFile=new File(getPrefix()+File.separator+"assembly_graph.fasta.bwt");
 				if(!checkBWA()) 
 						return false;
@@ -405,14 +410,14 @@ public class HybridAssembler {
 			ProcessBuilder pb = null;
 			List<String> command = new ArrayList<>();
 			command.add(getAligner());
-			if(getAligner().equals("minimap2")) {
+			if(getAligner().endsWith("minimap2")) {
 				command.add("-a");
 				command.addAll(Arrays.asList(getAlignerOpts().split("\\s")));
 				command.add("-K20000");
 				command.add(getPrefix()+File.separator+"assembly_graph.mmi");
 				command.add(getLongReadsInput());
 			}
-			else if(getAligner().equals("bwa")) {
+			else if(getAligner().endsWith("bwa")) {
 				command.add("mem");
 				command.addAll(Arrays.asList(getAlignerOpts().split("\\s")));
 				command.add("-K20000");
@@ -437,7 +442,7 @@ public class HybridAssembler {
 
 		String readID = "";
 		Sequence read = null;
-		ArrayList<Alignment> samList =  new ArrayList<Alignment>();// alignment record of the same read;	
+		ArrayList<Alignment> hits =  new ArrayList<Alignment>();// alignment record of the same read;	
 		SAMRecord curRecord=null;
 		
 		Thread thread = new Thread(observer);
@@ -462,8 +467,8 @@ public class HybridAssembler {
 				if(HybridAssembler.VERBOSE) 
 					LOG.info("Ignore one unmapped or low-quality map record!");
 				if (!readID.equals(curRecord.getReadName())){
-					update(read, samList, curRecord);
-					samList = new ArrayList<Alignment>();
+					update(read, hits);
+					hits = new ArrayList<Alignment>();
 					read = GraphUtil.getQueryReadFromSAMRecord(curRecord);
 					readID = curRecord.getReadName();
 				}
@@ -478,8 +483,8 @@ public class HybridAssembler {
 				if(HybridAssembler.VERBOSE)
 					LOG.info("Ignore record with reference {} not found (removed) from the graph!", refID);
 				if (!readID.equals(curRecord.getReadName())){
-					update(read, samList, curRecord);
-					samList = new ArrayList<Alignment>();
+					update(read, hits);
+					hits = new ArrayList<Alignment>();
 					read = GraphUtil.getQueryReadFromSAMRecord(curRecord);
 					readID = curRecord.getReadName();
 				}
@@ -490,13 +495,13 @@ public class HybridAssembler {
 			//////////////////////////////////////////////////////////////////
 			
 			if (!readID.equals("") && !readID.equals(curRecord.getReadName())) {	
-				update(read, samList, curRecord);
-				samList = new ArrayList<Alignment>();
+				update(read, hits);
+				hits = new ArrayList<Alignment>();
 				read = GraphUtil.getQueryReadFromSAMRecord(curRecord);
 				readID = curRecord.getReadName();
 
 			}	
-			samList.add(curAlignment); 
+			hits.add(curAlignment); 
 		}// while
 		observer.stopWaiting();
 		thread.join();
@@ -506,12 +511,144 @@ public class HybridAssembler {
 		terminateAlignmentProcess();	
 
 	}
-	//update when SAMRecord of another read coming in
-	synchronized void update(Sequence nnpRead, ArrayList<Alignment> alignments, SAMRecord curRecord){
-		currentReadCount ++;
-		currentBaseCount += curRecord.getReadLength();
-		if(alignments.isEmpty())
+	
+	/**
+	 * Version 2 using PAF format instead of SAM/BAM
+	 * @throws IOException
+	 * @throws InterruptedException
+	 */
+	public void assembly2() 
+			throws IOException, InterruptedException{
+		int timeInterval=(int) (Math.round(Math.log10(simGraph.getNodeCount()))-1); //estimated interval time based on graph complexity
+		timeInterval=(timeInterval>1?timeInterval:1)*10;
+		int readInterval=100;
+		
+		observer.setReadPeriod(RealtimeGraphWatcher.R_INTERVAL!=0?RealtimeGraphWatcher.R_INTERVAL:readInterval);
+		observer.setTimePeriod((RealtimeGraphWatcher.T_INTERVAL!=0?RealtimeGraphWatcher.T_INTERVAL:timeInterval) * 1000);
+
+		if(getLongReadsInput().isEmpty()) {
+			LOG.info("Scaffolding is ignored due to lack of long-read input!");
 			return;
+		}else
+			LOG.info("Scaffolding ready at {}", new Date());
+
+
+		InputStreamReader inputStream = null;
+
+		if (getLongReadsInputFormat().endsWith("paf")){//bam or sam
+			if ("-".equals(getLongReadsInput()))
+				inputStream = new InputStreamReader(System.in);
+			else
+				inputStream = new FileReader(getLongReadsInput());	
+		}else if(getLongReadsInputFormat().contains("fast")){
+			LOG.info("Starting alignment by: `{} at {}", getAligner() + "' " + getAlignerOpts(), new Date());
+			ProcessBuilder pb = null;
+			List<String> command = new ArrayList<>();
+			command.add(getAligner());
+//			command.add("-a");
+			command.addAll(Arrays.asList(getAlignerOpts().split("\\s")));
+			command.add("-K20000");
+			command.add(getPrefix()+File.separator+"assembly_graph.mmi");
+			command.add(getLongReadsInput());
+			
+
+			
+			if ("-".equals(getLongReadsInput())){
+				pb = new ProcessBuilder(command).redirectInput(Redirect.INHERIT);
+			}else{
+				pb = new ProcessBuilder(command);
+			}
+
+			alignmentProcess  = pb.redirectError(ProcessBuilder.Redirect.to(new File(getPrefix()+File.separator+"alignment.log"))).start();
+
+			LOG.info("{} started!", getAligner());			
+
+			inputStream = new InputStreamReader(alignmentProcess.getInputStream());
+
+		}
+		
+		try(BufferedReader reader=new BufferedReader(inputStream)){
+			String readID = "";
+			Sequence read = null;
+			ArrayList<Alignment> hits =  new ArrayList<Alignment>();// alignment record of the same read;	
+			PAFRecord curRecord=null;
+			
+			Thread thread = new Thread(observer);
+			thread.start();	
+			String line;
+			while ((line=reader.readLine()) != null) {
+				if(getStopSignal())
+					break;
+				
+				try {
+					curRecord = new PAFRecord(line);
+				}catch(Exception e) {
+					if(HybridAssembler.VERBOSE) {
+						LOG.info("Ignore one faulty record: \n {}", e.getMessage());
+						e.printStackTrace();
+					}		
+	//				continue;
+					break;
+				}
+				
+				if (curRecord.qual < Alignment.MIN_QUAL){		
+					if(HybridAssembler.VERBOSE) 
+						LOG.info("Ignore low-quality map record!");
+					if (!readID.equals(curRecord.qname)){
+						update(read, hits);
+						hits = new ArrayList<Alignment>();
+						readID = curRecord.qname;
+						read = GraphUtil.getNSequence(curRecord.qname, curRecord.qlen);//there is no read data from PAF, so just fake one!
+
+					}
+					continue;		
+				}
+				
+				String refName = curRecord.tname;
+				String refID = refName.split("_").length > 1 ? refName.split("_")[1]:refName;
+				
+				//check if this node still in. FIXME: do not remove nodes for metagenomics' graph?
+				if (simGraph.getNode(refID)==null) {
+					if(HybridAssembler.VERBOSE)
+						LOG.info("Ignore record with reference {} not found (removed) from the graph!", refID);
+					if (!readID.equals(curRecord.qname)){
+						update(read, hits);
+						hits = new ArrayList<Alignment>();
+						readID = curRecord.qname;
+						read = GraphUtil.getNSequence(curRecord.qname, curRecord.qlen);//there is no read data from PAF, so just fake one!
+
+					}
+					continue;
+				}
+				Alignment curAlignment = new Alignment(curRecord, (BDNode) simGraph.getNode(refID)); 
+	
+				//////////////////////////////////////////////////////////////////
+				
+				if (!readID.equals("") && !readID.equals(curRecord.qname)) {	
+					update(read, hits);
+					hits = new ArrayList<Alignment>();
+					readID = curRecord.qname;
+					read = GraphUtil.getNSequence(curRecord.qname, curRecord.qlen);//there is no read data from PAF, so just fake one!
+
+				}	
+				hits.add(curAlignment); 
+			}// while
+			
+			observer.stopWaiting();
+			thread.join();
+			terminateAlignmentProcess();	
+		}
+
+	}
+	
+	//update when SAMRecord of another read coming in
+	synchronized void update(Sequence nnpRead, ArrayList<Alignment> alignments){
+		if(alignments.isEmpty() || nnpRead==null)
+			return;
+		
+		currentReadCount ++;
+		currentBaseCount += nnpRead.length();
+
 		List<BDPath> paths=simGraph.uniqueBridgesFinding(nnpRead, alignments);
 		if(paths!=null)
 		    paths.stream().forEach(p->simGraph.reduceUniquePath(p));
