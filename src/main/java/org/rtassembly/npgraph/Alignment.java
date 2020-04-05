@@ -50,7 +50,7 @@ public class Alignment implements Comparable<Alignment> {
 
 	public static int MIN_QUAL=10; 
 
-	int quality;
+	public int quality;
 
 	public String readID;
 	BDNode node; //keep an instance of contig reference here in case it's removed from BDGraph
@@ -80,6 +80,7 @@ public class Alignment implements Comparable<Alignment> {
 		this(node);
 		readID=paf.qname;
 		quality=paf.qual;
+		score=paf.score;
 		readStart=paf.qstart; readEnd=paf.qend;
 		readLength=paf.qlen;
 		refStart=paf.tstart; refEnd=paf.tend;

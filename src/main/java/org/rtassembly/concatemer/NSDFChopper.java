@@ -23,8 +23,8 @@ import org.slf4j.LoggerFactory;
 import ch.systemsx.cisd.hdf5.HDF5Factory;
 import ch.systemsx.cisd.hdf5.IHDF5Reader;
 import japsa.seq.Alphabet;
-import japsa.seq.FastqReader;
 import japsa.seq.Sequence;
+import japsa.seq.SequenceReader;
 
 
 public class NSDFChopper {
@@ -297,9 +297,9 @@ public class NSDFChopper {
         
         Arrays.parallelSetAll(n, i->2*r[i]/m[i]) ;        
 //        Print to file
-//		printArrayToFile(n, "mpm.signal.xls");
+		printArrayToFile(n, name+"_mpm_signal.xls");
 		lowPassFilter(n);
-//		printArrayToFile(n, "mpm_lpf.xls"); 
+		printArrayToFile(n, name+"_mpm_lpf.xls"); 
 	
 //        LOG.info("Done NSDF calculation in {} secs", (System.currentTimeMillis()-curTime)/1000);
 //        curTime=System.currentTimeMillis();
@@ -463,10 +463,13 @@ public class NSDFChopper {
     }
 
 	public static void main(String[] args){
+//		CUTOFF_FREQ=12;
+//		MIN_MONOMER=30;
+//		THRES=.1; ERROR=.3;
 		NSDFChopper tony = new NSDFChopper();
 		HashMap<Integer, ArrayList<String>> histogram = new HashMap<>();
 		try {
-			FastqReader reader = new FastqReader(args[0]);
+			SequenceReader reader = SequenceReader.getReader(args[0]);
 			Sequence seq=null;
 			while((seq=reader.nextSequence(Alphabet.DNA4()))!=null){
 				tony.setData(seq);

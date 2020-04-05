@@ -694,7 +694,7 @@ public class BDGraph extends MultiGraph{
      * Find bridges based on list of Alignments.
      * Return list of bridges with endings as markers and alignments of non-markers in-between.
      */ 
-    synchronized protected List<BDPath> uniqueBridgesFinding(Sequence nnpRead, ArrayList<Alignment> alignments) {
+    public synchronized List<BDPath> uniqueBridgesFinding(Sequence nnpRead, ArrayList<Alignment> alignments) {
  		if(nnpRead==null || alignments.size()<=1)
  			return null;
  		

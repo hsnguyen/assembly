@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -331,7 +332,8 @@ public class RealtimeGraphWatcher extends RealtimeAnalysis{
 			if(lastTime)
 				System.out.println("FINISH!");
 			//reset the cutting attributes
-			hAss.simGraph.edges().filter(e->e.hasAttribute("cut")).forEach(e->{e.removeAttribute("cut");});
+			hAss.simGraph.edges().filter(Objects::nonNull)
+								.forEach(e->{if(e.hasAttribute("cut")) e.removeAttribute("cut");});
 
 		}
 	}

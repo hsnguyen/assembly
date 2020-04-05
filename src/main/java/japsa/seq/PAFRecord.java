@@ -25,10 +25,19 @@ public class PAFRecord {
 	public int qlen, tlen;
 	public int qstart, qend, tstart, tend;
 	public boolean strand;
-	public int qual;
+	public int qual, score;
 	Cigar cigar=null;
 	
-	public PAFRecord() {}
+	public PAFRecord(String qname, int qlen, int qstart, int qend, 
+					boolean strand, 
+					String tname, int tlen, int tstart, int tend, 
+					int score, int quality ) {
+		this.qname=qname; this.tname=tname;
+		this.qlen=qlen;	this.qstart=qstart;	this.qend=qend;
+		this.tlen=tlen; this.tstart=tstart; this.tend=tend;
+		this.qual=quality; this.score=score;
+		this.strand=strand;
+	}
 	//construct a record from a line in .paf file
 	public PAFRecord(String line) throws JapsaException {
 		String[] toks= line.split("\t");
@@ -55,6 +64,7 @@ public class PAFRecord {
 		tend=Integer.parseInt(toks[8])+1;
 		
 		qual=Integer.parseInt(toks[11]);
+		score=Integer.parseInt(toks[9]);
 		
 		//Looking for cigar tag 
 		for(int i=12; i< toks.length; i++) {

@@ -58,8 +58,8 @@ public class HybridAssembler {
 	Process alignmentProcess = null;
 	private boolean stop=false;
 	private String checkLog="";
-	int currentReadCount = 0;
-	long currentBaseCount = 0;	
+	public int currentReadCount = 0;
+	public long currentBaseCount = 0;	
 	//Getters and Setters
 	//==============================================================================================//
 	public void setReady(boolean isReady) {ready=isReady;}
@@ -120,8 +120,8 @@ public class HybridAssembler {
 			longReadsInputFormat.set("fasta/fastq");
 		else if(lrInputFormat.contains("sam") || lrInputFormat.contains("bam"))
 			longReadsInputFormat.set("sam/bam");
-		else //PAF?
-			longReadsInputFormat.set(lrInputFormat.toLowerCase());
+		else if(lrInputFormat.contains("paf"))
+			longReadsInputFormat.set("paf");
 	}
 	public final String getLongReadsInputFormat() {return longReadsInputFormat.get();}
 	public StringProperty longReadsInputFormatProperty() {return longReadsInputFormat;}
@@ -185,7 +185,9 @@ public class HybridAssembler {
 					) 
 					setLongReadsInputFormat("fasta/fastq");
 				else if(fn.endsWith(".sam") || fn.endsWith(".bam")) 
-					setLongReadsInputFormat("sam/bam");		
+					setLongReadsInputFormat("sam/bam");
+				else if(fn.endsWith(".paf")) 
+					setLongReadsInputFormat("paf");	
     		}	 
         );
         
@@ -203,6 +205,9 @@ public class HybridAssembler {
 					setLongReadsInput("");
 						
 				if(newValue.equals("sam/bam") && !oldFile.endsWith(".sam") && !oldFile.endsWith(".bam"))
+					setLongReadsInput("");
+				
+				if(newValue.equals("paf") && !oldFile.endsWith(".paf"))
 					setLongReadsInput("");
 			}	 
 
@@ -255,8 +260,10 @@ public class HybridAssembler {
 			return true;
 		}
 		
-		if(!getLongReadsInputFormat().equals("fasta/fastq") && !getLongReadsInputFormat().equals("sam/bam")){
-			setCheckLog("Please specify a correct format of long read data (FASTA/FASTQ or BAM/SAM)!");
+		if(!getLongReadsInputFormat().equals("fasta/fastq") 
+			&& !getLongReadsInputFormat().equals("sam/bam")
+			&& !getLongReadsInputFormat().equals("paf") ){
+			setCheckLog("Please specify a correct format of long read data (FASTA/FASTQ/BAM/SAM/PAF)!");
 			return false;
 		}
 		if(!getLongReadsInput().equals("-") && !checkFile(getLongReadsInput()))
@@ -392,7 +399,7 @@ public class HybridAssembler {
 		observer.setTimePeriod((RealtimeGraphWatcher.T_INTERVAL!=0?RealtimeGraphWatcher.T_INTERVAL:timeInterval) * 1000);
 
 		if(getLongReadsInput().isEmpty()) {
-			LOG.info("Scaffolding is ignored due to lack of long-read input!");
+//			LOG.info("Scaffolding is ignored due to lack of long-read input!");
 			return;
 		}else
 			LOG.info("Scaffolding ready at {}", new Date());
@@ -641,7 +648,7 @@ public class HybridAssembler {
 
 	}
 	
-	//update when SAMRecord of another read coming in
+	//update when more read alignments coming in
 	synchronized void update(Sequence nnpRead, ArrayList<Alignment> alignments){
 		if(alignments.isEmpty() || nnpRead==null)
 			return;

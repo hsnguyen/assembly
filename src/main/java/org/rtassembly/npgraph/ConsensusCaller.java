@@ -68,7 +68,7 @@ public class ConsensusCaller {
 	}
 	public Sequence getConsensus(String id, boolean force){
 		if(force && getBridgingReadsNumber(id)>=BDGraph.MIN_SUPPORT)
-			setConsensusSequence(id); //do it even the lack not enough bridging reads 
+			setConsensusSequence(id); //do it even not enough bridging reads 
 		
 		return consensusReads.get(id);
 	}
@@ -104,7 +104,7 @@ public class ConsensusCaller {
 			consensus=ErrorCorrection.consensusSequence(getBridgingReadList(id), AlignedRead.tmpFolder+File.separator+id);
 		} catch (Exception e) {
 			if(HybridAssembler.VERBOSE)
-				LOG.warn("Error with consensus calling:\n {} Pick first read for the consensus of bridge {}", e.getMessage(), id);
+				LOG.warn("Invalid consensus calling:\n {} Pick first read for the consensus of bridge {}", e.getMessage(), id);
 			consensus=getBridgingReadList(id).get(0);
 		}
 		consensusReads.put(id, consensus);

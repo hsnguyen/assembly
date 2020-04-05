@@ -34,7 +34,7 @@ public class GraphExploreLaptop extends Application{
     	String dataFolder="/home/sonnguyen/Projects/npGraph/test/"; //dell FASTG
     	
 		sInput=dataFolder+"spades/assembly_graph.fastg";
-//    	lInput=dataFolder+"spades/assembly_graph.sam";
+//    	lInput=dataFolder+"alignment.paf";
 		lInput=dataFolder+"EcK12S_ONT.fastq.gz";
     	
     	/*******************************************************************************
