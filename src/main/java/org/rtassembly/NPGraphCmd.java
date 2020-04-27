@@ -1,6 +1,7 @@
 package org.rtassembly;
 import java.io.File;
 import java.io.IOException;
+
 import org.rtassembly.gui.NPGraphFX;
 import org.rtassembly.npgraph.Alignment;
 import org.rtassembly.npgraph.BDGraph;
@@ -77,7 +78,7 @@ public class NPGraphCmd extends CommandLine{
 		BDGraph.S_LIMIT=cmdLine.getIntVal("depth");
 		RealtimeGraphWatcher.R_INTERVAL=cmdLine.getIntVal("read");
 		RealtimeGraphWatcher.T_INTERVAL=cmdLine.getIntVal("time");
-
+		
 		//Default output dir 
 		if(outputDir == null) {
 			outputDir = new File(shortReadsInput).getAbsoluteFile().getParent();

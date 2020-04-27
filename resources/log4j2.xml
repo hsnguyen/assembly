@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration>
+   <Appenders>
+      <Console name="stdout">
+         <PatternLayout pattern="%d [%t] %-5level: %msg%n%throwable" />
+         <!--  <MarkerFilter onMatch="ACCEPT" onMisMatch="DENY" marker="FLOW" /> -->
+      </Console>
+      <RollingFile name="rolling"
+        fileName="target/npgraph_rolling.log"
+        filePattern="target/archive/npgraph_rolling-%d{MM-dd-yy}.log.gz">
+         <PatternLayout pattern="%d [%t] %-5level: %msg%n%throwable" />
+         <Policies>
+            <CronTriggeringPolicy schedule="0 0 0 * * ?" />
+            <SizeBasedTriggeringPolicy size="100M" />
+         </Policies>
+      </RollingFile>
+      <File name="log" fileName="target/npgraph.log">
+         <PatternLayout pattern="%d [%t] %-5level: %msg%n%throwable" />
+      </File>
+   </Appenders>
+   <Loggers>
+      <Logger name="org" level="DEBUG" additivity="false">
+         <AppenderRef ref="log" />
+      </Logger>
+      <Root level="ERROR" additivity="true">
+         <AppenderRef ref="stdout" />
+      </Root>
+   </Loggers>
+</Configuration>

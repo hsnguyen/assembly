@@ -6,6 +6,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.ProcessBuilder.Redirect;
+import java.lang.invoke.MethodHandles;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -18,10 +19,6 @@ import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.rtassembly.npscarf.Contig;
-import org.rtassembly.npscarf.ContigBridge;
-import org.rtassembly.npscarf.RealtimeScaffolding;
-import org.rtassembly.npscarf.ScaffoldGraph;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,17 +28,15 @@ import htsjdk.samtools.SamInputResource;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
-import japsa.bio.np.RealtimeAnalysis;
 import japsa.seq.PAFRecord;
 import japsa.seq.Sequence;
-import japsa.seq.SequenceOutputStream;
 import japsa.seq.SequenceReader;
 import javafx.beans.property.StringProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 public class HybridAssembler {
-    private static final Logger LOG = LoggerFactory.getLogger(HybridAssembler.class);
+    private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
 	//setting parameter for the GUI
     private boolean ready=false;
     private BooleanProperty overwrite, useSPAdesPath;
