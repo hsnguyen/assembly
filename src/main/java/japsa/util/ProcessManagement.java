@@ -35,19 +35,19 @@
 package japsa.util;
 
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.invoke.MethodHandles;
+
+import org.apache.log4j.Logger;
 
 /**
  * @author minhduc
  *
  */
 public class ProcessManagement {
-	private static final Logger LOG = LoggerFactory.getLogger(ProcessManagement.class);
+    private static final Logger logger = Logger.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
 	/**
 	 * To start a process, redirect output and error to LOG.info, print out
 	 * a message and return the status
@@ -64,7 +64,7 @@ public class ProcessManagement {
 		String outLine = "";			 
 
 		while ((outLine = pbOut.readLine())!=null){
-			LOG.info(outLine.trim());
+			logger.info(outLine.trim());
 		}			
 		pbOut.close();
 		int status = process.waitFor();

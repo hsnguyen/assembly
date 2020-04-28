@@ -34,14 +34,14 @@
 
 package japsa.seq;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.BufferedReader;
 import java.io.Closeable;
 import java.io.IOException;
+import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.HashMap;
+
+import org.apache.log4j.Logger;
 
 /**
  * eXtendable Annotation Format (xaf) is a format to store information at
@@ -54,7 +54,7 @@ import java.util.HashMap;
  */
 
 public class XAFReader implements Closeable {
-	private static final Logger LOG = LoggerFactory.getLogger(XAFReader.class);
+    private static final Logger logger = Logger.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
 
 	String sep = "\t";
 	public static final String XAF_HEADER = "#XAF";
@@ -167,7 +167,7 @@ public class XAFReader implements Closeable {
 	public String getField(int fieldNo) {
 		if (fieldNo >= fields.length) {
 			//throw new RuntimeException("Only " + fields.length	+ " fields at line " + lineNo);
-			LOG.warn("Only " + fields.length	+ " fields at line " + lineNo);
+			logger.trace("Only " + fields.length	+ " fields at line " + lineNo);
 			return null;
 		}
 		return fields[fieldNo];
@@ -229,7 +229,7 @@ public class XAFReader implements Closeable {
 					for (int i = 0; i < toks.length; i++) {
 						FieldHeader header = headerPool.get(toks[i]);
 						if (header == null) {
-							LOG.warn("Header " + toks[i] + " not defined");
+							logger.trace("Header " + toks[i] + " not defined");
 							header = new FieldHeader();
 							header.headerStr = toks[i];
 							headerPool.put(toks[i], header);

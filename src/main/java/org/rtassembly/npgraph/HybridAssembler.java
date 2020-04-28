@@ -19,8 +19,8 @@ import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.log4j.Logger;
+
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordIterator;
@@ -36,7 +36,7 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 public class HybridAssembler {
-    private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
+    private static final Logger logger = Logger.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
 	//setting parameter for the GUI
     private boolean ready=false;
     private BooleanProperty overwrite, useSPAdesPath;
@@ -128,7 +128,6 @@ public class HybridAssembler {
 	//Operational variables
 	public volatile BDGraph simGraph; //original and simplified graph should be separated, no???
 	public RealtimeGraphWatcher observer;
-	public static boolean VERBOSE=false;
 	
 	public HybridAssembler(){
 //		origGraph=new BDGraph("batch");
@@ -251,7 +250,7 @@ public class HybridAssembler {
 	public boolean prepareLongReadsProcess(){
 		//accept the case when no long read data is provided. Just output simplified assembly graph then.
 		if(getLongReadsInput().isEmpty()) {
-			LOG.info("No long read data is provided. Only output the simplified assembly graph and stop!");
+			logger.warn("No long read data is provided. Only output the simplified assembly graph and stop!");
 			return true;
 		}
 		
@@ -283,8 +282,7 @@ public class HybridAssembler {
 			    .map(Path::toFile)
 			    .forEach(File::delete);
 			} catch (IOException e) {
-				LOG.info("Cannot remove existed temporary folder {}!", tmpFolder.getPath());
-				e.printStackTrace();
+				logger.error("Cannot remove existed temporary folder: {}", e);
 			}
   		}
 		
@@ -340,10 +338,9 @@ public class HybridAssembler {
     	if(!checkMSA()){
     		setCheckLog("WARNING: MSA tool (" + getMSA() + ") not found!");
     		setMSA("none");
-    		if(HybridAssembler.VERBOSE)
-    			LOG.info("WARNING: MSA tools not found!");
-    	}else if(HybridAssembler.VERBOSE)
-    		LOG.info("MSA for consensus calling is set to {}", getMSA());
+    		logger.warn("WARNING: MSA tools not found!");
+    	}else
+    		logger.info("MSA for consensus calling is set to " + getMSA());
     	
 		simGraph.consensus.setConsensusMSA(getMSA());
     	
@@ -397,7 +394,7 @@ public class HybridAssembler {
 //			LOG.info("Scaffolding is ignored due to lack of long-read input!");
 			return;
 		}else
-			LOG.info("Scaffolding ready at {}", new Date());
+			logger.info("Scaffolding ready at " + new Date());
 
 		SamReaderFactory.setDefaultValidationStringency(ValidationStringency.SILENT);
 		SamReader reader = null;
@@ -408,7 +405,7 @@ public class HybridAssembler {
 			else
 				reader = SamReaderFactory.makeDefault().open(new File(getLongReadsInput()));	
 		}else{
-			LOG.info("Starting alignment by {} at {}", getAligner(), new Date());
+			logger.info("Starting alignment by" + getAligner() +" at " + new Date());
 			ProcessBuilder pb = null;
 			List<String> command = new ArrayList<>();
 			command.add(getAligner());
@@ -435,7 +432,7 @@ public class HybridAssembler {
 
 			alignmentProcess  = pb.redirectError(ProcessBuilder.Redirect.to(new File(getPrefix()+File.separator+"alignment.log"))).start();
 
-			LOG.info("{} started!", getAligner());			
+			logger.info(getAligner() + " started!");			
 
 			reader = SamReaderFactory.makeDefault().open(SamInputResource.of(alignmentProcess.getInputStream()));
 
@@ -457,17 +454,12 @@ public class HybridAssembler {
 			try {
 				curRecord = iter.next();
 			}catch(Exception e) {
-				if(HybridAssembler.VERBOSE) {
-					LOG.info("Ignore one faulty SAM record: \n {}", e.getMessage());
-					e.printStackTrace();
-				}		
-//				continue;
+				logger.error("Error SAM record: \n {}", e);
 				break;
 			}
 			
 			if (curRecord.getReadUnmappedFlag() || curRecord.getMappingQuality() < Alignment.MIN_QUAL){		
-				if(HybridAssembler.VERBOSE) 
-					LOG.info("Ignore one unmapped or low-quality map record!");
+				logger.debug("Ignore one unmapped or low-quality map record!");
 				if (!readID.equals(curRecord.getReadName())){
 					update(read, hits);
 					hits = new ArrayList<Alignment>();
@@ -482,8 +474,7 @@ public class HybridAssembler {
 			
 			//check if this node still in. FIXME: do not remove nodes for metagenomics' graph?
 			if (simGraph.getNode(refID)==null) {
-				if(HybridAssembler.VERBOSE)
-					LOG.info("Ignore record with reference {} not found (removed) from the graph!", refID);
+				logger.debug("Ignore record with reference" + refID + "not found (removed) from the graph!");
 				if (!readID.equals(curRecord.getReadName())){
 					update(read, hits);
 					hits = new ArrayList<Alignment>();
@@ -529,10 +520,10 @@ public class HybridAssembler {
 		observer.setTimePeriod((RealtimeGraphWatcher.T_INTERVAL!=0?RealtimeGraphWatcher.T_INTERVAL:timeInterval) * 1000);
 
 		if(getLongReadsInput().isEmpty()) {
-			LOG.info("Scaffolding is ignored due to lack of long-read input!");
+			logger.info("Scaffolding is ignored due to lack of long-read input!");
 			return;
 		}else
-			LOG.info("Scaffolding ready at {}", new Date());
+			logger.info("Scaffolding ready at " + new Date());
 
 
 		InputStreamReader inputStream = null;
@@ -543,7 +534,7 @@ public class HybridAssembler {
 			else
 				inputStream = new FileReader(getLongReadsInput());	
 		}else if(getLongReadsInputFormat().contains("fast")){
-			LOG.info("Starting alignment by: `{} at {}", getAligner() + "' " + getAlignerOpts(), new Date());
+			logger.info("Starting alignment by: " + getAligner() + " " + getAlignerOpts() + " at " + new Date());
 			ProcessBuilder pb = null;
 			List<String> command = new ArrayList<>();
 			command.add(getAligner());
@@ -563,7 +554,7 @@ public class HybridAssembler {
 
 			alignmentProcess  = pb.redirectError(ProcessBuilder.Redirect.to(new File(getPrefix()+File.separator+"alignment.log"))).start();
 
-			LOG.info("{} started!", getAligner());			
+			logger.info(getAligner() + " started!");			
 
 			inputStream = new InputStreamReader(alignmentProcess.getInputStream());
 
@@ -585,17 +576,13 @@ public class HybridAssembler {
 				try {
 					curRecord = new PAFRecord(line);
 				}catch(Exception e) {
-					if(HybridAssembler.VERBOSE) {
-						LOG.info("Ignore one faulty record: \n {}", e.getMessage());
-						e.printStackTrace();
-					}		
+					logger.error("Error reading PAF record: \n {}", e);
 	//				continue;
 					break;
 				}
 				
 				if (curRecord.qual < Alignment.MIN_QUAL){		
-					if(HybridAssembler.VERBOSE) 
-						LOG.info("Ignore low-quality map record!");
+					logger.debug("Ignore low-quality map record!");
 					if (!readID.equals(curRecord.qname)){
 						update(read, hits);
 						hits = new ArrayList<Alignment>();
@@ -611,8 +598,7 @@ public class HybridAssembler {
 				
 				//check if this node still in. FIXME: do not remove nodes for metagenomics' graph?
 				if (simGraph.getNode(refID)==null) {
-					if(HybridAssembler.VERBOSE)
-						LOG.info("Ignore record with reference {} not found (removed) from the graph!", refID);
+					logger.debug("Ignore record with reference " +refID+" not found (removed) from the graph!");
 					if (!readID.equals(curRecord.qname)){
 						update(read, hits);
 						hits = new ArrayList<Alignment>();
@@ -672,8 +658,7 @@ public class HybridAssembler {
 		while(true){
 			boolean changed=false;
 			for(GoInBetweenBridge brg:unsolved){
-				if(HybridAssembler.VERBOSE)
-					LOG.info("Last attempt on incomplete bridge {} : anchors={} \n {}", brg.getEndingsID(), brg.getNumberOfAnchors(), brg.getAllPossiblePaths());
+				logger.debug("Last attempt on incomplete bridge" + brg.getEndingsID() +" : anchors="+brg.getNumberOfAnchors() + "\n" + brg.getAllPossiblePaths());
 				//Take the current best path among the candidate of a bridge and connect the bridge(greedy)
 				if(brg.getCompletionLevel()>=3){ 
 					simGraph.getNewSubPathsToReduce(brg.getBestPath(brg.pBridge.getNode0(),brg.pBridge.getNode1())).stream().forEach(p->simGraph.reduceUniquePath(p));
@@ -688,8 +673,8 @@ public class HybridAssembler {
 						simGraph.getNewSubPathsToReduce(brg.getBestPath(brg.steps.start.getNode(),brg.steps.end.getNode())).stream().forEach(p->simGraph.reduceUniquePath(p));
 						solved.add(brg);
 					}
-					else if(HybridAssembler.VERBOSE)
-						LOG.info("Last attempt failed \n");
+					else
+						logger.debug("Last attempt failed!");
 				}
 	
 			}
@@ -730,7 +715,7 @@ public class HybridAssembler {
     
     @SuppressWarnings("resource")
 	public static void promptEnterKey(){
-    	   LOG.info("Press \"ENTER\" to continue...");
+    	   System.out.println("Press \"ENTER\" to continue...");
     	   Scanner scanner = new Scanner(System.in);
     	   scanner.nextLine();
     	}
@@ -764,7 +749,7 @@ public class HybridAssembler {
 				setCheckLog("Command " + getAligner() + " -V failed!");
 				return false;
 			}else{
-				LOG.info("minimap version: " + version);
+				logger.info("minimap version: " + version);
 				if (version.compareTo("2.0") < 0){
 					setCheckLog("Require minimap version 2 or above!");
 					return false;
@@ -806,7 +791,7 @@ public class HybridAssembler {
 				setCheckLog("Command " + getAligner() + " doesn't give version info. Check version failed!");
 				return false;
 			}else{
-				LOG.info("bwa version: " + version);
+				logger.info("bwa version: " + version);
 				if (version.compareTo("0.7.11") < 0){
 					setCheckLog(" Require bwa of 0.7.11 or above");
 					return false;

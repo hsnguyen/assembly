@@ -2,6 +2,7 @@ package org.rtassembly.concatemer;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -20,13 +21,12 @@ import japsa.seq.Sequence;
 import japsa.seq.SequenceOutputStream;
 import japsa.seq.SequenceReader;
 
+import org.apache.log4j.Logger;
 import org.rtassembly.npscarf.AlignmentRecord;
 import org.rtassembly.npscarf.Contig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ReferenceBasedChopper {
-	private static final Logger LOG = LoggerFactory.getLogger(ReferenceBasedChopper.class);
+    private static final Logger logger = Logger.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
 
 	HashMap<String, Contig> refMap = new HashMap<String, Contig>();
 	ReferenceBasedChopper(String refFile) throws IOException{
@@ -74,7 +74,7 @@ public class ReferenceBasedChopper {
 				continue;
 			refContig=refMap.get(samRecord.getReferenceName());
 			if(refContig==null){
-				LOG.error("Cannot find {} from reference list!", samRecord.getReferenceName());
+				logger.error("Cannot find "+samRecord.getReferenceName()+" from reference list!");
 				continue;
 			}
 				
@@ -110,12 +110,12 @@ public class ReferenceBasedChopper {
 		Collections.sort(counts);
 		int cov=0;
 		for(int c:counts) {
-			LOG.info("\nNumber of {}-concatemer is {}",c,count2Reads.get(c).size());
+			logger.info("\nNumber of "+c+"-concatemer is "+count2Reads.get(c).size());
 			for(String id:count2Reads.get(c))
-				LOG.info(id);
+				logger.info(id);
 			cov+=c*count2Reads.get(c).size();
 		}
-		LOG.info("Total={}X\n",cov);
+		logger.info("Total="+cov+"X\n");
 		for(SequenceOutputStream os:outMap.values()){
 			os.close();
 		}

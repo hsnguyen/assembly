@@ -120,7 +120,6 @@ public class GraphExploreDesktop extends Application{
     	/*******************************************************************************
     	 ****************************** Share code *************************************
     	 *******************************************************************************/
-    	HybridAssembler.VERBOSE=true;
 //		hbAss.setUseSPAdesPath(useSPAdesPath);
 		
 		if(!sInput.isEmpty())

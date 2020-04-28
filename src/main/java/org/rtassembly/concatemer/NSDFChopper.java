@@ -9,6 +9,7 @@ package org.rtassembly.concatemer;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -16,9 +17,8 @@ import java.util.List;
 import java.util.stream.DoubleStream;
 
 import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
+import org.apache.log4j.Logger;
 import org.jtransforms.fft.DoubleFFT_1D;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import ch.systemsx.cisd.hdf5.HDF5Factory;
 import ch.systemsx.cisd.hdf5.IHDF5Reader;
@@ -28,7 +28,7 @@ import japsa.seq.SequenceReader;
 
 
 public class NSDFChopper {
-    private static final Logger LOG = LoggerFactory.getLogger(NSDFChopper.class);
+    private static final Logger logger = Logger.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
 
 	String name;
 	short[] signal;
@@ -74,7 +74,7 @@ public class NSDFChopper {
 					signal[i]=2;
 					break;
 				default:
-					LOG.error("Invalid DNA character (only ACGT)!");
+					logger.error("Invalid DNA character (only ACGT)!");
 					System.exit(1);
 			}
 		
@@ -283,7 +283,7 @@ public class NSDFChopper {
     /******************************************************************/
 
     public void concatemersDetection() throws IOException {
-    	LOG.info("====================================================================");
+    	logger.info("====================================================================");
     	/******************************************
     	 * 1. Calculate NSDF by FFT
     	 *****************************************/
@@ -310,9 +310,9 @@ public class NSDFChopper {
         chopper=findPeaks(n);
 //        LOG.info("Done peak picking in {} secs", (System.currentTimeMillis()-curTime)/1000);
         if(chopper==null||chopper.isEmpty())
-        	LOG.info("Processing read {} length={}: not a concatemer!", name, signal.length);
+        	logger.info("Processing read "+name+" length="+signal.length+": not a concatemer!");
         else{
-        	LOG.info("Processing read {} length={}: {}-concatemers => {}",name, signal.length,chopper.size(),getChopCoords());
+        	logger.info("Processing read "+name+" length="+signal.length+": "+chopper.size()+"-concatemers => "+getChopCoords());
         	
         }
         

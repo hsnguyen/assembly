@@ -34,21 +34,20 @@
 
 package org.rtassembly;
 
+import org.apache.log4j.Logger;
 import org.rtassembly.npscarf.ContigBridge;
 import org.rtassembly.npscarf.RealtimeScaffolding;
 import org.rtassembly.npscarf.ScaffoldGraph;
 import org.rtassembly.npscarf.ScaffoldGraphDFS;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import japsa.seq.SequenceReader;
 import japsa.util.CommandLine;
-import japsa.util.Logging;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.lang.invoke.MethodHandles;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -57,7 +56,7 @@ import java.util.regex.Pattern;
  * 
  */
 public class NPScarfCmd extends CommandLine{
-	private static final Logger LOG = LoggerFactory.getLogger(NPScarfCmd.class);
+    private static final Logger logger = Logger.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
 
 	public NPScarfCmd(){
 		super();
@@ -155,23 +154,23 @@ public class NPScarfCmd extends CommandLine{
 				bf.close();
 				
 				if (version.length() == 0){
-					LOG.error(bwaExe + " is not the right path to bwa. bwa is required");
+					logger.error(bwaExe + " is not the right path to bwa. bwa is required");
 					System.exit(1);
 				}else{
-					LOG.info("bwa version: " + version);
+					logger.info("bwa version: " + version);
 					if (version.compareTo("0.7.11") < 0){
-						LOG.error(" Require bwa of 0.7.11 or above");
+						logger.error(" Require bwa of 0.7.11 or above");
 						System.exit(1);
 					}
 				}
 				
 				//run indexing 
 				if(cmdLine.getBooleanVal("index")){
-					LOG.info("bwa index running...");
+					logger.info("bwa index running...");
 					ProcessBuilder pb2 = new ProcessBuilder(bwaExe,"index",sequenceFile);
 					Process indexProcess =  pb2.start();
 					indexProcess.waitFor();
-					LOG.info("bwa index finished!");
+					logger.info("bwa index finished!");
 				}
 			}catch (IOException e){
 				System.err.println(e.getMessage());
@@ -181,13 +180,13 @@ public class NPScarfCmd extends CommandLine{
 		}else if (format.startsWith("sam") || format.startsWith("bam")){
 			// no problem
 		}else{
-			LOG.error("Unrecognized format: " + format);
+			logger.error("Unrecognized format: " + format);
 			System.exit(1);
 		}
 
 		if(spadesFolder !=null){
 			if(ScaffoldGraph.assembler==0b00  && graphFile.exists() && pathFile.exists()){
-				LOG.info("===> Use assembly graph and path from SPAdes!");				
+				logger.info("===> Use assembly graph and path from SPAdes!");				
 			}else if (ScaffoldGraph.assembler==0b01){
 				File f = new File(spadesFolder);
 				File[] matchingFiles = f.listFiles(new FilenameFilter() {
@@ -196,18 +195,18 @@ public class NPScarfCmd extends CommandLine{
 				    }
 				});
 				if(matchingFiles.length != 1){
-					LOG.info("Failed to looking for an unique *-contigs.dot file in " + spadesFolder + " . Proceeding without assembly graph...");
+					logger.info("Failed to looking for an unique *-contigs.dot file in " + spadesFolder + " . Proceeding without assembly graph...");
 					spadesFolder=null;
 				} else{
 					graphFile=matchingFiles[0];
-					LOG.info("===> Use assembly graph from short-read assembler ABySS: " + graphFile);
+					logger.info("===> Use assembly graph from short-read assembler ABySS: " + graphFile);
 				}
 				
 			}
 			
 		}
 		else{
-			LOG.info("Not found any legal assembly output folder, assembly graph thus not included!");
+			logger.info("Not found any legal assembly output folder, assembly graph thus not included!");
 			spadesFolder=null;
 		}
 		
@@ -220,15 +219,16 @@ public class NPScarfCmd extends CommandLine{
 		//if(marginThres < 0)
 		//	LOG.exit("Marginal threshold must not be negative", 1);
 		if(minContig <= 0) {
-			LOG.error("Minimum contig length has to be positive");
+			logger.error("Minimum contig length has to be positive");
 			System.exit(1);
 
 		}if(minSupport <= 0) {
-			LOG.error("Minimum supporting reads has to be positive");
+			logger.error("Minimum supporting reads has to be positive");
 			System.exit(1);
 		}
 		if(maxRepeat <= 0) {
-			LOG.error("Maximal possible repeat length has to be positive", 1);
+			logger.error("Maximal possible repeat length has to be positive");
+			System.exit(1);
 		}
 
 
@@ -242,7 +242,7 @@ public class NPScarfCmd extends CommandLine{
 		double cov = cmdLine.getDoubleVal("cov");
 		int qual = cmdLine.getIntVal("qual");
 		if(qual < 0) {
-			LOG.error("Phred score of quality has to be positive");
+			logger.error("Phred score of quality has to be positive");
 			System.exit(1);
 		}
 
@@ -250,11 +250,11 @@ public class NPScarfCmd extends CommandLine{
 				time = cmdLine.getIntVal("time");
 
 		if(number <= 0) {
-			LOG.error("Number of reads has to be positive");
+			logger.error("Number of reads has to be positive");
 			System.exit(1);
 		}
 		if(time < 0) {
-			LOG.error("Sleeping time must not be negative");
+			logger.error("Sleeping time must not be negative");
 			System.exit(1);
 		}
 		/**********************************************************************/

@@ -1,22 +1,22 @@
 package org.rtassembly;
 import java.io.File;
 import java.io.IOException;
+import java.lang.invoke.MethodHandles;
 
+import org.apache.log4j.Logger;
 import org.rtassembly.gui.NPGraphFX;
 import org.rtassembly.npgraph.Alignment;
 import org.rtassembly.npgraph.BDGraph;
 import org.rtassembly.npgraph.RealtimeGraphWatcher;
 import org.rtassembly.npgraph.HybridAssembler;
 import org.rtassembly.npgraph.SimpleBinner;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import japsa.util.CommandLine;
 import javafx.application.Application;
 
 
 public class NPGraphCmd extends CommandLine{
-    private static final Logger LOG = LoggerFactory.getLogger(NPGraphCmd.class);
+    private static final Logger logger = Logger.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
 	public NPGraphCmd(){
 		super();
 		//Input settings
@@ -46,7 +46,7 @@ public class NPGraphCmd extends CommandLine{
 		
 		addBoolean("gui", false, "Whether using GUI or not.");
 		addBoolean("keep", false, "Whether to keep extremely-low-coveraged contigs.");
-		addBoolean("verbose", false, "For debugging.");
+//		addBoolean("verbose", false, "For debugging.");
 		addStdHelp();
 	}
 	
@@ -69,7 +69,6 @@ public class NPGraphCmd extends CommandLine{
 				gui = cmdLine.getBooleanVal("gui");
 			
 		Alignment.MIN_QUAL = cmdLine.getIntVal("qual");
-		HybridAssembler.VERBOSE=cmdLine.getBooleanVal("verbose");
 		SimpleBinner.ANCHOR_CTG_LEN=cmdLine.getIntVal("anchor");
 		SimpleBinner.UNIQUE_CTG_LEN=cmdLine.getIntVal("unique");
 		RealtimeGraphWatcher.KEEP=cmdLine.getBooleanVal("keep");
@@ -127,13 +126,12 @@ public class NPGraphCmd extends CommandLine{
 //					hbAss.postProcessGraph();
 				}
 				else{
-					LOG.error("Error with pre-processing step: \n" + hbAss.getCheckLog());
+					logger.error("Error with pre-processing step: \n" + hbAss.getCheckLog());
 					System.exit(1);
 				}
 					
 			} catch (InterruptedException|IOException e) {
-				LOG.error("Issue when assembly: \n" + e.getMessage());
-				e.printStackTrace();
+				logger.error("{}" + e);
 				System.exit(1);
 			}
         }

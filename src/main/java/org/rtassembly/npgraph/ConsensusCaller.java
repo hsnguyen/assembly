@@ -1,14 +1,15 @@
 package org.rtassembly.npgraph;
 
 import java.io.File;
+import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.log4j.Logger;
+
 import japsa.bio.np.ErrorCorrection;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
@@ -16,7 +17,7 @@ import japsa.seq.SequenceBuilder;
 
 //Module for consensus bridging of contigs when they're not connected in the assembly graph
 public class ConsensusCaller {
-	private static final Logger LOG = LoggerFactory.getLogger(ConsensusCaller.class);
+    private static final Logger logger = Logger.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
 	
 	volatile HashMap<String, List<Sequence>> bridgingReads;
 	volatile HashMap<String, Sequence> consensusReads;
@@ -100,11 +101,9 @@ public class ConsensusCaller {
 		Sequence consensus=null;
 		try {
 			ErrorCorrection.msa=msa;
-			ErrorCorrection.VERBOSE=HybridAssembler.VERBOSE;
 			consensus=ErrorCorrection.consensusSequence(getBridgingReadList(id), AlignedRead.tmpFolder+File.separator+id);
 		} catch (Exception e) {
-			if(HybridAssembler.VERBOSE)
-				LOG.warn("Invalid consensus calling:\n {} Pick first read for the consensus of bridge {}", e.getMessage(), id);
+			logger.debug("Invalid consensus calling:\n {} Pick first read for the consensus of bridge " + id, e);
 			consensus=getBridgingReadList(id).get(0);
 		}
 		consensusReads.put(id, consensus);
@@ -277,12 +276,8 @@ public class ConsensusCaller {
 		
 		
 		String key=read.getEndingsID();
-		if(HybridAssembler.VERBOSE)
-			LOG.info("Save read {} to bridge {}: {} -> {}", read.readSequence.getName(), key,
-																	fromContig.getId() + (start.strand?"+":"-"),
-																	toContig.getId() + (end.strand?"+":"-")
-																	);
-		Sequence seq=seqBuilder.toSequence();
+		logger.debug("Save read "+read.readSequence.getName()+" to bridge "+key+": "
+						+fromContig.getId()+(start.strand?"+":"-")+" -> "+toContig.getId() + (end.strand?"+":"-"));		Sequence seq=seqBuilder.toSequence();
 		addBridgingRead(key, seq);
 	}
 }

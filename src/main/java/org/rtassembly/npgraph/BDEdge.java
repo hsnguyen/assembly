@@ -1,19 +1,19 @@
 package org.rtassembly.npgraph;
 
+import java.lang.invoke.MethodHandles;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.log4j.Logger;
 import org.graphstream.graph.implementations.AbstractEdge;
 import org.graphstream.graph.implementations.AbstractNode;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 
 public class BDEdge extends AbstractEdge{
 	protected boolean dir0, dir1;//true: outward, false: inward
 	//note that traversing direction (true: template, false: reverse complement) of destination node is opposite its defined direction (true: outward, false:inward) 
 	
-    private static final Logger LOG = LoggerFactory.getLogger(BDEdge.class);
+    private static final Logger logger = Logger.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
 
 	protected BDEdge(String id, AbstractNode node0, AbstractNode node1, boolean dir0, boolean dir1) {
 		// id fuck off!!! we'll make one for ourselves

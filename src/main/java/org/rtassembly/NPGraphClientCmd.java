@@ -4,12 +4,13 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.ProcessBuilder.Redirect;
+import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+
+import org.apache.log4j.Logger;
 import org.rtassembly.npgraph.Alignment;
-import org.rtassembly.npgraph.GraphUtil;
-import org.rtassembly.npgraph.HybridAssembler;
 import org.rtassembly.npgraph.grpc.AssemblyGuideGrpc;
 import org.rtassembly.npgraph.grpc.AssemblyGuideGrpc.AssemblyGuideBlockingStub;
 import org.rtassembly.npgraph.grpc.RequestAssembly;
@@ -22,16 +23,12 @@ import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
 import java.util.concurrent.TimeUnit;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import japsa.seq.PAFRecord;
-import japsa.seq.Sequence;
 import japsa.util.CommandLine;
 
 
 public class NPGraphClientCmd extends CommandLine{
-    private static final Logger LOG = LoggerFactory.getLogger(NPGraphClientCmd.class);
+    private static final Logger logger = Logger.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
     private static ManagedChannel channel; 
     private static AssemblyGuideBlockingStub stub;
     
@@ -71,9 +68,9 @@ public class NPGraphClientCmd extends CommandLine{
 			long before=System.currentTimeMillis();
 			ResponseAssembly response = stub.getAssemblyContribution(request);
 			long interval=System.currentTimeMillis()-before;
-			LOG.info("Get response from server in {}ms: read {} is {}!", interval, response.getReadId(), response.getUsefulness()?"useful":"not useful");
+			logger.info("Get response from server in " + interval +"ms: read " + response.getReadId() +" is " + (response.getUsefulness()?"useful":"not useful"));
 		} catch (StatusRuntimeException e) {
-			  LOG.warn("RPC failed: {}", e.getMessage());
+			  logger.warn("RPC failed: {}", e);
 		}
 		return;
 		
@@ -103,7 +100,7 @@ public class NPGraphClientCmd extends CommandLine{
 			indexProcess.waitFor();
 		} 
 		//from HybridAssembler.assembly2()
-		LOG.info("Starting alignment at {}", new Date());
+		logger.info("Starting alignment at {}" + new Date());
 		ProcessBuilder pb = null;
 		command.add("minimap2");
 		command.addAll(Arrays.asList(algOpts.split("\\s")));
@@ -121,7 +118,7 @@ public class NPGraphClientCmd extends CommandLine{
 
 		Process alignmentProcess  = pb.redirectError(ProcessBuilder.Redirect.to(new File(workDir+File.separator+"alignment.log"))).start();
 
-		LOG.info("minimap2 started!");			
+		logger.info("minimap2 started!");			
 		InputStreamReader inputStream = new InputStreamReader(alignmentProcess.getInputStream());
 		try(BufferedReader reader=new BufferedReader(inputStream)){
 			String readID = "";
@@ -135,13 +132,12 @@ public class NPGraphClientCmd extends CommandLine{
 			while ((line=reader.readLine()) != null) {
 				try {
 					curRecord = new PAFRecord(line);
-					LOG.info("{} {} {} {} {} {} {} {} {}",
-								curRecord.qname, curRecord.qlen, curRecord.qstart, curRecord.qend, 
-								curRecord.strand?"+":"-", 
-								curRecord.tname, curRecord.tlen, curRecord.tstart, curRecord.tend);
+					logger.info(curRecord.qname + " " + curRecord.qlen + " " + curRecord.qstart + " " + curRecord.qend + " " + 
+								(curRecord.strand?"+":"-") + " " + 
+								curRecord.tname + " " + curRecord.tlen + " " + curRecord.tstart + " " + curRecord.tend);
 					///////////////////////////////////////////////////
 					if (curRecord.qual < Alignment.MIN_QUAL){		
-						LOG.info("Ignore low-quality map record: q={}", curRecord.qual);
+						logger.info("Ignore low-quality map record: q=" + curRecord.qual);
 						continue;		
 					}
 										
@@ -159,16 +155,14 @@ public class NPGraphClientCmd extends CommandLine{
 					hits.add(curRecord); 
 					 
 				}catch(Exception e) {
-					LOG.info("Ignore one faulty record: \n {}", e.getMessage());
-					e.printStackTrace();
+					logger.error("Error record! \n {}", e);
 					break;
 				}
 	
 			}// while
 
 		}catch(Exception e) {
-			LOG.info("Error reading alignment results: \n {}", e.getMessage());
-			e.printStackTrace();
+			logger.error("Error reading alignment results: \n {}", e);
 		}
 		finally {
 		      channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);

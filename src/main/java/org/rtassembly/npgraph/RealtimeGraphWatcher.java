@@ -2,6 +2,7 @@ package org.rtassembly.npgraph;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.invoke.MethodHandles;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -12,19 +13,18 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.apache.log4j.Logger;
 import org.graphstream.algorithm.ConnectedComponents;
 import org.graphstream.algorithm.ConnectedComponents.ConnectedComponent;
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Node;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import japsa.bio.np.RealtimeAnalysis;
 import japsa.seq.JapsaAnnotation;
 import japsa.seq.Sequence;
 
 public class RealtimeGraphWatcher extends RealtimeAnalysis{
-    private static final Logger LOG = LoggerFactory.getLogger(RealtimeGraphWatcher.class);
+    private static final Logger logger = Logger.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
 
 	public static boolean KEEP=false; //whether or not keeping the low-coverage nodes
 	public static int R_INTERVAL=0, T_INTERVAL=0;
@@ -412,7 +412,7 @@ public class RealtimeGraphWatcher extends RealtimeAnalysis{
 			outputAssGFA(hAss.getPrefix()+File.separator+"npgraph_assembly.gfa");
 			outputOrigGFA(hAss.getPrefix()+File.separator+"npgraph_components.gfa");
 		}catch(IOException e) {
-			LOG.error("Could not output assembly results: {}", e.getMessage());
+			logger.error("Could not output assembly results: {}", e);
 		}
 	}
 
@@ -428,8 +428,7 @@ public class RealtimeGraphWatcher extends RealtimeAnalysis{
 			while(true){
 				boolean changed=false;
 				for(GoInBetweenBridge brg:unsolved){
-					if(HybridAssembler.VERBOSE)
-						LOG.info("Last attempt on incomplete bridge {} : anchors={} \n {}", brg.getEndingsID(), brg.getNumberOfAnchors(), brg.getAllPossiblePaths());
+					logger.debug("Last attempt on incomplete bridge "+brg.getEndingsID()+" : anchors="+ brg.getNumberOfAnchors() + "\n" + brg.getAllPossiblePaths());
 					//Take the current best path among the candidate of a bridge and connect the bridge(greedy)
 					if(brg.getCompletionLevel()==3){ 
 						hAss.simGraph.getNewSubPathsToReduce(brg.getBestPath(brg.pBridge.getNode0(),brg.pBridge.getNode1())).stream().forEach(p->hAss.simGraph.reduceUniquePath(p));
@@ -444,8 +443,8 @@ public class RealtimeGraphWatcher extends RealtimeAnalysis{
 							hAss.simGraph.getNewSubPathsToReduce(brg.getBestPath(brg.steps.start.getNode(),brg.steps.end.getNode())).stream().forEach(p->hAss.simGraph.reduceUniquePath(p));
 							solved.add(brg);
 						}
-						else if(HybridAssembler.VERBOSE)
-							LOG.info("Last attempt failed \n");
+						else 
+							logger.debug("Last attempt failed");
 					}
 		
 				}

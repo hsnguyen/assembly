@@ -33,9 +33,6 @@
  ****************************************************************************/
 package japsa.seq;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.Closeable;
@@ -55,7 +52,6 @@ import java.util.zip.GZIPInputStream;
  *
  */
 public abstract class SequenceReader implements Closeable{
-	private static final Logger LOG = LoggerFactory.getLogger(SequenceReader.class);
 
 	/**
 	 * Provide a skeleton of a sequence file reader. Assume that the file

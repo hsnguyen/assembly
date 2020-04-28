@@ -35,11 +35,13 @@ package org.rtassembly.gui;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.invoke.MethodHandles;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 
+import org.apache.log4j.Logger;
 import org.graphstream.stream.thread.ThreadProxyPipe;
 import org.graphstream.ui.fx_viewer.FxDefaultView;
 import org.graphstream.ui.fx_viewer.FxViewer;
@@ -49,8 +51,6 @@ import org.graphstream.ui.view.Viewer.CloseFramePolicy;
 import org.rtassembly.npgraph.Alignment;
 import org.rtassembly.npgraph.BDGraph;
 import org.rtassembly.npgraph.HybridAssembler;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import japsa.util.FxDialogs;
 import japsa.util.ImageButton;
@@ -90,7 +90,7 @@ import javafx.stage.Stage;
 
 
 public class NPGraphFX extends Application{
-    private static final Logger LOG = LoggerFactory.getLogger(NPGraphFX.class);
+    private static final Logger logger = Logger.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
 
 	static HybridAssembler myass = new HybridAssembler();
 //	static Viewer graphViewer;
@@ -159,7 +159,7 @@ public class NPGraphFX extends Application{
     						e.printStackTrace();
     					}			
     				}
-    				LOG.info("GO");
+    				logger.info("NPGRAPH GUI is now ready to GO!");
 //    				updateData();
     				try{
     					myass.assembly();

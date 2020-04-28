@@ -7,11 +7,12 @@ import japsa.seq.PAFRecord;
 import japsa.seq.Sequence;
 
 import java.io.IOException;
+import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
 
+import org.apache.log4j.Logger;
 import org.rtassembly.npgraph.Alignment;
 import org.rtassembly.npgraph.BDNode;
 import org.rtassembly.npgraph.BDPath;
@@ -19,7 +20,7 @@ import org.rtassembly.npgraph.GraphUtil;
 import org.rtassembly.npgraph.HybridAssembler;
 
 public class AssemblyGuideServer {
-	  private static final Logger logger = Logger.getLogger(AssemblyGuideServer.class.getName());
+    private static final Logger logger = Logger.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
 
 	  private final int port;
 	  private final Server server;

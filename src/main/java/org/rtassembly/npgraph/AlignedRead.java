@@ -38,15 +38,15 @@ package org.rtassembly.npgraph;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
 import java.io.File;
+import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Collections;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.log4j.Logger;
 
 
 public class AlignedRead{
-	private static final Logger LOG = LoggerFactory.getLogger(AlignedRead.class);
+    private static final Logger logger = Logger.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
 
 	public static int PSEUDO_ID=1;
 	public static String tmpFolder=System.getProperty("usr.dir")+File.separator+"npGraph_tmp"; //folder to save spanning reads of the bridge
