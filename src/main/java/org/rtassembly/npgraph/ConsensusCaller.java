@@ -8,7 +8,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import japsa.bio.np.ErrorCorrection;
 import japsa.seq.Alphabet;
@@ -17,7 +18,7 @@ import japsa.seq.SequenceBuilder;
 
 //Module for consensus bridging of contigs when they're not connected in the assembly graph
 public class ConsensusCaller {
-    private static final Logger logger = Logger.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
+    private static final Logger logger = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 	
 	volatile HashMap<String, List<Sequence>> bridgingReads;
 	volatile HashMap<String, Sequence> consensusReads;
@@ -103,7 +104,7 @@ public class ConsensusCaller {
 			ErrorCorrection.msa=msa;
 			consensus=ErrorCorrection.consensusSequence(getBridgingReadList(id), AlignedRead.tmpFolder+File.separator+id);
 		} catch (Exception e) {
-			logger.debug("Invalid consensus calling:\n {} Pick first read for the consensus of bridge " + id, e);
+			logger.debug("Invalid consensus calling for {}. Pick the first read for the consensus of bridge.\n{}", id, e);
 			consensus=getBridgingReadList(id).get(0);
 		}
 		consensusReads.put(id, consensus);
@@ -276,8 +277,12 @@ public class ConsensusCaller {
 		
 		
 		String key=read.getEndingsID();
-		logger.debug("Save read "+read.readSequence.getName()+" to bridge "+key+": "
-						+fromContig.getId()+(start.strand?"+":"-")+" -> "+toContig.getId() + (end.strand?"+":"-"));		Sequence seq=seqBuilder.toSequence();
+		logger.debug("Save read {} to bridge {}: {} -> {}", 
+						read.readSequence.getName(),
+						key,
+						fromContig.getId()+(start.strand?"+":"-"),
+						toContig.getId() + (end.strand?"+":"-"));		
+		Sequence seq=seqBuilder.toSequence();
 		addBridgingRead(key, seq);
 	}
 }

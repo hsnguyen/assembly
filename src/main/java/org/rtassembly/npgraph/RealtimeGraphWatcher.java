@@ -13,7 +13,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.graphstream.algorithm.ConnectedComponents;
 import org.graphstream.algorithm.ConnectedComponents.ConnectedComponent;
 import org.graphstream.graph.Edge;
@@ -24,10 +25,10 @@ import japsa.seq.JapsaAnnotation;
 import japsa.seq.Sequence;
 
 public class RealtimeGraphWatcher extends RealtimeAnalysis{
-    private static final Logger logger = Logger.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
+    private static final Logger logger = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
 	public static boolean KEEP=false; //whether or not keeping the low-coverage nodes
-	public static int R_INTERVAL=0, T_INTERVAL=0;
+	public static int R_INTERVAL, T_INTERVAL;
 	BDGraph outputGraph;
 	final ConnectedComponents rtComponents;
 	HashSet<BDEdge> cutEdges;
@@ -428,7 +429,8 @@ public class RealtimeGraphWatcher extends RealtimeAnalysis{
 			while(true){
 				boolean changed=false;
 				for(GoInBetweenBridge brg:unsolved){
-					logger.debug("Last attempt on incomplete bridge "+brg.getEndingsID()+" : anchors="+ brg.getNumberOfAnchors() + "\n" + brg.getAllPossiblePaths());
+					logger.debug("Last attempt on incomplete bridge {} : anchors={}\n{}",
+									brg.getEndingsID(), brg.getNumberOfAnchors(), brg.getAllPossiblePaths());
 					//Take the current best path among the candidate of a bridge and connect the bridge(greedy)
 					if(brg.getCompletionLevel()==3){ 
 						hAss.simGraph.getNewSubPathsToReduce(brg.getBestPath(brg.pBridge.getNode0(),brg.pBridge.getNode1())).stream().forEach(p->hAss.simGraph.reduceUniquePath(p));

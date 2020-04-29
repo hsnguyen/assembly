@@ -17,7 +17,8 @@ import java.util.List;
 import java.util.stream.DoubleStream;
 
 import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.jtransforms.fft.DoubleFFT_1D;
 
 import ch.systemsx.cisd.hdf5.HDF5Factory;
@@ -28,7 +29,7 @@ import japsa.seq.SequenceReader;
 
 
 public class NSDFChopper {
-    private static final Logger logger = Logger.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
+    private static final Logger logger = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
 	String name;
 	short[] signal;
@@ -310,16 +311,15 @@ public class NSDFChopper {
         chopper=findPeaks(n);
 //        LOG.info("Done peak picking in {} secs", (System.currentTimeMillis()-curTime)/1000);
         if(chopper==null||chopper.isEmpty())
-        	logger.info("Processing read "+name+" length="+signal.length+": not a concatemer!");
+        	logger.info("Processing read {} length={}: not a concatemer!", name, signal.length);
         else{
-        	logger.info("Processing read "+name+" length="+signal.length+": "+chopper.size()+"-concatemers => "+getChopCoords());
+        	logger.info("Processing read {} length={}: {}-concatemers => {}", name, signal.length, chopper.size(), getChopCoords());
         	
         }
         
     }
     
-    @SuppressWarnings("unused")
-	private void printArrayToFile(double[] input,  String filename){
+    private void printArrayToFile(double[] input,  String filename){
 		try {
 			PrintWriter writer = new PrintWriter(new FileWriter(filename));
 			for(double value:input)

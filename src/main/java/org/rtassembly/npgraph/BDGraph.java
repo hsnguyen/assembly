@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -17,8 +16,8 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.apache.log4j.Logger;
-import org.graphstream.algorithm.ConnectedComponents;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.graphstream.graph.*;
 import org.graphstream.graph.implementations.*;
 
@@ -31,7 +30,7 @@ import japsa.seq.SequenceOutputStream;
 
 
 public class BDGraph extends MultiGraph{
-    private static final Logger logger = Logger.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
+    private static final Logger logger = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
     static int KMER=127;
 	static boolean 	IS_CIRCULAR=true, // circular or linear preference for the output genome
@@ -141,7 +140,7 @@ public class BDGraph extends MultiGraph{
 	
 	protected BDEdge addEdge(AbstractNode src, AbstractNode dst, boolean dir0, boolean dir1){
 		BDEdge tmp = (BDEdge) addEdge(BDEdge.createID(src, dst, dir0, dir1), src, dst);
-		logger.trace("Graph "+getId()+" : edge "+tmp.getId()+" added successfully!");
+		logger.trace("Graph {} : edge {} added successfully!", getId(), tmp.getId());
 		return tmp;
 	}
 	
@@ -377,7 +376,7 @@ public class BDGraph extends MultiGraph{
     	unknownBinMap.remove(ko);
     	unknownBinMap.remove(ki);
     	node.setAttribute("unique", retval);
-    	logger.debug("FOUND NEW UNIQUE CONTIG BY LONG READS: ID=" + node.getId() + " degree= " + node.getDegree() + " out=" + co + " in=" + ci + " read count="+c);
+    	logger.debug("FOUND NEW UNIQUE CONTIG BY LONG READS: ID={} degree={} out={} in={} readcount={}", node.getId(), node.getDegree(), co, ci, c);
     	return retval;
     }
     
@@ -450,7 +449,7 @@ public class BDGraph extends MultiGraph{
 			else
 				continue;
     		
-    		logger.debug("Found one weird node "+(String)node.getAttribute("name")+" inCov="+inCov+"/"+node.getInDegree()+", outCov="+outCov+"/"+node.getOutDegree());
+    		logger.debug("Found one weird node {} inCov={}/{}, outCov={}/{}", (String)node.getAttribute("name"), inCov, node.getInDegree(), outCov, node.getOutDegree());
 
     	}
     	BDNodeState n0,n1;
@@ -470,7 +469,7 @@ public class BDGraph extends MultiGraph{
         		int overlap=GraphUtil.overlap(seq0,seq1);
         		if(overlap > 55){
         			BDEdge e=addEdge(n0.getNode(), n1.getNode(), n0.getDir(), n1.getDir());
-            		logger.debug("...adding potential edge "+e.getId()+" length=" + overlap);
+            		logger.debug("...adding potential edge {} length={}", e.getId(), overlap);
         		}
     		}
     	}
@@ -480,7 +479,7 @@ public class BDGraph extends MultiGraph{
     //Depth First Search strategy
 	synchronized ArrayList<BDPath> DFSAllPaths(BDNode srcNode, BDNode dstNode, boolean srcDir, boolean dstDir, int distance)
 	{
-    	logger.debug("Looking for DFS path between "+srcNode.getId()+(srcDir?"o":"i")+" to "+dstNode.getId() + (dstDir?"o":"i")+" with distance="+distance);
+    	logger.debug("Looking for DFS path between {} to {} with distance={}", srcNode.getId()+(srcDir?"o":"i"), dstNode.getId() + (dstDir?"o":"i"), distance);
 		ArrayList<BDPath> possiblePaths = new ArrayList<BDPath>(), 
 									retval=new ArrayList<BDPath>();
 
@@ -500,7 +499,7 @@ public class BDGraph extends MultiGraph{
 					delta;
 			BDEdge curEdge = null;
 
-	    	logger.debug("Found " + curNodeState.toString() + " with shortest distance=" + shortestMap.get(curNodeState.toString()));
+	    	logger.debug("Found {} with shortest distance={}", curNodeState.toString(), shortestMap.get(curNodeState.toString()));
 
 			AtomicDouble limit = new AtomicDouble(distance+tolerance);
 			
@@ -606,7 +605,7 @@ public class BDGraph extends MultiGraph{
 				
 			}
 		} 
-			logger.debug("select from list of " + possiblePaths.size() + " DFS paths:");
+			logger.debug("select from list of {} DFS paths", possiblePaths.size());
 		
 		if(possiblePaths.isEmpty())
 			return null;
@@ -618,7 +617,7 @@ public class BDGraph extends MultiGraph{
 			if(Math.abs(p.getDeviation())>closestDist+Math.abs(distance+getKmerSize())*R_TOL || i>=keepMax)
 				break;
 			retval.add(p);
-	    	logger.debug("Hit added: "+p.getId()+" deviation="+p.getDeviation()+"; depth="+p.size()+"; likelihood="+p.getPathEstats());
+	    	logger.debug("Hit added: {} deviation={}; depth={}; likelihood={}", p.getId(), p.getDeviation(), p.size(), p.getPathEstats());
 
 		}
 		
@@ -692,7 +691,7 @@ public class BDGraph extends MultiGraph{
  		
  		logger.debug("=================================================");
  		for(Alignment alg:alignments)
- 			logger.info("\t"+alg.toString());
+ 			logger.info("\t{}", alg.toString());
  		logger.debug("=================================================");
  		
  		//First bin the alignments into different overlap regions			
@@ -795,16 +794,16 @@ public class BDGraph extends MultiGraph{
     	List<BDPath> retval=new ArrayList<BDPath>();
     	boolean complete=false;
 		GoInBetweenBridge 	storedBridge=getBridgeFromMap(read), reversedBridge;
-		logger.debug("+++"+read.getEndingsID()+" <=> "+(storedBridge==null?"null":storedBridge.getEndingsID()));
+		logger.debug("+++{} <==> {}", read.getEndingsID(), (storedBridge==null?"null":storedBridge.getEndingsID()));
 		//long read give info about unique successor and predecessor
 		addReadsToUnknowMap(read);
 		if(storedBridge!=null) {
 			if(storedBridge.getCompletionLevel()==4){//important since it will ignore the wrong transformed unique nodes here!!!
-				logger.debug(storedBridge.getEndingsID() + ": already solved and reduced: ignore!");
+				logger.debug("{}: already solved and reduced: ignore!", storedBridge.getEndingsID());
 				return retval;
 
 			}else{
-				logger.debug(storedBridge.getEndingsID() + ": already built: fortify!");
+				logger.debug("{}: already built: fortify!", storedBridge.getEndingsID());
 				//update available bridge using alignments
 				byte state=storedBridge.merge(read,true);
 				
@@ -815,7 +814,7 @@ public class BDGraph extends MultiGraph{
 				boolean extend=false;
 				if(storedBridge.getCompletionLevel()==1){
 					if(storedBridge.scanForAnEnd(false)){
-						logger.debug("FOUND NEW TRANSFORMED END: " + storedBridge.steps.end.getNode().getId());
+						logger.debug("FOUND NEW TRANSFORMED END: {}", storedBridge.steps.end.getNode().getId());
 						extend=storedBridge.steps.connectBridgeSteps(false);
 					}					
 				}
@@ -876,7 +875,7 @@ public class BDGraph extends MultiGraph{
     		return;
 
     	else 
-    		logger.debug("Reducing path: " + path.getId());
+    		logger.debug("Reducing path: {}", path.getId());
 
 
     	Set<Edge> 	potentialRemovedEdges = binner.walkAlongUniquePath(path);
@@ -886,28 +885,28 @@ public class BDGraph extends MultiGraph{
 	    	//remove appropriate edges
     		
 	    	for(Edge e:potentialRemovedEdges){
-	    		logger.debug("REMOVING EDGE " + e.getId() + " from " + e.getNode0().getGraph().getId() + "-" + e.getNode1().getGraph().getId());
-	    		logger.debug("before: \n\t" + printEdgesOfNode((BDNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) e.getNode1()));
+	    		logger.debug("REMOVING EDGE {} from {}-{}", e.getId(), e.getNode0().getGraph().getId(), e.getNode1().getGraph().getId());
+	    		logger.debug("before: \n\t{}\n\t{}", printEdgesOfNode((BDNode) e.getNode0()), printEdgesOfNode((BDNode) e.getNode1()));
 	    		
 	    		removeEdge(e.getId());
-	    		logger.debug("after: \n\t" + printEdgesOfNode((BDNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) e.getNode1()));
+	    		logger.debug("after: \n\t{}\n\t{}", printEdgesOfNode((BDNode) e.getNode0()), printEdgesOfNode((BDNode) e.getNode1()));
 
 	    	}
 	    	
 	    	//add appropriate edges
 			BDEdge reducedEdge = addEdge(path.getFirstNode(), path.getLastNode(), path.getFirstNodeDirection(), path.getLastNodeDirection());
-    		logger.debug("ADDING EDGE " + reducedEdge.getId()+ " from " + reducedEdge.getNode0().getGraph().getId() + "-" + reducedEdge.getNode1().getGraph().getId());
+    		logger.debug("ADDING EDGE {} from {}-{}", reducedEdge.getId(), reducedEdge.getNode0().getGraph().getId(), reducedEdge.getNode1().getGraph().getId());
 
 			if(reducedEdge!=null){
 				if(path.getPrimitivePath().getEdgeCount()>1)
 					reducedEdge.setAttribute("path", path);
 				binner.edge2BinMap.put(reducedEdge, oneBin);
 			}
-			logger.debug("after adding: \n\t" + printEdgesOfNode((BDNode) reducedEdge.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) reducedEdge.getNode1()));
+			logger.debug("after adding: \n\t{}\n\t{}", printEdgesOfNode((BDNode) reducedEdge.getNode0()), printEdgesOfNode((BDNode) reducedEdge.getNode1()));
 	    	
 			notifyChanges();
     	}else 
-    		logger.debug("Path "+path.getId()+" doesn't need to be reduced!");
+    		logger.debug("Path {} doesn't need to be reduced!", path.getId());
    
 
     }
@@ -918,7 +917,7 @@ public class BDGraph extends MultiGraph{
     	if(path==null || path.getEdgeCount()<1)
     		return;
     	else 
-    		logger.debug("Input SPAdes path: " + path.getId());
+    		logger.debug("Input SPAdes path: {}", path.getId());
     	//loop over the edges of path (like spelling())
     	getNewSubPathsToReduce(path).stream().forEach(p->reduceUniquePath(p));
 
@@ -1075,7 +1074,7 @@ public class BDGraph extends MultiGraph{
 			if(seq!=null)
 				seq.writeFasta(out);
 			else { 
-				logger.error("Cannot read sequence from node " + node.getId());
+				logger.error("Cannot read sequence from node {}", node.getId());
 				break;
 			}
 		}
@@ -1089,7 +1088,7 @@ public class BDGraph extends MultiGraph{
 			if(annotation!=null)
 				annotation.write(out);
 			else {
-				logger.error("Cannot read annotation from node " + node.getId());
+				logger.error("Cannot read annotation from node {}", node.getId());
 				break;
 			}
 

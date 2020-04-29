@@ -37,9 +37,7 @@ package japsa.seq;
 
 
 
-import japsa.seq.Alphabet;
 import japsa.util.JapsaMath;
-
 import java.io.IOException;
 
 

@@ -16,14 +16,15 @@ import java.util.stream.Stream;
 import org.apache.commons.math3.ml.clustering.Cluster;
 import org.apache.commons.math3.ml.clustering.DBSCANClusterer;
 import org.apache.commons.math3.ml.clustering.DoublePoint;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Node;
 
 import com.google.common.collect.Iterables;
 
 public class SimpleBinner {
-    private static final Logger logger = Logger.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
+    private static final Logger logger = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 	public static volatile int 	UNIQUE_CTG_LEN=10000,
 								ANCHOR_CTG_LEN=1000, //surely length for the anchors; shorter anchors wouldn't be used until double-checked
 								TRANSFORMED_ANCHOR_CTG_LEN=2000;
@@ -83,7 +84,7 @@ public class SimpleBinner {
 			induceEdgeBin=nbins.substract(leavingEdgeBinCount);
 			if(induceEdgeBin!=null && induceEdgeBin.getSum() > 0){
 				edge2BinMap.put(e, induceEdgeBin);
-				logger.debug("From node "+node.getId()+getBinsOfNode(node)+" firing edge " + e.getId() + getBinsOfEdge(e));
+				logger.debug("From node {} {} firing edge {} {}", node.getId(), getBinsOfNode(node), e.getId(), getBinsOfEdge(e));
 				exploringFromEdge(e);
 			}
 		}
@@ -103,7 +104,7 @@ public class SimpleBinner {
 			induceEdgeBin=nbins.substract(enteringEdgeBinCount);
 			if(induceEdgeBin!=null && induceEdgeBin.getSum() > 0){
 				edge2BinMap.put(e, induceEdgeBin);
-				logger.debug("From node "+node.getId()+getBinsOfNode(node)+" firing edge " + e.getId() + getBinsOfEdge(e));
+				logger.debug("From node {} {} firing edge {} {}", node.getId(), getBinsOfNode(node), e.getId(), getBinsOfEdge(e));
 				exploringFromEdge(e);
 			}
 		}
@@ -118,7 +119,7 @@ public class SimpleBinner {
 		unresolvedEdges.remove(edge);
 		Node 	n0 = edge.getNode0(),
 				n1 = edge.getNode1();
-		logger.debug("From edge " + edge.getId() + getBinsOfEdge(edge) + ":");
+		logger.debug("From edge {} {}:", edge.getId(), getBinsOfEdge(edge));
 		if(!node2BinMap.containsKey(n0)){
 			boolean dir0 = ((BDEdge)edge).getDir0();
 			Stream<Edge> edgeSet0 = dir0?n0.leavingEdges():n0.enteringEdges();		
@@ -139,12 +140,12 @@ public class SimpleBinner {
 
 			if(fully && GraphUtil.approxCompare(covSum, n0.getNumber("cov"))==0){
 				node2BinMap.put(n0, binCounts0);
-				logger.debug("completing node " + n0.getId()+getBinsOfNode(n0));
+				logger.debug("completing node {}", n0.getId()+getBinsOfNode(n0));
 				exploringFromNode(n0);
 			}else 
-				logger.debug("skip node " + n0.getId()+getBinsOfNode(n0));
+				logger.debug("skip node {}", n0.getId()+getBinsOfNode(n0));
 		}else{
-			logger.debug("firing node " + n0.getId()+getBinsOfNode(n0));
+			logger.debug("firing node {}", n0.getId()+getBinsOfNode(n0));
 			exploringFromNode(n0);
 		}
 		
@@ -169,14 +170,14 @@ public class SimpleBinner {
 			
 			if(fully && GraphUtil.approxCompare(covSum, n1.getNumber("cov"))==0){				
 				node2BinMap.put(n1, binCounts1);
-				logger.debug("completing node " + n1.getId()+getBinsOfNode(n1));
+				logger.debug("completing node {}", n1.getId()+getBinsOfNode(n1));
 				exploringFromNode(n1);
 			}else 
-				logger.debug("skip node " + n1.getId()+getBinsOfNode(n1));
+				logger.debug("skip node {}", n1.getId()+getBinsOfNode(n1));
 			
 		}else{ 
 			//TODO: check consistent here also
-			logger.debug("firing node " + n1.getId()+getBinsOfNode(n1));
+			logger.debug("firing node {}", n1.getId()+getBinsOfNode(n1));
 			exploringFromNode(n1);
 		}
 	}
@@ -285,11 +286,11 @@ public class SimpleBinner {
 
 		
 		for(PopBin bin:binList) {
-			logger.debug("Bin " + bin.binID + ": " + bin.estCov);		
+			logger.debug("Bin {}: {}", bin.binID, bin.estCov);		
 			for(Node n:bin.getCoreNodes())
-				logger.debug("...core node " + n.getAttribute("name"));
+				logger.debug("...core node {}", n.getAttribute("name"));
 		}
-		graph.edges().forEach(e->System.out.println("Edge " + e.getId() + " cov=" + e.getNumber("cov")));
+		graph.edges().forEach(e->logger.debug("Edge {} cov={}", e.getId(), e.getNumber("cov")));
 	
 		
 		//3.1.First round of assigning unit cov: from binned significant nodes
@@ -306,7 +307,7 @@ public class SimpleBinner {
 		unresolvedEdges.sort((a,b)->Double.compare(a.getNumber("cov"),b.getNumber("cov")));
 
 		for(Edge e:unresolvedEdges){
-				logger.debug("...scanning edge " + e.getId() + "cov=" + e.getNumber("cov") + ":");
+				logger.debug("...scanning edge {} cov={}:", e.getId(),e.getNumber("cov"));
 				PopBin tmp = scanAndGuess(e.getNumber("cov"));
 				if(tmp!=null){
 					
@@ -320,14 +321,14 @@ public class SimpleBinner {
 						if(n0.getNumber("len") > UNIQUE_CTG_LEN && getBinIfUnique(n0)==null){
 							n0.setAttribute("unique", leastBin);
 							node2BinMap.put(n0, unitBinMap);
-							logger.debug("node "+n0.getId()+" is unique but have degree="+n0.getDegree()+", length="+(int)n0.getNumber("len"));
+							logger.debug("node {} is unique but have degree={}, length={}", n0.getId(), n0.getDegree(), (int)n0.getNumber("len"));
 							continue;
 						}
 						
 						if(n1.getNumber("len") > UNIQUE_CTG_LEN && getBinIfUnique(n1)==null){
 							n1.setAttribute("unique", leastBin);
 							node2BinMap.put(n1, unitBinMap);
-							logger.debug("node "+n1.getId()+" is unique but have degree="+n1.getDegree()+", length="+(int)n1.getNumber("len"));
+							logger.debug("node {} is unique but have degree={}, length={}", n1.getId(), n1.getDegree(), (int)n1.getNumber("len"));
 							continue;
 						}
 						
@@ -337,27 +338,27 @@ public class SimpleBinner {
 						highlyPossibleEdges.put(tmp, new ArrayList<Edge>());
 					
 					highlyPossibleEdges.get(tmp).add(e);
-					logger.debug("=> highly possible in bin " + tmp.getId());
+					logger.debug("=> highly possible in bin {}", tmp.getId());
 				}else
 					logger.debug(": none!");
 		}
 
 		while(!unresolvedEdges.isEmpty()) {
-			logger.debug("Starting assigning " + unresolvedEdges.size() + " unresolved edges");
+			logger.debug("Starting assigning {} unresolved edges", unresolvedEdges.size());
 			//sort the unresolved edges based on abundance and guess until all gone...
 			if(!highlyPossibleEdges.keySet().isEmpty()){
 				for(PopBin b:binList){
 					if(highlyPossibleEdges.containsKey(b)){
 						while(!highlyPossibleEdges.get(b).isEmpty()) {
 							Edge guess = highlyPossibleEdges.get(b).remove(0);
-							logger.debug("...assigning " + guess.getId());
+							logger.debug("...assigning {}", guess.getId());
 							if(unresolvedEdges.contains(guess)){
 								Multiplicity bc = new Multiplicity(b,1);
 								edge2BinMap.put(guess, bc);
 								logger.debug(": start explore");
 								exploringFromEdge(guess);
 							}else 
-								logger.debug(": already in bin " + getBinsOfEdge(guess));
+								logger.debug(": already in bin {}", getBinsOfEdge(guess));
 	
 						}
 						highlyPossibleEdges.remove(b);
@@ -469,7 +470,7 @@ public class SimpleBinner {
 	//Traversal along a unique path (unique ends) and return list of unique edges
 	//Must only be called from BDGraph.reduce()
 	synchronized public Set<Edge> walkAlongUniquePath(BDPath path) {
-		logger.debug("Path "+path.getId()+" being processed based on binning info...");
+		logger.debug("Path {} being processed based on binning info...", path.getId());
 		Node  	curNode = path.getRoot(), nextNode;
 		PopBin 	consensusBin=path.getConsensusUniqueBinOfPath(),
 				startBin=getBinIfUniqueNow(path.getRoot()),
@@ -481,12 +482,12 @@ public class SimpleBinner {
 			return null;
 		}
 		else if(!PopBin.isCloseBins(consensusBin,startBin)){
-			logger.debug("Ignored: consensus bin "+consensusBin+" doesn't agree with one of the endings bin "+startBin+" at node "+path.getRoot());
+			logger.debug("Ignored: consensus bin {} doesn't agree with one of the endings bin {} at node {}", consensusBin, startBin, path.getRoot());
 			node2BinMap.remove(path.getRoot());
 			//clean from bin map here...
 			return null;
 		}else if(!PopBin.isCloseBins(consensusBin,endBin)){
-			logger.debug("Ignored: consensus bin "+consensusBin+" doesn't agree with one of the endings bin "+endBin+" at node "+path.peekNode());
+			logger.debug("Ignored: consensus bin {} doesn't agree with one of the endings bin {} at node {}", consensusBin, endBin, path.peekNode());
 			node2BinMap.remove(path.peekNode());
 			//clean from bin map here...
 			return null;
@@ -531,7 +532,7 @@ public class SimpleBinner {
 					bcMinusOne=edgeBinsCount.substract(otherBin);
 					edge2BinMap.replace(ep, bcMinusOne);				
 				}else 
-					logger.debug("...not found appropriate binning information on path "+path.getId()+", at edge "+ep.getId()+": "+getBinsOfEdge(ep));
+					logger.debug("...not found appropriate binning information on path {}, at edge {} {}", path.getId(), ep.getId(), getBinsOfEdge(ep));
 
 			}	
 			ep.setAttribute("cov", ep.getNumber("cov")>aveCov?ep.getNumber("cov")-aveCov:0);	

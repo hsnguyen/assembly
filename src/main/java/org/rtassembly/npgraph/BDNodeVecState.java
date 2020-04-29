@@ -5,7 +5,8 @@ import java.util.ArrayList;
 import java.util.Objects;
 import java.util.TreeSet;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 
 /*
@@ -14,7 +15,7 @@ import org.apache.log4j.Logger;
  * although we can translate into appropriate info
  */
 public class BDNodeVecState implements Comparable<BDNodeVecState>{
-    private static final Logger logger = Logger.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
+    private static final Logger logger = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
 	BDNode root, dest;
 	ScaffoldVector vector;
@@ -138,7 +139,7 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 
 	//Merging 2 equal NodeVectors
 	public boolean merge(BDNodeVecState nv){
-		logger.debug("Merging vector "+this.toString()+" with "+nv.toString()+": ");
+		logger.debug("Merging vector {} with {}:", this.toString(), nv.toString());
 		if(!this.approximate(nv)){
 			logger.debug("...merging failed!");
 			return false;
@@ -255,7 +256,7 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 			scale0=(as0[ii].getDistance()-as0[i].getDistance())*1.0/origStep;
 			scale1=(as0[ii].getDistance()-as0[i].getDistance())*1.0/(as1[jj].getDistance()-as1[j].getDistance());
 			
-			logger.debug("scale0="+scale0+" scale1="+scale1);
+			logger.debug("scale0={} scale1={}", scale0, scale1);
 
 			if(Math.max(scale0, scale1) < BDGraph.A_TOL/1.0 && Math.min(scale0, scale1) > 0) { //constrain scalex		
 				//calibrate the vectors from first list's in-between

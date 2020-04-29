@@ -34,7 +34,8 @@
 
 package org.rtassembly;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.rtassembly.npscarf.ContigBridge;
 import org.rtassembly.npscarf.RealtimeScaffolding;
 import org.rtassembly.npscarf.ScaffoldGraph;
@@ -56,7 +57,7 @@ import java.util.regex.Pattern;
  * 
  */
 public class NPScarfCmd extends CommandLine{
-    private static final Logger logger = Logger.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
+    private static final Logger logger = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
 	public NPScarfCmd(){
 		super();
@@ -154,10 +155,10 @@ public class NPScarfCmd extends CommandLine{
 				bf.close();
 				
 				if (version.length() == 0){
-					logger.error(bwaExe + " is not the right path to bwa. bwa is required");
+					logger.error("{} is not the right path to bwa. bwa is required!", bwaExe);
 					System.exit(1);
 				}else{
-					logger.info("bwa version: " + version);
+					logger.info("bwa version: {}", version);
 					if (version.compareTo("0.7.11") < 0){
 						logger.error(" Require bwa of 0.7.11 or above");
 						System.exit(1);
@@ -180,7 +181,7 @@ public class NPScarfCmd extends CommandLine{
 		}else if (format.startsWith("sam") || format.startsWith("bam")){
 			// no problem
 		}else{
-			logger.error("Unrecognized format: " + format);
+			logger.error("Unrecognized format: {}", format);
 			System.exit(1);
 		}
 
@@ -195,11 +196,11 @@ public class NPScarfCmd extends CommandLine{
 				    }
 				});
 				if(matchingFiles.length != 1){
-					logger.info("Failed to looking for an unique *-contigs.dot file in " + spadesFolder + " . Proceeding without assembly graph...");
+					logger.info("Failed to looking for an unique *-contigs.dot file in {}. Proceeding without assembly graph...", spadesFolder);
 					spadesFolder=null;
 				} else{
 					graphFile=matchingFiles[0];
-					logger.info("===> Use assembly graph from short-read assembler ABySS: " + graphFile);
+					logger.info("===> Use assembly graph from short-read assembler ABySS: {}", graphFile);
 				}
 				
 			}

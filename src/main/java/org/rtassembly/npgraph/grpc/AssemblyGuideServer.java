@@ -12,7 +12,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.rtassembly.npgraph.Alignment;
 import org.rtassembly.npgraph.BDNode;
 import org.rtassembly.npgraph.BDPath;
@@ -20,7 +21,7 @@ import org.rtassembly.npgraph.GraphUtil;
 import org.rtassembly.npgraph.HybridAssembler;
 
 public class AssemblyGuideServer {
-    private static final Logger logger = Logger.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
+    private static final Logger logger = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
 	  private final int port;
 	  private final Server server;
@@ -43,7 +44,7 @@ public class AssemblyGuideServer {
 	  public void start() throws IOException {
 		  myThread.start();
 		  server.start();
-		  logger.info("Server started, listening on " + port);
+		  logger.info("Server started, listening on {}", port);
 		  Runtime.getRuntime().addShutdownHook(new Thread() {
 			  @Override
 			  public void run() {

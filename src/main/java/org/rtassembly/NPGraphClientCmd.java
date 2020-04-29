@@ -9,7 +9,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.rtassembly.npgraph.Alignment;
 import org.rtassembly.npgraph.grpc.AssemblyGuideGrpc;
 import org.rtassembly.npgraph.grpc.AssemblyGuideGrpc.AssemblyGuideBlockingStub;
@@ -28,7 +29,7 @@ import japsa.util.CommandLine;
 
 
 public class NPGraphClientCmd extends CommandLine{
-    private static final Logger logger = Logger.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
+    private static final Logger logger = LogManager.getLogger(MethodHandles.lookup().lookupClass());
     private static ManagedChannel channel; 
     private static AssemblyGuideBlockingStub stub;
     
@@ -68,7 +69,7 @@ public class NPGraphClientCmd extends CommandLine{
 			long before=System.currentTimeMillis();
 			ResponseAssembly response = stub.getAssemblyContribution(request);
 			long interval=System.currentTimeMillis()-before;
-			logger.info("Get response from server in " + interval +"ms: read " + response.getReadId() +" is " + (response.getUsefulness()?"useful":"not useful"));
+			logger.info("Get response from server in {} ms: read {} is {}", interval, response.getReadId(), (response.getUsefulness()?"useful":"not useful"));
 		} catch (StatusRuntimeException e) {
 			  logger.warn("RPC failed: {}", e);
 		}
@@ -100,7 +101,7 @@ public class NPGraphClientCmd extends CommandLine{
 			indexProcess.waitFor();
 		} 
 		//from HybridAssembler.assembly2()
-		logger.info("Starting alignment at {}" + new Date());
+		logger.info("Starting alignment at {}", new Date());
 		ProcessBuilder pb = null;
 		command.add("minimap2");
 		command.addAll(Arrays.asList(algOpts.split("\\s")));
@@ -132,12 +133,19 @@ public class NPGraphClientCmd extends CommandLine{
 			while ((line=reader.readLine()) != null) {
 				try {
 					curRecord = new PAFRecord(line);
-					logger.info(curRecord.qname + " " + curRecord.qlen + " " + curRecord.qstart + " " + curRecord.qend + " " + 
-								(curRecord.strand?"+":"-") + " " + 
-								curRecord.tname + " " + curRecord.tlen + " " + curRecord.tstart + " " + curRecord.tend);
+					logger.info("{} {} {} {} {} {} {} {} {}", 
+								curRecord.qname,
+								curRecord.qlen,
+								curRecord.qstart,
+								curRecord.qend,
+								(curRecord.strand?"+":"-"),
+								curRecord.tname,
+								curRecord.tlen,
+								curRecord.tstart,
+								curRecord.tend);
 					///////////////////////////////////////////////////
 					if (curRecord.qual < Alignment.MIN_QUAL){		
-						logger.info("Ignore low-quality map record: q=" + curRecord.qual);
+						logger.info("Ignore low-quality map record: q={}", curRecord.qual);
 						continue;		
 					}
 										

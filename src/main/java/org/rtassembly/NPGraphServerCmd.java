@@ -3,7 +3,8 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.rtassembly.gui.NPGraphFX;
 import org.rtassembly.npgraph.Alignment;
 import org.rtassembly.npgraph.BDGraph;
@@ -17,7 +18,7 @@ import javafx.application.Application;
 
 
 public class NPGraphServerCmd extends CommandLine{
-    private static final Logger logger = Logger.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
+    private static final Logger logger = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 	public NPGraphServerCmd(){
 		super();
 		//Server setttings
@@ -40,8 +41,8 @@ public class NPGraphServerCmd extends CommandLine{
 		addInt("depth", 300, "Limit depth for searching path between 2 neighbors");
 		addInt("anchor", 1000, "Lowerbound of an anchor contig's length.");
 		addInt("unique", 10000, "Lowerbound of a unique contig's length.");
-		addInt("time", 0, "Time interval to considered for real-time assembly.");
-		addInt("read", 0, "Read interval to considered for real-time assembly.");
+		addInt("time", 10, "Time interval to considered for real-time assembly.");
+		addInt("read", 50, "Read interval to considered for real-time assembly.");
 		
 		addBoolean("gui", false, "Whether using GUI or not.");
 		addBoolean("keep", false, "Whether to keep extremely-low-coveraged contigs.");
@@ -114,12 +115,12 @@ public class NPGraphServerCmd extends CommandLine{
 					assServer.start();
 				}
 				else{
-					logger.error("Error with pre-processing step: \n" + hbAss.getCheckLog());
+					logger.error("Error with pre-processing step: \n{}", hbAss.getCheckLog());
 					System.exit(1);
 				}
 					
 			} catch (Exception e) {
-				logger.error("{}", e);
+				logger.error("Error {}", e);
 				System.exit(1);
 			}
         }

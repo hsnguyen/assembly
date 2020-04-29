@@ -36,11 +36,12 @@ package japsa.util;
 
 import java.lang.invoke.MethodHandles;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 //Mon 6 April 2009
 public class JapsaTimer { // A Timer object can 'mark' an event by printing the given
-    private static final Logger logger = Logger.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
+    private static final Logger logger = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
 	// message,
 	// the time since the last event, and the total time the Timer has existed.
@@ -54,19 +55,18 @@ public class JapsaTimer { // A Timer object can 'mark' an event by printing the 
 
 	public void mark(String msg) {
 		final long now = System.currentTimeMillis();
-		logger.info(msg + ":" + " increment=" + (now - last) / 1000.0
-				+ " sec" + " (total=" + (now - milliSecs0) / 1000.0 + ")");
+		logger.info("{}: increment= {} sec (total={})", msg, (now - last) / 1000.0, (now - milliSecs0) / 1000.0);
 		last = now;
 	}// mark()
 	
 	static public void systemInfo(){
 		Runtime runtime = Runtime.getRuntime();		
-		logger.info(" CPU="     + runtime.availableProcessors()
-			    +  ", maxMem="   + runtime.maxMemory() / 1000000.0 + " MB" 
-			    +  ", freeMem="  + runtime.freeMemory() / 1000000.0 + " MB"
-			    +  ", totalMem=" + runtime.totalMemory() / 1000000.0 + " MB"
-			    +  ", usedMem="  + (runtime.totalMemory() -runtime.freeMemory()) / 1000000.0 + " MB"			    
-				    );
+		logger.info(" CPU={}, maxMem={} MB, freeMem={} MB, totalMem={} MB, usedMem={} MB", 
+				runtime.availableProcessors(),
+			    runtime.maxMemory() / 1000000.0, 
+			    runtime.freeMemory() / 1000000.0,
+			    runtime.totalMemory() / 1000000.0,
+			    (runtime.totalMemory() -runtime.freeMemory()) / 1000000.0);
 	}
 
 	/************************************************************************

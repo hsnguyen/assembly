@@ -19,8 +19,8 @@ import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.log4j.Logger;
-
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordIterator;
@@ -36,7 +36,7 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 public class HybridAssembler {
-    private static final Logger logger = Logger.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
+    private static final Logger logger = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 	//setting parameter for the GUI
     private boolean ready=false;
     private BooleanProperty overwrite, useSPAdesPath;
@@ -340,7 +340,7 @@ public class HybridAssembler {
     		setMSA("none");
     		logger.warn("WARNING: MSA tools not found!");
     	}else
-    		logger.info("MSA for consensus calling is set to " + getMSA());
+    		logger.info("MSA for consensus calling is set to {}", getMSA());
     	
 		simGraph.consensus.setConsensusMSA(getMSA());
     	
@@ -373,6 +373,13 @@ public class HybridAssembler {
 		
 		simGraph.updateStats();
 		observer = new RealtimeGraphWatcher(this);
+		
+		observer.setReadPeriod(RealtimeGraphWatcher.R_INTERVAL);
+		observer.setTimePeriod(RealtimeGraphWatcher.T_INTERVAL * 1000);
+		//re-estimate timely report based on graph complexity
+//		int timeInterval=(int) (Math.round(Math.log10(simGraph.getNodeCount()))-1); //estimated interval time based on graph complexity
+//		timeInterval=(timeInterval>1?timeInterval:1)*10;
+		logger.warn("The results will be reported every {} seconds and {} reads pass", RealtimeGraphWatcher.T_INTERVAL, RealtimeGraphWatcher.R_INTERVAL);
 		return true;
 	}
 
@@ -383,18 +390,12 @@ public class HybridAssembler {
 	 */
 	public void assembly() 
 			throws IOException, InterruptedException{
-		int timeInterval=(int) (Math.round(Math.log10(simGraph.getNodeCount()))-1); //estimated interval time based on graph complexity
-		timeInterval=(timeInterval>1?timeInterval:1)*10;
-		int readInterval=100;
 		
-		observer.setReadPeriod(RealtimeGraphWatcher.R_INTERVAL!=0?RealtimeGraphWatcher.R_INTERVAL:readInterval);
-		observer.setTimePeriod((RealtimeGraphWatcher.T_INTERVAL!=0?RealtimeGraphWatcher.T_INTERVAL:timeInterval) * 1000);
-
 		if(getLongReadsInput().isEmpty()) {
 //			LOG.info("Scaffolding is ignored due to lack of long-read input!");
 			return;
 		}else
-			logger.info("Scaffolding ready at " + new Date());
+			logger.info("Scaffolding ready at ", new Date());
 
 		SamReaderFactory.setDefaultValidationStringency(ValidationStringency.SILENT);
 		SamReader reader = null;
@@ -405,7 +406,7 @@ public class HybridAssembler {
 			else
 				reader = SamReaderFactory.makeDefault().open(new File(getLongReadsInput()));	
 		}else{
-			logger.info("Starting alignment by" + getAligner() +" at " + new Date());
+			logger.info("Starting alignment by {} at {}", getAligner(), new Date());
 			ProcessBuilder pb = null;
 			List<String> command = new ArrayList<>();
 			command.add(getAligner());
@@ -432,7 +433,7 @@ public class HybridAssembler {
 
 			alignmentProcess  = pb.redirectError(ProcessBuilder.Redirect.to(new File(getPrefix()+File.separator+"alignment.log"))).start();
 
-			logger.info(getAligner() + " started!");			
+			logger.info("{} started!", getAligner());			
 
 			reader = SamReaderFactory.makeDefault().open(SamInputResource.of(alignmentProcess.getInputStream()));
 
@@ -474,7 +475,7 @@ public class HybridAssembler {
 			
 			//check if this node still in. FIXME: do not remove nodes for metagenomics' graph?
 			if (simGraph.getNode(refID)==null) {
-				logger.debug("Ignore record with reference" + refID + "not found (removed) from the graph!");
+				logger.debug("Ignore record with reference {} not found (removed) from the graph!", refID);
 				if (!readID.equals(curRecord.getReadName())){
 					update(read, hits);
 					hits = new ArrayList<Alignment>();
@@ -512,18 +513,12 @@ public class HybridAssembler {
 	 */
 	public void assembly2() 
 			throws IOException, InterruptedException{
-		int timeInterval=(int) (Math.round(Math.log10(simGraph.getNodeCount()))-1); //estimated interval time based on graph complexity
-		timeInterval=(timeInterval>1?timeInterval:1)*10;
-		int readInterval=100;
-		
-		observer.setReadPeriod(RealtimeGraphWatcher.R_INTERVAL!=0?RealtimeGraphWatcher.R_INTERVAL:readInterval);
-		observer.setTimePeriod((RealtimeGraphWatcher.T_INTERVAL!=0?RealtimeGraphWatcher.T_INTERVAL:timeInterval) * 1000);
-
+	
 		if(getLongReadsInput().isEmpty()) {
 			logger.info("Scaffolding is ignored due to lack of long-read input!");
 			return;
 		}else
-			logger.info("Scaffolding ready at " + new Date());
+			logger.info("Scaffolding ready at {}", new Date());
 
 
 		InputStreamReader inputStream = null;
@@ -534,7 +529,7 @@ public class HybridAssembler {
 			else
 				inputStream = new FileReader(getLongReadsInput());	
 		}else if(getLongReadsInputFormat().contains("fast")){
-			logger.info("Starting alignment by: " + getAligner() + " " + getAlignerOpts() + " at " + new Date());
+			logger.info("Alignment command: {} {} start at {}", getAligner(), getAlignerOpts(), new Date());
 			ProcessBuilder pb = null;
 			List<String> command = new ArrayList<>();
 			command.add(getAligner());
@@ -554,7 +549,7 @@ public class HybridAssembler {
 
 			alignmentProcess  = pb.redirectError(ProcessBuilder.Redirect.to(new File(getPrefix()+File.separator+"alignment.log"))).start();
 
-			logger.info(getAligner() + " started!");			
+			logger.info("{} started!", getAligner());			
 
 			inputStream = new InputStreamReader(alignmentProcess.getInputStream());
 
@@ -598,7 +593,7 @@ public class HybridAssembler {
 				
 				//check if this node still in. FIXME: do not remove nodes for metagenomics' graph?
 				if (simGraph.getNode(refID)==null) {
-					logger.debug("Ignore record with reference " +refID+" not found (removed) from the graph!");
+					logger.debug("Ignore record with reference {} not found (removed) from the graph!", refID);
 					if (!readID.equals(curRecord.qname)){
 						update(read, hits);
 						hits = new ArrayList<Alignment>();
@@ -658,7 +653,8 @@ public class HybridAssembler {
 		while(true){
 			boolean changed=false;
 			for(GoInBetweenBridge brg:unsolved){
-				logger.debug("Last attempt on incomplete bridge" + brg.getEndingsID() +" : anchors="+brg.getNumberOfAnchors() + "\n" + brg.getAllPossiblePaths());
+				logger.debug("Last attempt on incomplete bridge {} : anchors={}\n{}",
+								brg.getEndingsID(), brg.getNumberOfAnchors(), brg.getAllPossiblePaths());
 				//Take the current best path among the candidate of a bridge and connect the bridge(greedy)
 				if(brg.getCompletionLevel()>=3){ 
 					simGraph.getNewSubPathsToReduce(brg.getBestPath(brg.pBridge.getNode0(),brg.pBridge.getNode1())).stream().forEach(p->simGraph.reduceUniquePath(p));
@@ -749,7 +745,7 @@ public class HybridAssembler {
 				setCheckLog("Command " + getAligner() + " -V failed!");
 				return false;
 			}else{
-				logger.info("minimap version: " + version);
+				logger.info("minimap version: {}", version);
 				if (version.compareTo("2.0") < 0){
 					setCheckLog("Require minimap version 2 or above!");
 					return false;
@@ -791,7 +787,7 @@ public class HybridAssembler {
 				setCheckLog("Command " + getAligner() + " doesn't give version info. Check version failed!");
 				return false;
 			}else{
-				logger.info("bwa version: " + version);
+				logger.info("bwa version: {}", version);
 				if (version.compareTo("0.7.11") < 0){
 					setCheckLog(" Require bwa of 0.7.11 or above");
 					return false;

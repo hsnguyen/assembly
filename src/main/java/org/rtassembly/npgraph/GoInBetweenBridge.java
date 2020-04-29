@@ -13,14 +13,15 @@ import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.TreeSet;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.graphstream.graph.Node;
 
 import japsa.seq.Sequence;
 
 //A bridge structure that the first node must be unique
 public class GoInBetweenBridge {
-    private static final Logger logger = Logger.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
+    private static final Logger logger = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
 	BDGraph graph;
 	PopBin bin;
@@ -90,7 +91,13 @@ public class GoInBetweenBridge {
 						qNode0=qBridge.pBridge.n0,
 						qNode1=qBridge.pBridge.n1;
 
-		logger.debug("Merging Bridge "+getEndingsID()+" lvl="+getCompletionLevel()+" \n"+getAllNodeVector()+"\nwith Bridge "+qBridge.getEndingsID()+" lvl="+qBridge.getCompletionLevel()+"\n"+qBridge.getAllNodeVector());
+		logger.debug("Merging Bridge {} level={}\n{}\nwith Bridge {} level={}\n{}", 
+						getEndingsID(),
+						getCompletionLevel(),
+						getAllNodeVector(),
+						qBridge.getEndingsID(),
+						qBridge.getCompletionLevel(),
+						qBridge.getAllNodeVector());
 //		System.out.println("sNode0=" + (sNode0==null?"null":sNode0.getId()));
 //		System.out.println("sNode1=" + (sNode1==null?"null":sNode1.getId()));
 //		System.out.println("qNode0=" + (qNode0==null?"null":qNode0.getId()));
@@ -173,7 +180,12 @@ public class GoInBetweenBridge {
 						qNode0=new BDNodeState(read.getFirstAlignment().node, read.getFirstAlignment().strand),
 						qNode1=new BDNodeState(read.getLastAlignment().node, !read.getLastAlignment().strand);
 
-		logger.debug("Merging Bridge "+getEndingsID()+" lvl="+getCompletionLevel()+"\n"+getAllNodeVector()+"\nwith AlignedRead "+read.getEndingsID()+"\n"+read.getCompsString());
+		logger.debug("Merging Bridge {} level={}\n{}with AlignedRead {}\n{}", 
+						getEndingsID(),
+						getCompletionLevel(),
+						getAllNodeVector(),
+						read.getEndingsID(),
+						read.getCompsString());
 //		System.out.println("sNode0=" + (sNode0==null?"null":sNode0.getId()));
 //		System.out.println("sNode1=" + (sNode1==null?"null":sNode1.getId()));
 //		System.out.println("qNode0=" + (qNode0==null?"null":qNode0.getId()));
@@ -237,7 +249,11 @@ public class GoInBetweenBridge {
 			steps.connectBridgeSteps(false);		
 				
 		
-		logger.debug("After merging: "+pBridge.toString()+"\nstart="+(steps.start==null?"null":steps.start.toString())+"; end="+(steps.end==null?"null":steps.end.toString())+"; completion level="+getCompletionLevel());
+		logger.debug("After merging: {}\nstart={}; end={}; level={}",
+						pBridge.toString(),
+						(steps.start==null?"null":steps.start.toString()),
+						(steps.end==null?"null":steps.end.toString()),
+						getCompletionLevel());
 		logger.debug(getAllPossiblePaths());
 
 		if(getNumberOfAnchors()>numOfAnchorsBefore)
@@ -255,7 +271,11 @@ public class GoInBetweenBridge {
 	
 	private void reverse() {
 		assert getNumberOfAnchors()==2:"Could only reverse a determined bridge (2 anchors)";
-		logger.debug("Reversing the bridge "+getEndingsID()+" (start="+steps.start.toString()+" end="+steps.end.toString()+"):\n"+getAllNodeVector());
+		logger.debug("Reversing the bridge {} (start={} end={}):\n{}",
+						getEndingsID(),
+						steps.start.toString(),
+						steps.end.toString(),
+						getAllNodeVector());
 
 		pBridge=pBridge.reverse();
 		int direction=pBridge.getDir0()?1:-1;
@@ -289,8 +309,11 @@ public class GoInBetweenBridge {
 		}
 		
 		steps.nodes=reversedSet;
-		
-		logger.debug("Reversed bridge = "+getEndingsID()+" (start="+steps.start.toString()+" end="+steps.end.toString()+"):\n"+getAllNodeVector());
+		logger.debug("Reversed bridge = {} (start={} end={}):\n{}",
+				getEndingsID(),
+				steps.start.toString(),
+				steps.end.toString(),
+				getAllNodeVector());
 
 	}
 	
@@ -328,7 +351,7 @@ public class GoInBetweenBridge {
 
 	//Get the most probable path out of the candidates based on deviation and likelihood
 	public BDPath getBestPath(Node startFrom, Node endAt) { //the markers must be (transformed) unique
-		logger.debug("Finding best path from " + startFrom.getId() + " to " + endAt.getId() + " among: \n" + getAllPossiblePaths());
+		logger.debug("Finding best path from {} to {} among:\n{}", startFrom.getId(), endAt.getId(), getAllPossiblePaths());
 		BDPath retval=null;
 
 		if(segments==null || segments.isEmpty())
@@ -385,7 +408,7 @@ public class GoInBetweenBridge {
 		
 		if(retval!=null) {
 			retval.setConsensusUniqueBinOfPath(bin);
-			logger.debug("...best path found: " + retval.getId());
+			logger.debug("...best path found: {}", retval.getId());
 
 		}
 		return retval;
@@ -421,7 +444,7 @@ public class GoInBetweenBridge {
 		List<BDPath> retval = new ArrayList<>();
 		if(segments==null || segments.isEmpty())
 			return retval;
-		logger.debug("Scanning on bridge with segments:\n" + getAllPossiblePaths());		
+		logger.debug("Scanning on bridge with segments:\n{}", getAllPossiblePaths());		
 		BDPath curPath=null;
 		PopBin sbin=null;
 		for(BridgeSegment seg:segments){
@@ -466,7 +489,7 @@ public class GoInBetweenBridge {
 				if(steps.end==null || greedy || tmp.qc()>0){
 					if(steps.end!=tmp){
 						steps.end=tmp;
-						logger.debug("FOUND NEW END: " + steps.end.getNode().getId());
+						logger.debug("FOUND NEW END: {}", steps.end.getNode().getId());
 						return true;
 					}
 				}
@@ -539,8 +562,8 @@ public class GoInBetweenBridge {
 						
 						connectedPaths.add(path);
 					}catch(Exception e){
-						System.err.println("Failed to make consensus sequence for " + id +"!");
-						System.err.println("Reason: "+ e.getMessage());
+						logger.debug("Failed to make consensus sequence for {}!",id);
+						logger.debug("Reason: {}", e);
 					}	
 	    		}
 
@@ -562,8 +585,7 @@ public class GoInBetweenBridge {
 //				startNV=new BDNodeVecState(pSegment.getNode0(),pSegment.getNode0(),new ScaffoldVector());
 //				endNV=new BDNodeVecState(pSegment.getNode1(), new ScaffoldVector(pSegment.getDir0()?dist:-dist, pSegment.getDir0()!=pSegment.getDir1()?1:-1));
 //			} catch (Exception e) {
-//				System.err.println("Cannot make bridge from this path!");
-//				e.printStackTrace();
+//				logger.debug("Cannot make bridge from this path!\n{}",e);
 //			} 
 //
 //		}
@@ -820,11 +842,14 @@ public class GoInBetweenBridge {
 		boolean connectBridgeSteps(boolean force){
 			if(isIdentifiable()){
 				if(!connectable() && !force){
-					logger.debug("Bridge "+pBridge.toString()+" is not qualified to connect yet: start="+(start==null?"null":start.toString())+" end="+(end==null?"null":end.toString()));
+					logger.debug("Bridge {} is not qualified to connect yet: start={} end={}",
+									pBridge.toString(), 
+									(start==null?"null":start.toString()), 
+									(end==null?"null":end.toString()));
 					return false;
 				}
 			}else{
-				logger.debug("Bridge "+pBridge.toString()+" is not complete to connect!\n");
+				logger.debug("Bridge {} is not complete to connect!", pBridge.toString());
 				return false;
 			}	
 			
@@ -832,23 +857,24 @@ public class GoInBetweenBridge {
 							endAt=end;
 
 			
-			logger.debug("Trying to connect bridge "+pBridge.toString()+" from "+startFrom.getNode().getId()+" to "+endAt.getNode().getId()+":\n"+getAllNodeVector());
+			logger.debug("Trying to connect bridge {} from {} to {}:\n{}", 
+							pBridge.toString(), startFrom.getNode().getId(), endAt.getNode().getId(), getAllNodeVector());
 				
 			HashMap<String, ArrayList<BridgeSegment>> memory = new HashMap<>();
 			ArrayList<BridgeSegment> segs=greedyConnect(memory, startFrom, endAt, force);
 			
 			if(segs==null||segs.isEmpty()){
 				segments=null;
-				logger.debug("Failed to connect " + pBridge.toString());
+				logger.debug("Failed to connect {}", pBridge.toString());
 				return false;
 			}else{
 				segs.stream().forEach(segment->addSegment(segment));
 				//set pBridge end iff endAt node is original unique node
 				if(SimpleBinner.getBinIfUnique(endAt.dest)!=null){
 					pBridge.n1=new BDNodeState(endAt.dest, endAt.getDirection(pBridge.getDir0()));
-					logger.debug("Success to finish " + pBridge.toString());
+					logger.debug("Success to finish {}", pBridge.toString());
 				}else
-					logger.debug("Success to extend " + pBridge.toString() + " to " + endAt.dest.getId());
+					logger.debug("Success to extend {} to {}", pBridge.toString(), endAt.dest.getId());
 
 				return true;
 			}

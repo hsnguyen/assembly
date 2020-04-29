@@ -4,19 +4,18 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.commons.io.FilenameUtils;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Node;
 import org.graphstream.graph.implementations.AbstractNode;
@@ -33,7 +32,7 @@ import japsa.seq.SequenceReader;
 
 public class GraphUtil {
 
-    private static final Logger logger = Logger.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
+    private static final Logger logger = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 	/**********************************************************************************
 	 * ****************************Algorithms go from here*****************************
 	 */
@@ -170,10 +169,12 @@ public class GraphUtil {
 			astats*=Math.log10(Math.E);
 			node.setAttribute("astats", astats);
 			normalizedCoverage(node);
-			logger.debug(node.getAttribute("name")+" Normalized coverage = "+node.getNumber("cov")+" Length = "+node.getNumber("len")+" \nA-stats = "+astats);
+			logger.debug("{} Normalized coverage={} Length={} A-stats={}",
+							node.getAttribute("name"), node.getNumber("cov"), node.getNumber("len"),astats);
 		}
 		
-		logger.info("No of nodes= "+graph.getNodeCount()+" No of edges = "+graph.getEdgeCount()+" Estimated avg. read coverage = "+BDGraph.RCOV+" (normalized to 100.0) Total contigs length = "+totContigsLen );
+		logger.info("Node count = {} Edge count = {} Estimated avg. norm. read coverage = {} Total contigs length = {}",
+						graph.getNodeCount(), graph.getEdgeCount(), BDGraph.RCOV, totContigsLen );
 		if(graph.getNodeCount()>10000 || graph.getEdgeCount()>10000)
 			BDGraph.IS_COMPLEX=true;
 		
@@ -192,7 +193,7 @@ public class GraphUtil {
 			File graphFile = new File(graphFileName);
 			String pathsFile = FilenameUtils.getFullPathNoEndSeparator(graphFile.getAbsolutePath()) + File.separator + "contigs.paths";
 			if(! new File(pathsFile).exists()){
-				logger.warn("Path file "+pathsFile+" not found in SPAdes output!");
+				logger.warn("Path file {} not found in SPAdes output!", pathsFile);
 				return;
 			}
 			BufferedReader pathReader = new BufferedReader(new FileReader(pathsFile));
@@ -303,7 +304,7 @@ public class GraphUtil {
 					break;
 	
 				default:
-					logger.warn("Unrecognized GFA field: " + type.toUpperCase().trim());
+					logger.warn("Unrecognized GFA field: {}", type.toUpperCase().trim());
 			}
 			
 		
@@ -355,9 +356,12 @@ public class GraphUtil {
 			astats*=Math.log10(Math.E);
 			node.setAttribute("astats", astats);
 			normalizedCoverage(node);
-			logger.debug(node.getAttribute("name")+" Normalized coverage = "+node.getNumber("cov")+" Length = "+node.getNumber("len")+" \nA-stats = "+astats);
+			logger.debug("{} Normalized coverage={} Length={} A-stats={}",
+					node.getAttribute("name"), node.getNumber("cov"), node.getNumber("len"),astats);
 		}
-		logger.info("No of nodes= "+graph.getNodeCount()+" No of edges = "+graph.getEdgeCount()+" Estimated avg. read coverage = "+BDGraph.RCOV+" (normalized to 100.0) Total contigs length = "+totContigsLen );
+
+		logger.info("Node count = {} Edge count = {} Estimated avg. norm. read coverage = {} Total contigs length = {}",
+						graph.getNodeCount(), graph.getEdgeCount(), BDGraph.RCOV, totContigsLen );
 		
 		if(graph.getNodeCount()>10000 || graph.getEdgeCount()>10000)
 			BDGraph.IS_COMPLEX=true;
@@ -466,7 +470,8 @@ public class GraphUtil {
 					}
 					
 					if(curCov<=delta)
-						logger.debug("Edge " + e.getId() + " coverage is not positive : curCov=" + curCov + ", delta=" + delta);
+						logger.debug("Edge {} coverage is not positive: curCov={}, delta={}",
+										e.getId(), curCov, delta);
 					else
 						e.setAttribute("cov", curCov-delta);
 				}
@@ -630,7 +635,7 @@ public class GraphUtil {
 				n.setAttribute("cov", newCovEst);
 			}
 			if(isConverged || nIteCount >= 10) {
-				logger.debug("STOP at iteration " + nIteCount + "th");
+				logger.debug("STOP at iteration {}th ", nIteCount);
 				
 				break;
 			}

@@ -41,7 +41,8 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.graphstream.stream.thread.ThreadProxyPipe;
 import org.graphstream.ui.fx_viewer.FxDefaultView;
 import org.graphstream.ui.fx_viewer.FxViewer;
@@ -90,7 +91,7 @@ import javafx.stage.Stage;
 
 
 public class NPGraphFX extends Application{
-    private static final Logger logger = Logger.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
+    private static final Logger logger = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
 	static HybridAssembler myass = new HybridAssembler();
 //	static Viewer graphViewer;
