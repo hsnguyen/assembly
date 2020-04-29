@@ -20,6 +20,8 @@ import japsa.util.JapsaException;
  * 11	int	Number bases, including gaps, in the mapping
  * 12	int	Mapping quality (0-255 with 255 for missing)
  */
+
+//IMPORTANT: Note that this class must contain 1-based coordinate, so proper conversion is required!!
 public class PAFRecord {
 	public String qname, tname;
 	public int qlen, tlen;

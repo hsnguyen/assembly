@@ -81,19 +81,22 @@ public class Alignment implements Comparable<Alignment> {
 		readID=paf.qname;
 		quality=paf.qual;
 		score=paf.score;
-		readStart=paf.qstart; readEnd=paf.qend;
 		readLength=paf.qlen;
 		refStart=paf.tstart; refEnd=paf.tend;
 		strand=paf.strand;
 		cigar=paf.getCigar();
+		if (!strand){
+			readStart=paf.qend; 
+			readEnd=paf.qstart;
+		}else{
+			readStart=paf.qstart;
+			readEnd=paf.qend;
+		}
 		
 		//these temporary variable to determine usefulness
-		int readLeft = readStart -1;
-		int readRight = readLength - readEnd;
-		if (!strand){			
-			readLeft = readLength - readStart;
-			readRight = readEnd - 1;
-		}
+		int readLeft = paf.qstart -1;
+		int readRight = readLength - paf.qend;
+
 		int refLeft = refStart - 1;
 		int refRight = ((Sequence) node.getAttribute("seq")).length() - refEnd;
 		int overhangTolerance = (int) Math.min(BDGraph.A_TOL, BDGraph.R_TOL*node.getNumber("len"));
@@ -241,9 +244,8 @@ public class Alignment implements Comparable<Alignment> {
 	}
 	
 	/**
-	 * Re-implement what already in htsjdk (2.10.1) SAMRecord because we exclude SAMRecord from Alignment
-	 * Return the position on the reference that corresponds to a given position
-	 * on read.
+	 * Re-implement what already in htsjdk (2.10.1) SAMRecord because we remove SAMRecord from Alignment
+	 * Return the position on the reference that corresponds to a given position on the read.
 	 *  
 	 * @param posInRead
 	 * @param record
@@ -251,10 +253,9 @@ public class Alignment implements Comparable<Alignment> {
 	 */
 	public int getReferencePositionAtReadPosition(int readLookingPosition){
 		int location=-1;
-		
-		
-		if (readLookingPosition < readAlignmentStart() || readLookingPosition > readAlignmentEnd())
-			return 1;
+			
+//		if (readLookingPosition < readAlignmentStart() || readLookingPosition > readAlignmentEnd())
+//			return 1;
 
 		int posOnRead = readStart, endOfRead=readEnd;
 		int posOnRef = refStart;
@@ -270,7 +271,7 @@ public class Alignment implements Comparable<Alignment> {
 			location = refEnd + readLookingPosition - posOnRead;
 		}else {
 			if(cigar==null){ //approximate
-				location = posOnRef + (readLookingPosition - posOnRead)*Math.abs((refEnd-refStart)/(readEnd-readStart));	
+				location = (int) (posOnRef + (readLookingPosition - posOnRead)*Math.abs((refEnd-refStart)*1.0/(readEnd-readStart)));	
 			}else{	
 				boolean found=false;
 				for (final CigarElement e : cigar.getCigarElements()) {
@@ -316,6 +317,7 @@ public class Alignment implements Comparable<Alignment> {
 		}
 		location=location>refStart?location:refStart;
 		location=location<refEnd?location:refEnd;
+		
 		return location;
 //		return location<=refEnd&&location>=refStart?location:-1;
 	}
@@ -343,8 +345,7 @@ public class Alignment implements Comparable<Alignment> {
 			int posOnRef = refStart;
 			
 			if(cigar==null){ //approximate
-				return posOnRead + (refLookingPosition - posOnRef)*Math.abs((readEnd-readStart)/(refEnd-refStart));
-				
+				location = (int) (posOnRead + (refLookingPosition - posOnRef)*Math.abs(1.0*(readEnd-readStart)/(refEnd-refStart)));
 			}else{
 				boolean found=false;
 				for (final CigarElement e : cigar.getCigarElements()) {

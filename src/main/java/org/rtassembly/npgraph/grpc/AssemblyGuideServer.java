@@ -126,9 +126,10 @@ public class AssemblyGuideServer {
 				  BDNode node = (BDNode) myAss.simGraph.getNode(refID);
 				  if(node==null)
 					  return retval;
-				  PAFRecord record = new PAFRecord(msg.getQueryName(), msg.getQueryLength(), msg.getQueryStart(), msg.getQueryEnd(), 
+				  //Convert the hit message to a PAFRecord with 1-based conversion
+				  PAFRecord record = new PAFRecord(msg.getQueryName(), msg.getQueryLength(), msg.getQueryStart()+1, msg.getQueryEnd()+1, 
 						  							msg.getStrand(), 
-						  							msg.getTargetName(), msg.getTargetLength(), msg.getTargetStart(), msg.getTargetEnd(), 
+						  							msg.getTargetName(), msg.getTargetLength(), msg.getTargetStart()+1, msg.getTargetEnd()+1, 
 						  							msg.getScore(), msg.getQuality());
 				  retval.add(new Alignment(record, node));
 				  
