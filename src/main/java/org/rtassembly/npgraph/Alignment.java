@@ -85,20 +85,24 @@ public class Alignment implements Comparable<Alignment> {
 		refStart=paf.tstart; refEnd=paf.tend;
 		strand=paf.strand;
 		cigar=paf.getCigar();
-		if (!strand){
-			readStart=paf.qend; 
-			readEnd=paf.qstart;
-		}else{
-			readStart=paf.qstart;
-			readEnd=paf.qend;
-		}
 		
 		//these temporary variable to determine usefulness
-		int readLeft = paf.qstart -1;
-		int readRight = readLength - paf.qend;
+		int readLeft, readRight;
+		if (strand){
+			readStart=paf.qstart;
+			readEnd=paf.qend;
+			readLeft = readStart - 1;
+			readRight = readLength - readEnd;
+		}else{
+			readStart =paf.qend; 
+			readEnd=paf.qstart;
+			readLeft = readLength - readStart;
+			readRight = readEnd - 1;
+		}
 
-		int refLeft = refStart - 1;
-		int refRight = ((Sequence) node.getAttribute("seq")).length() - refEnd;
+		int refLeft = refStart - 1,
+			refRight = ((Sequence) node.getAttribute("seq")).length() - refEnd;
+		
 		int overhangTolerance = (int) Math.min(BDGraph.A_TOL, BDGraph.R_TOL*node.getNumber("len"));
 		if (
 				(readLeft < overhangTolerance || refLeft < overhangTolerance)

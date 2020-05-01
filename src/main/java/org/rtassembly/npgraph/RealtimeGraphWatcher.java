@@ -159,91 +159,91 @@ public class RealtimeGraphWatcher extends RealtimeAnalysis{
 		
 				binn50 = new HashMap<>();
 				PopBin b=null;
-				
-				for (Iterator<ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
-					ConnectedComponent comp = compIter.next();
-		//			System.out.printf("... id=%s edges=%d nodes=%d \n", comp.id, comp.getEdgeCount(), comp.getNodeCount());
-					if(comp.getNodeCount()==0)
-						continue;
-					//Start analyzing significant components from here
-					//check comp: should be linear paths, should start with node+
-					 Node node = comp.nodes().toArray(Node[]::new)[0];
-					 repPath = new BDPath(node);
-					 boolean isCircular=false;
-					 
-					 if(comp.getEdgeCount()>=1){
-						 //extend to
-						 Node curNode=node;
-						 boolean curDir=true;
-						 List<Edge> ways = (curDir?curNode.leavingEdges():curNode.enteringEdges()).filter(e->!e.hasAttribute("cut")).collect(Collectors.toList());
-						 while(ways.size()==1){
-							 Edge edge = ways.get(0);
-							 repPath.add(edge);
-							 curNode=edge.getOpposite(curNode);
-							 
-							 if(curNode==node){//circular
-								 isCircular=true;
-								 break;
-							 }
-							 if(((BDEdge) edge).getNodeDirection((BDNode)curNode)!=null)
-								 curDir=!((BDEdge) edge).getNodeDirection((BDNode)curNode);
-							 ways = (curDir?curNode.leavingEdges():curNode.enteringEdges()).filter(e->!e.hasAttribute("cut")).collect(Collectors.toList());
-						 }
+				synchronized(rtComponents) {
+					for (Iterator<ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
+						ConnectedComponent comp = compIter.next();
+			//			System.out.printf("... id=%s edges=%d nodes=%d \n", comp.id, comp.getEdgeCount(), comp.getNodeCount());
+						if(comp.getNodeCount()==0)
+							continue;
+						//Start analyzing significant components from here
+						//check comp: should be linear paths, should start with node+
+						 Node node = comp.nodes().toArray(Node[]::new)[0];
+						 repPath = new BDPath(node);
+						 boolean isCircular=false;
 						 
-						 //if linear: reverse
-						 if(!isCircular){
-							 repPath=repPath.reverse();
-							 //extend in opposite direction
-							 curNode=node;
-							 curDir=false;
-							 ways = (curDir?curNode.leavingEdges():curNode.enteringEdges()).filter(e->!e.hasAttribute("cut")).collect(Collectors.toList());
-		
+						 if(comp.getEdgeCount()>=1){
+							 //extend to
+							 Node curNode=node;
+							 boolean curDir=true;
+							 List<Edge> ways = (curDir?curNode.leavingEdges():curNode.enteringEdges()).filter(e->!e.hasAttribute("cut")).collect(Collectors.toList());
 							 while(ways.size()==1){
 								 Edge edge = ways.get(0);
 								 repPath.add(edge);
 								 curNode=edge.getOpposite(curNode);
+								 
+								 if(curNode==node){//circular
+									 isCircular=true;
+									 break;
+								 }
 								 if(((BDEdge) edge).getNodeDirection((BDNode)curNode)!=null)
 									 curDir=!((BDEdge) edge).getNodeDirection((BDNode)curNode);
 								 ways = (curDir?curNode.leavingEdges():curNode.enteringEdges()).filter(e->!e.hasAttribute("cut")).collect(Collectors.toList());
 							 }
+							 
+							 //if linear: reverse
+							 if(!isCircular){
+								 repPath=repPath.reverse();
+								 //extend in opposite direction
+								 curNode=node;
+								 curDir=false;
+								 ways = (curDir?curNode.leavingEdges():curNode.enteringEdges()).filter(e->!e.hasAttribute("cut")).collect(Collectors.toList());
+			
+								 while(ways.size()==1){
+									 Edge edge = ways.get(0);
+									 repPath.add(edge);
+									 curNode=edge.getOpposite(curNode);
+									 if(((BDEdge) edge).getNodeDirection((BDNode)curNode)!=null)
+										 curDir=!((BDEdge) edge).getNodeDirection((BDNode)curNode);
+									 ways = (curDir?curNode.leavingEdges():curNode.enteringEdges()).filter(e->!e.hasAttribute("cut")).collect(Collectors.toList());
+								 }
+							 }
+							 
+						 }
+						 //now we have repPath
+						 if(lastTime){
+							 annotation = new JapsaAnnotation();
+						 }
+						 Sequence seq=repPath.spelling(annotation);
+						 
+						 double cov=GraphUtil.getRealCoverage(repPath.averageCov());
+						 Node n=outputGraph.addNode(Integer.toString(comp.id));
+						 seq.setName("Contig_"+comp.id+"_"+(isCircular?"circular":"linear")+"_length_"+seq.length()+"_cov_"+cov);
+						 n.setAttribute("seq", seq);
+						 n.setAttribute("len", seq.length());
+						 n.setAttribute("cov",cov);
+						 n.setAttribute("path", repPath);
+						 
+						 b=SimpleBinner.getBinOfPath(repPath);
+						 if(b!=null) {
+							 n.setAttribute("bin", b);
+							 if(!binn50.containsKey(b))
+								 binn50.put(b, new ArrayList<Integer>());
+							 else
+								 binn50.get(b).add(seq.length());
 						 }
 						 
-					 }
-					 //now we have repPath
-					 if(lastTime){
-						 annotation = new JapsaAnnotation();
-					 }
-					 Sequence seq=repPath.spelling(annotation);
-					 
-					 double cov=GraphUtil.getRealCoverage(repPath.averageCov());
-					 Node n=outputGraph.addNode(Integer.toString(comp.id));
-					 seq.setName("Contig_"+comp.id+"_"+(isCircular?"circular":"linear")+"_length_"+seq.length()+"_cov_"+cov);
-					 n.setAttribute("seq", seq);
-					 n.setAttribute("len", seq.length());
-					 n.setAttribute("cov",cov);
-					 n.setAttribute("path", repPath);
-					 
-					 b=SimpleBinner.getBinOfPath(repPath);
-					 if(b!=null) {
-						 n.setAttribute("bin", b);
-						 if(!binn50.containsKey(b))
-							 binn50.put(b, new ArrayList<Integer>());
-						 else
-							 binn50.get(b).add(seq.length());
-					 }
-					 
-					 
-					 if(isCircular){
-						 n.setAttribute("circular");
-					 }
-					 if(lastTime){
-						 annotation.setSequence(seq);
-						 n.setAttribute("annotation", annotation);
-					 }
-		//			 System.out.println("\n" + seq.getName() + ":" + repPath.getId() + "\n=> "+ repPath.getPrimitivePath().getId());
-		
+						 
+						 if(isCircular){
+							 n.setAttribute("circular");
+						 }
+						 if(lastTime){
+							 annotation.setSequence(seq);
+							 n.setAttribute("annotation", annotation);
+						 }
+			//			 System.out.println("\n" + seq.getName() + ":" + repPath.getId() + "\n=> "+ repPath.getPrimitivePath().getId());
+			
+					}
 				}
-		
 		
 				//now set the edge of outputGraph based on the cut edges
 				for(Edge e:cutEdges) {

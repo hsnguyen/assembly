@@ -381,7 +381,7 @@ public class NPGraphFX extends Application{
     	inputPane.getChildren().add(longInputTF);
     	
     	longInputFormatCombo = new ComboBox<>();
-        longInputFormatCombo.getItems().addAll("fasta/fastq", "sam/bam");   
+        longInputFormatCombo.getItems().addAll("fasta/fastq", "sam/bam", "paf");   
         longInputFormatCombo.valueProperty().bindBidirectional(myass.longReadsInputFormatProperty());
         GridPane.setConstraints(longInputFormatCombo, 2, 0, 2, 1);
         inputPane.getChildren().add(longInputFormatCombo);
@@ -397,8 +397,8 @@ public class NPGraphFX extends Application{
     		if(defaultFile.getParentFile()!=null && defaultFile.getParentFile().isDirectory())
     			chooser.setInitialDirectory(defaultFile.getParentFile());
     		chooser.setSelectedExtensionFilter(
-    				new ExtensionFilter("Long-reads data", 	"*.fastq", "*.fasta", "*.fq", "*.fa", "*.fna", "*.sam", "*.bam" , 
-    														"*.FASTQ", "*.FASTA", "*.FQ", "*.FA", "*.FNA", "*.SAM", "*.BAM"));
+    				new ExtensionFilter("Long-reads data", 	"*.fastq", "*.fasta", "*.fq", "*.fa", "*.fna", "*.sam", "*.bam" , "*paf" ,
+    														"*.FASTQ", "*.FASTA", "*.FQ", "*.FA", "*.FNA", "*.SAM", "*.BAM" , "*PAF"));
     		File selectedFile = chooser.showOpenDialog(pStage);
     		if(selectedFile != null){
 				try {

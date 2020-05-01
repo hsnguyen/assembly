@@ -34,8 +34,8 @@ public class GraphExploreLaptop extends Application{
     	String dataFolder="/home/sonnguyen/Projects/npGraph/test/"; //dell FASTG
     	
 		sInput=dataFolder+"spades/assembly_graph.fastg";
-//    	lInput=dataFolder+"alignment.paf";
-		lInput=dataFolder+"EcK12S_ONT.fastq.gz";
+    	lInput=dataFolder+"alignment.paf";
+//		lInput=dataFolder+"EcK12S_ONT.fastq.gz";
     	
     	/*******************************************************************************
     	 ****************************** Share code *************************************
@@ -53,7 +53,7 @@ public class GraphExploreLaptop extends Application{
 		hbAss.setMSA("kalign"); //spoa: out of memory with reads > 18kbp
 		hbAss.prepareShortReadsProcess();
       	hbAss.setLongReadsInput(lInput);
-      	hbAss.setLongReadsInputFormat("fastq");
+//      	hbAss.setLongReadsInputFormat("fastq");
       	hbAss.prepareLongReadsProcess();
       	
 		Application.launch(GraphExploreLaptop.class,args);

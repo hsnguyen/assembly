@@ -9,8 +9,8 @@ import japsa.util.JapsaException;
  * Col	Type	Description
  * 1	string	Query sequence name
  * 2	int	Query sequence length
- * 3	int	Query start coordinate (0-based)
- * 4	int	Query end coordinate (0-based)
+ * 3	int	Query start coordinate (0-based inclusive)
+ * 4	int	Query end coordinate (0-based exclusive)
  * 5	char	‘+’ if query/target on the same strand; ‘-’ if opposite
  * 6	string	Target sequence name
  * 7	int	Target sequence length
@@ -21,7 +21,7 @@ import japsa.util.JapsaException;
  * 12	int	Mapping quality (0-255 with 255 for missing)
  */
 
-//IMPORTANT: Note that this class must contain 1-based coordinate, so proper conversion is required!!
+//IMPORTANT: Note that this class must contain 1-based inclusive coordinate, so proper conversion is required!!
 public class PAFRecord {
 	public String qname, tname;
 	public int qlen, tlen;
@@ -53,17 +53,12 @@ public class PAFRecord {
 		qlen=Integer.parseInt(toks[1]);
 		tlen=Integer.parseInt(toks[6]);
 		//convert coordinates from 0-based to 1-based
-		qstart=Integer.parseInt(toks[2])+1;
-		qend=Integer.parseInt(toks[3])+1;
+		qstart=Integer.parseInt(toks[2])+1; //inclusive -> inclusive
+		qend=Integer.parseInt(toks[3]); //exclusive -> inclusive
 		
-		if(!strand) {
-			int tmp=qstart;
-			qstart=qend;
-			qend=tmp;
-		}
 		
 		tstart=Integer.parseInt(toks[7])+1;
-		tend=Integer.parseInt(toks[8])+1;
+		tend=Integer.parseInt(toks[8]);
 		
 		qual=Integer.parseInt(toks[11]);
 		score=Integer.parseInt(toks[9]);
