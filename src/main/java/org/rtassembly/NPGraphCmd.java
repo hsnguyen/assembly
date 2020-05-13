@@ -24,11 +24,11 @@ public class NPGraphCmd extends CommandLine{
 		addString("si", "", "Name of the short-read assembly file.");
 		addString("sf", "", "Format of the assembly input file. Accepted format are FASTG, GFA");
 		addString("li", "", "Name of the long-read data input file, - for stdin.");
-		addString("lf", "", "Format of the long-read data input file. This may be FASTQ/FASTA (MinION reads) or SAM/BAM/PAF (aligned with the assembly graph already)");
+		addString("lf", "", "Format of the long-read data input file. This may be FASTQ/FASTA read file or SAM/BAM/PAF alignment file");
 		addString("output", "/tmp/", "Output folder for temporary files and the final assembly npgraph_assembly.fasta");
 				
 		addString("sb", "", "Name of the metaBAT file for binning information (experimental).");
-		addString("aligner","","Aligner tool that will be used, either minimap2 or bwa");
+		addString("aligner","","Aligner tool that will be used, either minimap2 (default) or BWA-MEM");
 		addString("algOpt", "", "Settings used by aligner to align long reads to the contigs");
 		addString("msa","","MSA tools for consensus. Options include spoa, kalign3 (fast); kalign2, poa (slow).");
 
@@ -90,28 +90,28 @@ public class NPGraphCmd extends CommandLine{
 		//1. Create an assembler object with appropriate file loader
 		HybridAssembler hbAss = new HybridAssembler();
 		if(shortReadsInput!=null && !shortReadsInput.isEmpty())
-			hbAss.setShortReadsInput(shortReadsInput);
+			hbAss.input.setShortReadsInput(shortReadsInput);
 		if(shortReadsInputFormat!=null && !shortReadsInputFormat.isEmpty())
-			hbAss.setShortReadsInputFormat(shortReadsInputFormat);
+			hbAss.input.setShortReadsInputFormat(shortReadsInputFormat);
 		if(longReadsInput!=null && !longReadsInput.isEmpty())
-			hbAss.setLongReadsInput(longReadsInput);
+			hbAss.input.setLongReadsInput(longReadsInput);
 		if(longReadsInputFormat!=null && !longReadsInputFormat.isEmpty())
-			hbAss.setLongReadsInputFormat(longReadsInputFormat);
+			hbAss.input.setLongReadsInputFormat(longReadsInputFormat);
 		
 		hbAss.setPrefix(outputDir);
 		if(shortReadsBinInput!=null && !shortReadsBinInput.isEmpty())
-			hbAss.setBinReadsInput(shortReadsBinInput);
+			hbAss.input.setBinReadsInput(shortReadsBinInput);
 		
 		if(alg!=null && !alg.isEmpty())
-			hbAss.setAligner(alg);
+			hbAss.input.setAligner(alg);
 		if(algOpt!=null && !algOpt.isEmpty())
-			hbAss.setAlignerOpts(algOpt);
+			hbAss.input.setAlignerOpts(algOpt);
 		
 		if(msa!=null && !msa.isEmpty())
-			hbAss.setMSA(msa);
+			hbAss.input.setMSA(msa);
 		
 		hbAss.setOverwrite(overwrite);
-		hbAss.setUseSPAdesPath(spaths);
+		hbAss.input.setUseSPAdesPath(spaths);
 		        
 		//4. Call the assembly function or invoke GUI to do so
         if(gui) {
@@ -127,7 +127,7 @@ public class NPGraphCmd extends CommandLine{
 //					hbAss.postProcessGraph();
 				}
 				else{
-					logger.error("Error with pre-processing step: \n {}", hbAss.getCheckLog());
+					logger.error("Error(s) happened! Check the log above for more info.");
 					System.exit(1);
 				}
 					

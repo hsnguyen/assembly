@@ -246,13 +246,13 @@ public class NPGraphFX extends Application{
     	
         TextField shortInputTF = new TextField("");
     	shortInputTF.setPromptText("Enter file name for assembly graph...");
-    	shortInputTF.textProperty().bindBidirectional(myass.shortReadsInputProperty());
+    	shortInputTF.textProperty().bindBidirectional(myass.input.shortReadsInputProperty());
     	GridPane.setConstraints(shortInputTF, 0,1,4,1);
     	inputPane.getChildren().add(shortInputTF);
     	
     	ComboBox<String> shortInputFormatCombo=new ComboBox<String>();
         shortInputFormatCombo.getItems().addAll("fastg", "gfa");   
-        shortInputFormatCombo.valueProperty().bindBidirectional(myass.shortReadsInputFormatProperty());
+        shortInputFormatCombo.valueProperty().bindBidirectional(myass.input.shortReadsInputFormatProperty());
 
         GridPane.setConstraints(shortInputFormatCombo, 2, 0, 2, 1);
         inputPane.getChildren().add(shortInputFormatCombo);
@@ -262,7 +262,7 @@ public class NPGraphFX extends Application{
     	shortInputBrowseButton.setOnAction((event) -> {
        		FileChooser chooser = new FileChooser();
     		chooser.setTitle("Select assembly graph file");
-    		File defaultFile = new File(myass.getShortReadsInput());
+    		File defaultFile = new File(myass.input.getShortReadsInput());
     		if(defaultFile.isFile())
     			chooser.setInitialFileName(defaultFile.getName());
     		if(defaultFile.getParentFile() !=null && defaultFile.getParentFile().isDirectory())
@@ -272,8 +272,8 @@ public class NPGraphFX extends Application{
     		File selectedFile = chooser.showOpenDialog(pStage);
     		if(selectedFile != null){				
 				try {
-					myass.setShortReadsInput(selectedFile.getCanonicalPath());
-					shortInputFormatCombo.setValue(myass.getShortReadsInputFormat());
+					myass.input.setShortReadsInput(selectedFile.getCanonicalPath());
+					shortInputFormatCombo.setValue(myass.input.getShortReadsInputFormat());
 				} catch (IOException e1) {
 	    			FxDialogs.showWarning("Warning", "Error loading graph file. Please try again!");
 					e1.printStackTrace();
@@ -287,14 +287,14 @@ public class NPGraphFX extends Application{
     	//inputPane.setGridLinesVisible(true);
 
     	CheckBox binCB = new CheckBox("Use external binning information");
-    	binCB.setSelected(!myass.getBinReadsInput().isEmpty());
-    	binCB.selectedProperty().addListener((obser,oldV,newV)->{if(!newV) myass.setBinReadsInput("");});
+    	binCB.setSelected(!myass.input.getBinReadsInput().isEmpty());
+    	binCB.selectedProperty().addListener((obser,oldV,newV)->{if(!newV) myass.input.setBinReadsInput("");});
     	GridPane.setConstraints(binCB, 0,2,4,1);
     	inputPane.getChildren().add(binCB);
     	
     	TextField binInputTF = new TextField("");
     	binInputTF.setPromptText("Enter file name binning information...");
-    	binInputTF.textProperty().bindBidirectional(myass.binReadsInputProperty());
+    	binInputTF.textProperty().bindBidirectional(myass.input.binReadsInputProperty());
     	binInputTF.disableProperty().bind(binCB.selectedProperty().not());
     	GridPane.setConstraints(binInputTF, 0,3,4,1);
     	inputPane.getChildren().add(binInputTF);
@@ -313,7 +313,7 @@ public class NPGraphFX extends Application{
     		File selectedFile = chooser.showOpenDialog(pStage);
     		if(selectedFile != null){				
 				try {
-					myass.setBinReadsInput(selectedFile.getCanonicalPath());
+					myass.input.setBinReadsInput(selectedFile.getCanonicalPath());
 				} catch (IOException e1) {
 	    			FxDialogs.showWarning("Warning", "Error loading bin file. Please try again!");
 	    			e1.printStackTrace();
@@ -327,8 +327,8 @@ public class NPGraphFX extends Application{
     	inputPane.getChildren().add(binInputBrowseButton);   	   
 
     	CheckBox spadesCB = new CheckBox("Use SPAdes induced paths");
-    	spadesCB.setSelected(myass.getUseSPAdesPath());
-    	spadesCB.selectedProperty().bindBidirectional(myass.useSPAdesPathProperty());
+    	spadesCB.setSelected(myass.input.getUseSPAdesPath());
+    	spadesCB.selectedProperty().bindBidirectional(myass.input.useSPAdesPathProperty());
     	GridPane.setConstraints(spadesCB, 0,4,4,1);
     	inputPane.getChildren().add(spadesCB);
     	
@@ -346,7 +346,7 @@ public class NPGraphFX extends Application{
         buttonGraph.setPrefSize(100, 20);
         buttonGraph.setOnAction((event) -> {
     		if(!myass.prepareShortReadsProcess()) { //true if using SPAdes path (not necessary)
-    			FxDialogs.showWarning("Warning", myass.getCheckLog());
+    			FxDialogs.showError("Error", "Please check the log, fix it and try again!");
     			return;
     		}    		
         	if(graphCB.isSelected())
@@ -376,13 +376,13 @@ public class NPGraphFX extends Application{
     	
     	TextField longInputTF = new TextField("");
     	longInputTF.setPromptText("Enter file name of long-reads data...");
-    	longInputTF.textProperty().bindBidirectional(myass.longReadsInputProperty());
+    	longInputTF.textProperty().bindBidirectional(myass.input.longReadsInputProperty());
     	GridPane.setConstraints(longInputTF, 0,1,4,1);
     	inputPane.getChildren().add(longInputTF);
     	
     	longInputFormatCombo = new ComboBox<>();
         longInputFormatCombo.getItems().addAll("fasta/fastq", "sam/bam", "paf");   
-        longInputFormatCombo.valueProperty().bindBidirectional(myass.longReadsInputFormatProperty());
+        longInputFormatCombo.valueProperty().bindBidirectional(myass.input.longReadsInputFormatProperty());
         GridPane.setConstraints(longInputFormatCombo, 2, 0, 2, 1);
         inputPane.getChildren().add(longInputFormatCombo);
     	
@@ -391,7 +391,7 @@ public class NPGraphFX extends Application{
     	longReadsBrowseButton.setOnAction((event) -> {
     		FileChooser chooser = new FileChooser();
     		chooser.setTitle("Select long-reads data file");
-    		File defaultFile = new File(myass.getLongReadsInput());
+    		File defaultFile = new File(myass.input.getLongReadsInput());
     		if(defaultFile.isFile())
     			chooser.setInitialFileName(defaultFile.getName());
     		if(defaultFile.getParentFile()!=null && defaultFile.getParentFile().isDirectory())
@@ -402,7 +402,7 @@ public class NPGraphFX extends Application{
     		File selectedFile = chooser.showOpenDialog(pStage);
     		if(selectedFile != null){
 				try {
-					myass.setLongReadsInput(selectedFile.getCanonicalPath());
+					myass.input.setLongReadsInput(selectedFile.getCanonicalPath());
 				} catch (IOException e1) {
         			FxDialogs.showWarning("File not found!", "Please specify another long-read data file!");
 					e1.printStackTrace();
@@ -485,14 +485,14 @@ public class NPGraphFX extends Application{
     	        	
     	ComboBox<String> algCombo=new ComboBox<String>();
     	algCombo.getItems().addAll("minimap2", "bwa");   
-    	algCombo.valueProperty().bindBidirectional(myass.alignerProperty());
+    	algCombo.valueProperty().bindBidirectional(myass.input.alignerProperty());
         GridPane.setConstraints(algCombo, 2, 0, 2, 1);
         optionPane.getChildren().add(algCombo);         	
     	
     	
        	TextField algOptTF = new TextField("");
        	algOptTF.setPromptText("Enter options to aligner...");
-       	algOptTF.textProperty().bindBidirectional(myass.alignerOptProperty());
+       	algOptTF.textProperty().bindBidirectional(myass.input.alignerOptProperty());
     	GridPane.setConstraints(algOptTF, 0,1,4,1);
     	optionPane.getChildren().add(algOptTF);
     	
@@ -521,7 +521,7 @@ public class NPGraphFX extends Application{
     	
     	ComboBox<String> consCombo=new ComboBox<String>();
     	consCombo.getItems().addAll("spoa","kalign","kalign3","poa","none");   
-    	consCombo.valueProperty().bindBidirectional(myass.msaProperty());
+    	consCombo.valueProperty().bindBidirectional(myass.input.msaProperty());
         GridPane.setConstraints(consCombo, 2, 4, 2, 1);
         optionPane.getChildren().add(consCombo); 
         
@@ -556,13 +556,10 @@ public class NPGraphFX extends Application{
         buttonStart = new Button("Start", viewStart);
         buttonStart.setPrefSize(100, 20);
         buttonStart.setOnAction((event) -> {
-			String message=myass.getCheckLog();
     		if(!myass.prepareLongReadsProcess()){
-    			FxDialogs.showError("Error", myass.getCheckLog());
-    			myass.setCheckLog(null);
+    			FxDialogs.showError("Error", "Please check the log, fix it and try again!");
     			return;
-    		}else if(message!=null && !message.isEmpty())
-    			FxDialogs.showWarning("Warning", myass.getCheckLog());
+    		}
 
         	myass.setReady(true);
         	

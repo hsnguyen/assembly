@@ -43,16 +43,16 @@ public class GraphExploreLaptop extends Application{
 //		hbAss.setUseSPAdesPath(useSPAdesPath);
 		
 		if(!sInput.isEmpty())
-			hbAss.setShortReadsInput(sInput);
+			hbAss.input.setShortReadsInput(sInput);
 		if(!output.isEmpty())
 			hbAss.setPrefix(output);
 		if(!binFile.isEmpty())
-			hbAss.setBinReadsInput(binFile);
+			hbAss.input.setBinReadsInput(binFile);
 		
-		hbAss.setAligner("/home/sonnguyen/sw/minimap2/minimap2");
-		hbAss.setMSA("kalign"); //spoa: out of memory with reads > 18kbp
+		hbAss.input.setAligner("/home/sonnguyen/sw/minimap2/minimap2");
+		hbAss.input.setMSA("kalign"); //spoa: out of memory with reads > 18kbp
 		hbAss.prepareShortReadsProcess();
-      	hbAss.setLongReadsInput(lInput);
+      	hbAss.input.setLongReadsInput(lInput);
 //      	hbAss.setLongReadsInputFormat("fastq");
       	hbAss.prepareLongReadsProcess();
       	
@@ -134,8 +134,8 @@ public class GraphExploreLaptop extends Application{
 			public void run() {
 
 				try{
-					hbAss.assembly2();
-//					hbAss.postProcessGraph();
+//					hbAss.assemblyPAF();
+					hbAss.assembly();
 				}catch (Exception e){
 					System.err.println(e.getMessage());
 					e.printStackTrace();

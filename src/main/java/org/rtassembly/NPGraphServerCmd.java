@@ -4,10 +4,16 @@ import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 
 import org.apache.logging.log4j.Logger;
+import org.graphstream.stream.thread.ThreadProxyPipe;
+import org.graphstream.ui.fx_viewer.FxDefaultView;
+import org.graphstream.ui.fx_viewer.FxViewer;
+import org.graphstream.ui.javafx.FxGraphRenderer;
+import org.graphstream.ui.view.Viewer;
+import org.graphstream.ui.view.Viewer.CloseFramePolicy;
 import org.apache.logging.log4j.LogManager;
-import org.rtassembly.gui.NPGraphFX;
 import org.rtassembly.npgraph.Alignment;
 import org.rtassembly.npgraph.BDGraph;
+import org.rtassembly.npgraph.GraphUtil;
 import org.rtassembly.npgraph.RealtimeGraphWatcher;
 import org.rtassembly.npgraph.HybridAssembler;
 import org.rtassembly.npgraph.SimpleBinner;
@@ -15,6 +21,14 @@ import org.rtassembly.npgraph.grpc.AssemblyGuideServer;
 
 import japsa.util.CommandLine;
 import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.geometry.Insets;
+import javafx.scene.Scene;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.ColumnConstraints;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.RowConstraints;
+import javafx.stage.Stage;
 
 
 public class NPGraphServerCmd extends CommandLine{
@@ -85,37 +99,36 @@ public class NPGraphServerCmd extends CommandLine{
 		//1. Create an assembler object with appropriate file loader
 		HybridAssembler hbAss = new HybridAssembler();
 		if(shortReadsInput!=null && !shortReadsInput.isEmpty())
-			hbAss.setShortReadsInput(shortReadsInput);
+			hbAss.input.setShortReadsInput(shortReadsInput);
 		if(shortReadsInputFormat!=null && !shortReadsInputFormat.isEmpty())
-			hbAss.setShortReadsInputFormat(shortReadsInputFormat);
+			hbAss.input.setShortReadsInputFormat(shortReadsInputFormat);
 		
-		hbAss.setLongReadsInputFormat("paf"); //just to pass prepareLongReadProcess()
+		hbAss.input.setLongReadsInputFormat("paf"); //to pass prepareLongReadProcess()
 		
 		hbAss.setPrefix(outputDir);
 		if(shortReadsBinInput!=null && !shortReadsBinInput.isEmpty())
-			hbAss.setBinReadsInput(shortReadsBinInput);
+			hbAss.input.setBinReadsInput(shortReadsBinInput);
 		
 	
 		hbAss.setOverwrite(overwrite);
-		hbAss.setUseSPAdesPath(spaths);
+		hbAss.input.setUseSPAdesPath(spaths);
 		        
 		//4. Call the assembly function or invoke GUI to do so
-        if(gui) {
-//			NPGraphFX.setAssembler(hbAss);
-//			Application.launch(NPGraphFX.class,args);
-        	System.out.println("Sorry it's easy but not implemented yet!");
-        	System.exit(1);
-        }else if(shortReadsInput.isEmpty()) {
+		if(shortReadsInput.isEmpty() && !gui) {
 			System.out.println(cmdLine.usageString());			
 			System.exit(-1);
         }else {
 			try {
 				if(hbAss.prepareShortReadsProcess() &&	hbAss.prepareLongReadsProcess()) {
+					if(gui) {
+						GraphView.hbAss=hbAss;
+						Application.launch(GraphView.class, args);
+					}
 					AssemblyGuideServer assServer = new AssemblyGuideServer(port, hbAss);
 					assServer.start();
 				}
 				else{
-					logger.error("Error with pre-processing step: \n{}", hbAss.getCheckLog());
+					logger.error("Error(s) happened! Check the log above for more info.");
 					System.exit(1);
 				}
 					
@@ -126,5 +139,99 @@ public class NPGraphServerCmd extends CommandLine{
         }
 		
 	}
-	
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////
+class GraphView extends Application{
+
+	static HybridAssembler hbAss;	
+    private GridPane createAutoresizeGridPane(int ncols, int nrows){
+        GridPane gridpane = new GridPane();
+        for (int i = 0; i < ncols; i++) {
+            ColumnConstraints column = new ColumnConstraints();
+            column.setPercentWidth(100/ncols);
+            gridpane.getColumnConstraints().add(column);
+        }
+        for (int i = 0; i < nrows; i++) {
+            RowConstraints row = new RowConstraints();
+            row.setPercentHeight(100/nrows);
+            gridpane.getRowConstraints().add(row);
+        }
+        gridpane.setPadding(new Insets(5, 5, 5, 5));
+        gridpane.setVgap(5);
+        gridpane.setHgap(5);
+        return gridpane;
+    }
+    private GridPane addGraphResolverPane(){  		
+    	GridPane mainGrid = createAutoresizeGridPane(1,1);
+		mainGrid.setStyle("-fx-background-color: #C0C0C0;");
+		
+		
+		ThreadProxyPipe pipe = new ThreadProxyPipe() ;
+		pipe.init(hbAss.simGraph);
+		Viewer graphViewer = new FxViewer(pipe);
+		System.setProperty("org.graphstream.ui", "javafx");
+
+		FxDefaultView view = new FxDefaultView(graphViewer, "npGraph", new FxGraphRenderer());
+		graphViewer.addView(view);
+		graphViewer.enableAutoLayout();
+		graphViewer.setCloseFramePolicy(CloseFramePolicy.CLOSE_VIEWER);
+		
+		mainGrid.getChildren().add(view);
+		
+		return mainGrid;
+    }
+	@Override
+	public void start(Stage primaryStage) throws Exception {
+        BorderPane gBorder = new BorderPane();
+        gBorder.setCenter(addGraphResolverPane());
+        Scene gscene = new Scene(gBorder);
+        primaryStage.setScene(gscene);
+        primaryStage.setTitle("Assembly graph");
+        primaryStage.setOnCloseRequest(e -> {
+        	hbAss.terminateAlignmentProcess();
+            Platform.exit();
+            System.exit(0);
+        });
+        
+    	BDGraph graph= hbAss.simGraph;
+		
+    	graph.setAttribute("ui.style", GraphUtil.styleSheet);
+    	graph.setAttribute("layout.force", .5);
+    	graph.setAttribute("layout.weight", .1);
+    	
+
+//        System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
+//        for (Node node : graph) {
+//        	node.setAttribute("ui.label", node.getId());
+//        }        
+
+        primaryStage.show();
+
+        /*
+         * Testing reduce function
+         */
+        /*
+         * A thread to run the algorithm
+         */
+	    new Thread(new Runnable(){
+
+			@Override
+			public void run() {
+
+				try{
+//					hbAss.assemblyPAF();
+					hbAss.assembly();
+				}catch (Exception e){
+					System.err.println(e.getMessage());
+					e.printStackTrace();
+				}
+
+			}
+			
+		}).start();
+      
+	}   
+
 }

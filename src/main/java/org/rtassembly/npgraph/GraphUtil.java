@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -740,4 +741,152 @@ public class GraphUtil {
 		return list[i];
 	} 
 	
+    @SuppressWarnings("resource")
+	public static void promptEnterKey(){
+    	   System.out.println("Press \"ENTER\" to continue...");
+    	   Scanner scanner = new Scanner(System.in);
+    	   scanner.nextLine();
+    	}
+    
+    
+    public static boolean checkMinimap2(String pathToBinary) {    		
+		ProcessBuilder pb = new ProcessBuilder(pathToBinary,"-V").redirectErrorStream(true);
+		Process process;
+		try {
+			process = pb.start();
+			BufferedReader bf = SequenceReader.openInputStream(process.getInputStream());
+	
+	
+			String line;
+			String version = "";
+			Pattern versionPattern = Pattern.compile("^(\\d+\\.\\d+).*");
+			Matcher matcher=versionPattern.matcher("");
+			
+			while ((line = bf.readLine())!=null){				
+				matcher.reset(line);
+				if (matcher.find()){
+				    version = matcher.group(1);
+				    break;//while
+				}
+				
+								
+			}	
+			bf.close();
+			
+			if (version.length() == 0){
+				logger.error("Command {} -V failed!", pathToBinary);
+				return false;
+			}else{
+				logger.info("minimap version: {}", version);
+				if (version.compareTo("2.0") < 0){
+					logger.error("Require minimap version 2 or above!");
+					return false;
+				}
+			}
+		} catch (IOException e) {
+			logger.error("Error running: {}\n{}", pathToBinary, e.getMessage());
+			return false;
+		}
+		
+		return true;
+			
+    }
+    
+    public static boolean checkBWA(String pathToBinary) {    		
+		try{
+			ProcessBuilder pb = new ProcessBuilder(pathToBinary).redirectErrorStream(true);
+			Process process =  pb.start();
+			BufferedReader bf = SequenceReader.openInputStream(process.getInputStream());
+
+
+			String line;
+			String version = "";
+			Pattern versionPattern = Pattern.compile("^Version:\\s(\\d+\\.\\d+\\.\\d+).*");
+			Matcher matcher=versionPattern.matcher("");
+			
+			while ((line = bf.readLine())!=null){				
+				matcher.reset(line);
+				if (matcher.find()){
+				    version = matcher.group(1);
+				    break;//while
+				}
+				
+								
+			}	
+			bf.close();
+			
+			if (version.length() == 0){
+				logger.error("Command {} doesn't give version info. Check version failed!", pathToBinary);
+				return false;
+			}else{
+				logger.info("bwa version: {}", version);
+				if (version.compareTo("0.7.11") < 0){
+					logger.error(" Require bwa of 0.7.11 or above");
+					return false;
+				}
+			}
+
+		}catch (IOException e){
+			logger.error("Error running: {}\n{}", pathToBinary, e.getMessage());
+			return false;
+		}
+		
+		return true;
+			
+    }
+    
+    public static boolean checkMSA(String pathToBinary) {    		
+		try{	
+			String[] cmd;
+			if(pathToBinary.startsWith("kalign")) //maybe kalign3
+				cmd=new String[]{"kalign","-h"}; //important, as kalign acted weird without this
+			else
+				cmd=new String[]{pathToBinary};
+			
+			ProcessBuilder pb = new ProcessBuilder(cmd).redirectErrorStream(true);
+			Process process =  pb.start();
+			BufferedReader bf = SequenceReader.openInputStream(process.getInputStream());
+			String line;
+			boolean found=false;
+			while ((line = bf.readLine())!=null){				
+				if (line.toLowerCase().contains("usage:")){ // kalign, kalign3, poa, spoa all print out "Usage:" if run without parameter
+					found=true;
+					break;
+				}
+			}	
+			bf.close();
+			return found;
+
+		}catch (IOException e){
+			logger.error("Error running: {}\n{}", pathToBinary, e.getMessage());
+			return false;
+		}
+					
+    }
+	
+    public static boolean checkFile(String _path) {
+		if (_path==null||_path.isEmpty()){
+			logger.error("Empty file name!");
+			return false;
+		}
+		File _file = new File(_path);
+		if (!_file.isFile()){
+			logger.error("File \"{}\" is not valid!", _path);
+			return false;
+		}
+		return true;
+    }
+    
+    public static boolean checkFolder(String _path) {
+		if (_path.equals("")){
+			logger.error("Empty directory \"{}\"", _path);
+			return false;
+		}
+		File _file = new File(_path);
+		if (!_file.isDirectory()){
+			logger.error("Directory \"{}\" is not valid!", _path);
+			return false;
+		}
+		return true;
+    }
 }

@@ -123,16 +123,16 @@ public class GraphExploreDesktop extends Application{
 //		hbAss.setUseSPAdesPath(useSPAdesPath);
 		
 		if(!sInput.isEmpty())
-			hbAss.setShortReadsInput(sInput);
+			hbAss.input.setShortReadsInput(sInput);
 		if(!output.isEmpty())
 			hbAss.setPrefix(output);
 		if(!binFile.isEmpty())
-			hbAss.setBinReadsInput(binFile);
+			hbAss.input.setBinReadsInput(binFile);
 		
-		hbAss.setAligner("minimap2");
-		hbAss.setMSA("kalign"); //spoa: out of memory with reads > 18kbp
+		hbAss.input.setAligner("minimap2");
+		hbAss.input.setMSA("kalign"); //spoa: out of memory with reads > 18kbp
 		hbAss.prepareShortReadsProcess();
-      	hbAss.setLongReadsInput(lInput);
+      	hbAss.input.setLongReadsInput(lInput);
       	hbAss.prepareLongReadsProcess();
       	
 		Application.launch(GraphExploreDesktop.class,args);

@@ -585,36 +585,37 @@ public class SimpleBinner {
 		retval+="]";
 		return retval;
 	}
-	public static void main(String[] args) throws IOException {
-		HybridAssembler hbAss = new HybridAssembler();
-		hbAss.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/metaSPAdes/assembly_graph.fastg");
-		hbAss.setBinReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/metabat/bin");
-		hbAss.setShortReadsInputFormat("fastg");
-		hbAss.prepareShortReadsProcess();
-		
-		SimpleBinner binner = hbAss.simGraph.binner;
-		//binner.estimatePathsByCoverage();
-		System.out.println("=> number of bin = " + binner.binList.size());
-		for(PopBin b:binner.binList) {
-			System.out.println("Bin " + b.binID + " estCov=" + b.estCov + " totLen=" + b.estLen);
-			for(Node n:b.getCoreNodes())
-				System.out.println(n.getAttribute("name"));
-		}
-			
-			
-		for(Node n:hbAss.simGraph) {
-			Iterator<Edge> ite = n.edges().iterator();
-			while(ite.hasNext()) {
-				Edge e = ite.next();
-				System.out.println("Edge "+e.getId() + " cov=" + e.getNumber("cov") );
-				Multiplicity tmp = binner.edge2BinMap.get(e);
-				if(tmp==null) {
-					System.out.println("...has not yet assigned!");
-					continue;
-				}
-				
-				System.out.println(tmp);
-			}
-		}
-	}
+	
+//	public static void main(String[] args) throws IOException {
+//		HybridAssembler hbAss = new HybridAssembler();
+//		hbAss.input.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/metaSPAdes/assembly_graph.fastg");
+//		hbAss.input.setBinReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/porecamp/metabat/bin");
+//		hbAss.input.setShortReadsInputFormat("fastg");
+//		hbAss.prepareShortReadsProcess();
+//		
+//		SimpleBinner binner = hbAss.simGraph.binner;
+//		//binner.estimatePathsByCoverage();
+//		System.out.println("=> number of bin = " + binner.binList.size());
+//		for(PopBin b:binner.binList) {
+//			System.out.println("Bin " + b.binID + " estCov=" + b.estCov + " totLen=" + b.estLen);
+//			for(Node n:b.getCoreNodes())
+//				System.out.println(n.getAttribute("name"));
+//		}
+//			
+//			
+//		for(Node n:hbAss.simGraph) {
+//			Iterator<Edge> ite = n.edges().iterator();
+//			while(ite.hasNext()) {
+//				Edge e = ite.next();
+//				System.out.println("Edge "+e.getId() + " cov=" + e.getNumber("cov") );
+//				Multiplicity tmp = binner.edge2BinMap.get(e);
+//				if(tmp==null) {
+//					System.out.println("...has not yet assigned!");
+//					continue;
+//				}
+//				
+//				System.out.println(tmp);
+//			}
+//		}
+//	}
 }
