@@ -52,6 +52,7 @@ import org.graphstream.ui.view.Viewer.CloseFramePolicy;
 import org.rtassembly.npgraph.Alignment;
 import org.rtassembly.npgraph.BDGraph;
 import org.rtassembly.npgraph.HybridAssembler;
+import org.rtassembly.npgraph.grpc.AssemblyGuideServer;
 
 import japsa.util.FxDialogs;
 import japsa.util.ImageButton;
@@ -90,14 +91,13 @@ import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.stage.Stage;
 
 
-public class NPGraphFX extends Application{
+public class NPGraphServerFX extends Application{
     private static final Logger logger = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
-	static HybridAssembler myass = new HybridAssembler();
-//	static Viewer graphViewer;
+	static AssemblyGuideServer assServer=null;
 	
-	public static void setAssembler(HybridAssembler ass){
-		myass = ass;
+	public static void setAssemblyServer(AssemblyGuideServer server){
+		assServer=server;
 	}
     
     public void start(Stage primaryStage){  	 
@@ -123,9 +123,8 @@ public class NPGraphFX extends Application{
     	    // Put start/stop button here  
     	    // All the parameters setting to the left 
     	    graphInputPane = addGraphInputPane(primaryStage, graphStage);
-    	    longInputPane = addLongReadInputPane(primaryStage);
     	    outputPane = addOutputPane(primaryStage);
-    	    alignmentPane = addAlignmentOptionPane(primaryStage);
+    	    serverOptPane = addServerOptionPane(primaryStage);
     	    controlPane = addControlPane();
     	    
     	    pBorder.setLeft(addVBox());
@@ -138,8 +137,12 @@ public class NPGraphFX extends Application{
             primaryStage.setScene(pscene);
             primaryStage.setTitle("npGraph Dashboard");
             primaryStage.setOnCloseRequest(e -> {
-            	myass.terminateAlignmentProcess();
-                Platform.exit();
+            	try {
+					assServer.stop();
+				} catch (InterruptedException e1) {
+					logger.error("Exceptin on close: ",e);
+				}
+            	Platform.exit();
                 System.exit(0);
             });
             primaryStage.show();
@@ -152,7 +155,7 @@ public class NPGraphFX extends Application{
 
     			@Override
     			public void run() {
-    				while (!myass.getReady()){
+    				while (!assServer.myAss.getReady()){
     					//LOG.info("NOT READY");
     					try {
     						Thread.sleep(1000);
@@ -160,11 +163,9 @@ public class NPGraphFX extends Application{
     						e.printStackTrace();
     					}			
     				}
-    				logger.info("NPGRAPH GUI is now ready to GO!");
-//    				updateData();
+    				logger.info("npGraph server is now ready to GO!");
     				try{
-    					myass.assembly();
-//    					myass.postProcessGraph();
+    					assServer.start();
     				}catch (Exception e){
     					System.err.println(e.getMessage());
     					e.printStackTrace();
@@ -184,8 +185,7 @@ public class NPGraphFX extends Application{
      * Components from left pane
      */
     private Button 	buttonStart, buttonStop, buttonGraph;
-    private ComboBox<String> longInputFormatCombo;
-    private GridPane graphInputPane, longInputPane, outputPane, alignmentPane, controlPane;
+    private GridPane graphInputPane, outputPane, serverOptPane, controlPane;
     
     
     private final int LeftPaneWidth=360;
@@ -211,25 +211,19 @@ public class NPGraphFX extends Application{
         final Separator sep2 = new Separator();
         sep2.setMaxWidth(LeftPaneWidth);
         vbox.getChildren().add(3, sep2);
-        
-        vbox.getChildren().add(longInputPane);
-        vbox.setSpacing(5);
-        final Separator sep3 = new Separator();
-        sep2.setMaxWidth(LeftPaneWidth);
-        vbox.getChildren().add(5, sep3);
 
         
         vbox.getChildren().add(outputPane);
         vbox.setSpacing(5);
         final Separator sep4 = new Separator();
         sep4.setMaxWidth(LeftPaneWidth);
-        vbox.getChildren().add(7, sep4);
+        vbox.getChildren().add(5, sep4);
         
-        vbox.getChildren().add(alignmentPane);
+        vbox.getChildren().add(serverOptPane);
         vbox.setSpacing(5);
         final Separator sep5 = new Separator();
         sep4.setMaxWidth(LeftPaneWidth);
-        vbox.getChildren().add(9, sep5);
+        vbox.getChildren().add(7, sep5);
                
         vbox.getChildren().add(controlPane);
         return vbox;
@@ -246,13 +240,13 @@ public class NPGraphFX extends Application{
     	
         TextField shortInputTF = new TextField("");
     	shortInputTF.setPromptText("Enter file name for assembly graph...");
-    	shortInputTF.textProperty().bindBidirectional(myass.input.shortReadsInputProperty());
+    	shortInputTF.textProperty().bindBidirectional(assServer.myAss.input.shortReadsInputProperty());
     	GridPane.setConstraints(shortInputTF, 0,1,4,1);
     	inputPane.getChildren().add(shortInputTF);
     	
     	ComboBox<String> shortInputFormatCombo=new ComboBox<String>();
         shortInputFormatCombo.getItems().addAll("fastg", "gfa");   
-        shortInputFormatCombo.valueProperty().bindBidirectional(myass.input.shortReadsInputFormatProperty());
+        shortInputFormatCombo.valueProperty().bindBidirectional(assServer.myAss.input.shortReadsInputFormatProperty());
 
         GridPane.setConstraints(shortInputFormatCombo, 2, 0, 2, 1);
         inputPane.getChildren().add(shortInputFormatCombo);
@@ -262,7 +256,7 @@ public class NPGraphFX extends Application{
     	shortInputBrowseButton.setOnAction((event) -> {
        		FileChooser chooser = new FileChooser();
     		chooser.setTitle("Select assembly graph file");
-    		File defaultFile = new File(myass.input.getShortReadsInput());
+    		File defaultFile = new File(assServer.myAss.input.getShortReadsInput());
     		if(defaultFile.isFile())
     			chooser.setInitialFileName(defaultFile.getName());
     		if(defaultFile.getParentFile() !=null && defaultFile.getParentFile().isDirectory())
@@ -272,8 +266,8 @@ public class NPGraphFX extends Application{
     		File selectedFile = chooser.showOpenDialog(pStage);
     		if(selectedFile != null){				
 				try {
-					myass.input.setShortReadsInput(selectedFile.getCanonicalPath());
-					shortInputFormatCombo.setValue(myass.input.getShortReadsInputFormat());
+					assServer.myAss.input.setShortReadsInput(selectedFile.getCanonicalPath());
+					shortInputFormatCombo.setValue(assServer.myAss.input.getShortReadsInputFormat());
 				} catch (IOException e1) {
 	    			FxDialogs.showWarning("Warning", "Error loading graph file. Please try again!");
 					e1.printStackTrace();
@@ -287,14 +281,14 @@ public class NPGraphFX extends Application{
     	//inputPane.setGridLinesVisible(true);
 
     	CheckBox binCB = new CheckBox("Use external binning information");
-    	binCB.setSelected(!myass.input.getBinReadsInput().isEmpty());
-    	binCB.selectedProperty().addListener((obser,oldV,newV)->{if(!newV) myass.input.setBinReadsInput("");});
+    	binCB.setSelected(!assServer.myAss.input.getBinReadsInput().isEmpty());
+    	binCB.selectedProperty().addListener((obser,oldV,newV)->{if(!newV) assServer.myAss.input.setBinReadsInput("");});
     	GridPane.setConstraints(binCB, 0,2,4,1);
     	inputPane.getChildren().add(binCB);
     	
     	TextField binInputTF = new TextField("");
     	binInputTF.setPromptText("Enter file name binning information...");
-    	binInputTF.textProperty().bindBidirectional(myass.input.binReadsInputProperty());
+    	binInputTF.textProperty().bindBidirectional(assServer.myAss.input.binReadsInputProperty());
     	binInputTF.disableProperty().bind(binCB.selectedProperty().not());
     	GridPane.setConstraints(binInputTF, 0,3,4,1);
     	inputPane.getChildren().add(binInputTF);
@@ -313,7 +307,7 @@ public class NPGraphFX extends Application{
     		File selectedFile = chooser.showOpenDialog(pStage);
     		if(selectedFile != null){				
 				try {
-					myass.input.setBinReadsInput(selectedFile.getCanonicalPath());
+					assServer.myAss.input.setBinReadsInput(selectedFile.getCanonicalPath());
 				} catch (IOException e1) {
 	    			FxDialogs.showWarning("Warning", "Error loading bin file. Please try again!");
 	    			e1.printStackTrace();
@@ -327,14 +321,14 @@ public class NPGraphFX extends Application{
     	inputPane.getChildren().add(binInputBrowseButton);   	   
 
     	CheckBox spadesCB = new CheckBox("Use SPAdes induced paths");
-    	spadesCB.setSelected(myass.input.getUseSPAdesPath());
-    	spadesCB.selectedProperty().bindBidirectional(myass.input.useSPAdesPathProperty());
+    	spadesCB.setSelected(assServer.myAss.input.getUseSPAdesPath());
+    	spadesCB.selectedProperty().bindBidirectional(assServer.myAss.input.useSPAdesPathProperty());
     	GridPane.setConstraints(spadesCB, 0,4,4,1);
     	inputPane.getChildren().add(spadesCB);
     	
     	
     	CheckBox graphCB = new CheckBox("Show graph");
-    	graphCB.setSelected(myass.simGraph!=null);
+    	graphCB.setSelected(assServer.myAss.simGraph!=null);
     	GridPane.setConstraints(graphCB, 3,5,2,1);
     	inputPane.getChildren().add(graphCB);
     	
@@ -345,14 +339,13 @@ public class NPGraphFX extends Application{
         buttonGraph = new Button("Load", viewLoad);
         buttonGraph.setPrefSize(100, 20);
         buttonGraph.setOnAction((event) -> {
-    		if(!myass.prepareShortReadsProcess()) { //true if using SPAdes path (not necessary)
+    		if(!assServer.myAss.prepareShortReadsProcess()) { //true if using SPAdes path (not necessary)
     			FxDialogs.showError("Error", "Please check the log, fix it and try again!");
     			return;
     		}    		
         	if(graphCB.isSelected())
         		gStage.show();        	
 			//TODO: unhide further controls
-        	longInputPane.setDisable(false);
         	outputPane.setDisable(false);
         	controlPane.setDisable(false);
         	graphInputPane.setDisable(true);
@@ -365,60 +358,6 @@ public class NPGraphFX extends Application{
 		return inputPane;
 	}
     
-    private GridPane addLongReadInputPane(Stage pStage) {
-    	GridPane inputPane = createFixGridPane(LeftPaneWidth, 5);
-    	
-    	final Label inputLabel = new Label("Long-read data:");
-    	inputLabel.setFont(Font.font("Roman", FontWeight.BOLD, 12));
-    	inputLabel.setStyle("-fx-underline:true");
-    	GridPane.setConstraints(inputLabel, 0,0,2,1);
-    	inputPane.getChildren().add(inputLabel);  	
-    	
-    	TextField longInputTF = new TextField("");
-    	longInputTF.setPromptText("Enter file name of long-reads data...");
-    	longInputTF.textProperty().bindBidirectional(myass.input.longReadsInputProperty());
-    	GridPane.setConstraints(longInputTF, 0,1,4,1);
-    	inputPane.getChildren().add(longInputTF);
-    	
-    	longInputFormatCombo = new ComboBox<>();
-        longInputFormatCombo.getItems().addAll("fasta/fastq", "sam/bam", "paf");   
-        longInputFormatCombo.valueProperty().bindBidirectional(myass.input.longReadsInputFormatProperty());
-        GridPane.setConstraints(longInputFormatCombo, 2, 0, 2, 1);
-        inputPane.getChildren().add(longInputFormatCombo);
-    	
-    	Button longReadsBrowseButton = new ImageButton("/folder.png");
-    	longReadsBrowseButton.setPrefSize(10, 10);
-    	longReadsBrowseButton.setOnAction((event) -> {
-    		FileChooser chooser = new FileChooser();
-    		chooser.setTitle("Select long-reads data file");
-    		File defaultFile = new File(myass.input.getLongReadsInput());
-    		if(defaultFile.isFile())
-    			chooser.setInitialFileName(defaultFile.getName());
-    		if(defaultFile.getParentFile()!=null && defaultFile.getParentFile().isDirectory())
-    			chooser.setInitialDirectory(defaultFile.getParentFile());
-    		chooser.setSelectedExtensionFilter(
-    				new ExtensionFilter("Long-reads data", 	"*.fastq", "*.fasta", "*.fq", "*.fa", "*.fna", "*.sam", "*.bam" , "*paf" ,
-    														"*.FASTQ", "*.FASTA", "*.FQ", "*.FA", "*.FNA", "*.SAM", "*.BAM" , "*PAF"));
-    		File selectedFile = chooser.showOpenDialog(pStage);
-    		if(selectedFile != null){
-				try {
-					myass.input.setLongReadsInput(selectedFile.getCanonicalPath());
-				} catch (IOException e1) {
-        			FxDialogs.showWarning("File not found!", "Please specify another long-read data file!");
-					e1.printStackTrace();
-				}
-
-    		}
-        });
-    	
-    	
-    	GridPane.setConstraints(longReadsBrowseButton, 4,1);
-    	GridPane.setHalignment(longReadsBrowseButton,HPos.LEFT);
-    	inputPane.getChildren().add(longReadsBrowseButton);
-    	
-    	inputPane.setDisable(true);
-		return inputPane;
-	}
     
     private GridPane addOutputPane(Stage stage) {
     	GridPane outputPane = createFixGridPane(LeftPaneWidth, 5);
@@ -431,7 +370,7 @@ public class NPGraphFX extends Application{
     	
     	TextField outputTF = new TextField("");
     	outputTF.setPromptText("Enter name for output file...");
-    	outputTF.textProperty().bindBidirectional(myass.prefixProperty());
+    	outputTF.textProperty().bindBidirectional(assServer.myAss.prefixProperty());
     	GridPane.setConstraints(outputTF, 0,1,4,1);
     	outputPane.getChildren().add(outputTF);
     	
@@ -447,10 +386,10 @@ public class NPGraphFX extends Application{
     			chooser.setInitialDirectory(defaultDirectory);
     		File selectedDirectory=chooser.showDialog(stage);
     		if(selectedDirectory != null) {
-    			myass.setPrefix(selectedDirectory.getPath());
-    			outputTF.setText(myass.getPrefix());
+    			assServer.myAss.setPrefix(selectedDirectory.getPath());
+    			outputTF.setText(assServer.myAss.getPrefix());
         		try{
-        			System.setProperty("usr.dir", myass.getPrefix());
+        			System.setProperty("usr.dir", assServer.myAss.getPrefix());
         		}
         		catch(NullPointerException | IllegalArgumentException | SecurityException exception ){
         			exception.printStackTrace();
@@ -465,40 +404,33 @@ public class NPGraphFX extends Application{
     	outputPane.getChildren().add(outputBrowseButton);
     	
     	CheckBox overwriteCB = new CheckBox("Overwrite existing index files");
-    	overwriteCB.selectedProperty().bindBidirectional(myass.overwriteProperty());
+    	overwriteCB.selectedProperty().bindBidirectional(assServer.myAss.overwriteProperty());
     	GridPane.setConstraints(overwriteCB, 0, 2, 4, 1);
     	outputPane.getChildren().add(overwriteCB);
     	
     	outputPane.setDisable(true);
 		return outputPane;
 	}
-    private GridPane addAlignmentOptionPane(Stage stage) {
+    private GridPane addServerOptionPane(Stage stage) {
     	GridPane optionPane = createFixGridPane(LeftPaneWidth, 5);
+    	 	
+    	final Label labelPort = new Label("Listening on port ");
+    	GridPane.setConstraints(labelPort, 0,0,3,1);
+    	optionPane.getChildren().add(labelPort);
     	
-    	final Label optLabel = new Label("Alignment options:");
-    	optLabel.setFont(Font.font("Roman", FontWeight.BOLD, 12));
-    	optLabel.setStyle("-fx-underline:true");
+    	TextField portTF = new TextField("");
+    	portTF.setText(Integer.toString(assServer.port));
+    	portTF.setOnKeyPressed(e -> {
+            if (e.getCode() == KeyCode.ENTER)  {
+            	assServer.port=Integer.parseInt(portTF.getText());
+                buttonStart.requestFocus();
+            }
+    	});
+    	GridPane.setConstraints(portTF, 3,0);
+    	optionPane.getChildren().add(portTF);
     	
-    	GridPane.setConstraints(optLabel, 0,0,4,1);
-    	optionPane.getChildren().add(optLabel);
-    	
-    	        	
-    	ComboBox<String> algCombo=new ComboBox<String>();
-    	algCombo.getItems().addAll("minimap2", "bwa");   
-    	algCombo.valueProperty().bindBidirectional(myass.input.alignerProperty());
-        GridPane.setConstraints(algCombo, 2, 0, 2, 1);
-        optionPane.getChildren().add(algCombo);         	
-    	
-    	
-       	TextField algOptTF = new TextField("");
-       	algOptTF.setPromptText("Enter options to aligner...");
-       	algOptTF.textProperty().bindBidirectional(myass.input.alignerOptProperty());
-    	GridPane.setConstraints(algOptTF, 0,1,4,1);
-    	optionPane.getChildren().add(algOptTF);
-    	
-    	
-    	final Label labelQual = new Label("Must have quality greater than ");
-    	GridPane.setConstraints(labelQual, 0,2,3,1);
+    	final Label labelQual = new Label("Mininum alignment quality score ");
+    	GridPane.setConstraints(labelQual, 0,1,3,1);
     	optionPane.getChildren().add(labelQual);
     	
     	TextField minQualTF = new TextField("");
@@ -510,25 +442,13 @@ public class NPGraphFX extends Application{
                 buttonStart.requestFocus();
             }
     	});
-    	GridPane.setConstraints(minQualTF, 3,2);
+    	GridPane.setConstraints(minQualTF, 3,1);
     	optionPane.getChildren().add(minQualTF);
-    	
-    	final Label consLabel = new Label("Consensus (optional):");
-    	consLabel.setFont(Font.font("Roman", FontWeight.BOLD, 12));
-    	consLabel.setStyle("-fx-underline:true");
-    	GridPane.setConstraints(consLabel, 0,4,4,1);
-    	optionPane.getChildren().add(consLabel);
-    	
-    	
-    	ComboBox<String> consCombo=new ComboBox<String>();
-    	consCombo.getItems().addAll("spoa","kalign","kalign3","poa","none");   
-    	consCombo.valueProperty().bindBidirectional(myass.input.msaProperty());
-        GridPane.setConstraints(consCombo, 2, 4, 2, 1);
-        optionPane.getChildren().add(consCombo); 
+
         
-    	final Label labelMSA = new Label("Minium coverage for bridging ");
-    	GridPane.setConstraints(labelMSA, 0,5,3,1);
-    	optionPane.getChildren().add(labelMSA);
+    	final Label labelCov = new Label("Minium coverage for bridging ");
+    	GridPane.setConstraints(labelCov, 0,2,3,1);
+    	optionPane.getChildren().add(labelCov);
     	
     	TextField covTF = new TextField("");
     	covTF.setText(Integer.toString(BDGraph.MIN_SUPPORT));
@@ -538,14 +458,10 @@ public class NPGraphFX extends Application{
                 buttonStart.requestFocus();
             }
     	});
-    	GridPane.setConstraints(covTF, 3,5);
+    	GridPane.setConstraints(covTF, 3,2);
     	optionPane.getChildren().add(covTF);
     	
-    	
-           	    	
-    	optionPane.disableProperty().bind(	longInputPane.disabledProperty()
-    										.or(longInputFormatCombo.valueProperty().isEqualTo("sam/bam")));  
-		return optionPane;
+    	return optionPane;
 	}
     
     private GridPane addControlPane() {
@@ -558,16 +474,16 @@ public class NPGraphFX extends Application{
         buttonStart = new Button("Start", viewStart);
         buttonStart.setPrefSize(100, 20);
         buttonStart.setOnAction((event) -> {
-    		if(!myass.prepareLongReadsProcess()){
-    			FxDialogs.showError("Error", "Please check the log, fix it and try again!");
+    		if(!assServer.myAss.prepareLongReadsProcess()){
+    			FxDialogs.showError("Error", "Please check the log for more detail!");
     			return;
     		}
 
-        	myass.setReady(true);
+    		assServer.myAss.setReady(true);
         	
 			//Start running
-			longInputPane.setDisable(true);
 			outputPane.setDisable(true);
+			serverOptPane.setDisable(true);
 			
 			buttonStart.setDisable(true);
 			buttonStop.setDisable(false);
@@ -588,12 +504,16 @@ public class NPGraphFX extends Application{
 			if(confirm.equals("No")){
 				return;
 			}
-			myass.setStopSignal(true);
+			assServer.myAss.setStopSignal(true);
 			if(!executor.isTerminated())
 				executor.shutdown();
         	buttonStop.setDisable(true);
-
-        	//buttonRestart.setDisable(false);
+        	try {
+				assServer.stop();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 
         });
         GridPane.setConstraints(buttonStop, 3,0,2,1);
@@ -732,7 +652,7 @@ public class NPGraphFX extends Application{
 		
 		
 		ThreadProxyPipe pipe = new ThreadProxyPipe() ;
-		pipe.init(myass.simGraph);
+		pipe.init(assServer.myAss.simGraph);
 		Viewer graphViewer = new FxViewer(pipe);
 		System.setProperty("org.graphstream.ui", "javafx");
 
@@ -754,12 +674,12 @@ public class NPGraphFX extends Application{
         public void run() {
             try {
                 // add a item of data to queue
-            	if(myass.observer.getN50()!=0) {
-	                dataN50.add(myass.observer.getN50()/1000); //because unit is Kbp
-	                dataN75.add(myass.observer.getN75()/1000); //because unit is Kbp
-	                dataMax.add(myass.observer.getLongestContig()/1000); //because unit is Kbp
-	                dataNumCtgs.add(myass.observer.getNumberOfSequences());
-	                dataNumCircularCtgs.add(myass.observer.getNumberOfCircularSequences());
+            	if(assServer.myAss.observer.getN50()!=0) {
+	                dataN50.add(assServer.myAss.observer.getN50()/1000); //because unit is Kbp
+	                dataN75.add(assServer.myAss.observer.getN75()/1000); //because unit is Kbp
+	                dataMax.add(assServer.myAss.observer.getLongestContig()/1000); //because unit is Kbp
+	                dataNumCtgs.add(assServer.myAss.observer.getNumberOfSequences());
+	                dataNumCircularCtgs.add(assServer.myAss.observer.getNumberOfCircularSequences());
             	}
                 Thread.sleep(500);
                 if(executor!=null && !executor.isShutdown())
@@ -833,13 +753,10 @@ public class NPGraphFX extends Application{
 
 	public static void main(String[] args) {
 		HybridAssembler hbAss = new HybridAssembler();
-		
-////		//desktop IMB
-////		hbAss.setShortReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/spades_v3.10/EcK12S-careful/assembly_graph.gfa");
-////		hbAss.setLongReadsInput("/home/sonhoanghguyen/Projects/scaffolding/data/Eck12_ONT.fasta");
-
-		NPGraphFX.setAssembler(hbAss);
-		Application.launch(NPGraphFX.class,args);
+		hbAss.input.setShortReadsInput("/home/sonnguyen/Projects/npGraph/test/spades/assembly_graph.fastg");
+		AssemblyGuideServer server = new AssemblyGuideServer(2105, hbAss);
+		NPGraphServerFX.setAssemblyServer(server);
+		Application.launch(NPGraphServerFX.class,args);
 	}
 	
 }

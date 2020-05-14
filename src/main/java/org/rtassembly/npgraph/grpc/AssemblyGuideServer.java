@@ -23,10 +23,10 @@ import org.rtassembly.npgraph.HybridAssembler;
 public class AssemblyGuideServer {
     private static final Logger logger = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
-	  private final int port;
-	  private final Server server;
-	  private final HybridAssembler myAss;
-	  private final Thread myThread;
+	  public int port;
+	  public final Server server;
+	  public final HybridAssembler myAss;
+	  public final Thread myThread;
 	  
 	  public AssemblyGuideServer(int port, HybridAssembler ass) {
 		  this(ServerBuilder.forPort(port), port, ass);
@@ -44,6 +44,7 @@ public class AssemblyGuideServer {
 	  public void start() throws IOException {
 		  myThread.start();
 		  server.start();
+		  
 		  logger.info("Server started, listening on {}", port);
 		  Runtime.getRuntime().addShutdownHook(new Thread() {
 			  @Override
@@ -92,7 +93,7 @@ public class AssemblyGuideServer {
 	   */
 	  private static class AssemblyGuideService extends AssemblyGuideGrpc.AssemblyGuideImplBase {
 
-		  private final HybridAssembler myAss; //redundant?
+		  final HybridAssembler myAss; //redundant?
 		  AssemblyGuideService(HybridAssembler badAss){ myAss=badAss;}
 		  @Override
 		  public void getAssemblyContribution(RequestAssembly request,

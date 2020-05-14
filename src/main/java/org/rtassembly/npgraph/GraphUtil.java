@@ -858,7 +858,7 @@ public class GraphUtil {
 			return found;
 
 		}catch (IOException e){
-			logger.error("Error running: {}\n{}", pathToBinary, e.getMessage());
+			logger.debug("MSA {} not found: {}", pathToBinary, e.getMessage());
 			return false;
 		}
 					

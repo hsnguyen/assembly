@@ -158,9 +158,8 @@ public class HybridAssembler {
         
         //check consensus tool
     	if(!GraphUtil.checkMSA(input.getMSA())){
-    		logger.warn("WARNING: MSA tool ({}) not found!", input.getMSA());
+    		logger.warn("WARNING: MSA tool \"{}\" not found! Set to none", input.getMSA());
     		input.setMSA("none");
-    		logger.warn("WARNING: MSA tools not found!");
     	}else
     		logger.info("MSA for consensus calling is set to {}", input.getMSA());
     	

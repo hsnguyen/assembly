@@ -4,16 +4,11 @@ import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 
 import org.apache.logging.log4j.Logger;
-import org.graphstream.stream.thread.ThreadProxyPipe;
-import org.graphstream.ui.fx_viewer.FxDefaultView;
-import org.graphstream.ui.fx_viewer.FxViewer;
-import org.graphstream.ui.javafx.FxGraphRenderer;
-import org.graphstream.ui.view.Viewer;
-import org.graphstream.ui.view.Viewer.CloseFramePolicy;
 import org.apache.logging.log4j.LogManager;
+import org.rtassembly.gui.NPGraphFX;
+import org.rtassembly.gui.NPGraphServerFX;
 import org.rtassembly.npgraph.Alignment;
 import org.rtassembly.npgraph.BDGraph;
-import org.rtassembly.npgraph.GraphUtil;
 import org.rtassembly.npgraph.RealtimeGraphWatcher;
 import org.rtassembly.npgraph.HybridAssembler;
 import org.rtassembly.npgraph.SimpleBinner;
@@ -21,14 +16,6 @@ import org.rtassembly.npgraph.grpc.AssemblyGuideServer;
 
 import japsa.util.CommandLine;
 import javafx.application.Application;
-import javafx.application.Platform;
-import javafx.geometry.Insets;
-import javafx.scene.Scene;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.ColumnConstraints;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.RowConstraints;
-import javafx.stage.Stage;
 
 
 public class NPGraphServerCmd extends CommandLine{
@@ -103,6 +90,7 @@ public class NPGraphServerCmd extends CommandLine{
 		if(shortReadsInputFormat!=null && !shortReadsInputFormat.isEmpty())
 			hbAss.input.setShortReadsInputFormat(shortReadsInputFormat);
 		
+		hbAss.input.setLongReadsInput("-");
 		hbAss.input.setLongReadsInputFormat("paf"); //to pass prepareLongReadProcess()
 		
 		hbAss.setPrefix(outputDir);
@@ -114,16 +102,15 @@ public class NPGraphServerCmd extends CommandLine{
 		hbAss.input.setUseSPAdesPath(spaths);
 		        
 		//4. Call the assembly function or invoke GUI to do so
-		if(shortReadsInput.isEmpty() && !gui) {
+        if(gui) {
+			NPGraphServerFX.setAssemblyServer(new AssemblyGuideServer(port, hbAss));
+			Application.launch(NPGraphServerFX.class,args);
+        }else if(shortReadsInput.isEmpty()) {
 			System.out.println(cmdLine.usageString());			
 			System.exit(-1);
         }else {
 			try {
 				if(hbAss.prepareShortReadsProcess() &&	hbAss.prepareLongReadsProcess()) {
-					if(gui) {
-						GraphView.hbAss=hbAss;
-						Application.launch(GraphView.class, args);
-					}
 					AssemblyGuideServer assServer = new AssemblyGuideServer(port, hbAss);
 					assServer.start();
 				}
@@ -133,105 +120,10 @@ public class NPGraphServerCmd extends CommandLine{
 				}
 					
 			} catch (Exception e) {
-				logger.error("Error {}", e);
+				logger.error("Error", e);
 				System.exit(1);
 			}
         }
 		
 	}
-}
-
-
-///////////////////////////////////////////////////////////////////////////////////////////
-class GraphView extends Application{
-
-	static HybridAssembler hbAss;	
-    private GridPane createAutoresizeGridPane(int ncols, int nrows){
-        GridPane gridpane = new GridPane();
-        for (int i = 0; i < ncols; i++) {
-            ColumnConstraints column = new ColumnConstraints();
-            column.setPercentWidth(100/ncols);
-            gridpane.getColumnConstraints().add(column);
-        }
-        for (int i = 0; i < nrows; i++) {
-            RowConstraints row = new RowConstraints();
-            row.setPercentHeight(100/nrows);
-            gridpane.getRowConstraints().add(row);
-        }
-        gridpane.setPadding(new Insets(5, 5, 5, 5));
-        gridpane.setVgap(5);
-        gridpane.setHgap(5);
-        return gridpane;
-    }
-    private GridPane addGraphResolverPane(){  		
-    	GridPane mainGrid = createAutoresizeGridPane(1,1);
-		mainGrid.setStyle("-fx-background-color: #C0C0C0;");
-		
-		
-		ThreadProxyPipe pipe = new ThreadProxyPipe() ;
-		pipe.init(hbAss.simGraph);
-		Viewer graphViewer = new FxViewer(pipe);
-		System.setProperty("org.graphstream.ui", "javafx");
-
-		FxDefaultView view = new FxDefaultView(graphViewer, "npGraph", new FxGraphRenderer());
-		graphViewer.addView(view);
-		graphViewer.enableAutoLayout();
-		graphViewer.setCloseFramePolicy(CloseFramePolicy.CLOSE_VIEWER);
-		
-		mainGrid.getChildren().add(view);
-		
-		return mainGrid;
-    }
-	@Override
-	public void start(Stage primaryStage) throws Exception {
-        BorderPane gBorder = new BorderPane();
-        gBorder.setCenter(addGraphResolverPane());
-        Scene gscene = new Scene(gBorder);
-        primaryStage.setScene(gscene);
-        primaryStage.setTitle("Assembly graph");
-        primaryStage.setOnCloseRequest(e -> {
-        	hbAss.terminateAlignmentProcess();
-            Platform.exit();
-            System.exit(0);
-        });
-        
-    	BDGraph graph= hbAss.simGraph;
-		
-    	graph.setAttribute("ui.style", GraphUtil.styleSheet);
-    	graph.setAttribute("layout.force", .5);
-    	graph.setAttribute("layout.weight", .1);
-    	
-
-//        System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
-//        for (Node node : graph) {
-//        	node.setAttribute("ui.label", node.getId());
-//        }        
-
-        primaryStage.show();
-
-        /*
-         * Testing reduce function
-         */
-        /*
-         * A thread to run the algorithm
-         */
-	    new Thread(new Runnable(){
-
-			@Override
-			public void run() {
-
-				try{
-//					hbAss.assemblyPAF();
-					hbAss.assembly();
-				}catch (Exception e){
-					System.err.println(e.getMessage());
-					e.printStackTrace();
-				}
-
-			}
-			
-		}).start();
-      
-	}   
-
 }
