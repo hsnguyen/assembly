@@ -94,10 +94,12 @@ import javafx.stage.Stage;
 public class NPGraphServerFX extends Application{
     private static final Logger logger = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
-	static AssemblyGuideServer assServer=null;
+	static HybridAssembler myAss=null;
+	static int myPort;
 	
-	public static void setAssemblyServer(AssemblyGuideServer server){
-		assServer=server;
+	public static void configServer(HybridAssembler ass, int port){
+		myAss=ass;
+		myPort=port;
 	}
     
     public void start(Stage primaryStage){  	 
@@ -137,12 +139,8 @@ public class NPGraphServerFX extends Application{
             primaryStage.setScene(pscene);
             primaryStage.setTitle("npGraph Dashboard");
             primaryStage.setOnCloseRequest(e -> {
-            	try {
-					assServer.stop();
-				} catch (InterruptedException e1) {
-					logger.error("Exceptin on close: ",e);
-				}
-            	Platform.exit();
+            	myAss.terminateAlignmentProcess();
+                Platform.exit();
                 System.exit(0);
             });
             primaryStage.show();
@@ -155,7 +153,7 @@ public class NPGraphServerFX extends Application{
 
     			@Override
     			public void run() {
-    				while (!assServer.myAss.getReady()){
+    				while (!myAss.getReady()){
     					//LOG.info("NOT READY");
     					try {
     						Thread.sleep(1000);
@@ -165,6 +163,7 @@ public class NPGraphServerFX extends Application{
     				}
     				logger.info("npGraph server is now ready to GO!");
     				try{
+    					AssemblyGuideServer assServer = new AssemblyGuideServer(myPort, myAss);
     					assServer.start();
     				}catch (Exception e){
     					System.err.println(e.getMessage());
@@ -240,13 +239,13 @@ public class NPGraphServerFX extends Application{
     	
         TextField shortInputTF = new TextField("");
     	shortInputTF.setPromptText("Enter file name for assembly graph...");
-    	shortInputTF.textProperty().bindBidirectional(assServer.myAss.input.shortReadsInputProperty());
+    	shortInputTF.textProperty().bindBidirectional(myAss.input.shortReadsInputProperty());
     	GridPane.setConstraints(shortInputTF, 0,1,4,1);
     	inputPane.getChildren().add(shortInputTF);
     	
     	ComboBox<String> shortInputFormatCombo=new ComboBox<String>();
         shortInputFormatCombo.getItems().addAll("fastg", "gfa");   
-        shortInputFormatCombo.valueProperty().bindBidirectional(assServer.myAss.input.shortReadsInputFormatProperty());
+        shortInputFormatCombo.valueProperty().bindBidirectional(myAss.input.shortReadsInputFormatProperty());
 
         GridPane.setConstraints(shortInputFormatCombo, 2, 0, 2, 1);
         inputPane.getChildren().add(shortInputFormatCombo);
@@ -256,7 +255,7 @@ public class NPGraphServerFX extends Application{
     	shortInputBrowseButton.setOnAction((event) -> {
        		FileChooser chooser = new FileChooser();
     		chooser.setTitle("Select assembly graph file");
-    		File defaultFile = new File(assServer.myAss.input.getShortReadsInput());
+    		File defaultFile = new File(myAss.input.getShortReadsInput());
     		if(defaultFile.isFile())
     			chooser.setInitialFileName(defaultFile.getName());
     		if(defaultFile.getParentFile() !=null && defaultFile.getParentFile().isDirectory())
@@ -266,8 +265,8 @@ public class NPGraphServerFX extends Application{
     		File selectedFile = chooser.showOpenDialog(pStage);
     		if(selectedFile != null){				
 				try {
-					assServer.myAss.input.setShortReadsInput(selectedFile.getCanonicalPath());
-					shortInputFormatCombo.setValue(assServer.myAss.input.getShortReadsInputFormat());
+					myAss.input.setShortReadsInput(selectedFile.getCanonicalPath());
+					shortInputFormatCombo.setValue(myAss.input.getShortReadsInputFormat());
 				} catch (IOException e1) {
 	    			FxDialogs.showWarning("Warning", "Error loading graph file. Please try again!");
 					e1.printStackTrace();
@@ -281,14 +280,14 @@ public class NPGraphServerFX extends Application{
     	//inputPane.setGridLinesVisible(true);
 
     	CheckBox binCB = new CheckBox("Use external binning information");
-    	binCB.setSelected(!assServer.myAss.input.getBinReadsInput().isEmpty());
-    	binCB.selectedProperty().addListener((obser,oldV,newV)->{if(!newV) assServer.myAss.input.setBinReadsInput("");});
+    	binCB.setSelected(!myAss.input.getBinReadsInput().isEmpty());
+    	binCB.selectedProperty().addListener((obser,oldV,newV)->{if(!newV) myAss.input.setBinReadsInput("");});
     	GridPane.setConstraints(binCB, 0,2,4,1);
     	inputPane.getChildren().add(binCB);
     	
     	TextField binInputTF = new TextField("");
     	binInputTF.setPromptText("Enter file name binning information...");
-    	binInputTF.textProperty().bindBidirectional(assServer.myAss.input.binReadsInputProperty());
+    	binInputTF.textProperty().bindBidirectional(myAss.input.binReadsInputProperty());
     	binInputTF.disableProperty().bind(binCB.selectedProperty().not());
     	GridPane.setConstraints(binInputTF, 0,3,4,1);
     	inputPane.getChildren().add(binInputTF);
@@ -307,7 +306,7 @@ public class NPGraphServerFX extends Application{
     		File selectedFile = chooser.showOpenDialog(pStage);
     		if(selectedFile != null){				
 				try {
-					assServer.myAss.input.setBinReadsInput(selectedFile.getCanonicalPath());
+					myAss.input.setBinReadsInput(selectedFile.getCanonicalPath());
 				} catch (IOException e1) {
 	    			FxDialogs.showWarning("Warning", "Error loading bin file. Please try again!");
 	    			e1.printStackTrace();
@@ -321,14 +320,14 @@ public class NPGraphServerFX extends Application{
     	inputPane.getChildren().add(binInputBrowseButton);   	   
 
     	CheckBox spadesCB = new CheckBox("Use SPAdes induced paths");
-    	spadesCB.setSelected(assServer.myAss.input.getUseSPAdesPath());
-    	spadesCB.selectedProperty().bindBidirectional(assServer.myAss.input.useSPAdesPathProperty());
+    	spadesCB.setSelected(myAss.input.getUseSPAdesPath());
+    	spadesCB.selectedProperty().bindBidirectional(myAss.input.useSPAdesPathProperty());
     	GridPane.setConstraints(spadesCB, 0,4,4,1);
     	inputPane.getChildren().add(spadesCB);
     	
     	
     	CheckBox graphCB = new CheckBox("Show graph");
-    	graphCB.setSelected(assServer.myAss.simGraph!=null);
+    	graphCB.setSelected(myAss.simGraph!=null);
     	GridPane.setConstraints(graphCB, 3,5,2,1);
     	inputPane.getChildren().add(graphCB);
     	
@@ -339,7 +338,7 @@ public class NPGraphServerFX extends Application{
         buttonGraph = new Button("Load", viewLoad);
         buttonGraph.setPrefSize(100, 20);
         buttonGraph.setOnAction((event) -> {
-    		if(!assServer.myAss.prepareShortReadsProcess()) { //true if using SPAdes path (not necessary)
+    		if(!myAss.prepareShortReadsProcess()) { //true if using SPAdes path (not necessary)
     			FxDialogs.showError("Error", "Please check the log, fix it and try again!");
     			return;
     		}    		
@@ -370,7 +369,7 @@ public class NPGraphServerFX extends Application{
     	
     	TextField outputTF = new TextField("");
     	outputTF.setPromptText("Enter name for output file...");
-    	outputTF.textProperty().bindBidirectional(assServer.myAss.prefixProperty());
+    	outputTF.textProperty().bindBidirectional(myAss.prefixProperty());
     	GridPane.setConstraints(outputTF, 0,1,4,1);
     	outputPane.getChildren().add(outputTF);
     	
@@ -386,10 +385,10 @@ public class NPGraphServerFX extends Application{
     			chooser.setInitialDirectory(defaultDirectory);
     		File selectedDirectory=chooser.showDialog(stage);
     		if(selectedDirectory != null) {
-    			assServer.myAss.setPrefix(selectedDirectory.getPath());
-    			outputTF.setText(assServer.myAss.getPrefix());
+    			myAss.setPrefix(selectedDirectory.getPath());
+    			outputTF.setText(myAss.getPrefix());
         		try{
-        			System.setProperty("usr.dir", assServer.myAss.getPrefix());
+        			System.setProperty("usr.dir", myAss.getPrefix());
         		}
         		catch(NullPointerException | IllegalArgumentException | SecurityException exception ){
         			exception.printStackTrace();
@@ -404,7 +403,7 @@ public class NPGraphServerFX extends Application{
     	outputPane.getChildren().add(outputBrowseButton);
     	
     	CheckBox overwriteCB = new CheckBox("Overwrite existing index files");
-    	overwriteCB.selectedProperty().bindBidirectional(assServer.myAss.overwriteProperty());
+    	overwriteCB.selectedProperty().bindBidirectional(myAss.overwriteProperty());
     	GridPane.setConstraints(overwriteCB, 0, 2, 4, 1);
     	outputPane.getChildren().add(overwriteCB);
     	
@@ -419,10 +418,10 @@ public class NPGraphServerFX extends Application{
     	optionPane.getChildren().add(labelPort);
     	
     	TextField portTF = new TextField("");
-    	portTF.setText(Integer.toString(assServer.port));
+    	portTF.setText(Integer.toString(myPort));
     	portTF.setOnKeyPressed(e -> {
             if (e.getCode() == KeyCode.ENTER)  {
-            	assServer.port=Integer.parseInt(portTF.getText());
+            	myPort=Integer.parseInt(portTF.getText());
                 buttonStart.requestFocus();
             }
     	});
@@ -474,12 +473,12 @@ public class NPGraphServerFX extends Application{
         buttonStart = new Button("Start", viewStart);
         buttonStart.setPrefSize(100, 20);
         buttonStart.setOnAction((event) -> {
-    		if(!assServer.myAss.prepareLongReadsProcess()){
+    		if(!myAss.prepareLongReadsProcess()){
     			FxDialogs.showError("Error", "Please check the log for more detail!");
     			return;
     		}
 
-    		assServer.myAss.setReady(true);
+    		myAss.setReady(true);
         	
 			//Start running
 			outputPane.setDisable(true);
@@ -500,20 +499,15 @@ public class NPGraphServerFX extends Application{
         buttonStop.setPrefSize(100, 20);
         buttonStop.setDisable(true);
         buttonStop.setOnAction((event) -> {
-			String confirm = FxDialogs.showConfirm( "STOP button just being hit...", "Do you really want to stop the process?", "No", "Yes");
+			String confirm = FxDialogs.showConfirm( "STOP ASSEMBLY PROCESS", "npGraph will stop using incoming long reads for further assembly. Do you want to proceed?", "No", "Yes");
 			if(confirm.equals("No")){
 				return;
 			}
-			assServer.myAss.setStopSignal(true);
+			myAss.setStopSignal(true);
 			if(!executor.isTerminated())
 				executor.shutdown();
         	buttonStop.setDisable(true);
-        	try {
-				assServer.stop();
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+
 
         });
         GridPane.setConstraints(buttonStop, 3,0,2,1);
@@ -652,7 +646,7 @@ public class NPGraphServerFX extends Application{
 		
 		
 		ThreadProxyPipe pipe = new ThreadProxyPipe() ;
-		pipe.init(assServer.myAss.simGraph);
+		pipe.init(myAss.simGraph);
 		Viewer graphViewer = new FxViewer(pipe);
 		System.setProperty("org.graphstream.ui", "javafx");
 
@@ -674,12 +668,12 @@ public class NPGraphServerFX extends Application{
         public void run() {
             try {
                 // add a item of data to queue
-            	if(assServer.myAss.observer.getN50()!=0) {
-	                dataN50.add(assServer.myAss.observer.getN50()/1000); //because unit is Kbp
-	                dataN75.add(assServer.myAss.observer.getN75()/1000); //because unit is Kbp
-	                dataMax.add(assServer.myAss.observer.getLongestContig()/1000); //because unit is Kbp
-	                dataNumCtgs.add(assServer.myAss.observer.getNumberOfSequences());
-	                dataNumCircularCtgs.add(assServer.myAss.observer.getNumberOfCircularSequences());
+            	if(myAss.observer.getN50()!=0) {
+	                dataN50.add(myAss.observer.getN50()/1000); //because unit is Kbp
+	                dataN75.add(myAss.observer.getN75()/1000); //because unit is Kbp
+	                dataMax.add(myAss.observer.getLongestContig()/1000); //because unit is Kbp
+	                dataNumCtgs.add(myAss.observer.getNumberOfSequences());
+	                dataNumCircularCtgs.add(myAss.observer.getNumberOfCircularSequences());
             	}
                 Thread.sleep(500);
                 if(executor!=null && !executor.isShutdown())
@@ -754,8 +748,7 @@ public class NPGraphServerFX extends Application{
 	public static void main(String[] args) {
 		HybridAssembler hbAss = new HybridAssembler();
 		hbAss.input.setShortReadsInput("/home/sonnguyen/Projects/npGraph/test/spades/assembly_graph.fastg");
-		AssemblyGuideServer server = new AssemblyGuideServer(2105, hbAss);
-		NPGraphServerFX.setAssemblyServer(server);
+		NPGraphServerFX.configServer(hbAss, 2105);
 		Application.launch(NPGraphServerFX.class,args);
 	}
 	

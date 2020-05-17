@@ -5,7 +5,6 @@ import java.lang.invoke.MethodHandles;
 
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
-import org.rtassembly.gui.NPGraphFX;
 import org.rtassembly.gui.NPGraphServerFX;
 import org.rtassembly.npgraph.Alignment;
 import org.rtassembly.npgraph.BDGraph;
@@ -103,7 +102,7 @@ public class NPGraphServerCmd extends CommandLine{
 		        
 		//4. Call the assembly function or invoke GUI to do so
         if(gui) {
-			NPGraphServerFX.setAssemblyServer(new AssemblyGuideServer(port, hbAss));
+			NPGraphServerFX.configServer(hbAss, port);
 			Application.launch(NPGraphServerFX.class,args);
         }else if(shortReadsInput.isEmpty()) {
 			System.out.println(cmdLine.usageString());			

@@ -25,7 +25,7 @@ public class AssemblyGuideServer {
 
 	  public int port;
 	  public final Server server;
-	  public final HybridAssembler myAss;
+	  public static HybridAssembler myAss;
 	  public final Thread myThread;
 	  
 	  public AssemblyGuideServer(int port, HybridAssembler ass) {
@@ -34,7 +34,7 @@ public class AssemblyGuideServer {
 	  /** Create a RouteGuide server using serverBuilder as a base */
 	  public AssemblyGuideServer(ServerBuilder<?> serverBuilder, int port, HybridAssembler badAss) {
 		  this.port = port;
-		  server = serverBuilder.addService(new AssemblyGuideService(badAss))
+		  server = serverBuilder.addService(new AssemblyGuideService())
 				  				.build();
 		  myAss=badAss;
 		  myThread = new Thread(badAss.observer);
@@ -92,9 +92,6 @@ public class AssemblyGuideServer {
 	   * <p>See route_guide.proto for details of the methods.
 	   */
 	  private static class AssemblyGuideService extends AssemblyGuideGrpc.AssemblyGuideImplBase {
-
-		  final HybridAssembler myAss; //redundant?
-		  AssemblyGuideService(HybridAssembler badAss){ myAss=badAss;}
 		  @Override
 		  public void getAssemblyContribution(RequestAssembly request,
 				StreamObserver<ResponseAssembly> responseObserver) {
