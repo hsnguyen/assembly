@@ -680,6 +680,33 @@ public class BDGraph extends MultiGraph{
 		return retval;
     }
     
+    /*********************************************************************************************************
+     * Get usefulness of read chunk(s) and reduce the bridge if found 
+     * (a readuntil version of uniqueBridgesFinding)
+     * @param nnpRead
+     * @param alignments
+     * @return usefulness (whether to reject or proceed sequencing this read)
+     */
+    public synchronized boolean getRUDecision(Sequence nnpRead, ArrayList<Alignment> alignments) {
+ 		if(nnpRead==null || alignments.isEmpty())
+ 			return false;
+ 		
+ 		logger.debug("=================================================");
+ 		for(Alignment alg:alignments)
+ 			logger.info("\t{}", alg.toString());
+ 		logger.debug("=================================================");
+ 		
+ 		//1. get list of ordered alignments from this chunk
+ 		//2. Estimate distance from the first unique contigs to the next unresolved one. 
+ 		//	 and assign usefulness accordingly...
+ 		//3. If readID has been assigned useful=true and not reach next unresolved unique contig, proceeding...
+ 		//4. If reach next unresolved one, estimate the distance to reach the next unresolved one...
+ 		//	 find and reduce unique path if possible as in uniqueBridgesFinding				
+
+ 	    
+ 	    return true;
+ 	}
+    /**********************************************************************************************************/
     
     /*
      * Find bridges based on list of Alignments.
