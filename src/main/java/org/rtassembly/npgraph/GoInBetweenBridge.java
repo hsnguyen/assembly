@@ -1,6 +1,5 @@
 package org.rtassembly.npgraph;
 
-import java.io.File;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -25,9 +24,9 @@ public class GoInBetweenBridge {
 
 	BDGraph graph;
 	PopBin bin;
-	BDEdgePrototype pBridge; //note: the ending nodes must be unique, or else omitted
+	public BDEdgePrototype pBridge; //note: the ending nodes must be unique, or else omitted
 	ArrayList<BridgeSegment> segments;
-	BridgeSteps steps;
+	public BridgeSteps steps;
 	
 	public GoInBetweenBridge(BDGraph graph, AlignedRead bb, PopBin bin) {
 		this.graph=graph;
@@ -702,7 +701,7 @@ public class GoInBetweenBridge {
 	 * in-between two ends of a bridge. 
 	 * Used for determine segments 
 	 */
-	class BridgeSteps{
+	public class BridgeSteps{
 		TreeSet<BDNodeVecState> nodes;
 		//save the two unique nodes at 2 endings of the bridge. When end is covered more than threshold, pBridge is set
 		BDNodeVecState start, end; 
@@ -909,7 +908,12 @@ public class GoInBetweenBridge {
 		public void setEnd(BDNodeVecState end){
 			this.end=end;
 		}
-		
+		public ScaffoldVector getSpanVector() {//from start->end
+			if(start==null||end==null)
+				return null;
+			else
+				return ScaffoldVector.composition(end.getVector(), ScaffoldVector.reverse(start.getVector()));
+		}
 		public String toString(){
 			String retval="";
 			for(BDNodeVecState nv:nodes)

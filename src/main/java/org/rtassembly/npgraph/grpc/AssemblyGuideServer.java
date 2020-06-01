@@ -9,16 +9,21 @@ import japsa.seq.Sequence;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 import org.rtassembly.npgraph.Alignment;
+import org.rtassembly.npgraph.BDGraph;
 import org.rtassembly.npgraph.BDNode;
 import org.rtassembly.npgraph.BDPath;
+import org.rtassembly.npgraph.GoInBetweenBridge;
 import org.rtassembly.npgraph.GraphUtil;
 import org.rtassembly.npgraph.HybridAssembler;
+import org.rtassembly.npgraph.SimpleBinner;
 
 public class AssemblyGuideServer {
     private static final Logger logger = LogManager.getLogger(MethodHandles.lookup().lookupClass());
@@ -26,6 +31,7 @@ public class AssemblyGuideServer {
 	  public int port;
 	  public final Server server;
 	  public static HybridAssembler myAss;
+	  public static int ELEN = 10000;
 	  public final Thread myThread;
 	  
 	  public AssemblyGuideServer(int port, HybridAssembler ass) {
@@ -92,26 +98,88 @@ public class AssemblyGuideServer {
 	   * <p>See route_guide.proto for details of the methods.
 	   */
 	  private static class AssemblyGuideService extends AssemblyGuideGrpc.AssemblyGuideImplBase {
+		  private static final HashMap<String, Alignment> lastMap = new HashMap<>(); //readID to the last unique contig it mapped to
 		  @Override
 		  public void getAssemblyContribution(RequestAssembly request,
 				StreamObserver<ResponseAssembly> responseObserver) {
 			  	ArrayList<Alignment> hits = getAlignmentsFromRequest(request);
-			  	boolean usefulness=false;
-			  	if(!hits.isEmpty()) {
-			  		Alignment alg = hits.get(0);
-				  	Sequence read = GraphUtil.getNSequence(alg.readID, alg.readLength);
-				  	
+			  	boolean continueing=true;
+			  	if(hits.size() > 0) {
+			  		Collections.sort(hits);
+			  		Alignment 	a = hits.get(hits.size()-1), //get the last alignment of current hit list
+			  					b = lastMap.get(a.readID); //previous last unique alignment
+			  		//1. compare the last mapped contig, proceed if the same
+			  		//TODO: index repeats of long bridges that already resolved?
+			  		
+			  		//with read chunk shorter than 1000bp, mapping to unique contig cannot be missed 
+			  		//when sequentially considering only last Alignment
+			  		if(SimpleBinner.getBinIfUniqueNow(a.node)!=null) {
+			  			//if the same as prevAlg, proceed
+			  			boolean investigating=true;
+			  			if(b==null || a.node != b.node) {
+			  				lastMap.put(a.readID, a);
+			  			}else{
+			  				int alignedReadLen = Math.abs(a.readEnd - a.readStart) + Math.abs(b.readEnd - b.readStart),
+			  					alignedRefLen = Math.abs(a.refEnd - a.refStart) + Math.abs(b.refEnd - b.refStart);
+			  				double rate = 1.0 * alignedRefLen/alignedReadLen;		
 
-					myAss.currentReadCount ++;
-					myAss.currentBaseCount += read.length();
-	
-					List<BDPath> paths=myAss.simGraph.uniqueBridgesFinding(read, hits);
-					if(paths!=null) {
-						usefulness=true;
-					    paths.stream().forEach(p->myAss.simGraph.reduceUniquePath(p));
-					}
+			  				int alignP = (int) ((b.readStart - a.readStart) * rate);
+			  				//(rough) relative position from ref_b (contig of b) to ref_a (contig of a) in the assembled genome
+			  				int gP = Math.abs((alignP + (a.strand ? a.refStart:-a.refStart) - (b.strand?b.refStart:-b.refStart)));
+			  				if(gP+BDGraph.A_TOL > a.node.getNumber("len")) { //circular
+			  					lastMap.put(a.readID, a);
+			  					investigating=continueing=false; //terminate sequencing this one
+			  				}
+			  			}
+			  			
+			  			//3. estimate distance to the end of this unique contig to calculate usefulness
+			  			if(investigating) {
+			  				int eLen = a.readAlignmentEnd();
+			  				eLen+=(a.strand?a.node.getNumber("len")-a.refEnd:a.refStart);
+			  				
+			  				BDNode prevNode, unqNode;
+			  				prevNode=unqNode=a.node;
+			  				boolean dir=!a.strand;
+			  				GoInBetweenBridge brg=BDGraph.bridgesMap.get(unqNode.getId()+(dir?"o":"i"));
+			  				while(brg!=null&&brg.getCompletionLevel()==4) {
+			  					
+			  					if(unqNode==brg.pBridge.getNode0() && dir==brg.pBridge.getDir0()) {
+			  						unqNode=brg.pBridge.getNode1();
+			  						dir=!brg.pBridge.getDir1();
+			  					}else {
+			  						unqNode=brg.pBridge.getNode0();
+			  						dir=!brg.pBridge.getDir0();
+			  					}
+			  					eLen+=brg.steps.getSpanVector().distance(prevNode, unqNode);
+			  					eLen+=unqNode.getNumber("len");
+			  					
+			  					prevNode=unqNode;
+			  					brg=BDGraph.bridgesMap.get(unqNode.getId()+(dir?"o":"i"));
+			  				}
+			  				
+			  				continueing=(eLen < ELEN);//??too simple!
+			  			}
+			  			
+				  		//4. reduce before reject!
+					  	if(!continueing) {
+						  	Sequence read = GraphUtil.getNSequence(a.readID, a.readLength); 	
+
+							myAss.currentReadCount ++;
+							myAss.currentBaseCount += read.length();
+			
+							List<BDPath> paths=myAss.simGraph.uniqueBridgesFinding(read, hits);
+							if(paths!=null) {
+								continueing=true;
+							    paths.stream().forEach(p->myAss.simGraph.reduceUniquePath(p));
+							}	
+					  	}
+			  		}
+			  			
+
 			  	}
-			  	responseObserver.onNext(ResponseAssembly.newBuilder().setUsefulness(usefulness).setReadId(request.getReadId()).build());
+			  	
+			  	//5. send control signal back to client
+			  	responseObserver.onNext(ResponseAssembly.newBuilder().setUsefulness(continueing).setReadId(request.getReadId()).build());
 			  	responseObserver.onCompleted();
 		  }
 		  

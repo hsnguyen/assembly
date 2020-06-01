@@ -56,7 +56,7 @@ public class BDGraph extends MultiGraph{
 	
     //provide mapping from unique directed node to its corresponding bridge
     //E.g: 103-: <103-82-> also 82+:<82+103+>
-    final static HashMap<String, GoInBetweenBridge> bridgesMap=new HashMap<String, GoInBetweenBridge>();
+    public final static HashMap<String, GoInBetweenBridge> bridgesMap=new HashMap<String, GoInBetweenBridge>();
     ConsensusCaller consensus;
 
     //mapping long but unknown contigs to unique successors and predecessor 

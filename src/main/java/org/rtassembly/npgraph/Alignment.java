@@ -53,7 +53,7 @@ public class Alignment implements Comparable<Alignment> {
 	public int quality;
 
 	public String readID;
-	BDNode node; //keep an instance of contig reference here in case it's removed from BDGraph
+	public BDNode node; //keep an instance of contig reference here in case it's removed from BDGraph
 
 	public int refStart, refEnd;  //1-based position on ref of the start and end of the alignment
 	
