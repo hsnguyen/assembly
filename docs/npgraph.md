@@ -3,7 +3,7 @@ This is another real-time scaffolder beside [npScarf](https://github.com/mdcao/n
 The batch algorithm has been implemented in hybrid assembler module of [Unicycler](https://github.com/rrwick/Unicycler) and others.
 
 <p align="center">
-  <img src="http://drive.google.com/uc?export=view&id=1eGn-FfDoLHPMbt4i_awFXF-DYDe36GoR" alt="npGraph"/>
+  ![npGraph GUI][npgraph.gif]
 </p>
 
 ## Introduction
@@ -151,7 +151,7 @@ awk -F'[:;]' -v q="'" '/^>/{if(index($1,q) ==0 ) flag=1; else flag=0;} {if(flag)
 Below is how it looked like using *npGraph* with a mock community of 11 species from PoreCamp. 
 
 <p align="center">
-  <img src="http://drive.google.com/uc?export=view&id=1c29S6cSNwEg9JpXcy28ngo8bFsuF2SXi" alt="npGraph"/>
+  ![Metagenomics][npgraph_pc.gif]
 </p>
 
 

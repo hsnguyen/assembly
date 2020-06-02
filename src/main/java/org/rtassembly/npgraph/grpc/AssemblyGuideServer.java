@@ -99,12 +99,14 @@ public class AssemblyGuideServer {
 	   */
 	  private static class AssemblyGuideService extends AssemblyGuideGrpc.AssemblyGuideImplBase {
 		  private static final HashMap<String, Alignment> lastMap = new HashMap<>(); //readID to the last unique contig it mapped to
+		  private static final HashMap<String, Integer> reduceRead = new HashMap<>(); //readID to the length of chunk used to reduce
+
 		  @Override
 		  public void getAssemblyContribution(RequestAssembly request,
 				StreamObserver<ResponseAssembly> responseObserver) {
 			  	ArrayList<Alignment> hits = getAlignmentsFromRequest(request);
 			  	boolean continueing=true;
-			  	if(hits.size() > 0) {
+			  	if(hits.size() > 0) {//this should be checked from client side
 			  		Collections.sort(hits);
 			  		Alignment 	a = hits.get(hits.size()-1), //get the last alignment of current hit list
 			  					b = lastMap.get(a.readID); //previous last unique alignment
@@ -160,19 +162,28 @@ public class AssemblyGuideServer {
 			  				continueing=(eLen < ELEN);//??too simple!
 			  			}
 			  			
-				  		//4. reduce before reject!
-					  	if(!continueing) {
-						  	Sequence read = GraphUtil.getNSequence(a.readID, a.readLength); 	
+					  	//5. send control signal back to client
+					  	responseObserver.onNext(ResponseAssembly.newBuilder().setUsefulness(continueing).setReadId(request.getReadId()).build());
+					  	responseObserver.onCompleted();
+					  	
+				  		//4. reduce
+					  	Sequence read = GraphUtil.getNSequence(a.readID, a.readLength); 	
 
-							myAss.currentReadCount ++;
-							myAss.currentBaseCount += read.length();
+						List<BDPath> paths=myAss.simGraph.uniqueBridgesFinding(read, hits);
+						if(paths!=null) {
+						    paths.stream().forEach(p->myAss.simGraph.reduceUniquePath(p));
+							if(reduceRead.containsKey(a.readID)) {//already used for reduction
+								myAss.currentBaseCount += a.readLength-reduceRead.get(a.readID);
+								reduceRead.replace(a.readID, a.readLength);
+							}else {//new
+								reduceRead.put(a.readID, a.readLength);
+								myAss.currentReadCount++;
+								myAss.currentBaseCount+=a.readLength;
+							}
 			
-							List<BDPath> paths=myAss.simGraph.uniqueBridgesFinding(read, hits);
-							if(paths!=null) {
-								continueing=true;
-							    paths.stream().forEach(p->myAss.simGraph.reduceUniquePath(p));
-							}	
-					  	}
+						}	
+						
+						return;
 			  		}
 			  			
 

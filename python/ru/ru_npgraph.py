@@ -269,43 +269,68 @@ def simple_analysis(
             if not results:
                 mode = "no_map"
 
-            hits = set()
-            for result in results:
-                pf.debug("{}\t{}\t{}".format(read_id, seq_len, result))
-                hits.add(result.ctg)
+#            hits = set()
+#            for result in results:
+#                pf.debug("{}\t{}\t{}".format(read_id, seq_len, result))
+#                hits.add(result.ctg)
+#
+#            if hits & conditions[run_info[channel]].targets:
+#                # Mappings and targets overlap
+#                coord_match = any(
+#                    between(r.r_st, c)
+#                    for r in results
+#                    for c in conditions[run_info[channel]]
+#                        .coords.get(strand_converter.get(r.strand), {})
+#                        .get(r.ctg, [])
+#                )
+#                if len(hits) == 1:
+#                    if coord_match:
+#                        # Single match that is within coordinate range
+#                        mode = "single_on"
+#                    else:
+#                        # Single match to a target outside coordinate range
+#                        mode = "single_off"
+#                elif len(hits) > 1:
+#                    if coord_match:
+#                        # Multiple matches with at least one in the correct region
+#                        mode = "multi_on"
+#                    else:
+#                        # Multiple matches to targets outside the coordinate range
+#                        mode = "multi_off"
+#
+#            else:
+#                # No matches in mappings
+#                if len(hits) > 1:
+#                    # More than one, off-target, mapping
+#                    mode = "multi_off"
+#                elif len(hits) == 1:
+#                    # Single off-target mapping
+#                    mode = "single_off"
 
-            if hits & conditions[run_info[channel]].targets:
-                # Mappings and targets overlap
-                coord_match = any(
-                    between(r.r_st, c)
-                    for r in results
-                    for c in conditions[run_info[channel]]
-                        .coords.get(strand_converter.get(r.strand), {})
-                        .get(r.ctg, [])
-                )
-                if len(hits) == 1:
-                    if coord_match:
-                        # Single match that is within coordinate range
-                        mode = "single_on"
-                    else:
-                        # Single match to a target outside coordinate range
-                        mode = "single_off"
-                elif len(hits) > 1:
-                    if coord_match:
-                        # Multiple matches with at least one in the correct region
-                        mode = "multi_on"
-                    else:
-                        # Multiple matches to targets outside the coordinate range
-                        mode = "multi_off"
 
-            else:
-                # No matches in mappings
-                if len(hits) > 1:
-                    # More than one, off-target, mapping
-                    mode = "multi_off"
-                elif len(hits) == 1:
-                    # Single off-target mapping
-                    mode = "single_off"
+            with grpc.insecure_channel('localhost:2105') as channel:
+            stub = npgraph_service_pb2_grpc.AssemblyGuideStub(channel)
+            logger.info("Connected with server at localhost:2105")
+
+            #1. make request
+            request = npgraph_service_pb2.RequestAssembly()
+            request.read_id = read_id
+            for hit in results: # traverse alignments
+                #print("{}\t{}\t{}\t{}".format(hit.ctg, hit.r_st, hit.r_en, hit.cigar_str))
+                request.hits_list.append(npgraph_service_pb2.AlignmentMsg(query_name=name,query_length=len(seq),query_start=hit.q_st,query_end=hit.q_en,strand=hit.strand>0,target_name=hit.ctg,target_length=hit.ctg_len,target_start=hit.r_st,target_end=hit.r_en,quality=hit.mapq,score=hit.mlen))
+
+            #2. get and print response
+            if len(request.hits_list)>1:
+                try:
+                    #start_time = time.time()
+                    response = stub.GetAssemblyContribution(request)
+                    #log.info"{}: {} in {:.5f} seconds".format(response.read_id, response.usefulness, time.time()-start_time))
+                except grpc.RpcError as e:
+                    log.error("{}: errorcode={}".format(request.read_id, str(e.code())))
+            if response:
+                mode = "useful"
+            else
+                mode = "useless"
 
             # This is where we make our decision:
             # Get the associated action for this condition
@@ -323,10 +348,8 @@ def simple_analysis(
             # If under min_chunks AND any mapping mode seen we unblock
             # if below_threshold and mode in {"single_off", "multi_off"}:
             if below_threshold and mode in {
-                "single_on",
-                "single_off",
-                "multi_on",
-                "multi_off",
+                "useful",
+                "useless",
             }:
                 mode = "below_min_chunks_unblocked"
                 client.unblock_read(channel, read_number, unblock_duration, read_id)
