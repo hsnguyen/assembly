@@ -7,7 +7,7 @@ import time
 
 def run():
 
-    a = mp.Aligner("/home/sonnguyen/Projects/npGraph/test/spades/assembly_graph.fasta")  # load or build index
+    a = mp.Aligner("/home/sonhoanghguyen/Projects/readuntil/simulation/npgraph/test/assembly_graph.fasta")  # load or build index
     if not a: raise Exception("ERROR: failed to load/build index")
 
 
@@ -15,7 +15,7 @@ def run():
         stub = npgraph_service_pb2_grpc.AssemblyGuideStub(channel)
         print("Connected with server at localhost:2105")
 
-        for name, seq, qual in mp.fastx_read("/home/sonnguyen/Projects/npGraph/test/EcK12S_ONT.fastq.gz"):
+        for name, seq, qual in mp.fastx_read("/home/sonhoanghguyen/Projects/readuntil/simulation/npgraph/test/E_coli_K-12_MG1655_good_long.fastq.gz"):
             #1. make request
             request = npgraph_service_pb2.RequestAssembly()
             request.read_id = name
