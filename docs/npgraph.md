@@ -2,9 +2,7 @@
 This is another real-time scaffolder beside [npScarf](https://github.com/mdcao/npScarf). Instead of using contig sequences as pre-assemblies, this tool is able to work on assembly graph (from [SPAdes](http://cab.spbu.ru/software/spades/)). 
 The batch algorithm has been implemented in hybrid assembler module of [Unicycler](https://github.com/rrwick/Unicycler) and others.
 
-<p align="center">
-  ![npGraph GUI][npgraph.gif]
-</p>
+![npGraph GUI](npgraph.gif)
 
 ## Introduction
 *npScarf* is the real-time hybrid assembler that use the stream of long reads to bridge the Illumina contigs together, expecting to give more complete genome sequences while the sequencing process is still ongoing. The pipeline has been applied sucessfully for microbial genomics and even bigger data sets. However, due to its greedy approach over the noisy data, it is difficult to eliminate all mis-assemblies without further pre-processing and parameter tuning. To help prevent this issue, the assembly graph - bulding block graph structure for the contigs - should be used as the source for bridging algorithm. 
@@ -150,9 +148,7 @@ awk -F'[:;]' -v q="'" '/^>/{if(index($1,q) ==0 ) flag=1; else flag=0;} {if(flag)
 
 Below is how it looked like using *npGraph* with a mock community of 11 species from PoreCamp. 
 
-<p align="center">
-  ![Metagenomics][npgraph_pc.gif]
-</p>
+![Metagenomics](npgraph_pc.gif)
 
 
 ### Note
