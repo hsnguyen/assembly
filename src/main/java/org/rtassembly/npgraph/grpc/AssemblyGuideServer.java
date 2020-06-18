@@ -162,9 +162,9 @@ public class AssemblyGuideServer {
 			  				continueing=(eLen < ELEN);//??too simple!
 			  			}
 			  			
-					  	//5. send control signal back to client
-					  	responseObserver.onNext(ResponseAssembly.newBuilder().setUsefulness(continueing).setReadId(request.getReadId()).build());
-					  	responseObserver.onCompleted();
+//					  	//5. send control signal back to client
+//					  	responseObserver.onNext(ResponseAssembly.newBuilder().setUsefulness(continueing).setReadId(request.getReadId()).build());
+//					  	responseObserver.onCompleted();
 					  	
 				  		//4. reduce
 					  	Sequence read = GraphUtil.getNSequence(a.readID, a.readLength); 	
@@ -183,7 +183,7 @@ public class AssemblyGuideServer {
 			
 						}	
 						
-						return;
+//						return;
 			  		}
 			  			
 

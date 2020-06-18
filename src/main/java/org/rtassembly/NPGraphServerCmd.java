@@ -41,6 +41,8 @@ public class NPGraphServerCmd extends CommandLine{
 		addInt("depth", 300, "Limit depth for searching path between 2 neighbors");
 		addInt("anchor", 1000, "Lowerbound of an anchor contig's length.");
 		addInt("unique", 10000, "Lowerbound of a unique contig's length.");
+		addInt("expect", 10000, "The readuntil protocol will expect a read to span this length for an unblock/proceed decision.");
+
 		addInt("time", 10, "Time interval to considered for real-time assembly.");
 		addInt("read", 50, "Read interval to considered for real-time assembly.");
 		
@@ -73,7 +75,8 @@ public class NPGraphServerCmd extends CommandLine{
 		BDGraph.S_LIMIT=cmdLine.getIntVal("depth");
 		RealtimeGraphWatcher.R_INTERVAL=cmdLine.getIntVal("read");
 		RealtimeGraphWatcher.T_INTERVAL=cmdLine.getIntVal("time");
-
+		AssemblyGuideServer.ELEN = cmdLine.getIntVal("expect");
+		
 		//Default output dir 
 		if(outputDir == null) {
 			outputDir = new File(shortReadsInput).getAbsoluteFile().getParent();
