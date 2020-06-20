@@ -141,7 +141,7 @@ public class AssemblyGuideServer {
 			  				
 			  				BDNode prevNode, unqNode;
 			  				prevNode=unqNode=a.node;
-			  				boolean dir=!a.strand;
+			  				boolean dir=a.strand;
 			  				GoInBetweenBridge brg=BDGraph.bridgesMap.get(unqNode.getId()+(dir?"o":"i"));
 			  				while(brg!=null&&brg.getCompletionLevel()==4) {
 			  					
