@@ -128,9 +128,14 @@ public class AssemblyGuideServer {
 			  				int alignP = (int) ((b.readStart - a.readStart) * rate);
 			  				//(rough) relative position from ref_b (contig of b) to ref_a (contig of a) in the assembled genome
 			  				int gP = Math.abs((alignP + (a.strand ? a.refStart:-a.refStart) - (b.strand?b.refStart:-b.refStart)));
-			  				if(gP+BDGraph.A_TOL > a.node.getNumber("len")) { //circular
+			  				if(GraphUtil.approxCompare(gP, a.node.getNumber("len")) ==0 ) { //circular
 			  					lastMap.put(a.readID, a);
 			  					investigating=continueing=false; //terminate sequencing this one
+			  				}else {
+			  				  	//just another fragmented alignment of a same contig
+			  				  	responseObserver.onNext(ResponseAssembly.newBuilder().setUsefulness(continueing).setReadId(request.getReadId()).build());
+			  				  	responseObserver.onCompleted();
+			  				  	return;
 			  				}
 			  			}
 			  			
@@ -160,6 +165,10 @@ public class AssemblyGuideServer {
 			  				}
 			  				
 			  				continueing=(eLen < ELEN);//??too simple!
+						  	if(continueing)
+						  		logger.debug("...read {}, eLen={} is difficult to span next unresolved bridge: stop!", a.readID, eLen);
+						  	else
+						  		logger.debug("...read {}, eLen={} is expected to span next unresoved bridge: continue!", a.readID, eLen);
 			  			}
 			  			
 //					  	//5. send control signal back to client
@@ -188,7 +197,6 @@ public class AssemblyGuideServer {
 			  			
 
 			  	}
-			  	
 			  	//5. send control signal back to client
 			  	responseObserver.onNext(ResponseAssembly.newBuilder().setUsefulness(continueing).setReadId(request.getReadId()).build());
 			  	responseObserver.onCompleted();
