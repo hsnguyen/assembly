@@ -133,6 +133,7 @@ public class AssemblyGuideServer {
 			  					investigating=continueing=false; //terminate sequencing this one
 			  				}else {
 			  				  	//just another fragmented alignment of a same contig
+						  		logger.debug("...read {} with same contig alignment: continue", a.readID);
 			  				  	responseObserver.onNext(ResponseAssembly.newBuilder().setUsefulness(continueing).setReadId(request.getReadId()).build());
 			  				  	responseObserver.onCompleted();
 			  				  	return;
@@ -165,7 +166,7 @@ public class AssemblyGuideServer {
 			  				}
 			  				
 			  				continueing=(eLen < ELEN);//??too simple!
-						  	if(continueing)
+						  	if(!continueing)
 						  		logger.debug("...read {}, eLen={} is difficult to span next unresolved bridge: stop!", a.readID, eLen);
 						  	else
 						  		logger.debug("...read {}, eLen={} is expected to span next unresoved bridge: continue!", a.readID, eLen);
