@@ -12,6 +12,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.Logger;
@@ -32,7 +36,8 @@ public class AssemblyGuideServer {
 	  public final Server server;
 	  public static HybridAssembler myAss;
 	  public static int ELEN = 10000;
-	  public final Thread myThread;
+//	  public final Thread myThread;
+	  public final static ExecutorService executor = Executors.newFixedThreadPool(2); //one for GUI, one for real-time graph reduction
 	  
 	  public AssemblyGuideServer(int port, HybridAssembler ass) {
 		  this(ServerBuilder.forPort(port), port, ass);
@@ -43,12 +48,13 @@ public class AssemblyGuideServer {
 		  server = serverBuilder.addService(new AssemblyGuideService())
 				  				.build();
 		  myAss=badAss;
-		  myThread = new Thread(badAss.observer);
+//		  myThread = new Thread(badAss.observer);
 	  }
 
 	  /** Start serving requests. */
 	  public void start() throws IOException {
-		  myThread.start();
+//		  myThread.start();
+		  executor.execute(myAss.observer);
 		  server.start();
 		  
 		  logger.info("Server started, listening on {}", port);
@@ -72,40 +78,30 @@ public class AssemblyGuideServer {
 		  if (server != null) {
 			  server.shutdown().awaitTermination(30, TimeUnit.SECONDS);
 		  }
-		  if(myThread.isAlive()) {
-				myAss.observer.stopWaiting();
-				myThread.join();
-		  }
-	  }
-
-	  /**
-	   * Await termination on the main thread since the grpc library uses daemon threads.
-	   */
-	  private void blockUntilShutdown() throws InterruptedException {
-		  if (server != null) {
-			  server.awaitTermination();
-		  }
+		  
+		  executor.shutdown();
 //		  if(myThread.isAlive()) {
 //				myAss.observer.stopWaiting();
 //				myThread.join();
 //		  }
 	  }
 
-
 	  /**
-	   * Our implementation of RouteGuide service.
+	   * Our implementation of assembly service.
 	   *
-	   * <p>See route_guide.proto for details of the methods.
+	   * <p>See src/main/proto/npgraph_service.proto for details of the methods.
 	   */
 	  private static class AssemblyGuideService extends AssemblyGuideGrpc.AssemblyGuideImplBase {
 		  private static final HashMap<String, Alignment> lastMap = new HashMap<>(); //readID to the last unique contig it mapped to
 		  private static final HashMap<String, Integer> reduceRead = new HashMap<>(); //readID to the length of chunk used to reduce
-
+		  
 		  @Override
 		  public void getAssemblyContribution(RequestAssembly request,
 				StreamObserver<ResponseAssembly> responseObserver) {
 			  	ArrayList<Alignment> hits = getAlignmentsFromRequest(request);
 			  	boolean continueing=true;
+			  	Future<ReducePathInfo> f=null;
+			  	
 			  	if(hits.size() > 0) {//this should be checked from client side
 			  		Collections.sort(hits);
 			  		Alignment 	a = hits.get(hits.size()-1), //get the last alignment of current hit list
@@ -172,26 +168,28 @@ public class AssemblyGuideServer {
 						  		logger.debug("...read {}, eLen={} is expected to span next unresoved bridge: continue!", a.readID, eLen);
 			  			}
 			  			
-//					  	//5. send control signal back to client
-//					  	responseObserver.onNext(ResponseAssembly.newBuilder().setUsefulness(continueing).setReadId(request.getReadId()).build());
-//					  	responseObserver.onCompleted();
-					  	
 				  		//4. reduce
 					  	Sequence read = GraphUtil.getNSequence(a.readID, a.readLength); 	
 
-						List<BDPath> paths=myAss.simGraph.uniqueBridgesFinding(read, hits);
-						if(paths!=null) {
-						    paths.stream().forEach(p->myAss.simGraph.reduceUniquePath(p));
-							if(reduceRead.containsKey(a.readID)) {//already used for reduction
-								myAss.currentBaseCount += a.readLength-reduceRead.get(a.readID);
-								reduceRead.replace(a.readID, a.readLength);
-							}else {//new
-								reduceRead.put(a.readID, a.readLength);
-								myAss.currentReadCount++;
-								myAss.currentBaseCount+=a.readLength;
-							}
-			
-						}	
+			  			
+					  	Callable<ReducePathInfo> callableObj = () -> {
+					  		return new ReducePathInfo(myAss.simGraph.uniqueBridgesFinding(read, hits), a.readID, a.readLength);
+					  	};
+					  	f=executor.submit(callableObj);
+					  	
+//						List<BDPath> paths=myAss.simGraph.uniqueBridgesFinding(read, hits);
+//						if(paths!=null) {
+//						    paths.stream().forEach(p->myAss.simGraph.reduceUniquePath(p));
+//							if(reduceRead.containsKey(a.readID)) {//already used for reduction
+//								myAss.currentBaseCount += a.readLength-reduceRead.get(a.readID);
+//								reduceRead.replace(a.readID, a.readLength);
+//							}else {//new
+//								reduceRead.put(a.readID, a.readLength);
+//								myAss.currentReadCount++;
+//								myAss.currentBaseCount+=a.readLength;
+//							}
+//			
+//						}	
 						
 //						return;
 			  		}
@@ -200,6 +198,26 @@ public class AssemblyGuideServer {
 			  	}
 			  	//5. send control signal back to client
 			  	responseObserver.onNext(ResponseAssembly.newBuilder().setUsefulness(continueing).setReadId(request.getReadId()).build());
+			  	
+			  	if(f!=null) {
+			  		try {
+			  			ReducePathInfo result = f.get();
+			  			if(!result.isEmpty()) {
+			  				result.paths.stream().forEach(p->myAss.simGraph.reduceUniquePath(p));
+							if(reduceRead.containsKey(result.readID)) {//already used for reduction
+								myAss.currentBaseCount += result.readLength-reduceRead.get(result.readID);
+								reduceRead.replace(result.readID, result.readLength);
+							}else {//new
+								reduceRead.put(result.readID, result.readLength);
+								myAss.currentReadCount++;
+								myAss.currentBaseCount+=result.readLength;
+							}
+			  			}
+			  		}catch(Exception e) {
+			  			logger.debug(e);
+			  		}
+			  	}
+			  	
 			  	responseObserver.onCompleted();
 		  }
 		  
@@ -222,6 +240,21 @@ public class AssemblyGuideServer {
 			  }
 			  
 			  return retval;
+		  }
+		  
+		  class ReducePathInfo{
+			  List<BDPath> paths = null;
+			  String readID = "";
+			  int  readLength = 0;
+			  ReducePathInfo(List<BDPath> paths, String id, int length){
+				  this.paths = paths;
+				  readID = id;
+				  readLength = length;
+			  }
+			  public boolean isEmpty() {
+				  return paths==null;
+			  }
+			  
 		  }
 	  }	  
 }
