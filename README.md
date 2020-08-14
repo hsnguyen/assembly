@@ -42,7 +42,8 @@ docker run --rm -it -v <local_data_folder>:/data npgraph org.rtassembly.NPGraphC
 ## Modules
 For now two modules are on development:
 * [*npGraph*](docs/npgraph.md): streaming hybrid assembly using Nanopore data
-* [*npConcatemer*](docs/npconcatemer.md): using signal processing to detect concatemeric reads for viral genomes (experimental).
+* [*npGraph server for ReadUntil*](docs/npgraph-ru.md): combined with ReadUntil (ReadFish) for selective sequencing oriented to complete assembly (dev)
+* [*npConcatemer*](docs/npconcatemer.md): using signal processing to detect concatemeric reads for viral genomes (abandoned).
 
 ## License
 Similar to [Japsa](https://github.com/mdcao/japsa) project, tools included in this repo is available under BSD-like license.
