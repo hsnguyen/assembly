@@ -40,12 +40,13 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import japsa.seq.Alphabet;
 import japsa.seq.Alphabet.DNA;
@@ -64,7 +65,7 @@ import japsa.seq.SequenceReader;
  *
  */
 public class ErrorCorrection {
-    private static final Logger LOG = LoggerFactory.getLogger(ErrorCorrection.class);
+    private static final Logger logger = LogManager.getLogger(MethodHandles.lookup().lookupClass());
     public static boolean VERBOSE=false;
 	public static String prefix = "tmp";
 	public static String msa = "kalign";
@@ -77,12 +78,10 @@ public class ErrorCorrection {
 		String needleOut = prefix + "_alignment.needle";
 		String cmd = "needle -gapopen 10 -gapextend 0.5 -asequence " 
 			+ seq1File + " -bsequence " + seq2File + " -outfile " + needleOut;
-		if(VERBOSE)
-			LOG.info("Running " + cmd);
+		logger.trace("Running {}", cmd);
 		Process process = Runtime.getRuntime().exec(cmd);
 		process.waitFor();					
-		if(VERBOSE)
-			LOG.info("Run'ed " + cmd );
+		logger.trace("Run'ed {}", cmd );
 
 		BufferedReader scoreBf = new BufferedReader(new FileReader(needleOut));
 		String scoreLine = null;					
@@ -111,8 +110,7 @@ public class ErrorCorrection {
 			SequenceOutputStream faiSt = SequenceOutputStream.makeOutputStream(faiFile);
 			int count = 0;
 			for (Sequence seq:readList){
-				if(VERBOSE)
-					LOG.info(seq.getName() + "  " + seq.length());
+				logger.trace("{} {}", seq.getName(), seq.length());
 				seq.writeFasta(faiSt);
 				count ++;
 				if (count >= max)
@@ -169,6 +167,8 @@ public class ErrorCorrection {
 				
 			}else if (msa.startsWith("spoa")){
 				cmd = new String[]{"spoa", faiFile};	
+			}else if (msa.startsWith("abpoa")){
+				cmd = new String[]{"abpoa", faiFile, "-o", faoFile};
 			}else if (msa.startsWith("muscle")){
 				cmd = new String[]{"muscle", "-in", faiFile, "-out", faoFile, "-maxiters", "5", "-quiet"};				
 			}else if (msa.startsWith("clustal")) {
@@ -182,20 +182,19 @@ public class ErrorCorrection {
 			}else if (msa.startsWith("mafft")){
 				cmd = new String[]{"mafft_wrapper.sh", faiFile, faoFile};
 			}else{
-				LOG.error("Unknown msa function " + msa);
-				throw new InterruptedException("Unknown msa function " + msa);
+				logger.trace("MSA tool {} is not support!", msa);
+				msa="none";
+				throw new InterruptedException("MSA tool: " + msa);
 			}
 
-			if(VERBOSE)
-				LOG.info("Running " + Arrays.toString(cmd));
+			logger.trace("Running {}", Arrays.toString(cmd));
 			ProcessBuilder builder = new ProcessBuilder(cmd).redirectErrorStream(true);
 			if (msa.startsWith("spoa")){
 				builder.redirectOutput(new File(faoFile));			
 			}
 			Process process = builder.start();
 			process.waitFor();
-			if(VERBOSE)
-				LOG.info("Done " + Arrays.toString(cmd));
+			logger.trace("Done {}", Arrays.toString(cmd));
 			temp.deleteOnExit();
 		}
     }
@@ -215,8 +214,7 @@ public class ErrorCorrection {
 			}//if
 		}//while
 		sb.setName("consensus");
-		if(VERBOSE)
-			LOG.info(sb.getName() + "  " + sb.length());
+		logger.trace("{} {}", sb.getName(), sb.length());
 		return sb.toSequence();
     }
     public static Sequence 	readSPOAOutput(String faoFile, int seql) throws IOException{
@@ -225,16 +223,14 @@ public class ErrorCorrection {
 		String line = bf.readLine();
 		//First line must start with Consensus
 		if (!line.startsWith("Consensus")){
-			if(VERBOSE)
-				LOG.info("spoa failed: {}",line);
+			logger.trace("spoa failed: {}", line);
 			return null;	
 		}
 		while ( (line = bf.readLine()) != null){
 			sb.append(new Sequence(Alphabet.DNA(), line, "consensus"));
 		}//while
 		sb.setName("consensus");
-		if(VERBOSE)
-			LOG.info(sb.getName() + "  " + sb.length());
+		logger.trace("{} {}", sb.getName(), sb.length());
 		return sb.toSequence();
     }
     public static ArrayList<Sequence> readMultipleAlignment(String faoFile) throws IOException{
@@ -284,8 +280,7 @@ public class ErrorCorrection {
 				}//if
 			}//for x
 			sb.setName("consensus");
-			if(VERBOSE)
-				LOG.info(sb.getName() + "  " + sb.length());
+			logger.trace("{} {}", sb.getName(), sb.length());
 			consensus = sb.toSequence();
 		return consensus;
     }
@@ -294,7 +289,7 @@ public class ErrorCorrection {
 		//String faiFile = prefix + "_" + this.currentReadCount;
 		Sequence consensus = null;
 		if (readList != null && readList.size() > 0){
-			if (readList.size() == 1){
+			if (readList.size() == 1||"none".equals(msa)){
 				readList.get(0).setName("consensus");
 				return readList.get(0);
 			}else{
@@ -309,13 +304,18 @@ public class ErrorCorrection {
 				try{
 					runMultipleAlignment(faiFile, faoFile);
 				}catch(InterruptedException exc){
-					return null;
+					logger.trace("Consensus is pick randomly from the list!");
+					readList.get(0).setName("consensus");
+					return readList.get(0);
 				}
 				
 				if ("poa".equals(msa))
 					consensus=readPOAOutput(faoFile, readList.get(0).length());	
 				else if("spoa".equals(msa)){
 					consensus=readSPOAOutput(faoFile, readList.get(0).length());
+				}else if("abpoa".equals(msa)) {
+					SequenceReader reader = SequenceReader.getReader(faoFile);
+					consensus=reader.nextSequence(DNA.DNA());
 				}else{
 					//3.0 Read in multiple alignment
 					ArrayList<Sequence> seqList = readMultipleAlignment(faoFile);
@@ -327,12 +327,11 @@ public class ErrorCorrection {
 //				Files.deleteIfExists(Paths.get(faiFile));
 //				Files.deleteIfExists(Paths.get(faoFile));
 			}
-		}
-		
-		if(consensus==null){
-			if(VERBOSE)
-				LOG.info("Consensus is pick randomly from the list!");
-			consensus=readList.get(0);
+			
+			if(consensus==null){
+				logger.trace("Consensus is pick randomly from the list!");
+				consensus=readList.get(0);
+			}
 		}
 		
 		return consensus;

@@ -33,15 +33,17 @@
  ****************************************************************************/
 package japsa.util;
 
+import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Arrays;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.SAMRecord;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * A collection of utilities to analyse HTS, based on HTS library
@@ -49,7 +51,7 @@ import org.slf4j.LoggerFactory;
  *
  */
 public class HTSUtilities {
-	private static final Logger LOG = LoggerFactory.getLogger(HTSUtilities.class);
+    private static final Logger logger = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
 
 
@@ -123,7 +125,7 @@ public class HTSUtilities {
 		}//for	
 
 		if (readFrom ==0 || readTo ==0){
-			LOG.error("Error at HTSUtilities.readSequence " + readFrom + " " + readTo, 1);
+			logger.error("Error at HTSUtilities.readSequence {}-{}", readFrom, readTo);
 			System.exit(1);
 		}
 		if (record.getReadNegativeStrandFlag()){
@@ -203,7 +205,7 @@ public class HTSUtilities {
 
 		}// for
 		if (startRead < 0 || endRead < 0){
-			LOG.warn(" " + refPos + "  " + readPos + " " + startRead + " " + endRead);
+			logger.warn(" {} {} {} {} ", refPos, readPos, startRead, endRead);
 			return null;
 		}		
 
@@ -276,7 +278,7 @@ public class HTSUtilities {
 				readEnd = readLength;//1-index
 
 			if (readLength != readSequence.length()){
-				LOG.error("Error0 " + record.getReadName() + " " + readSequence.length() + " vs estimated " + readLength + " Flag = " + record.getFlags());
+				logger.error("Error0 {} {} vs estimated {} Flag={}", record.getReadName(), readSequence.length(), readLength, record.getFlags());
 				return null;
 			}
 
@@ -286,7 +288,7 @@ public class HTSUtilities {
 				start = 1;//I am still live in 1-index world
 
 			if (readEnd > readSequence.length()){
-				LOG.error("Error1 " + record.getReadName() + " " + record.getReadLength() + " vs " + readEnd);
+				logger.error("Error1 {} {} vs {}", record.getReadName(), record.getReadLength(), readEnd);
 				return null;
 			}
 			int end = readEnd + right;
@@ -295,7 +297,7 @@ public class HTSUtilities {
 				end = readSequence.length();
 
 			if (start >= end){
-				LOG.error("Error2 " + record.getReadName() + " " + record.getReadLength() + " " + start + " " + end);
+				logger.error("Error2 {} {} {} {}", record.getReadName(), record.getReadLength(), start, end);
 				return null;
 			}
 
@@ -313,9 +315,7 @@ public class HTSUtilities {
 			}
 
 		}catch(Exception e){
-			LOG.warn(e.getMessage());
-			e.printStackTrace();
-			//continue;//while
+			logger.warn("{}",e);
 			return null;
 		}
 

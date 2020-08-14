@@ -1,14 +1,16 @@
 package org.rtassembly.npgraph;
 
 import java.io.File;
+import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+
 import japsa.bio.np.ErrorCorrection;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
@@ -16,7 +18,7 @@ import japsa.seq.SequenceBuilder;
 
 //Module for consensus bridging of contigs when they're not connected in the assembly graph
 public class ConsensusCaller {
-	private static final Logger LOG = LoggerFactory.getLogger(ConsensusCaller.class);
+    private static final Logger logger = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 	
 	volatile HashMap<String, List<Sequence>> bridgingReads;
 	volatile HashMap<String, Sequence> consensusReads;
@@ -36,11 +38,13 @@ public class ConsensusCaller {
 		aligner=aligner.toLowerCase().trim();
 		if(aligner.startsWith("spoa"))
 			msa="spoa";
-		else if(aligner.startsWith("poa"))
+		else if(aligner.startsWith("abpoa"))
+			msa="abpoa";
+		else if(aligner.startsWith("poa")) //slow but default to many Ubuntu distro
 			msa="poa";
 		else if(aligner.startsWith("kalign3"))
 			msa="kalign3";
-		else if(aligner.startsWith("kalign"))
+		else if(aligner.startsWith("kalign")) //slow but default to many Ubuntu distro
 			msa="kalign";
 		else
 			msa="none";
@@ -55,8 +59,10 @@ public class ConsensusCaller {
 			bridgingReads.put(id, new ArrayList<Sequence>());
 		
 		getBridgingReadList(id).add(seq);
-		if(getBridgingReadsNumber(id) >= BDGraph.GOOD_SUPPORT)
+		if(getBridgingReadsNumber(id) >= BDGraph.GOOD_SUPPORT) {
+			//TODO: check sequences length
 			setConsensusSequence(id);
+		}
 	}
 	public List<Sequence> getBridgingReadList(String id){
 		return bridgingReads.get(id);
@@ -66,19 +72,41 @@ public class ConsensusCaller {
 	}
 	public Sequence getConsensus(String id, boolean force){
 		if(force && getBridgingReadsNumber(id)>=BDGraph.MIN_SUPPORT)
-			setConsensusSequence(id); //do it even the lack not enough bridging reads 
+			setConsensusSequence(id); //do it even not enough bridging reads 
 		
 		return consensusReads.get(id);
 	}
-	private synchronized void setConsensusSequence(String id){
+	
+	//Scan the list and check for the length consistency & remove the odd-one out
+	//If none is removed -> good, return 1
+	//If several are removed -> return 0
+	//If more than 20% are removed -> bad list, return -1 and not to considered for consensus calling 
+	private int scanElementReads(String id) {
+		if(!bridgingReads.containsKey(id))
+			return -1;
+		int size=bridgingReads.get(id).size();
+		double average=bridgingReads.get(id).stream().mapToInt(Sequence::length).average().getAsDouble();
+		bridgingReads.get(id).removeIf(s->GraphUtil.approxCompare(average, s.length())!=0);
+		if(bridgingReads.size()==0)
+			return -1;
+		else if(bridgingReads.size()==size)
+			return 1;
+		else if(bridgingReads.size() > (1-BDGraph.R_TOL*size))
+			return 0;
+		else {
+			bridgingReads.remove(id);
+			return -1;
+		}
+		
+	}
+	
+	private void setConsensusSequence(String id){
 		Sequence consensus=null;
 		try {
 			ErrorCorrection.msa=msa;
-			ErrorCorrection.VERBOSE=HybridAssembler.VERBOSE;
 			consensus=ErrorCorrection.consensusSequence(getBridgingReadList(id), AlignedRead.tmpFolder+File.separator+id);
 		} catch (Exception e) {
-			if(HybridAssembler.VERBOSE)
-				LOG.warn("Error with consensus calling:\n {} Pick first read for the consensus of bridge {}", e.getMessage(), id);
+			logger.debug("Invalid consensus calling for {}. Pick the first read for the consensus of bridge.\n{}", id, e);
 			consensus=getBridgingReadList(id).get(0);
 		}
 		consensusReads.put(id, consensus);
@@ -251,11 +279,11 @@ public class ConsensusCaller {
 		
 		
 		String key=read.getEndingsID();
-		if(HybridAssembler.VERBOSE)
-			LOG.info("Save read {} to bridge {}: {} -> {}", read.readSequence.getName(), key,
-																	fromContig.getId() + (start.strand?"+":"-"),
-																	toContig.getId() + (end.strand?"+":"-")
-																	);
+		logger.debug("Save read {} to bridge {}: {} -> {}", 
+						read.readSequence.getName(),
+						key,
+						fromContig.getId()+(start.strand?"+":"-"),
+						toContig.getId() + (end.strand?"+":"-"));		
 		Sequence seq=seqBuilder.toSequence();
 		addBridgingRead(key, seq);
 	}

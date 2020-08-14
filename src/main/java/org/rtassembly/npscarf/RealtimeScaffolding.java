@@ -209,7 +209,7 @@ public class RealtimeScaffolding {
 				sg.connectBridges();
 		
 				try {
-					// This function is for the sake of real-time annotation experiments being more readable
+					// This function make real-time annotation experiments more readable
 					scaffolding.graph.printRT(scaffolding.currentBaseCount);
 					sg.printSequences(ScaffoldGraph.updateGenome,false);
 					outOS.print("Time |\tStep |\tRead count |\tBase count|\tNumber of scaffolds|\tCircular scaffolds |\tN50 | \tBreaks (maxlen)\n");

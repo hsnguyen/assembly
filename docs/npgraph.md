@@ -1,10 +1,8 @@
-# *npGraph* - Resolve assemblgraph in real-time using nanopore data
+# *npGraph* - Resolve assembly graph in real-time using nanopore data
 This is another real-time scaffolder beside [npScarf](https://github.com/mdcao/npScarf). Instead of using contig sequences as pre-assemblies, this tool is able to work on assembly graph (from [SPAdes](http://cab.spbu.ru/software/spades/)). 
 The batch algorithm has been implemented in hybrid assembler module of [Unicycler](https://github.com/rrwick/Unicycler) and others.
 
-<p align="center">
-  <img src="http://drive.google.com/uc?export=view&id=1eGn-FfDoLHPMbt4i_awFXF-DYDe36GoR" alt="npGraph"/>
-</p>
+![npGraph GUI](npgraph.gif)
 
 ## Introduction
 *npScarf* is the real-time hybrid assembler that use the stream of long reads to bridge the Illumina contigs together, expecting to give more complete genome sequences while the sequencing process is still ongoing. The pipeline has been applied sucessfully for microbial genomics and even bigger data sets. However, due to its greedy approach over the noisy data, it is difficult to eliminate all mis-assemblies without further pre-processing and parameter tuning. To help prevent this issue, the assembly graph - bulding block graph structure for the contigs - should be used as the source for bridging algorithm. 
@@ -83,7 +81,7 @@ More features would be added later to the GUI but it's not the focus of this pro
 All settings from the GUI can be set beforehand via commandline interface.
 Without using GUI, the mandatory inputs are assembly graph file (*-si*) and long-read data (*-li*).
 The assembly graph must be output from SPAdes in either FASTG or GFA format (normally *assembly_graph.fastg* or *assembly_graph.gfa*).
-From new version of SPAdes, the output GFA file is *assembly_graph_with_scaffolds.gfa* which includes SPAdes path finding and scaffolding results. Sometimes, this might give additional mis-assemblies so the original graph of the building-block contigs (fastg file) is preferred.
+From new version of SPAdes, the output GFA file is *assembly_graph_with_scaffolds.gfa* which includes SPAdes path finding and scaffolding results. Sometimes, this might give additional mis-assemblies so the original graph of the building-block contigs is preferred.
 
 The long-read data will be used for bridging and can be given as DNA sequences (FASTA/FASTQ format, possible .gz) or alignment records (SAM/BAM) as mentioned above. *npGraph* will try to guess the format of the inputs based on the extensions, but sometimes you'll have to specify it yourself (e.g. when "-" is provided to read from *stdin*). 
 If the sequences are given, then it's mandatory to have either minimap2 (recommended) or BWA-MEM installed in your system to do the alignment between long reads and the pre-assemblies. 
@@ -96,7 +94,7 @@ or if the graph file is GFA v1 we can use
 ```
 awk '/^S/{print ">"$2; print $3;}' assembly_graph.gfa | fold > assembly_graph.fasta
 ```
-Note that GFA file from SPAdes is preferred over FASTG since the former gives hint about the k-mer parameter and others, also it is becoming the standard for assembly graph that adapted by many other software.
+Note that GFA format from SPAdes is preferred over FASTG since the former gives hint about the k-mer parameter and others, also it is becoming the standard for assembly graph that adapted by many other software.
 And then you can generate SAM/BAM file with our recommended parameters:
 ```
 minimap2 -t16 -k15 -w5 -a assembly_graph.fasta nnp.fastq ...
@@ -150,9 +148,7 @@ awk -F'[:;]' -v q="'" '/^>/{if(index($1,q) ==0 ) flag=1; else flag=0;} {if(flag)
 
 Below is how it looked like using *npGraph* with a mock community of 11 species from PoreCamp. 
 
-<p align="center">
-  <img src="http://drive.google.com/uc?export=view&id=1c29S6cSNwEg9JpXcy28ngo8bFsuF2SXi" alt="npGraph"/>
-</p>
+![Metagenomics](npgraph_pc.gif)
 
 
 ### Note

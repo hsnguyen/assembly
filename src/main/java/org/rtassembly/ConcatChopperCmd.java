@@ -5,9 +5,11 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 import org.rtassembly.concatemer.NSDFChopper;
 
+import japsa.bio.np.ErrorCorrection;
 import japsa.seq.Alphabet;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceOutputStream;
@@ -22,10 +24,12 @@ public class ConcatChopperCmd extends CommandLine{
 		addString("seq", null, "Name of the base-called FASTQ/FASTA input file.");
 		addString("raw", null, "Name of the raw signal FAST5 input file.");
 		addString("output", "chopper", "Name of the output folder.");
+		addString("msa", "kalign", "Name of the MSA for consensus calling.");
 				
 		addInt("maxK", 100, "Maximum number of monomer copy in a read. Use for cutoff frequency in low-pass filter.");
 		addInt("minL", 2000, "Minimum length of monomer or genome size of interests.");
-		
+		addInt("consensus", 10, "Minimum concatemers for consensus calling a read.");
+
 		addStdHelp();
 	}
 	
@@ -36,7 +40,9 @@ public class ConcatChopperCmd extends CommandLine{
 		/***********************************************************************/
 		String 	seqInput = cmdLine.getStringVal("seq"),
 				rawInput = cmdLine.getStringVal("raw"),
-				outputDir = cmdLine.getStringVal("output");
+				outputDir = cmdLine.getStringVal("output"),
+				msa = cmdLine.getStringVal("msa");
+		int cThres = cmdLine.getIntVal("consensus");
 
 		File outDir=new File(outputDir);
 		if(!outDir.isDirectory() && !outDir.mkdirs()){
@@ -53,7 +59,6 @@ public class ConcatChopperCmd extends CommandLine{
 			try {
 				SequenceReader reader = SequenceReader.getReader(seqInput);
 				Sequence seq=null;
-				SequenceOutputStream outFile = SequenceOutputStream.makeOutputStream(outputDir+File.separator+"all_monomers.fastq");
 				while((seq=reader.nextSequence(Alphabet.DNA4()))!=null){
 					tony.setData(seq);
 					tony.concatemersDetection();
@@ -66,23 +71,33 @@ public class ConcatChopperCmd extends CommandLine{
 							histogram.put(key, clist);
 						}
 						clist.add(tony.getName());
-						
-						
-						//chop and print
-						int prev=0, next;
-						for(int i=0;i<chopper.size();i++){
-							next=chopper.get(i);
-							Sequence isomer=seq.subSequence(prev,next);
-							isomer.setName(seq.getName()+" chopping="+(i+1)+":"+prev+"-"+next);
-							isomer.print(outFile);
-							
-							prev=next;
+						//chop and print consensus sequence if concatemer is long enough (10-concatemer)
+						if(key>=cThres) {
+							String id=tony.getName().split("\\s+")[0];
+							int prev=0, next;
+							List<Sequence> seqList=new ArrayList<>();
+							for(int i=0;i<chopper.size();i++){
+								next=chopper.get(i);
+								seqList.add(seq.subSequence(prev,next));
+								prev=next;
+							}
+							try {
+								ErrorCorrection.msa=msa;
+								Sequence consensus=ErrorCorrection.consensusSequence(seqList, id);
+								consensus.setName(id+"_c"+key+"_consensus");
+								consensus.writeFasta(outputDir+File.separator+id+"_c"+key+"_consensus.fasta");
+	
+							} catch (InterruptedException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+								continue;
+							}
 						}
+						
 					}
 				}
 	
 				reader.close();
-				outFile.close();
 				
 				PrintWriter writer = new PrintWriter(new FileWriter(outputDir+File.separator+"count.txt"));
 				for(int key:histogram.keySet()){
