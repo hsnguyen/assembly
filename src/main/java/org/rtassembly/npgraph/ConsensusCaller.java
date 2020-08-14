@@ -38,11 +38,13 @@ public class ConsensusCaller {
 		aligner=aligner.toLowerCase().trim();
 		if(aligner.startsWith("spoa"))
 			msa="spoa";
-		else if(aligner.startsWith("poa"))
+		else if(aligner.startsWith("abpoa"))
+			msa="abpoa";
+		else if(aligner.startsWith("poa")) //slow but default to many Ubuntu distro
 			msa="poa";
 		else if(aligner.startsWith("kalign3"))
 			msa="kalign3";
-		else if(aligner.startsWith("kalign"))
+		else if(aligner.startsWith("kalign")) //slow but default to many Ubuntu distro
 			msa="kalign";
 		else
 			msa="none";

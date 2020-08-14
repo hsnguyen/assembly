@@ -130,7 +130,7 @@ public class GraphExploreDesktop extends Application{
 			hbAss.input.setBinReadsInput(binFile);
 		
 		hbAss.input.setAligner("minimap2");
-		hbAss.input.setMSA("kalign"); //spoa: out of memory with reads > 18kbp
+		hbAss.input.setMSA("abpoa"); //spoa: out of memory with reads > 18kbp
 		hbAss.prepareShortReadsProcess();
       	hbAss.input.setLongReadsInput(lInput);
       	hbAss.prepareLongReadsProcess();

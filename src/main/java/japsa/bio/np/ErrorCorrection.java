@@ -167,6 +167,8 @@ public class ErrorCorrection {
 				
 			}else if (msa.startsWith("spoa")){
 				cmd = new String[]{"spoa", faiFile};	
+			}else if (msa.startsWith("abpoa")){
+				cmd = new String[]{"abpoa", faiFile, "-o", faoFile};
 			}else if (msa.startsWith("muscle")){
 				cmd = new String[]{"muscle", "-in", faiFile, "-out", faoFile, "-maxiters", "5", "-quiet"};				
 			}else if (msa.startsWith("clustal")) {
@@ -311,6 +313,9 @@ public class ErrorCorrection {
 					consensus=readPOAOutput(faoFile, readList.get(0).length());	
 				else if("spoa".equals(msa)){
 					consensus=readSPOAOutput(faoFile, readList.get(0).length());
+				}else if("abpoa".equals(msa)) {
+					SequenceReader reader = SequenceReader.getReader(faoFile);
+					consensus=reader.nextSequence(DNA.DNA());
 				}else{
 					//3.0 Read in multiple alignment
 					ArrayList<Sequence> seqList = readMultipleAlignment(faoFile);

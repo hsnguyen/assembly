@@ -86,8 +86,8 @@ public class RealtimeGraphWatcher extends RealtimeAnalysis{
 	}
 	
 	private void removeBadComponents() {
-		synchronized(hAss.simGraph) {
-//		synchronized(rtComponents) {
+//		synchronized(hAss.simGraph) {
+		synchronized(rtComponents) {
 				List<Node> 	removeNodes=new ArrayList<Node>();
 				for (Iterator<ConnectedComponent> compIter = rtComponents.iterator(); compIter.hasNext(); ) {
 					ConnectedComponent comp = compIter.next();		

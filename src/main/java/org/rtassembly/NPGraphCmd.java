@@ -30,7 +30,7 @@ public class NPGraphCmd extends CommandLine{
 		addString("sb", "", "Name of the metaBAT file for binning information (experimental).");
 		addString("aligner","","Aligner tool that will be used, either minimap2 (default) or BWA-MEM");
 		addString("algOpt", "", "Settings used by aligner to align long reads to the contigs");
-		addString("msa","","MSA tools for consensus. Options include spoa, kalign3 (fast); kalign2, poa (slow).");
+		addString("msa","","MSA tools for consensus. Options include abpoa (recommended), spoa, kalign3 (fast); kalign2, poa (slow).");
 
 		addBoolean("overwrite", true, "Whether to overwrite or reuse the intermediate file");
 		addBoolean("sp", false, "Whether to use SPAdes contigs.paths for bridging.");
