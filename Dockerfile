@@ -38,6 +38,13 @@ WORKDIR /build/kalign
 RUN git checkout 3.1
 RUN ./autogen.sh --prefix=/build/
 RUN make && make install
+#ABPOA
+WORKDIR /build
+RUN git clone https://github.com/yangao07/abPOA.git
+WORKDIR /build/abPOA
+RUN git checkout v1.0.3
+RUN make
+RUN cp bin/abpoa /build/bin/
 #SPOA
 WORKDIR /build
 RUN git clone --recursive https://github.com/rvaser/spoa
@@ -54,6 +61,9 @@ RUN ["/usr/local/bin/mvn-entrypoint.sh", "mvn", "verify", "clean", "--fail-never
 ADD . .
 RUN ["mvn", "package"]
 RUN cp -p target/assembly-0.1.1-SNAPSHOT.jar /build/bin/
+#READFISH
+#Waiting for code update for MinKNOW core 4.04
+
 #
 # Package stage
 #
