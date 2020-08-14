@@ -16,7 +16,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-@SuppressWarnings("restriction")
 public class FxDialogs {
 
     public static void showInformation(String title, String message) {

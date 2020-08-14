@@ -9,6 +9,7 @@ package org.rtassembly.concatemer;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -16,19 +17,19 @@ import java.util.List;
 import java.util.stream.DoubleStream;
 
 import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.jtransforms.fft.DoubleFFT_1D;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import ch.systemsx.cisd.hdf5.HDF5Factory;
 import ch.systemsx.cisd.hdf5.IHDF5Reader;
 import japsa.seq.Alphabet;
-import japsa.seq.FastqReader;
 import japsa.seq.Sequence;
+import japsa.seq.SequenceReader;
 
 
 public class NSDFChopper {
-    private static final Logger LOG = LoggerFactory.getLogger(NSDFChopper.class);
+    private static final Logger logger = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
 	String name;
 	short[] signal;
@@ -74,7 +75,7 @@ public class NSDFChopper {
 					signal[i]=2;
 					break;
 				default:
-					LOG.error("Invalid DNA character (only ACGT)!");
+					logger.error("Invalid DNA character (only ACGT)!");
 					System.exit(1);
 			}
 		
@@ -283,7 +284,7 @@ public class NSDFChopper {
     /******************************************************************/
 
     public void concatemersDetection() throws IOException {
-    	LOG.info("====================================================================");
+    	logger.info("====================================================================");
     	/******************************************
     	 * 1. Calculate NSDF by FFT
     	 *****************************************/
@@ -297,9 +298,9 @@ public class NSDFChopper {
         
         Arrays.parallelSetAll(n, i->2*r[i]/m[i]) ;        
 //        Print to file
-//		printArrayToFile(n, "mpm.signal.xls");
+		printArrayToFile(n, name+"_mpm_signal.xls");
 		lowPassFilter(n);
-//		printArrayToFile(n, "mpm_lpf.xls"); 
+		printArrayToFile(n, name+"_mpm_lpf.xls"); 
 	
 //        LOG.info("Done NSDF calculation in {} secs", (System.currentTimeMillis()-curTime)/1000);
 //        curTime=System.currentTimeMillis();
@@ -310,16 +311,15 @@ public class NSDFChopper {
         chopper=findPeaks(n);
 //        LOG.info("Done peak picking in {} secs", (System.currentTimeMillis()-curTime)/1000);
         if(chopper==null||chopper.isEmpty())
-        	LOG.info("Processing read {} length={}: not a concatemer!", name, signal.length);
+        	logger.info("Processing read {} length={}: not a concatemer!", name, signal.length);
         else{
-        	LOG.info("Processing read {} length={}: {}-concatemers => {}",name, signal.length,chopper.size(),getChopCoords());
+        	logger.info("Processing read {} length={}: {}-concatemers => {}", name, signal.length, chopper.size(), getChopCoords());
         	
         }
         
     }
     
-    @SuppressWarnings("unused")
-	private void printArrayToFile(double[] input,  String filename){
+    private void printArrayToFile(double[] input,  String filename){
 		try {
 			PrintWriter writer = new PrintWriter(new FileWriter(filename));
 			for(double value:input)
@@ -463,10 +463,13 @@ public class NSDFChopper {
     }
 
 	public static void main(String[] args){
+//		CUTOFF_FREQ=12;
+//		MIN_MONOMER=30;
+//		THRES=.1; ERROR=.3;
 		NSDFChopper tony = new NSDFChopper();
 		HashMap<Integer, ArrayList<String>> histogram = new HashMap<>();
 		try {
-			FastqReader reader = new FastqReader(args[0]);
+			SequenceReader reader = SequenceReader.getReader(args[0]);
 			Sequence seq=null;
 			while((seq=reader.nextSequence(Alphabet.DNA4()))!=null){
 				tony.setData(seq);

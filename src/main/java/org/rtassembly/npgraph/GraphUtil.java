@@ -4,19 +4,22 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.commons.io.FilenameUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Node;
 import org.graphstream.graph.implementations.AbstractNode;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.joptimizer.functions.PDQuadraticMultivariateRealFunction;
 import com.joptimizer.optimizers.NewtonUnconstrained;
@@ -30,7 +33,7 @@ import japsa.seq.SequenceReader;
 
 public class GraphUtil {
 
-	private static final Logger LOG = LoggerFactory.getLogger(GraphUtil.class);
+    private static final Logger logger = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 	/**********************************************************************************
 	 * ****************************Algorithms go from here*****************************
 	 */
@@ -167,19 +170,21 @@ public class GraphUtil {
 			astats*=Math.log10(Math.E);
 			node.setAttribute("astats", astats);
 			normalizedCoverage(node);
-			if(HybridAssembler.VERBOSE)
-				LOG.info("{} Normalized coverage = {} Length = {} \nA-stats = {}", node.getAttribute("name"), node.getNumber("cov"), node.getNumber("len"), astats);
+			logger.debug("{} Normalized coverage={} Length={} A-stats={}",
+							node.getAttribute("name"), node.getNumber("cov"), node.getNumber("len"),astats);
 		}
 		
-		LOG.info("No of nodes= {} No of edges = {} Estimated avg. read coverage = {} (normalized to 100.0) Total contigs length = {}", graph.getNodeCount(), graph.getEdgeCount(), BDGraph.RCOV, totContigsLen );
-		
+		logger.info("Node count = {} Edge count = {} Estimated avg. norm. read coverage = {} Total contigs length = {}",
+						graph.getNodeCount(), graph.getEdgeCount(), BDGraph.RCOV, totContigsLen );
+		if(graph.getNodeCount()>10000 || graph.getEdgeCount()>10000)
+			BDGraph.IS_COMPLEX=true;
 		
 		/*
 		 * 2. Use a binner to estimate graph multiplicity
 		 */
 //		graph.nodes().filter(n->n.getNumber("cov") < .2*BDGraph.RCOV).forEach(n->{n.edges().forEach(e->graph.removeEdge(e));});
-		
-		graph.fixDeadEnds();
+		if(!BDGraph.IS_COMPLEX)
+			graph.fixDeadEnds();
 		graph.binning(binFileName);
 
 		/*
@@ -189,7 +194,7 @@ public class GraphUtil {
 			File graphFile = new File(graphFileName);
 			String pathsFile = FilenameUtils.getFullPathNoEndSeparator(graphFile.getAbsolutePath()) + File.separator + "contigs.paths";
 			if(! new File(pathsFile).exists()){
-				LOG.warn("Path file {} couldn't be found in SPAdes output! Skipped!", pathsFile);
+				logger.warn("Path file {} not found in SPAdes output!", pathsFile);
 				return;
 			}
 			BufferedReader pathReader = new BufferedReader(new FileReader(pathsFile));
@@ -300,7 +305,7 @@ public class GraphUtil {
 					break;
 	
 				default:
-					LOG.warn("Unrecognized GFA field: " + type.toUpperCase().trim());
+					logger.warn("Unrecognized GFA field: {}", type.toUpperCase().trim());
 			}
 			
 		
@@ -352,17 +357,20 @@ public class GraphUtil {
 			astats*=Math.log10(Math.E);
 			node.setAttribute("astats", astats);
 			normalizedCoverage(node);
-			if(HybridAssembler.VERBOSE)		
-				LOG.info("{} Normalized coverage = {} Length = {} A-stats = {}", node.getAttribute("name"), node.getNumber("cov"), node.getNumber("len"), astats );
+			logger.debug("{} Normalized coverage={} Length={} A-stats={}",
+					node.getAttribute("name"), node.getNumber("cov"), node.getNumber("len"),astats);
 		}
+
+		logger.info("Node count = {} Edge count = {} Estimated avg. norm. read coverage = {} Total contigs length = {}",
+						graph.getNodeCount(), graph.getEdgeCount(), BDGraph.RCOV, totContigsLen );
 		
-		LOG.info("No of nodes= {} No of edges = {} Estimated avg. read coverage = {} (normalized to 100.0) Total contigs length = {}", graph.getNodeCount(), graph.getEdgeCount(), BDGraph.RCOV, totContigsLen );
-		
+		if(graph.getNodeCount()>10000 || graph.getEdgeCount()>10000)
+			BDGraph.IS_COMPLEX=true;
 		/*
 		 * 2. Binning the graph
 		 */
-
-		graph.fixDeadEnds();
+		if(!BDGraph.IS_COMPLEX)
+			graph.fixDeadEnds();
 		graph.binning(binFileName);
 		
 		/*
@@ -414,7 +422,7 @@ public class GraphUtil {
     
     
 	public static void gradientDescent(BDGraph graph) {
-		int 	maxIterations=21, 
+		int 	maxIterations=(BDGraph.IS_COMPLEX?5:21), 
 				eIteCount=0, nIteCount=0;
 		double epsilon=.01;
 		while(true) {
@@ -462,8 +470,9 @@ public class GraphUtil {
 						isConverged=false;
 					}
 					
-					if(curCov<=delta && HybridAssembler.VERBOSE)
-						LOG.warn("Edge " + e.getId() + " coverage is not positive : curCov=" + curCov + ", delta=" + delta);
+					if(curCov<=delta)
+						logger.debug("Edge {} coverage is not positive: curCov={}, delta={}",
+										e.getId(), curCov, delta);
 					else
 						e.setAttribute("cov", curCov-delta);
 				}
@@ -627,8 +636,7 @@ public class GraphUtil {
 				n.setAttribute("cov", newCovEst);
 			}
 			if(isConverged || nIteCount >= 10) {
-				if(HybridAssembler.VERBOSE) 				
-					LOG.info("STOP at iteration " + nIteCount + "th");
+				logger.debug("STOP at iteration {}th ", nIteCount);
 				
 				break;
 			}
@@ -702,4 +710,183 @@ public class GraphUtil {
 		
 		return retval;
 	}
+	/*
+	 * Return sequence of Ns with predefined length
+	 */
+	public static Sequence getNSequence(String id, int length) {
+		Alphabet dna = Alphabet.DNA();
+		int nIndex=dna.char2int('N');
+//		System.out.println("Convert " + nIndex + " == " +(byte)nIndex);
+		if(nIndex < 0)
+			return null;
+		else{
+			byte[] byteSeq = new byte[length];
+			Arrays.fill(byteSeq, (byte)nIndex);
+			return new Sequence(dna, byteSeq, id);
+		}
+	}
+	
+	// Get Nxx from an array
+	public static int getNStats(double nxx, int[] list) {
+		Arrays.sort(list);
+		double contains = 0;
+		int i = list.length, sum=Arrays.stream(list).sum();
+		while (true){
+			if(contains < nxx*sum)
+				i --;
+			else
+				break;
+			contains += list[i];
+		}
+		return list[i];
+	} 
+	
+    @SuppressWarnings("resource")
+	public static void promptEnterKey(){
+    	   System.out.println("Press \"ENTER\" to continue...");
+    	   Scanner scanner = new Scanner(System.in);
+    	   scanner.nextLine();
+    	}
+    
+    
+    public static boolean checkMinimap2(String pathToBinary) {    		
+		ProcessBuilder pb = new ProcessBuilder(pathToBinary,"-V").redirectErrorStream(true);
+		Process process;
+		try {
+			process = pb.start();
+			BufferedReader bf = SequenceReader.openInputStream(process.getInputStream());
+	
+	
+			String line;
+			String version = "";
+			Pattern versionPattern = Pattern.compile("^(\\d+\\.\\d+).*");
+			Matcher matcher=versionPattern.matcher("");
+			
+			while ((line = bf.readLine())!=null){				
+				matcher.reset(line);
+				if (matcher.find()){
+				    version = matcher.group(1);
+				    break;//while
+				}
+				
+								
+			}	
+			bf.close();
+			
+			if (version.length() == 0){
+				logger.error("Command {} -V failed!", pathToBinary);
+				return false;
+			}else{
+				logger.info("minimap version: {}", version);
+				if (version.compareTo("2.0") < 0){
+					logger.error("Require minimap version 2 or above!");
+					return false;
+				}
+			}
+		} catch (IOException e) {
+			logger.error("Error running: {}\n{}", pathToBinary, e.getMessage());
+			return false;
+		}
+		
+		return true;
+			
+    }
+    
+    public static boolean checkBWA(String pathToBinary) {    		
+		try{
+			ProcessBuilder pb = new ProcessBuilder(pathToBinary).redirectErrorStream(true);
+			Process process =  pb.start();
+			BufferedReader bf = SequenceReader.openInputStream(process.getInputStream());
+
+
+			String line;
+			String version = "";
+			Pattern versionPattern = Pattern.compile("^Version:\\s(\\d+\\.\\d+\\.\\d+).*");
+			Matcher matcher=versionPattern.matcher("");
+			
+			while ((line = bf.readLine())!=null){				
+				matcher.reset(line);
+				if (matcher.find()){
+				    version = matcher.group(1);
+				    break;//while
+				}
+				
+								
+			}	
+			bf.close();
+			
+			if (version.length() == 0){
+				logger.error("Command {} doesn't give version info. Check version failed!", pathToBinary);
+				return false;
+			}else{
+				logger.info("bwa version: {}", version);
+				if (version.compareTo("0.7.11") < 0){
+					logger.error(" Require bwa of 0.7.11 or above");
+					return false;
+				}
+			}
+
+		}catch (IOException e){
+			logger.error("Error running: {}\n{}", pathToBinary, e.getMessage());
+			return false;
+		}
+		
+		return true;
+			
+    }
+    
+    public static boolean checkMSA(String pathToBinary) {    		
+		try{	
+			String[] cmd;
+			if(pathToBinary.startsWith("kalign")) //maybe kalign3
+				cmd=new String[]{"kalign","-h"}; //important, as kalign acted weird without this
+			else
+				cmd=new String[]{pathToBinary};
+			
+			ProcessBuilder pb = new ProcessBuilder(cmd).redirectErrorStream(true);
+			Process process =  pb.start();
+			BufferedReader bf = SequenceReader.openInputStream(process.getInputStream());
+			String line;
+			boolean found=false;
+			while ((line = bf.readLine())!=null){				
+				if (line.toLowerCase().contains("usage:")){ // kalign, kalign3, poa, spoa all print out "Usage:" if run without parameter
+					found=true;
+					break;
+				}
+			}	
+			bf.close();
+			return found;
+
+		}catch (IOException e){
+			logger.debug("MSA {} not found: {}", pathToBinary, e.getMessage());
+			return false;
+		}
+					
+    }
+	
+    public static boolean checkFile(String _path) {
+		if (_path==null||_path.isEmpty()){
+			logger.error("Empty file name!");
+			return false;
+		}
+		File _file = new File(_path);
+		if (!_file.isFile()){
+			logger.error("File \"{}\" is not valid!", _path);
+			return false;
+		}
+		return true;
+    }
+    
+    public static boolean checkFolder(String _path) {
+		if (_path.equals("")){
+			logger.error("Empty directory \"{}\"", _path);
+			return false;
+		}
+		File _file = new File(_path);
+		if (!_file.isDirectory()){
+			logger.error("Directory \"{}\" is not valid!", _path);
+			return false;
+		}
+		return true;
+    }
 }

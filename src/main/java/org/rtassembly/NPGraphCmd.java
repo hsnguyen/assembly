@@ -1,48 +1,53 @@
 package org.rtassembly;
 import java.io.File;
 import java.io.IOException;
+import java.lang.invoke.MethodHandles;
+
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.rtassembly.gui.NPGraphFX;
 import org.rtassembly.npgraph.Alignment;
 import org.rtassembly.npgraph.BDGraph;
-import org.rtassembly.npgraph.GraphWatcher;
+import org.rtassembly.npgraph.RealtimeGraphWatcher;
 import org.rtassembly.npgraph.HybridAssembler;
 import org.rtassembly.npgraph.SimpleBinner;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import japsa.util.CommandLine;
 import javafx.application.Application;
 
 
 public class NPGraphCmd extends CommandLine{
-    private static final Logger LOG = LoggerFactory.getLogger(NPGraphCmd.class);
+    private static final Logger logger = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 	public NPGraphCmd(){
 		super();
 		//Input settings
 		addString("si", "", "Name of the short-read assembly file.");
 		addString("sf", "", "Format of the assembly input file. Accepted format are FASTG, GFA");
 		addString("li", "", "Name of the long-read data input file, - for stdin.");
-		addString("lf", "", "Format of the long-read data input file. This may be FASTQ/FASTA (MinION reads) or SAM/BAM (aligned with the assembly graph already)");
+		addString("lf", "", "Format of the long-read data input file. This may be FASTQ/FASTA read file or SAM/BAM/PAF alignment file");
 		addString("output", "/tmp/", "Output folder for temporary files and the final assembly npgraph_assembly.fasta");
 				
 		addString("sb", "", "Name of the metaBAT file for binning information (experimental).");
-		addString("aligner","","Aligner tool that will be used, either minimap2 or bwa");
+		addString("aligner","","Aligner tool that will be used, either minimap2 (default) or BWA-MEM");
 		addString("algOpt", "", "Settings used by aligner to align long reads to the contigs");
-		addString("msa","","MSA tools for consensus. Options include spoa, kalign3 (fast); kalign2, poa (slow).");
+		addString("msa","","MSA tools for consensus. Options include abpoa (recommended), spoa, kalign3 (fast); kalign2, poa (slow).");
 
 		addBoolean("overwrite", true, "Whether to overwrite or reuse the intermediate file");
 		addBoolean("sp", false, "Whether to use SPAdes contigs.paths for bridging.");
 		
 		//Algorithm-wise
 		addInt("qual", 10, "Minimum quality of alignment to considered");
-		addInt("mcov", 3, "Minimum number of reads spanning a confident bridge");
-		addInt("depth", 300, "Maximum depth for searching path between 2 neighbors");
-		addInt("anchor", 1000, "Minimum length for being considered as an anchor contig.");
-		addInt("unique", 10000, "Minimum length for being assumed a unique contig.");
-
+		addInt("mincov", 3, "Minimum number of reads spanning a confident bridge");
+		addInt("maxcov", 20, "Cut-off number of reads spanning a confident bridge");
+		addInt("depth", 300, "Limit depth for searching path between 2 neighbors");
+		addInt("anchor", 1000, "Lowerbound of an anchor contig's length.");
+		addInt("unique", 10000, "Lowerbound of a unique contig's length.");
+		addInt("time", 10, "Time interval (seconds) to considered for real-time reporting.");
+		addInt("read", 50, "Read interval to considered for real-time reporting.");
+		
 		addBoolean("gui", false, "Whether using GUI or not.");
 		addBoolean("keep", false, "Whether to keep extremely-low-coveraged contigs.");
-		addBoolean("verbose", false, "For debugging.");
+//		addBoolean("verbose", false, "For debugging.");
 		addStdHelp();
 	}
 	
@@ -65,12 +70,15 @@ public class NPGraphCmd extends CommandLine{
 				gui = cmdLine.getBooleanVal("gui");
 			
 		Alignment.MIN_QUAL = cmdLine.getIntVal("qual");
-		HybridAssembler.VERBOSE=cmdLine.getBooleanVal("verbose");
 		SimpleBinner.ANCHOR_CTG_LEN=cmdLine.getIntVal("anchor");
 		SimpleBinner.UNIQUE_CTG_LEN=cmdLine.getIntVal("unique");
-		GraphWatcher.KEEP=cmdLine.getBooleanVal("keep");
-		BDGraph.MIN_SUPPORT=cmdLine.getIntVal("mcov");
+		RealtimeGraphWatcher.KEEP=cmdLine.getBooleanVal("keep");
+		BDGraph.MIN_SUPPORT=cmdLine.getIntVal("min");
+		BDGraph.GOOD_SUPPORT=cmdLine.getIntVal("max");
 		BDGraph.S_LIMIT=cmdLine.getIntVal("depth");
+		RealtimeGraphWatcher.R_INTERVAL=cmdLine.getIntVal("read");
+		RealtimeGraphWatcher.T_INTERVAL=cmdLine.getIntVal("time");
+		
 		//Default output dir 
 		if(outputDir == null) {
 			outputDir = new File(shortReadsInput).getAbsoluteFile().getParent();
@@ -82,28 +90,28 @@ public class NPGraphCmd extends CommandLine{
 		//1. Create an assembler object with appropriate file loader
 		HybridAssembler hbAss = new HybridAssembler();
 		if(shortReadsInput!=null && !shortReadsInput.isEmpty())
-			hbAss.setShortReadsInput(shortReadsInput);
+			hbAss.input.setShortReadsInput(shortReadsInput);
 		if(shortReadsInputFormat!=null && !shortReadsInputFormat.isEmpty())
-			hbAss.setShortReadsInputFormat(shortReadsInputFormat);
+			hbAss.input.setShortReadsInputFormat(shortReadsInputFormat);
 		if(longReadsInput!=null && !longReadsInput.isEmpty())
-			hbAss.setLongReadsInput(longReadsInput);
+			hbAss.input.setLongReadsInput(longReadsInput);
 		if(longReadsInputFormat!=null && !longReadsInputFormat.isEmpty())
-			hbAss.setLongReadsInputFormat(longReadsInputFormat);
+			hbAss.input.setLongReadsInputFormat(longReadsInputFormat);
 		
 		hbAss.setPrefix(outputDir);
 		if(shortReadsBinInput!=null && !shortReadsBinInput.isEmpty())
-			hbAss.setBinReadsInput(shortReadsBinInput);
+			hbAss.input.setBinReadsInput(shortReadsBinInput);
 		
 		if(alg!=null && !alg.isEmpty())
-			hbAss.setAligner(alg);
+			hbAss.input.setAligner(alg);
 		if(algOpt!=null && !algOpt.isEmpty())
-			hbAss.setAlignerOpts(algOpt);
+			hbAss.input.setAlignerOpts(algOpt);
 		
 		if(msa!=null && !msa.isEmpty())
-			hbAss.setMSA(msa);
+			hbAss.input.setMSA(msa);
 		
 		hbAss.setOverwrite(overwrite);
-		hbAss.setUseSPAdesPath(spaths);
+		hbAss.input.setUseSPAdesPath(spaths);
 		        
 		//4. Call the assembly function or invoke GUI to do so
         if(gui) {
@@ -116,16 +124,15 @@ public class NPGraphCmd extends CommandLine{
 			try {
 				if(hbAss.prepareShortReadsProcess() &&	hbAss.prepareLongReadsProcess()) {
 					hbAss.assembly();
-					hbAss.postProcessGraph();
+//					hbAss.postProcessGraph();
 				}
 				else{
-					LOG.error("Error with pre-processing step: \n" + hbAss.getCheckLog());
+					logger.error("Error(s) happened! Check the log above for more info.");
 					System.exit(1);
 				}
 					
 			} catch (InterruptedException|IOException e) {
-				LOG.error("Issue when assembly: \n" + e.getMessage());
-				e.printStackTrace();
+				logger.error("Error {}", e);
 				System.exit(1);
 			}
         }

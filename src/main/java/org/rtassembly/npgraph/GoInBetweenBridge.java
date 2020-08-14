@@ -1,31 +1,32 @@
 package org.rtassembly.npgraph;
 
-import java.io.File;
+import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.TreeSet;
 
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.graphstream.graph.Node;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import japsa.seq.Sequence;
 
 //A bridge structure that the first node must be unique
 public class GoInBetweenBridge {
-    private static final Logger LOG = LoggerFactory.getLogger(GoInBetweenBridge.class);
+    private static final Logger logger = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
 	BDGraph graph;
 	PopBin bin;
-	BDEdgePrototype pBridge; //note: the ending nodes must be unique, or else omitted
+	public BDEdgePrototype pBridge; //note: the ending nodes must be unique, or else omitted
 	ArrayList<BridgeSegment> segments;
-	BridgeSteps steps;
+	public BridgeSteps steps;
 	
 	public GoInBetweenBridge(BDGraph graph, AlignedRead bb, PopBin bin) {
 		this.graph=graph;
@@ -89,8 +90,13 @@ public class GoInBetweenBridge {
 						qNode0=qBridge.pBridge.n0,
 						qNode1=qBridge.pBridge.n1;
 
-		if(HybridAssembler.VERBOSE)
-			LOG.info("Merging Bridge {} lvl={} \n{}\nwith Bridge {} lvl={}\n{}\n", getEndingsID(), getCompletionLevel(), getAllNodeVector(), qBridge.getEndingsID(), qBridge.getCompletionLevel(), qBridge.getAllNodeVector());
+		logger.debug("Merging Bridge {} level={}\n{}\nwith Bridge {} level={}\n{}", 
+						getEndingsID(),
+						getCompletionLevel(),
+						getAllNodeVector(),
+						qBridge.getEndingsID(),
+						qBridge.getCompletionLevel(),
+						qBridge.getAllNodeVector());
 //		System.out.println("sNode0=" + (sNode0==null?"null":sNode0.getId()));
 //		System.out.println("sNode1=" + (sNode1==null?"null":sNode1.getId()));
 //		System.out.println("qNode0=" + (qNode0==null?"null":qNode0.getId()));
@@ -173,8 +179,12 @@ public class GoInBetweenBridge {
 						qNode0=new BDNodeState(read.getFirstAlignment().node, read.getFirstAlignment().strand),
 						qNode1=new BDNodeState(read.getLastAlignment().node, !read.getLastAlignment().strand);
 
-		if(HybridAssembler.VERBOSE)
-			LOG.info("Merging Bridge {} lvl={} \n{}\nwith AlignedRead {}\n{}\n", getEndingsID(), getCompletionLevel(), getAllNodeVector(), read.getEndingsID(), read.getCompsString());
+		logger.debug("Merging Bridge {} level={}\n{}with AlignedRead {}\n{}", 
+						getEndingsID(),
+						getCompletionLevel(),
+						getAllNodeVector(),
+						read.getEndingsID(),
+						read.getCompsString());
 //		System.out.println("sNode0=" + (sNode0==null?"null":sNode0.getId()));
 //		System.out.println("sNode1=" + (sNode1==null?"null":sNode1.getId()));
 //		System.out.println("qNode0=" + (qNode0==null?"null":qNode0.getId()));
@@ -238,10 +248,12 @@ public class GoInBetweenBridge {
 			steps.connectBridgeSteps(false);		
 				
 		
-		if(HybridAssembler.VERBOSE){
-			LOG.info("After merging: {}\nstart={}; end={}; completion level={}", pBridge.toString(), (steps.start==null?"null":steps.start.toString()), (steps.end==null?"null":steps.end.toString()), getCompletionLevel());
-			LOG.info(getAllPossiblePaths());
-		}
+		logger.debug("After merging: {}\nstart={}; end={}; level={}",
+						pBridge.toString(),
+						(steps.start==null?"null":steps.start.toString()),
+						(steps.end==null?"null":steps.end.toString()),
+						getCompletionLevel());
+		logger.debug(getAllPossiblePaths());
 
 		if(getNumberOfAnchors()>numOfAnchorsBefore)
 			retval=(byte)(retval+0b10);
@@ -258,8 +270,11 @@ public class GoInBetweenBridge {
 	
 	private void reverse() {
 		assert getNumberOfAnchors()==2:"Could only reverse a determined bridge (2 anchors)";
-		if(HybridAssembler.VERBOSE)
-			LOG.info("Reversing the bridge {} (start={} end={}):\n{}\n", getEndingsID(), steps.start.toString(), steps.end.toString(), getAllNodeVector());
+		logger.debug("Reversing the bridge {} (start={} end={}):\n{}",
+						getEndingsID(),
+						steps.start.toString(),
+						steps.end.toString(),
+						getAllNodeVector());
 
 		pBridge=pBridge.reverse();
 		int direction=pBridge.getDir0()?1:-1;
@@ -278,23 +293,26 @@ public class GoInBetweenBridge {
 		ScaffoldVector rev=ScaffoldVector.reverse(steps.end.getVector());//anchors number = 2 so there exist end node
 		BDNodeVecState tmp = null;
 		
-		//need to do this to re-sort the changed elements
-		for(BDNodeVecState nv:steps.subSet(steps.start, steps.end)) {
-			nv.setVector(ScaffoldVector.composition(nv.getVector(), rev));
-			nv.setRoot(steps.end.getNode());
-			if(nv.getVector().isIdentity() || (nv.getVector().getMagnitute()-BDGraph.A_TOL)*direction>0)
-				reversedSet.add(nv);
-
-		}
 		//re-assign start and end
 		tmp=steps.start;
 		steps.start=steps.end;
 		steps.end=tmp;
 		
-		steps.nodes=reversedSet;
+		//need to do this to re-sort the changed elements
+		for(BDNodeVecState nv:steps.nodes) {
+			nv.setVector(ScaffoldVector.composition(nv.getVector(), rev));
+			nv.setRoot(steps.start.getNode());
+			if(nv.getVector().isIdentity() || (nv.getVector().getMagnitute()-BDGraph.A_TOL)*direction>0)
+				reversedSet.add(nv);
+
+		}
 		
-		if(HybridAssembler.VERBOSE)
-			LOG.info("Reversed bridge = {} (start={} end={}):\n{}\n", getEndingsID(), steps.start.toString(), steps.end.toString(), getAllNodeVector());
+		steps.nodes=reversedSet;
+		logger.debug("Reversed bridge = {} (start={} end={}):\n{}",
+				getEndingsID(),
+				steps.start.toString(),
+				steps.end.toString(),
+				getAllNodeVector());
 
 	}
 	
@@ -317,7 +335,7 @@ public class GoInBetweenBridge {
 				retval += "()";
 			else
 				for(BDPath path:seg.connectedPaths)
-					retval+="( "+path.getId()+  ": deviation=" + path.getDeviation() + " score=" + path.getPathEstats() + " )";
+					retval+="( "+path.getId()+  ": deviation=" + path.getDeviation() + " likelihood=" + path.getPathEstats() + " )";
 			retval+="\n";
 		}
 		retval+="}";
@@ -332,8 +350,7 @@ public class GoInBetweenBridge {
 
 	//Get the most probable path out of the candidates based on deviation and likelihood
 	public BDPath getBestPath(Node startFrom, Node endAt) { //the markers must be (transformed) unique
-		if(HybridAssembler.VERBOSE)
-			LOG.info("Finding best path from " + startFrom.getId() + " to " + endAt.getId() + " among: \n" + getAllPossiblePaths());
+		logger.debug("Finding best path from {} to {} among:\n{}", startFrom.getId(), endAt.getId(), getAllPossiblePaths());
 		BDPath retval=null;
 
 		if(segments==null || segments.isEmpty())
@@ -390,8 +407,7 @@ public class GoInBetweenBridge {
 		
 		if(retval!=null) {
 			retval.setConsensusUniqueBinOfPath(bin);
-			if(HybridAssembler.VERBOSE)
-				LOG.info("...best path found: " + retval.getId());
+			logger.debug("...best path found: {}", retval.getId());
 
 		}
 		return retval;
@@ -427,8 +443,7 @@ public class GoInBetweenBridge {
 		List<BDPath> retval = new ArrayList<>();
 		if(segments==null || segments.isEmpty())
 			return retval;
-		if(HybridAssembler.VERBOSE)
-			LOG.info("Scanning on bridge with segments:\n" + getAllPossiblePaths());		
+		logger.debug("Scanning on bridge with segments:\n{}", getAllPossiblePaths());		
 		BDPath curPath=null;
 		PopBin sbin=null;
 		for(BridgeSegment seg:segments){
@@ -470,11 +485,10 @@ public class GoInBetweenBridge {
 			
 			PopBin b=SimpleBinner.getBinIfUniqueNow(tmp.dest);
 			if(PopBin.isCloseBins(b,bin)){
-				if(steps.end==null || greedy || steps.end.nvsScore < tmp.nvsScore){
+				if(steps.end==null || greedy || tmp.qc()>0){
 					if(steps.end!=tmp){
 						steps.end=tmp;
-						if(HybridAssembler.VERBOSE)
-							LOG.info("FOUND NEW END: " + steps.end.getNode().getId());
+						logger.debug("FOUND NEW END: {}", steps.end.getNode().getId());
 						return true;
 					}
 				}
@@ -510,7 +524,7 @@ public class GoInBetweenBridge {
 			pSegment = new BDEdgePrototype(srcNode,dstNode,dir1,dir2);
 			startNV = nv1; endNV = nv2;
 			int d = ScaffoldVector.composition(nv2.getVector(), ScaffoldVector.reverse(nv1.getVector())).distance(srcNode, dstNode);
-			if(d<=(greedy?10:1)*BDGraph.D_LIMIT) //greedy search will tolerate 10 times longer gap
+			if(d<=(greedy?3:1)*BDGraph.D_LIMIT) //greedy search will tolerate 3 times longer gap
 	    		connectedPaths = graph.DFSAllPaths(srcNode, dstNode, dir1, dir2, d);
 
 			//call consensus when time come!
@@ -547,8 +561,8 @@ public class GoInBetweenBridge {
 						
 						connectedPaths.add(path);
 					}catch(Exception e){
-						System.err.println("Failed to make consensus sequence for " + id +"!");
-						System.err.println("Reason: "+ e.getMessage());
+						logger.debug("Failed to make consensus sequence for {}!",id);
+						logger.debug("Reason: {}", e);
 					}	
 	    		}
 
@@ -570,8 +584,7 @@ public class GoInBetweenBridge {
 //				startNV=new BDNodeVecState(pSegment.getNode0(),pSegment.getNode0(),new ScaffoldVector());
 //				endNV=new BDNodeVecState(pSegment.getNode1(), new ScaffoldVector(pSegment.getDir0()?dist:-dist, pSegment.getDir0()!=pSegment.getDir1()?1:-1));
 //			} catch (Exception e) {
-//				System.err.println("Cannot make bridge from this path!");
-//				e.printStackTrace();
+//				logger.debug("Cannot make bridge from this path!\n{}",e);
 //			} 
 //
 //		}
@@ -624,13 +637,36 @@ public class GoInBetweenBridge {
 		
 			return retval;
 		}
+		//remove low-scored paths
 		//return true iff there is only one candidate left <=> result found!
 		public boolean removeUnlikelyPaths(){
 			if(connectedPaths==null || connectedPaths.isEmpty())
 				return false;
-			connectedPaths.sort((a,b)->Integer.compare(Math.abs(a.getDeviation()), Math.abs(b.getDeviation())));
-			int bestDiff = 	connectedPaths.get(0).getDeviation();
-			connectedPaths.removeIf(p->(Math.abs(p.getDeviation()) > Math.abs(bestDiff)+BDGraph.A_TOL));
+//			connectedPaths.sort((a,b)->Integer.compare(Math.abs(a.getDeviation()), Math.abs(b.getDeviation())));
+//			int bestDiff = 	connectedPaths.get(0).getDeviation();
+			try {
+				Integer bestDiff = connectedPaths
+									.stream()
+									.mapToInt(p->Math.abs(p.getDeviation()))
+									.min().orElseThrow(NoSuchElementException::new);
+				
+				//if sufficient coverage, keep the best & remove the rest
+				if(steps.start.qc() + steps.end.qc()>2) {
+					connectedPaths.removeIf(p->(Math.abs(p.getDeviation()) > Math.abs(bestDiff)));
+					Double bestLikelihood = connectedPaths
+											.stream()
+											.mapToDouble(p->p.getPathEstats())
+											.max().orElseThrow(NoSuchElementException::new);
+					connectedPaths.removeIf(p->(p.getPathEstats() < bestLikelihood));
+	
+				} else
+					connectedPaths.removeIf(p->(Math.abs(p.getDeviation()) > Math.abs(bestDiff)+BDGraph.A_TOL));
+			}catch(NoSuchElementException e) {
+				logger.debug("Path ranking error!");
+				return false;
+			}
+				
+				
 			if(connectedPaths.size()==1)
 				return true;
 			else 
@@ -665,7 +701,7 @@ public class GoInBetweenBridge {
 	 * in-between two ends of a bridge. 
 	 * Used for determine segments 
 	 */
-	class BridgeSteps{
+	public class BridgeSteps{
 		TreeSet<BDNodeVecState> nodes;
 		//save the two unique nodes at 2 endings of the bridge. When end is covered more than threshold, pBridge is set
 		BDNodeVecState start, end; 
@@ -701,7 +737,7 @@ public class GoInBetweenBridge {
 
 			}
 			//update the pBridge accordingly
-			if(end!=null && end.qc()) {
+			if(end!=null && end.qc()>0) {
 				pBridge=new BDEdgePrototype(firstAlg.node, end.getNode(), firstAlg.strand, end.getDirection(firstAlg.strand));//getDirection doesn't work with self-vector
 			}else if(pBridge==null)
 				pBridge=new BDEdgePrototype(firstAlg.node, firstAlg.strand);
@@ -736,8 +772,8 @@ public class GoInBetweenBridge {
 		
 
 		private ArrayList<BridgeSegment> greedyConnect(HashMap<String, ArrayList<BridgeSegment>> memory, BDNodeVecState left, BDNodeVecState right, boolean greedy){
-			if(HybridAssembler.VERBOSE)
-				LOG.info("\nConnecting " + left + " to " + right + "...");
+//			if(HybridAssembler.VERBOSE)
+//				LOG.info("\nConnecting " + left + " to " + right + "...");
 			if(left==right)
 				return null;
 			String pairKey=left.toString()+right.toString();
@@ -749,8 +785,8 @@ public class GoInBetweenBridge {
 				else
 					retval=new ArrayList<>(memory.get(pairKey));
 				
-				if(HybridAssembler.VERBOSE)
-					LOG.info("\nConnecting " + left + " to " + right + ": " + (retval==null?"unreachable!":retval.size()+"-reachable!"));
+//				if(HybridAssembler.VERBOSE)
+//					LOG.info("\nConnecting " + left + " to " + right + ": " + (retval==null?"unreachable!":retval.size()+"-reachable!"));
 				return retval;
 			}
 			
@@ -759,8 +795,8 @@ public class GoInBetweenBridge {
 			ArrayList<BridgeSegment> lBridge, rBridge;
 			while(!inBetween.isEmpty()){
 				BDNodeVecState mid=inBetween.poll();
-				if(HybridAssembler.VERBOSE)
-					LOG.info("..cut at mid="+mid.toString());
+//				if(HybridAssembler.VERBOSE)
+//					LOG.info("..cut at mid="+mid.toString());
 				
 				lBridge = greedyConnect(memory, left, mid, greedy);
 				if(lBridge==null||lBridge.isEmpty()){
@@ -805,13 +841,14 @@ public class GoInBetweenBridge {
 		boolean connectBridgeSteps(boolean force){
 			if(isIdentifiable()){
 				if(!connectable() && !force){
-					if(HybridAssembler.VERBOSE)
-						LOG.info("Bridge {} is not qualified to connect yet: start={} end={}", pBridge.toString(), (start==null?"null":start.toString()), (end==null?"null":end.toString()));
+					logger.debug("Bridge {} is not qualified to connect yet: start={} end={}",
+									pBridge.toString(), 
+									(start==null?"null":start.toString()), 
+									(end==null?"null":end.toString()));
 					return false;
 				}
 			}else{
-				if(HybridAssembler.VERBOSE)
-					LOG.info("Bridge {} is not complete to connect!\n", pBridge.toString());
+				logger.debug("Bridge {} is not complete to connect!", pBridge.toString());
 				return false;
 			}	
 			
@@ -819,27 +856,24 @@ public class GoInBetweenBridge {
 							endAt=end;
 
 			
-			if(HybridAssembler.VERBOSE)
-				LOG.info("Trying to connect bridge {} from {} to {}:\n{}\n", pBridge.toString(), startFrom.getNode().getId(), endAt.getNode().getId(), getAllNodeVector());
+			logger.debug("Trying to connect bridge {} from {} to {}:\n{}", 
+							pBridge.toString(), startFrom.getNode().getId(), endAt.getNode().getId(), getAllNodeVector());
 				
 			HashMap<String, ArrayList<BridgeSegment>> memory = new HashMap<>();
 			ArrayList<BridgeSegment> segs=greedyConnect(memory, startFrom, endAt, force);
 			
 			if(segs==null||segs.isEmpty()){
 				segments=null;
-				if(HybridAssembler.VERBOSE)
-					LOG.info("Failed to connect " + pBridge.toString());
+				logger.debug("Failed to connect {}", pBridge.toString());
 				return false;
 			}else{
 				segs.stream().forEach(segment->addSegment(segment));
 				//set pBridge end iff endAt node is original unique node
 				if(SimpleBinner.getBinIfUnique(endAt.dest)!=null){
 					pBridge.n1=new BDNodeState(endAt.dest, endAt.getDirection(pBridge.getDir0()));
-					if(HybridAssembler.VERBOSE)
-						LOG.info("Success to finish " + pBridge.toString());
-				} else
-					if(HybridAssembler.VERBOSE)
-						LOG.info("Success to extend " + pBridge.toString() + " to " + endAt.dest.getId());
+					logger.debug("Success to finish {}", pBridge.toString());
+				}else
+					logger.debug("Success to extend {} to {}", pBridge.toString(), endAt.dest.getId());
 
 				return true;
 			}
@@ -849,10 +883,20 @@ public class GoInBetweenBridge {
 		}
 		
 		boolean connectable(){
-			if(!isIdentifiable())
-				return false;
+			boolean retval=false;
+			if(isIdentifiable() && start.qc()>0) {
+				if(end.qc()>0)
+					retval=true;			
+				else if(start.getScore() >= BDGraph.GOOD_SUPPORT*Alignment.GOOD_QUAL) {
+					GoInBetweenBridge brg=BDGraph.bridgesMap.get(end.dest.getId()+(end.getDirection(pBridge.getDir0())?"o":"i"));
+
+					if(brg!=null && brg.steps!=null && brg.steps.isIdentifiable() && brg.steps.end.dest.getId().equals(start.dest.getId()))
+						retval=true;
+				}
+
+			}
 			
-			return start.qc() && end.qc();
+			return retval;
 		}
 
 		public void setNodes(TreeSet<BDNodeVecState> nodes){
@@ -864,7 +908,12 @@ public class GoInBetweenBridge {
 		public void setEnd(BDNodeVecState end){
 			this.end=end;
 		}
-		
+		public ScaffoldVector getSpanVector() {//from start->end
+			if(start==null||end==null)
+				return null;
+			else
+				return ScaffoldVector.composition(end.getVector(), ScaffoldVector.reverse(start.getVector()));
+		}
 		public String toString(){
 			String retval="";
 			for(BDNodeVecState nv:nodes)

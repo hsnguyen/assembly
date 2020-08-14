@@ -1,4 +1,5 @@
 package org.rtassembly.npgraph;
+
 /*
  * A presentation of BDEdge with directed node (BDNodeState)
  * TODO: should be merged into one class?

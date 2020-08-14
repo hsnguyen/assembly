@@ -1,11 +1,13 @@
 package org.rtassembly.npgraph;
 
+import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Objects;
 import java.util.TreeSet;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+
 
 /*
  * Class represent a node together with its vector in relative to another root node.
@@ -13,7 +15,7 @@ import org.slf4j.LoggerFactory;
  * although we can translate into appropriate info
  */
 public class BDNodeVecState implements Comparable<BDNodeVecState>{
-    private static final Logger LOG = LoggerFactory.getLogger(BDNodeVecState.class);
+    private static final Logger logger = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
 	BDNode root, dest;
 	ScaffoldVector vector;
@@ -125,18 +127,21 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
         }     
 
     }
-    
-	public boolean qc() {
-		return nvsScore >= BDGraph.MIN_SUPPORT*Alignment.GOOD_QUAL; //60*2
+    //just to estimate the node support
+	int qc() {
+		if(nvsScore < BDGraph.MIN_SUPPORT*Alignment.GOOD_QUAL)
+			return 0; //60*2
+		else if(nvsScore < BDGraph.GOOD_SUPPORT*Alignment.GOOD_QUAL)
+			return 1;
+		else 
+			return 2;
 	}
 
 	//Merging 2 equal NodeVectors
 	public boolean merge(BDNodeVecState nv){
-		if(HybridAssembler.VERBOSE)
-			LOG.info("Merging vector {} with {}: ", this.toString(), nv.toString());
+		logger.debug("Merging vector {} with {}:", this.toString(), nv.toString());
 		if(!this.approximate(nv)){
-			if(HybridAssembler.VERBOSE)
-				LOG.info("...merging failed!");
+			logger.debug("...merging failed!");
 			return false;
 		}
 
@@ -152,8 +157,7 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 		if(nvsScore>Alignment.GOOD_QUAL*BDGraph.MAX_LISTING)
 			nvsScore=Alignment.GOOD_QUAL*BDGraph.MAX_LISTING;
 		
-		if(HybridAssembler.VERBOSE)
-			LOG.info(this.toString());
+		logger.debug(this.toString());
 		return true;
 	}
 	
@@ -169,6 +173,9 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 		
 		BDNodeVecState[] 	as0=s0.toArray( new BDNodeVecState[s0.size()]),
 							as1=s1.toArray( new BDNodeVecState[s1.size()]);
+		if(as0.length*as1.length==0)
+			return;
+		
 		int[][] scoreTab = new int[as0.length][as1.length];
 		char[][] moveTab = new char[as0.length][as1.length];
 		for(int i=0; i<as0.length; i++){
@@ -200,19 +207,18 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 		}
 		
 		//To print out table:
-		if(HybridAssembler.VERBOSE){
-			String nwTab="Needleman-Wunch table:\n";
-			for(int i=0; i<as1.length; i++)
-				nwTab+="\t" + as1[i].getNode().getId();
+
+		String nwTab="Needleman-Wunch table:\n";
+		for(int i=0; i<as1.length; i++)
+			nwTab+="\t" + as1[i].getNode().getId();
+		nwTab+="\n";
+		for(int i=0; i<as0.length; i++){
+			nwTab+=as0[i].getNode().getId()+"\t";
+			for(int j=0; j<as1.length; j++)
+				nwTab+=moveTab[i][j]+"\t";
 			nwTab+="\n";
-			for(int i=0; i<as0.length; i++){
-				nwTab+=as0[i].getNode().getId()+"\t";
-				for(int j=0; j<as1.length; j++)
-					nwTab+=moveTab[i][j]+"\t";
-				nwTab+="\n";
-			}
-			LOG.info(nwTab);
 		}
+		logger.debug(nwTab);
 		
 		int i=as0.length-1, j=as1.length-1;
 		ArrayList<Integer> 	m0 = new ArrayList<>(),
@@ -250,8 +256,7 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 			scale0=(as0[ii].getDistance()-as0[i].getDistance())*1.0/origStep;
 			scale1=(as0[ii].getDistance()-as0[i].getDistance())*1.0/(as1[jj].getDistance()-as1[j].getDistance());
 			
-			if(HybridAssembler.VERBOSE)
-				LOG.info("scale0={} scale1={}\n", scale0,scale1);
+			logger.debug("scale0={} scale1={}", scale0, scale1);
 
 			if(Math.max(scale0, scale1) < BDGraph.A_TOL/1.0 && Math.min(scale0, scale1) > 0) { //constrain scalex		
 				//calibrate the vectors from first list's in-between
@@ -270,8 +275,8 @@ public class BDNodeVecState implements Comparable<BDNodeVecState>{
 				//move to next match coordinate
 				prevOrigNVS=curOrigNVS;
 				i=ii; j=jj;
-			}else if(HybridAssembler.VERBOSE)
-				LOG.info("...moving to next match point!");
+			}else 
+				logger.debug("...moving to next match point!");
 		}
 		//nodes after the last match...scale=1.0
 		for(int i0=i+1;i0<as0.length;i0++)

@@ -6,17 +6,18 @@ import japsa.seq.JapsaFeature;
 import japsa.seq.Sequence;
 import japsa.seq.SequenceBuilder;
 
+import java.lang.invoke.MethodHandles;
 import java.util.HashMap;
 import java.util.List;
 
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Node;
 import org.graphstream.graph.Path;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class BDPath extends Path{
-    private static final Logger LOG = LoggerFactory.getLogger(BDPath.class);
+    private static final Logger logger = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
 	private int diff; //deviation from path to aligned read (now just length): the more the worse
 	private double pathEstats=0.0; //sum of estats of inbetween nodes
@@ -102,8 +103,7 @@ public class BDPath extends Path{
 				curDir=nextDir;
 				curNode=nextNode;
 			}else{
-				if(HybridAssembler.VERBOSE)
-					LOG.error("Graph " + graph.getId() + " doesn't contain " + edgeID);
+				logger.error("Graph {} doesn't contain {}", graph.getId(), edgeID);
 				break;
 			}
 		}
@@ -237,8 +237,7 @@ public class BDPath extends Path{
 				Sequence fillerSeq=new Sequence(Alphabet.DNA(), filler, "gap");
 				seq.append(fillerSeq.concatenate(curSeq));				
 
-				if(HybridAssembler.VERBOSE)
-					LOG.info("Edge {} has length={} > 0: filled with Ns", e.getId(), overlap);
+				logger.debug("Edge {} has length={} > 0: filled with Ns...", e.getId(), overlap);
 
 
 			}
@@ -275,16 +274,13 @@ public class BDPath extends Path{
 			return new BDPath(newPath);
 		
 		if(newPath.getRoot() != peekNode()){
-			if(HybridAssembler.VERBOSE)
-				LOG.error("Cannot join path {} to path {} with disagreed first node: {} != {}", newPath.getId(), this.getId(), newPath.getRoot().getId() ,peekNode().getId());
+			logger.debug("Cannot join path {} to path {} with disagreed first node: {}!={}", newPath.getId(), this.getId(), newPath.getRoot().getId(), peekNode().getId());
 
 			return null;
 		}
 
 		if(newPath.getNodeCount() > 1 && this.getNodeCount() > 1 && newPath.getFirstNodeDirection()==getLastNodeDirection()){
-			if(HybridAssembler.VERBOSE)
-				LOG.error("Conflict direction from the first node " + newPath.getRoot().getId());
-
+			logger.debug("Conflict direction from the first node {}", newPath.getRoot().getId());
 			return null;
 		}
 		BDPath retval=new BDPath(this);
@@ -338,8 +334,7 @@ public class BDPath extends Path{
 		}else if(from==peekNode()){
 			ref=this.reverse();
 		}else{
-			if(HybridAssembler.VERBOSE)
-				LOG.warn("Node {} couldn't be found as one of the end node in path {}!", from.getId(), getId());
+			logger.debug("Node {} couldn't be found as one of the end node in path {}", from.getId(), getId());
 			return retval;
 		}
 		int curDistance=0;
@@ -354,16 +349,16 @@ public class BDPath extends Path{
 					dirOfTo=!((BDEdge) e).getNodeDirection((BDNode) curNode);
 				if((dirOfFrom == dirOfTo) == direction){
 					if(Math.abs(curDistance-distance) < BDGraph.A_TOL || GraphUtil.approxCompare(curDistance, distance)==0){
-						if(HybridAssembler.VERBOSE)
-							LOG.info("|-> agree distance between node {}, node {}: {} and given distance {}",
-								from.getId(), to.getId(), curDistance, distance);
+						logger.debug("|-> agree distance between node {} and node {}: {} ~= {}", from.getId(), to.getId(), curDistance, distance);
 						if(Math.abs(retval) > Math.abs(curDistance-distance))
 							retval=curDistance-distance;
 					}
 
-				}else if(HybridAssembler.VERBOSE)
-					LOG.info("!-> inconsistence direction between node {} ({}), node {} ({}) and given orientation: {}",
-										from.getId(), dirOfFrom?"+":"-", to.getId(), dirOfTo?"+":"-", direction?"same":"opposite" );
+				}else 
+					logger.debug("!-> inconsistence direction between node {} and node {}, given their orientation are the {}", 
+								from.getId()+(dirOfFrom?"+":"-"), 
+								to.getId()+(dirOfTo?"+":"-"),
+								(direction?"same":"opposite"));
 			}
 			curDistance+=curNode.getNumber("len");
 		}

@@ -34,7 +34,6 @@
 
 package japsa.seq;
 
-import japsa.seq.Alphabet;
 import japsa.util.ByteArray;
 
 import java.util.Arrays;

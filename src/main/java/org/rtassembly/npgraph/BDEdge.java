@@ -5,18 +5,14 @@ import java.util.regex.Pattern;
 
 import org.graphstream.graph.implementations.AbstractEdge;
 import org.graphstream.graph.implementations.AbstractNode;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 
 public class BDEdge extends AbstractEdge{
 	protected boolean dir0, dir1;//true: outward, false: inward
 	//note that traversing direction (true: template, false: reverse complement) of destination node is opposite its defined direction (true: outward, false:inward) 
 	
-    private static final Logger LOG = LoggerFactory.getLogger(BDEdge.class);
-
-	protected BDEdge(String id, AbstractNode node0, AbstractNode node1, boolean dir0, boolean dir1) {
-		// id fuck off!!! we'll make one for ourselves
+    protected BDEdge(String id, AbstractNode node0, AbstractNode node1, boolean dir0, boolean dir1) {
+		// id is troublesome, we'll make one for ourselves
 		this(node0,node1,dir0,dir1);
 	}
 	protected BDEdge(AbstractNode node0, AbstractNode node1, boolean dir0, boolean dir1) {

@@ -3,8 +3,8 @@ package org.rtassembly.npgraph;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -16,10 +16,10 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.graphstream.graph.*;
 import org.graphstream.graph.implementations.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.common.util.concurrent.AtomicDouble;
 
@@ -30,31 +30,33 @@ import japsa.seq.SequenceOutputStream;
 
 
 public class BDGraph extends MultiGraph{
-    private static final Logger LOG = LoggerFactory.getLogger(BDGraph.class);
+    private static final Logger logger = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
     static int KMER=127;
-	static boolean 	circular=true; // circular or linear preference for the output genome
-    static double RCOV=0.0;
+	static boolean 	IS_CIRCULAR=true, // circular or linear preference for the output genome
+			 		IS_COMPLEX=false; // how big and complicated this graph is
+	static double RCOV=0.0;
+
     SimpleBinner binner;
 	//not gonna change these parameters in other thread
     public static final double R_TOL=.25;// relative tolerate: can be interpreted as long read error rate (10-25%)
     public static final int A_TOL=300;// absolute tolerate: can be interpreted as long read absolute error bases (100bp)
 
-    public static final int GOOD_SUPPORT=20; //number of minimum spanning reads for an affirmative long-reads-based bridge.
 	public static final double ALPHA=.5; //coverage less than alpha*bin_cov will be considered noise
     public static final int D_LIMIT=5000; //distance bigger than this will be ignored
     public static int S_LIMIT=300;// maximum number of graph traversing steps
-    public static int T_LIMIT=21588;// maximum time allowed to run DFS (milliseconds)
+    public static int T_LIMIT=2188;// maximum time allowed to run DFS (milliseconds)
     public static int MAX_LISTING=100; //maximum number of whatever paths
     
     //these should be changed in another thread, e.g. settings from GUI
-	public static volatile double ILLUMINA_READ_LENGTH=300; //Illumina MiSeq
-	public static volatile int MIN_SUPPORT=3; //minimal support reads for bridging
+	public static double ILLUMINA_READ_LENGTH=300; //Illumina MiSeq
+	public static int MIN_SUPPORT=3; //minimal support reads for bridging
+    public static int GOOD_SUPPORT=20; //number of minimum spanning reads for an affirmative long-reads-based bridge.
 
 	
     //provide mapping from unique directed node to its corresponding bridge
     //E.g: 103-: <103-82-> also 82+:<82+103+>
-    private HashMap<String, GoInBetweenBridge> bridgesMap; 
+    public final static HashMap<String, GoInBetweenBridge> bridgesMap=new HashMap<String, GoInBetweenBridge>();
     ConsensusCaller consensus;
 
     //mapping long but unknown contigs to unique successors and predecessor 
@@ -88,7 +90,6 @@ public class BDGraph extends MultiGraph{
 			int initialNodeCapacity, int initialEdgeCapacity) {
 		super(id, strictChecking, autoCreate);
 		
-		bridgesMap=new HashMap<String, GoInBetweenBridge>(initialNodeCapacity*2);
 		consensus = new ConsensusCaller();
 //		adjacencyMap=new HashMap<Node, Set<Node>>();
 		// All we need to do is to change the node & edge factory
@@ -104,15 +105,6 @@ public class BDGraph extends MultiGraph{
 			}
 		});
 		
-	}
-	public HashSet<GoInBetweenBridge> getUnsolvedBridges(){
-		HashSet<GoInBetweenBridge> retval = new HashSet<GoInBetweenBridge>();
-		for(GoInBetweenBridge brg:bridgesMap.values()){
-			if(brg.getCompletionLevel()<4)
-				retval.add(brg);
-		}
-		
-		return retval;
 	}
 
 	/**
@@ -148,6 +140,7 @@ public class BDGraph extends MultiGraph{
 	
 	protected BDEdge addEdge(AbstractNode src, AbstractNode dst, boolean dir0, boolean dir1){
 		BDEdge tmp = (BDEdge) addEdge(BDEdge.createID(src, dst, dir0, dir1), src, dst);
+		logger.trace("Graph {} : edge {} added successfully!", getId(), tmp.getId());
 		return tmp;
 	}
 	
@@ -186,7 +179,16 @@ public class BDGraph extends MultiGraph{
     /**************************************************************************************************
      ********************** utility functions to serve the assembly algo ****************************** 
      * ***********************************************************************************************/   
-    
+	synchronized public HashSet<GoInBetweenBridge> getUnsolvedBridges(){
+		HashSet<GoInBetweenBridge> retval = new HashSet<GoInBetweenBridge>();
+		for(GoInBetweenBridge brg:bridgesMap.values()){
+			if(brg.getCompletionLevel()<4)
+				retval.add(brg);
+		}
+		
+		return retval;
+	}
+	
     // when this unique node actually contained by a bridge
     synchronized public void removeNodeFromBridgesMap(Node unqNode){
     	bridgesMap.remove(unqNode.getId()+"o");
@@ -374,8 +376,7 @@ public class BDGraph extends MultiGraph{
     	unknownBinMap.remove(ko);
     	unknownBinMap.remove(ki);
     	node.setAttribute("unique", retval);
-    	if(HybridAssembler.VERBOSE)
-    		LOG.info("FOUND NEW UNIQUE CONTIG BY LONG READS: ID=" + node.getId() + " degree= " + node.getDegree() + " out=" + co + " in=" + ci + " read count="+c);
+    	logger.debug("FOUND NEW UNIQUE CONTIG BY LONG READS: ID={} degree={} out={} in={} readcount={}", node.getId(), node.getDegree(), co, ci, c);
     	return retval;
     }
     
@@ -448,8 +449,7 @@ public class BDGraph extends MultiGraph{
 			else
 				continue;
     		
-    		if(HybridAssembler.VERBOSE)
-    			LOG.info("Found one weird node {} inCov={}/{}, outCov={}/{}",(String)node.getAttribute("name"), inCov, node.getInDegree(), outCov, node.getOutDegree());
+    		logger.debug("Found one weird node {} inCov={}/{}, outCov={}/{}", (String)node.getAttribute("name"), inCov, node.getInDegree(), outCov, node.getOutDegree());
 
     	}
     	BDNodeState n0,n1;
@@ -469,8 +469,7 @@ public class BDGraph extends MultiGraph{
         		int overlap=GraphUtil.overlap(seq0,seq1);
         		if(overlap > 55){
         			BDEdge e=addEdge(n0.getNode(), n1.getNode(), n0.getDir(), n1.getDir());
-        			if(HybridAssembler.VERBOSE)
-            			LOG.info("...adding potential edge {} length={}", e.getId(), overlap);
+            		logger.debug("...adding potential edge {} length={}", e.getId(), overlap);
         		}
     		}
     	}
@@ -480,8 +479,7 @@ public class BDGraph extends MultiGraph{
     //Depth First Search strategy
 	synchronized ArrayList<BDPath> DFSAllPaths(BDNode srcNode, BDNode dstNode, boolean srcDir, boolean dstDir, int distance)
 	{
-    	if(HybridAssembler.VERBOSE)
-    		LOG.info("Looking for DFS path between {}{} to {}{} with distance={}",srcNode.getId(), srcDir?"o":"i", dstNode.getId(), dstDir?"o":"i" ,distance);
+    	logger.debug("Looking for DFS path between {} to {} with distance={}", srcNode.getId()+(srcDir?"o":"i"), dstNode.getId() + (dstDir?"o":"i"), distance);
 		ArrayList<BDPath> possiblePaths = new ArrayList<BDPath>(), 
 									retval=new ArrayList<BDPath>();
 
@@ -501,8 +499,7 @@ public class BDGraph extends MultiGraph{
 					delta;
 			BDEdge curEdge = null;
 
-			if(HybridAssembler.VERBOSE)
-	    		LOG.info("Found " + curNodeState.toString() + " with shortest distance=" + shortestMap.get(curNodeState.toString()));
+	    	logger.debug("Found {} with shortest distance={}", curNodeState.toString(), shortestMap.get(curNodeState.toString()));
 
 			AtomicDouble limit = new AtomicDouble(distance+tolerance);
 			
@@ -608,8 +605,7 @@ public class BDGraph extends MultiGraph{
 				
 			}
 		} 
-		if(HybridAssembler.VERBOSE)
-			LOG.info("select from list of " + possiblePaths.size() + " DFS paths:");
+			logger.debug("select from list of {} DFS paths", possiblePaths.size());
 		
 		if(possiblePaths.isEmpty())
 			return null;
@@ -621,8 +617,7 @@ public class BDGraph extends MultiGraph{
 			if(Math.abs(p.getDeviation())>closestDist+Math.abs(distance+getKmerSize())*R_TOL || i>=keepMax)
 				break;
 			retval.add(p);
-			if(HybridAssembler.VERBOSE)
-	    		LOG.info("Hit added: {} deviation={}; depth={}; likelihood score={}", p.getId(), p.getDeviation(), p.size(), p.getPathEstats());
+	    	logger.debug("Hit added: {} deviation={}; depth={}; likelihood={}", p.getId(), p.getDeviation(), p.size(), p.getPathEstats());
 
 		}
 		
@@ -685,21 +680,47 @@ public class BDGraph extends MultiGraph{
 		return retval;
     }
     
+    /*********************************************************************************************************
+     * Get usefulness of read chunk(s) and reduce the bridge if found 
+     * (a readuntil version of uniqueBridgesFinding)
+     * @param nnpRead
+     * @param alignments
+     * @return usefulness (whether to reject or proceed sequencing this read)
+     */
+    public synchronized boolean getRUDecision(Sequence nnpRead, ArrayList<Alignment> alignments) {
+ 		if(nnpRead==null || alignments.isEmpty())
+ 			return false;
+ 		
+ 		logger.debug("=================================================");
+ 		for(Alignment alg:alignments)
+ 			logger.info("\t{}", alg.toString());
+ 		logger.debug("=================================================");
+ 		
+ 		//1. get list of ordered alignments from this chunk
+ 		//2. Estimate distance from the first unique contigs to the next unresolved one. 
+ 		//	 and assign usefulness accordingly...
+ 		//3. If readID has been assigned useful=true and not reach next unresolved unique contig, proceeding...
+ 		//4. If reach next unresolved one, estimate the distance to reach the next unresolved one...
+ 		//	 find and reduce unique path if possible as in uniqueBridgesFinding				
+
+ 	    
+ 	    return true;
+ 	}
+    /**********************************************************************************************************/
     
     /*
      * Find bridges based on list of Alignments.
      * Return list of bridges with endings as markers and alignments of non-markers in-between.
      */ 
-    synchronized protected List<BDPath> uniqueBridgesFinding(Sequence nnpRead, ArrayList<Alignment> alignments) {
+    public synchronized List<BDPath> uniqueBridgesFinding(Sequence nnpRead, ArrayList<Alignment> alignments) {
  		if(nnpRead==null || alignments.size()<=1)
  			return null;
  		
- 		if(HybridAssembler.VERBOSE) {
-	 		LOG.info("=================================================");
-	 		for(Alignment alg:alignments)
-	 			LOG.info("\t"+alg.toString());
-	 		LOG.info("=================================================");
- 		}
+ 		logger.debug("=================================================");
+ 		for(Alignment alg:alignments)
+ 			logger.info("\t{}", alg.toString());
+ 		logger.debug("=================================================");
+ 		
  		//First bin the alignments into different overlap regions			
  		//only considering useful alignments
  		HashMap<Range,Alignment> allAlignments = new HashMap<Range,Alignment>();
@@ -737,26 +758,23 @@ public class BDGraph extends MultiGraph{
  		
  		}
  		
- 		if(HybridAssembler.VERBOSE) {
- 			LOG.info("Step ranges: ");
- 			String log="";
-	    	for(Range range:curRanges) { 
-	    		log+=(allAlignments.get(range).node.getId() + " "+ binner.getBinsOfNode(allAlignments.get(range).node) + ": " + range + "; ");	  
-	    	}
-	    		LOG.info(log);
- 		}
+		logger.debug("Step ranges: ");
+		String log="";
+    	for(Range range:curRanges) { 
+    		log+=(allAlignments.get(range).node.getId() + " "+ binner.getBinsOfNode(allAlignments.get(range).node) + ": " + range + "; ");	  
+    	}
+    	logger.debug(log);
+ 		
  		
  		Alignment curAlg=null;
  	    for(int i=1; i<rangeGroups.size(); i++){
  	    	curRanges = rangeGroups.get(i);
  	    	
- 	 		if(HybridAssembler.VERBOSE) {
- 	 			String log="";
- 		    	for(Range range:curRanges) { 
- 		    		log+=(allAlignments.get(range).node.getId() + " "+ binner.getBinsOfNode(allAlignments.get(range).node) + ": " + range + "; ");	  
- 		    	}
- 		    		LOG.info(log);
- 	 		}
+ 			log="";
+	    	for(Range range:curRanges) { 
+	    		log+=(allAlignments.get(range).node.getId() + " "+ binner.getBinsOfNode(allAlignments.get(range).node) + ": " + range + "; ");	  
+	    	}
+	    	logger.debug(log);
  	      	
  	    	if(curRanges.size()==1){
  	    		curAlg=allAlignments.get(curRanges.get(0));
@@ -801,21 +819,18 @@ public class BDGraph extends MultiGraph{
     
     private List<BDPath> buildBridge(AlignedRead read, PopBin bin){
     	List<BDPath> retval=new ArrayList<BDPath>();
-
+    	boolean complete=false;
 		GoInBetweenBridge 	storedBridge=getBridgeFromMap(read), reversedBridge;
-		if(HybridAssembler.VERBOSE) 
-			LOG.info("+++{} <=> {}\n", read.getEndingsID(), storedBridge==null?"null":storedBridge.getEndingsID());
+		logger.debug("+++{} <==> {}", read.getEndingsID(), (storedBridge==null?"null":storedBridge.getEndingsID()));
 		//long read give info about unique successor and predecessor
 		addReadsToUnknowMap(read);
 		if(storedBridge!=null) {
 			if(storedBridge.getCompletionLevel()==4){//important since it will ignore the wrong transformed unique nodes here!!!
-				if(HybridAssembler.VERBOSE) 
-					LOG.info(storedBridge.getEndingsID() + ": already solved and reduced: ignore!");
+				logger.debug("{}: already solved and reduced: ignore!", storedBridge.getEndingsID());
 				return retval;
 
 			}else{
-				if(HybridAssembler.VERBOSE) 
-					LOG.info(storedBridge.getEndingsID() + ": already built: fortify!");
+				logger.debug("{}: already built: fortify!", storedBridge.getEndingsID());
 				//update available bridge using alignments
 				byte state=storedBridge.merge(read,true);
 				
@@ -826,13 +841,15 @@ public class BDGraph extends MultiGraph{
 				boolean extend=false;
 				if(storedBridge.getCompletionLevel()==1){
 					if(storedBridge.scanForAnEnd(false)){
-						if(HybridAssembler.VERBOSE) 
-							LOG.info("FOUND NEW TRANSFORMED END: " + storedBridge.steps.end.getNode().getId());
+						logger.debug("FOUND NEW TRANSFORMED END: {}", storedBridge.steps.end.getNode().getId());
 						extend=storedBridge.steps.connectBridgeSteps(false);
 					}					
 				}
-				if(storedBridge.getCompletionLevel()==4 || (state&0b01)>0 || extend)
+				
+				if(storedBridge.getCompletionLevel()==4 || (state&0b01)>0 || extend) {
 					retval.addAll(storedBridge.scanForNewUniquePaths());
+					complete=true;
+				}
 					
 //				//also update the reversed bridge: important e.g. Shigella_dysenteriae_Sd197. WHY??? (already updated and merged 2 homo bridges)
 				if(read.getEFlag()==3) {
@@ -843,8 +860,10 @@ public class BDGraph extends MultiGraph{
 						if((anotherState&0b10)>0)//number of anchors has changed after merging
 							updateBridgesMap(reversedBridge);											
 						
-						if(reversedBridge.getCompletionLevel()==4 || (anotherState&0b01)>0)
+						if(reversedBridge.getCompletionLevel()==4 || (anotherState&0b01)>0) {
 							retval.addAll(reversedBridge.scanForNewUniquePaths());
+							complete=true;
+						}
 
 					}
 
@@ -862,7 +881,11 @@ public class BDGraph extends MultiGraph{
 			updateBridgesMap(reversedBridge);
 			
 		}
-		consensus.saveBridgingReadsFromAlignments(read);
+		
+		if(complete) 
+			consensus.bridgingReads.remove(read.getEndingsID());	
+		else	
+			consensus.saveBridgingReadsFromAlignments(read);
 		
 		return retval;
     }
@@ -873,13 +896,13 @@ public class BDGraph extends MultiGraph{
      * @param path: unique path to simplify the graph (from origGraph)
      */
     //This assuming path is surely unique!!!
-    public boolean reduceUniquePath(BDPath path){
+    public void reduceUniquePath(BDPath path){
     	//do nothing if the path has only one node
     	if(path==null||path.getEdgeCount()<1)
-    		return false;
+    		return;
 
-    	else if(HybridAssembler.VERBOSE) 
-    			LOG.info("Reducing path: " + path.getId());
+    	else 
+    		logger.debug("Reducing path: {}", path.getId());
 
 
     	Set<Edge> 	potentialRemovedEdges = binner.walkAlongUniquePath(path);
@@ -889,51 +912,41 @@ public class BDGraph extends MultiGraph{
 	    	//remove appropriate edges
     		
 	    	for(Edge e:potentialRemovedEdges){
-	    		if(HybridAssembler.VERBOSE) {
-		    		LOG.info("REMOVING EDGE " + e.getId() + " from " + e.getNode0().getGraph().getId() + "-" + e.getNode1().getGraph().getId());
-		    		LOG.info("before: \n\t" + printEdgesOfNode((BDNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) e.getNode1()));
-	    		}
+	    		logger.debug("REMOVING EDGE {} from {}-{}", e.getId(), e.getNode0().getGraph().getId(), e.getNode1().getGraph().getId());
+	    		logger.debug("before: \n\t{}\n\t{}", printEdgesOfNode((BDNode) e.getNode0()), printEdgesOfNode((BDNode) e.getNode1()));
+	    		
 	    		removeEdge(e.getId());
-	    		if(HybridAssembler.VERBOSE)
-	    			LOG.info("after: \n\t" + printEdgesOfNode((BDNode) e.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) e.getNode1()));
+	    		logger.debug("after: \n\t{}\n\t{}", printEdgesOfNode((BDNode) e.getNode0()), printEdgesOfNode((BDNode) e.getNode1()));
 
 	    	}
 	    	
 	    	//add appropriate edges
 			BDEdge reducedEdge = addEdge(path.getFirstNode(), path.getLastNode(), path.getFirstNodeDirection(), path.getLastNodeDirection());
-    		if(HybridAssembler.VERBOSE)
-    			LOG.info("ADDING EDGE " + reducedEdge.getId()+ " from " + reducedEdge.getNode0().getGraph().getId() + "-" + reducedEdge.getNode1().getGraph().getId());
+    		logger.debug("ADDING EDGE {} from {}-{}", reducedEdge.getId(), reducedEdge.getNode0().getGraph().getId(), reducedEdge.getNode1().getGraph().getId());
 
 			if(reducedEdge!=null){
 				if(path.getPrimitivePath().getEdgeCount()>1)
 					reducedEdge.setAttribute("path", path);
 				binner.edge2BinMap.put(reducedEdge, oneBin);
 			}
-			if(HybridAssembler.VERBOSE)
-				LOG.info("after adding: \n\t" + printEdgesOfNode((BDNode) reducedEdge.getNode0()) + "\n\t" + printEdgesOfNode((BDNode) reducedEdge.getNode1()));
-	    	return true;
-    	}else {
-    		if(HybridAssembler.VERBOSE)
-    			LOG.info("Path {} doesn't need to be reduced!", path.getId());
-    		return false;
-    	}
+			logger.debug("after adding: \n\t{}\n\t{}", printEdgesOfNode((BDNode) reducedEdge.getNode0()), printEdgesOfNode((BDNode) reducedEdge.getNode1()));
+	    	
+			notifyChanges();
+    	}else 
+    		logger.debug("Path {} doesn't need to be reduced!", path.getId());
+   
 
     }
     
     // old reducing. Now use for SPAdes paths only
-    public boolean reduceFromSPAdesPath(BDPath path){
-    	boolean retval=false;
+    public void reduceFromSPAdesPath(BDPath path){
     	//do nothing if the path has only one node
     	if(path==null || path.getEdgeCount()<1)
-    		return retval;
-    	else if(HybridAssembler.VERBOSE)
-    		LOG.info("Input SPAdes path: " + path.getId());
+    		return;
+    	else 
+    		logger.debug("Input SPAdes path: {}", path.getId());
     	//loop over the edges of path (like spelling())
-    	for(BDPath p:getNewSubPathsToReduce(path)){
-    		if(reduceUniquePath(p))
-    			retval=true;
-    	}
-    	return retval;
+    	getNewSubPathsToReduce(path).stream().forEach(p->reduceUniquePath(p));
 
     }
 
@@ -979,46 +992,62 @@ public class BDGraph extends MultiGraph{
      **********************************************************************/
     int n50, n75, maxl; //in Kbp
     int numOfCtgs, numOfCircularCtgs;
-    public synchronized void updateStats() {
-    	numOfCtgs=getNodeCount();
-		int count=0;
-		numOfCircularCtgs=0;
-		maxl=0;
-		int [] lengths = new int[numOfCtgs];
-		double sum = 0;		
-    	for (Node node : this) {
-    		/*
-    		 * Re-calculate stats
-    		 */
-			int nlen=(int)node.getNumber("len"); 
-			if(maxl < nlen)
-				maxl=nlen;
-			if(node.hasAttribute("circular"))
-				numOfCircularCtgs++;
+    volatile private boolean changed=true; //init as true for the initial cleaning
+    public synchronized void notifyChanges() {
+    	changed=true;
+    }
+    public synchronized boolean checkForChangesAndReset() {
+    	boolean retval=changed;
+    	changed=false;
+    	return retval;
+    }
+    
+    public void updateStats() {
+    	synchronized(this) {
+	    	numOfCtgs=getNodeCount();
+			int count=0;
+			int nc=0,
+				ml=0;
+			int [] lengths = new int[numOfCtgs];
+	//		double sum = 0;		
+	    	for (Node node : this) {
+	    		/*
+	    		 * Re-calculate stats
+	    		 */
+				int nlen=(int)node.getNumber("len"); 
+				if(ml < nlen)
+					ml=nlen;
+				if(node.hasAttribute("circular"))
+					nc++;
+				
+				lengths[count++]=nlen; 
+	//			sum+=nlen;	
+	    	}
+	    	maxl=ml;
+	    	numOfCircularCtgs=nc;
+	    	/*
+	    	 * Calculate N50, N75
+	    	 */
+	//		Arrays.sort(lengths);
+	//
+	//		int i50 = lengths.length,
+	//			i75 = lengths.length;
+	//		double contains = 0;
+	//		while (true){
+	//			if(contains < .5*sum)
+	//				i50 --;
+	//			if(contains < .75*sum) {
+	//				i75--;
+	//			}else
+	//				break;
+	//			contains += lengths[i75];
+	//		}
+	//		n50=lengths[i50];
+	//		n75=lengths[i75];
 			
-			lengths[count++]=nlen; 
-			sum+=nlen;	
+			n50=GraphUtil.getNStats(.5, lengths);
+			n75=GraphUtil.getNStats(.75, lengths);
     	}
-    	
-    	/*
-    	 * Calculate N50, N75
-    	 */
-		Arrays.sort(lengths);
-
-		int i50 = lengths.length,
-			i75 = lengths.length;
-		double contains = 0;
-		while (true){
-			if(contains < .5*sum)
-				i50 --;
-			if(contains < .75*sum) {
-				i75--;
-			}else
-				break;
-			contains += lengths[i75];
-		}
-		n50=lengths[i50];
-		n75=lengths[i75];
     }
     
     private void initGraphComponents() {	
@@ -1069,9 +1098,13 @@ public class BDGraph extends MultiGraph{
 //			if( (node.getDegree()==0 && (seq.length() < SimpleBinner.ANCHOR_CTG_LEN)) 
 //				|| node.getNumber("cov") < 10.0 )	//not display <10% abundance pops
 //				continue;
-			seq.writeFasta(out);
+			if(seq!=null)
+				seq.writeFasta(out);
+			else { 
+				logger.error("Cannot read sequence from node {}", node.getId());
+				break;
+			}
 		}
-		
 		out.close();
 	}
 	public void outputJAPSA(String fileName) throws IOException {
@@ -1079,7 +1112,13 @@ public class BDGraph extends MultiGraph{
 		JapsaAnnotation annotation;
 		for(Node node:this) {
 			annotation=(JapsaAnnotation) node.getAttribute("annotation");
-			annotation.write(out);
+			if(annotation!=null)
+				annotation.write(out);
+			else {
+				logger.error("Cannot read annotation from node {}", node.getId());
+				break;
+			}
+
 		}	
 		out.close();
 	}
@@ -1099,11 +1138,11 @@ public class BDGraph extends MultiGraph{
 	    );
 	    
 	    Set<String> addedNodes = new HashSet<String>();
-	    //Print S (Segment)
+	    //Print S (Segment) with kmer count (KC) and bin (BI)
 	    for(Node node:this){
 	    	Sequence seq=(Sequence) node.getAttribute("seq");
 	    	int kmer_count=(int)(GraphUtil.getRealCoverage(node.getNumber("cov"))*(BDGraph.ILLUMINA_READ_LENGTH-BDGraph.getKmerSize())/BDGraph.ILLUMINA_READ_LENGTH);
-	    	printWriter.printf("S\t%s\t%s\tKC:i:%d\n", node.getId(), seq.toString(),kmer_count);
+	    	printWriter.printf("S\t%s\t%s\tKC:i:%d\tBI:i:%d\n", node.getId(), seq.toString(),kmer_count, node.getAttribute("bin")==null?0:((PopBin)node.getAttribute("bin")).getId());
 	    	addedNodes.add(node.getId());
 	    }	    
 	    for(Edge ce:compositeEdges){
@@ -1131,7 +1170,8 @@ public class BDGraph extends MultiGraph{
 		    		
 		    		Sequence seq=(Sequence) nextNode.getAttribute("seq");
 			    	int kmer_count=(int)(GraphUtil.getRealCoverage(nextNode.getNumber("cov"))*(BDGraph.ILLUMINA_READ_LENGTH-BDGraph.getKmerSize())/BDGraph.ILLUMINA_READ_LENGTH);
-			    	printWriter.printf("S\t%s\t%s\tKC:i:%d\n", nextID, seq.toString(),kmer_count);
+			    	printWriter.printf("S\t%s\t%s\tKC:i:%d\tBI:i:%d\n", nextID, seq.toString(),kmer_count, nextNode.getAttribute("bin")==null?0:((PopBin)nextNode.getAttribute("bin")).getId());
+
 
 	    		}
 		    	

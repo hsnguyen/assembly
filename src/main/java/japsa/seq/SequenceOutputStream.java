@@ -112,7 +112,7 @@ public class SequenceOutputStream  extends OutputStream {
 					(new GZIPOutputStream 
 					  (new FileOutputStream(fileName)));		
 		else if (fileName.equals("-"))
-			return 	new SequenceOutputStream(System.out);
+			return new SequenceOutputStream(System.out);
 		
 		return new SequenceOutputStream (new FileOutputStream(fileName));
 		
