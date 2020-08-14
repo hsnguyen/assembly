@@ -55,12 +55,18 @@ Options:
 The provided functionality is similar to *npGraph* except no consensus is supported since MSA is slow for this time-critical server. Also PAF is the only alignment format used for rRPC communications since its light-weighted property.
 
 ### How to
-To use the pipeline, first you need to familiarize yourself with the experiment of [*ReadFish*](https://github.com/LooseLab/readfish). A slight modification of this repo to operate with *npGraphServer* is [*here*](https://github.com/hsnguyen/ru).
+To use the pipeline, first you need to familiarize yourself with [*ReadFish*](https://github.com/LooseLab/readfish). A slight modification of this repo to operate with *npGraphServer* is [*here*](https://github.com/hsnguyen/ru). So after install original ReadUntil code, you'll have to update (from the virtualenv) by
+```
+pip install -U git+https://github.com/hsnguyen/ru@master
+```
 
-Beside the Guppy basecall server, you'll need to start a *npGraphServer* as well for the run.
+
+After finishing all installation, you can start to test running selective sequencing with *npGraphServer*.Beside the Guppy basecall server, you'll need to start a *npGraphServer* as well for the run.
 ```
 java -cp target/assembly-x.x.x.jar org.rtassembly.NPGraphServerCmd -si assembly_graph.[fastg|gfa] -output output/ -read 1 -expect 20000 -gui
 ```
+Follow the procedure similar to *ReadFish* but using the [*npgraph_selection.toml*](https://github.com/hsnguyen/ru/blob/master/examples/npgraph_selection.toml) instead.
+
 ## Reference
 
 
