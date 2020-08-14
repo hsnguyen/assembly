@@ -60,7 +60,7 @@ ADD pom.xml .
 RUN ["/usr/local/bin/mvn-entrypoint.sh", "mvn", "verify", "clean", "--fail-never"]
 ADD . .
 RUN ["mvn", "package"]
-RUN cp -p target/assembly-0.1.1-SNAPSHOT.jar /build/bin/
+RUN cp -p target/assembly-0.2.1-beta.jar /build/bin/
 #READFISH
 #Waiting for code update for MinKNOW core 4.04
 
@@ -72,5 +72,5 @@ RUN apt-get update && apt-get install libgtk-3-0 libglu1-mesa -y && apt-get upda
 
 COPY --from=build /build/bin /usr/local/bin
 EXPOSE 8080
-ENTRYPOINT ["java","-cp","/usr/local/bin/assembly-0.1.1-SNAPSHOT.jar"]
+ENTRYPOINT ["java","-cp","/usr/local/bin/assembly-0.2.1-beta.jar"]
 CMD ["org.rtassembly.NPGraphCmd","--msa=kalign3","--aligner=minimap2","--gui"]
