@@ -5,8 +5,11 @@ import org.graphstream.stream.thread.ThreadProxyPipe;
 import org.graphstream.ui.fx_viewer.FxDefaultView;
 import org.graphstream.ui.fx_viewer.FxViewer;
 import org.graphstream.ui.javafx.FxGraphRenderer;
+import org.graphstream.ui.spriteManager.Sprite;
+import org.graphstream.ui.spriteManager.SpriteManager;
 import org.graphstream.ui.view.Viewer;
 import org.graphstream.ui.view.Viewer.CloseFramePolicy;
+import org.rtassembly.npgraph.BDEdge;
 import org.rtassembly.npgraph.BDGraph;
 import org.rtassembly.npgraph.GraphUtil;
 import org.rtassembly.npgraph.HybridAssembler;
@@ -84,11 +87,11 @@ public class GraphExploreDesktop extends Application{
     	/*
     	 * To test real-time assembly
     	 */
-    	String dataFolder="/home/sonhoanghguyen/Projects/scaffolding/npgraph/realtime/data/";
-    	String sample="B09_Dap8";
+    	String dataFolder="/home/sonnguyen/Projects/ONT/assembly/fastq_pass/barcode37/spades";
+    	String sample="";
     	sInput=dataFolder+sample+"/assembly_graph.fastg";
     	output=dataFolder+sample;
-    	lInput=dataFolder+sample+"/assembly_graph.bam";	
+    	lInput=dataFolder+sample+"/assembly_graph.sam";	
     	BDGraph.GOOD_SUPPORT=10;
     	/*
     	 * Metagenomics data:
@@ -136,7 +139,6 @@ public class GraphExploreDesktop extends Application{
       	hbAss.prepareLongReadsProcess();
       	
 		Application.launch(GraphExploreDesktop.class,args);
-
     }
     private GridPane createAutoresizeGridPane(int ncols, int nrows){
         GridPane gridpane = new GridPane();
@@ -155,6 +157,7 @@ public class GraphExploreDesktop extends Application{
         gridpane.setHgap(5);
         return gridpane;
     }
+    static Viewer graphViewer;
     private GridPane addGraphResolverPane(){  		
     	GridPane mainGrid = createAutoresizeGridPane(1,1);
 		mainGrid.setStyle("-fx-background-color: #C0C0C0;");
@@ -162,8 +165,10 @@ public class GraphExploreDesktop extends Application{
 		
 		ThreadProxyPipe pipe = new ThreadProxyPipe() ;
 		pipe.init(hbAss.simGraph);
-		Viewer graphViewer = new FxViewer(pipe);
+		graphViewer = new FxViewer(pipe);
 		System.setProperty("org.graphstream.ui", "javafx");
+		System.setProperty("org.graphstream.ui.renderer",
+		        "org.graphstream.ui.j2dviewer.J2DGraphRenderer");
 
 		FxDefaultView view = new FxDefaultView(graphViewer, "npGraph", new FxGraphRenderer());
 		graphViewer.addView(view);
@@ -195,10 +200,7 @@ public class GraphExploreDesktop extends Application{
     	
 
         System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
-        for (Node node : graph) {
-        	node.setAttribute("ui.label", node.getId());
-        }        
-
+        
         primaryStage.show();
 
         /*
@@ -214,7 +216,34 @@ public class GraphExploreDesktop extends Application{
 
 				try{
 					hbAss.assembly();
-//					myass.postProcessGraph();
+					GraphUtil.promptEnterKey();
+					
+					//Enter GUI debugging mode:
+			        graph.nodes().forEach(node->node.setAttribute("ui.label", node.getId()));
+			        SpriteManager sman = new SpriteManager(graph);
+			        String sstyle = "shape: arrow; fill-color: #922; size: 16px, 8px; ";
+			        graph.edges()
+			        	.forEach(edge -> {
+			        					String id = edge.getId();
+			        					edge.setAttribute("ui.label", id);
+			        					Node 	node0 = edge.getNode0(),
+			        							node1 = edge.getNode1();
+			        					boolean dir0 = ((BDEdge)edge).getDir0(),
+			        							dir1 = ((BDEdge)edge).getDir1();
+			        					Sprite 	s0 = sman.addSprite(Integer.toString((id+":"+node0.getId()).hashCode())),
+			        							s1 = sman.addSprite(Integer.toString((id+":"+node1.getId()).hashCode()));
+
+			        					s0.setAttribute("ui.style", sstyle+"sprite-orientation: "+(dir0?"to":"from")+";");
+			        					s1.setAttribute("ui.style", sstyle+"sprite-orientation: "+(dir1?"from":"to")+";");
+			        					
+			        					s0.attachToEdge(id);
+			        					s1.attachToEdge(id);
+			        					s0.setPosition(.3);
+			        					s1.setPosition(.7);
+			        				}
+			        			);
+					graphViewer.disableAutoLayout();
+
 				}catch (Exception e){
 					System.err.println(e.getMessage());
 					e.printStackTrace();
@@ -225,6 +254,7 @@ public class GraphExploreDesktop extends Application{
 		}).start();
       
         System.out.println("Node: " + graph.getNodeCount() + " Edge: " + graph.getEdgeCount());
+
 	}
     
 
